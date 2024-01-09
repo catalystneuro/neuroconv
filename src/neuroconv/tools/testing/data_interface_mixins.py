@@ -1,3 +1,4 @@
+import inspect
 import json
 import tempfile
 from abc import abstractmethod
@@ -26,6 +27,8 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
 from neuroconv.utils import NWBMetaDataEncoder
+
+from .mock_probes import generate_mock_probe
 
 
 class DataInterfaceTestMixin:
@@ -217,7 +220,7 @@ class TemporalAlignmentMixin:
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseImagingExtractorInterface
+    data_interface_cls: Type[BaseImagingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -300,6 +303,14 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
+                for property_name in ["rel_x", "rel_y", "rel_z", "group"]:
+                    if (
+                        property_name in recording.get_property_keys()
+                        or property_name in self.nwb_recording.get_property_keys()
+                    ):
+                        assert_array_equal(
+                            recording.get_property(property_name), self.nwb_recording.get_property(property_name)
+                        )
                 if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
@@ -459,10 +470,35 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 self.check_nwbfile_temporal_alignment()
 
+    def test_conversion_as_lone_interface(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                assert isinstance(self.interface, BaseRecordingExtractorInterface)
+                if not self.interface.has_probe():
+                    self.interface.set_probe(
+                        generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
+                        group_mode="by_shank",
+                    )
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseSortingExtractorInterface
-    associated_recording_cls: Optional[BaseRecordingExtractorInterface] = None
+    data_interface_cls: Type[BaseSortingExtractorInterface]
+    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
     associated_recording_kwargs: Optional[dict] = None
 
     def setUpFreshInterface(self):
@@ -477,16 +513,33 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         sorting = self.interface.sorting_extractor
         sf = sorting.get_sampling_frequency()
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
-            sorting.set_sampling_frequency(30_000)
+            sorting.set_sampling_frequency(30_000.0)
 
         # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
         if sorting.get_num_segments() == 1:
-            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
+            # TODO after 0.100 release remove this if
+            signature = inspect.signature(NwbSortingExtractor)
+            if "t_start" in signature.parameters:
+                nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf, t_start=0.0)
+            else:
+                nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             # In the NWBSortingExtractor, since unit_names could be not unique,
             # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
-            sorting_renamed = sorting.select_units(
-                unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
-            )
+            if "unit_name" in sorting.get_property_keys():
+                renamed_unit_ids = sorting.get_property("unit_name")
+                # sorting_renamed = sorting.rename_units(new_unit_ids=renamed_unit_ids)  #TODO after 0.100 release use this
+                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
+
+            else:
+                nwb_has_ids_as_strings = all(isinstance(id, str) for id in nwb_sorting.unit_ids)
+                if nwb_has_ids_as_strings:
+                    renamed_unit_ids = sorting.get_unit_ids()
+                    renamed_unit_ids = [str(id) for id in renamed_unit_ids]
+                else:
+                    renamed_unit_ids = np.arange(len(sorting.unit_ids))
+
+                # sorting_renamed = sorting.rename_units(new_unit_ids=sorting.unit_ids) #TODO after 0.100 release use this
+                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
     def check_interface_set_aligned_segment_timestamps(self):

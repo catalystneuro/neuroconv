@@ -1,4 +1,5 @@
 """General purpose iterator for all ImagingExtractor data."""
+import math
 from typing import Optional, Tuple
 
 import numpy as np
@@ -40,7 +41,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
             The chunk_shape will be set implicitly by this argument.
             Cannot be set if `chunk_shape` is also specified.
-            The default is 1MB, as recommended by the HDF5 group. For more details, see
+            The default is 10MB. For more details, see
             https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         chunk_shape : tuple, optional
             Manual specification of the internal chunk shape for the HDF5 dataset.
@@ -61,12 +62,12 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             assert chunk_mb * 1e6 <= buffer_gb * 1e9, "chunk_mb must be less than or equal to buffer_gb!"
 
         if chunk_mb is None and chunk_shape is None:
-            chunk_mb = 1.0
+            chunk_mb = 10.0
 
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is None:
-            chunk_shape = super()._get_default_chunk_shape(chunk_mb=chunk_mb)
+            chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
 
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
@@ -81,6 +82,25 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             progress_bar_options=progress_bar_options,
         )
 
+    def _get_default_chunk_shape(self, chunk_mb: float) -> tuple:
+        """Select the chunk_shape less than the threshold of chunk_mb while keeping the original image size."""
+        assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
+
+        num_frames = self._maxshape[0]
+        width = self._maxshape[1]
+        height = self._maxshape[2]
+
+        frame_size_bytes = width * height * self._dtype.itemsize
+        chunk_size_bytes = chunk_mb * 1e6
+        num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
+
+        if len(self._maxshape) == 3:
+            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height)
+        elif len(self._maxshape) == 4:
+            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height, 1)
+
+        return chunk_shape
+
     def _get_scaled_buffer_shape(self, buffer_gb: float, chunk_shape: tuple) -> tuple:
         """Select the buffer_shape less than the threshold of buffer_gb that is also a multiple of the chunk_shape."""
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
@@ -88,7 +108,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         image_size = self._get_maxshape()[1:]
         min_buffer_shape = tuple([chunk_shape[0]]) + image_size
-        scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape) * self._get_dtype().itemsize)))
+        scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
         max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
         scaled_buffer_shape = tuple(
             [

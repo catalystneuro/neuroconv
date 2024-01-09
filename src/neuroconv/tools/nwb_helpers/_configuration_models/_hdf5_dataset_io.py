@@ -2,10 +2,10 @@
 from typing import Any, Dict, Literal, Union
 
 import h5py
-from nwbinspector.utils import is_module_installed
 from pydantic import Field
 
-from ._base_dataset_models import DatasetConfiguration
+from ._base_dataset_io import DatasetIOConfiguration
+from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
 _excluded_hdf5_filters = set(
@@ -17,7 +17,7 @@ _excluded_hdf5_filters = set(
 )
 _available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)
 AVAILABLE_HDF5_COMPRESSION_METHODS = {filter_name: filter_name for filter_name in _available_hdf5_filters}
-if is_module_installed(module_name="hdf5plugin"):
+if is_package_installed(package_name="hdf5plugin"):
     import hdf5plugin
 
     AVAILABLE_HDF5_COMPRESSION_METHODS.update(
@@ -28,7 +28,7 @@ if is_module_installed(module_name="hdf5plugin"):
     )
 
 
-class HDF5DatasetConfiguration(DatasetConfiguration):
+class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
     # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
@@ -54,7 +54,7 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
     )
 
     def get_data_io_kwargs(self) -> Dict[str, Any]:
-        if is_module_installed(module_name="hdf5plugin"):
+        if is_package_installed(package_name="hdf5plugin"):
             import hdf5plugin
 
             if self.compression_method in _base_hdf5_filters:
@@ -75,6 +75,10 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
             elif self.compression_method is None:
                 compression_bundle = dict(compression=False)
         else:
-            compression_bundle = dict(compression=self.compression_method, compression_opts=self.compression_options)
+            # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
+            compression_opts = None
+            if self.compression_options is not None:
+                compression_opts = list(self.compression_options.values())[0]
+            compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)

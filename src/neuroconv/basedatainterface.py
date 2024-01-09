@@ -7,11 +7,7 @@ from typing import List, Optional
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
-from .utils import (
-    dict_deep_update,
-    get_schema_from_method_signature,
-    load_dict_from_file,
-)
+from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
 

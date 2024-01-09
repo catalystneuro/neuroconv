@@ -1,8 +1,10 @@
+import math
+
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
-from nwbinspector.utils import get_package_version
 from parameterized import param, parameterized
+from roiextractors import VolumetricImagingExtractor
 from roiextractors.testing import generate_dummy_imaging_extractor
 
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
@@ -157,7 +159,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         )
 
         if buffer_gb is not None:
-            assert ((np.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
+            assert ((math.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
 
         data_chunks = np.zeros(dci.maxshape)
         for data_chunk in dci:
@@ -176,3 +178,19 @@ class TestImagingExtractorDataChunkIterator(TestCase):
 
         self.assertEqual(dci.display_progress, True)
         self.assertEqual(dci.progress_bar.desc, "Test Progress Bar")
+
+
+def test_volumetric_default_chunking():
+    number_of_frames = 10
+    width = 1024
+    height = 1024
+    number_of_planes = 3
+
+    imaging_extractors = [
+        generate_dummy_imaging_extractor(num_frames=number_of_frames, num_rows=width, num_columns=height)
+        for _ in range(number_of_planes)
+    ]
+    volumetric_imaging_extractor = VolumetricImagingExtractor(imaging_extractors=imaging_extractors)
+    iterator = ImagingExtractorDataChunkIterator(imaging_extractor=volumetric_imaging_extractor)
+
+    assert iterator.chunk_shape == (4, width, height, 1)

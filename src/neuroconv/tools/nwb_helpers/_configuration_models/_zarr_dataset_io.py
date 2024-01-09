@@ -5,7 +5,7 @@ import numcodecs
 import zarr
 from pydantic import Field, root_validator
 
-from ._base_dataset_models import DatasetConfiguration
+from ._base_dataset_io import DatasetIOConfiguration
 
 _base_zarr_codecs = set(zarr.codec_registry.keys())
 _lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
@@ -41,7 +41,7 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
 }
 
 
-class ZarrDatasetConfiguration(DatasetConfiguration):
+class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`

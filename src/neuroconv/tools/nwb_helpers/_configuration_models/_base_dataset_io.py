@@ -6,7 +6,49 @@ from typing import Any, Dict, Literal, Tuple, Union
 import h5py
 import numcodecs
 import numpy as np
+import zarr
+from hdmf import Container
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator
+from hdmf.utils import get_data_shape
 from pydantic import BaseModel, Field, root_validator
+from pynwb import NWBFile
+
+from ...hdmf import SliceableDataChunkIterator
+
+
+def _find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
+    """
+    Method for determining the location of a neurodata object within an in-memory NWBFile object.
+
+    Distinct from methods from other packages, such as the NWB Inspector, which rely on such files being read from disk.
+    """
+    parent = neurodata_object.parent
+    if isinstance(parent, NWBFile):
+        # Items in defined top-level places like acquisition, intervals, etc. do not act as 'containers'
+        # in that they do not set the `.parent` attribute; ask if object is in their in-memory dictionaries instead
+        for parent_field_name, parent_field_value in parent.fields.items():
+            if isinstance(parent_field_value, dict) and neurodata_object.name in parent_field_value:
+                return parent_field_name + "/" + neurodata_object.name + "/" + current_location
+        return neurodata_object.name + "/" + current_location
+    return _find_location_in_memory_nwbfile(
+        current_location=neurodata_object.name + "/" + current_location, neurodata_object=parent
+    )
+
+
+def _infer_dtype_using_data_chunk_iterator(candidate_dataset: Union[h5py.Dataset, zarr.Array]):
+    """
+    The DataChunkIterator has one of the best generic dtype inference, though logic is hard to peel out of it.
+
+    It can fail in rare cases but not essential to our default configuration
+    """
+    try:
+        data_type = DataChunkIterator(candidate_dataset).dtype
+        return data_type
+    except Exception as exception:
+        if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
+            raise exception
+        else:
+            return np.dtype("object")
 
 
 class DatasetInfo(BaseModel):
@@ -36,7 +78,7 @@ class DatasetInfo(BaseModel):
         """
         Not overriding __repr__ as this is intended to render only when wrapped in print().
 
-        Reason being two-fold; a standard `repr` is intended to be slightly more machine readable / a more basic
+        Reason being two-fold; a standard `repr` is intended to be slightly more machine-readable / a more basic
         representation of the true object state. But then also because an iterable of these objects, such as a
         `List[DataSetInfo]`, would print out the nested representations, which only look good when using the basic
         `repr` (that is, this fancy string print-out does not look good when nested in another container).
@@ -60,8 +102,24 @@ class DatasetInfo(BaseModel):
         values.update(dataset_name=dataset_name)
         super().__init__(**values)
 
+    @classmethod
+    def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> "DatasetInfo":
+        location = _find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
+        candidate_dataset = getattr(neurodata_object, field_name)
 
-class DatasetConfiguration(BaseModel, ABC):
+        full_shape = get_data_shape(data=candidate_dataset)
+        dtype = _infer_dtype_using_data_chunk_iterator(candidate_dataset=candidate_dataset)
+
+        return cls(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            location=location,
+            full_shape=full_shape,
+            dtype=dtype,
+        )
+
+
+class DatasetIOConfiguration(BaseModel, ABC):
     """A data model for configuring options about an object that will become a HDF5 or Zarr Dataset in the file."""
 
     # TODO: When using Pydantic v2, remove
@@ -94,7 +152,7 @@ class DatasetConfiguration(BaseModel, ABC):
         """
         Not overriding __repr__ as this is intended to render only when wrapped in print().
 
-        Reason being two-fold; a standard `repr` is intended to be slightly more machine readable / a more basic
+        Reason being two-fold; a standard `repr` is intended to be slightly more machine-readable / a more basic
         representation of the true object state. But then also because an iterable of these objects, such as a
         `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
@@ -112,7 +170,7 @@ class DatasetConfiguration(BaseModel, ABC):
             # TODO: add nicer auto-selection/rendering of units and amount for source data size
             "\n"
             f"\n  buffer shape : {self.buffer_shape}"
-            f"\n  maximum RAM usage per iteration : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
+            f"\n  expected RAM usage : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
             "\n"
             f"\n  chunk shape : {self.chunk_shape}"
             f"\n  disk space usage per chunk : {disk_space_usage_per_chunk_in_mb:0.2f} MB"
@@ -166,7 +224,11 @@ class DatasetConfiguration(BaseModel, ABC):
                 f"location '{location}'!"
             )
 
-        if any(buffer_axis % chunk_axis != 0 for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
+        if any(
+            buffer_axis % chunk_axis != 0
+            for chunk_axis, buffer_axis, full_axis in zip(chunk_shape, buffer_shape, full_shape)
+            if buffer_axis != full_axis
+        ):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
                 f"location '{location}'!"
@@ -177,6 +239,32 @@ class DatasetConfiguration(BaseModel, ABC):
     @abstractmethod
     def get_data_io_kwargs(self) -> Dict[str, Any]:
         """
-        Fetch the properly structured dictionary of input arguments to be passed directly into a H5DataIO or ZarrDataIO.
+        Fetch the properly structured dictionary of input arguments.
+
+        Should be passed directly as dynamic keyword arguments (**kwargs) into a H5DataIO or ZarrDataIO.
         """
         raise NotImplementedError
+
+    @classmethod
+    def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> "DatasetIOConfiguration":
+        candidate_dataset = getattr(neurodata_object, field_name)
+
+        dataset_info = DatasetInfo.from_neurodata_object(neurodata_object=neurodata_object, field_name=field_name)
+
+        dtype = dataset_info.dtype
+        full_shape = dataset_info.full_shape
+
+        if isinstance(candidate_dataset, GenericDataChunkIterator):
+            chunk_shape = candidate_dataset.chunk_shape
+            buffer_shape = candidate_dataset.buffer_shape
+        elif dtype != "unknown":
+            chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
+                chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
+            )
+            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+            )
+        else:
+            pass
+
+        return cls(dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape)

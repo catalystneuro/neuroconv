@@ -1,11 +1,40 @@
-"""Tool functions for performing imports."""
-import importlib.util
+"""Tool functions related to imports."""
 import sys
+from importlib import import_module
+from importlib.metadata import version as importlib_version
+from importlib.util import find_spec
 from platform import processor, python_version
 from types import ModuleType
 from typing import Dict, List, Optional, Union
 
 from packaging import version
+
+
+def get_package_version(name: str) -> version.Version:
+    """
+    Retrieve the version of a package.
+
+    Parameters
+    ----------
+    name : str
+        Name of package.
+
+    Returns
+    -------
+    version : Version
+        The package version as an object from packaging.version.Version.
+    """
+    package_version = importlib_version(name)
+    return version.parse(package_version)
+
+
+def is_package_installed(package_name: str) -> bool:
+    """
+    Check if the given package is installed on the system.
+
+    Used for lazy imports.
+    """
+    return find_spec(name=package_name) is not None
 
 
 def get_package(
@@ -42,7 +71,7 @@ def get_package(
         specify this dictionary to raise a more specific error to that issue.
 
         For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
-        informative error when running on MacOS with Python version 3.7.
+        informative error when running on macOS with Python version 3.7.
 
         This also applies to specific architectures of platforms, such as
         `excluded_platforms_and_python_versions = dict(darwin=dict(arm=["3.7"]))` to exclude a specific Python
@@ -89,8 +118,8 @@ def get_package(
     if package_name in sys.modules:
         return sys.modules[package_name]
 
-    if importlib.util.find_spec(package_name) is not None:
-        return importlib.import_module(name=package_name)
+    if is_package_installed(package_name=package_name) is not None:
+        return import_module(name=package_name)
 
     raise ModuleNotFoundError(
         f"\nThe required package'{package_name}' is not installed!\n"

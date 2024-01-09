@@ -42,7 +42,7 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
-        cls.num_frames = 10000
+        cls.num_frames = int(1e7)
         cls.num_audio_files = 3
         cls.sampling_rate = 500
         cls.aligned_segment_starting_times = [0.0, 20.0, 40.0]
@@ -199,7 +199,17 @@ On instance['Audio']['write_as']:
         audio_test_data = [read(filename=file_path, mmap=True)[1] for file_path in file_paths]
 
         nwbfile_path = str(self.test_dir / "audio_test_data.nwb")
-        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=self.metadata)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            metadata=self.metadata,
+            conversion_options=dict(
+                Audio=dict(
+                    iterator_options=dict(
+                        buffer_gb=1e7 / 1e9,
+                    )
+                )
+            ),  # use a low buffer_gb, so we can test the full GenericDataChunkIterator
+        )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()

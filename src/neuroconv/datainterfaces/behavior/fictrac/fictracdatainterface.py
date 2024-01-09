@@ -1,8 +1,11 @@
+import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+from hdmf.backends.hdf5.h5_utils import H5DataIO
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
@@ -145,6 +148,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePathType,
         radius: Optional[float] = None,
+        configuration_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
     ):
         """
@@ -157,15 +161,24 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         radius : float, optional
             The radius of the ball in meters. If provided the radius is stored as a conversion factor
             and the units are set to meters. If not provided the units are set to radians.
+        configuration_file_path : a string or a path, optional
+            Path to the .txt file with the configuration metadata. Usually called config.txt
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
         self.file_path = Path(file_path)
         self.verbose = verbose
-        self._timestamps = None
         self.radius = radius
         self.configuration_file_path = None
         super().__init__(file_path=file_path)
+
+        self.configuration_file_path = configuration_file_path
+        if self.configuration_file_path is None and (self.file_path.parent / "config.txt").is_file():
+            self.configuration_file_path = self.file_path.parent / "config.txt"
+
+        self.configuration_metadata = None
+        if self.configuration_file_path is not None:
+            self.configuration_metadata = parse_fictrac_config(file_path=self.configuration_file_path)
 
         self._timestamps = None
         self._starting_time = None
@@ -186,6 +199,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        compression: Optional[str] = "gzip",
+        compression_opts: Optional[int] = None,
     ):
         """
         Parameters
@@ -204,9 +219,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         timestamps = self.get_timestamps()
         starting_time = timestamps[0]
 
-        # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
-        # The reason, most likely, is that FicTrac is relying on OpenCV to get the timestamps from the video
-        # In my experience, OpenCV is not very accurate with the timestamps at the end of the video.
+        # Note: Returns the timestamps from the sources in FicTrac (.e.g OpenCV videos, PGR or Basler). The most common  is OpenCV with all the caveats that come with it.
+        # video timestamp extracted with OpenCV with all the caveats that come with it.
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if the series is not regular
         if rate:
             write_timestamps = False
@@ -214,6 +228,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             write_timestamps = True
 
         position_container = Position(name="FicTrac")
+        # TODO: make FicTrac extension of the Position container to attach these specific attributes with documentation
+        if self.configuration_metadata is not None:
+            comments = json.dumps(self.configuration_metadata)
 
         for data_dict in self.column_to_nwb_mapping.values():
             spatial_series_kwargs = dict(
@@ -222,8 +239,13 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
                 reference_frame=data_dict["reference_frame"],
             )
 
+            if self.configuration_metadata is not None:
+                spatial_series_kwargs["comments"] = comments
+
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
+            if compression:
+                data = H5DataIO(data, compression=compression, compression_opts=compression_opts)
             if self.radius is not None:
                 spatial_series_kwargs["conversion"] = self.radius
                 units = "meters"
@@ -331,7 +353,7 @@ def extract_session_start_time(
     If neither of these methods works, the function returns None.
 
     The session start time, has two different meanings depending on the source of the FicTrac data:
-    - For video file sources (.avi, .mp4, etc), the session start time corresponds to the time when the
+    - For video file sources (.avi, .mp4, etc.), the session start time corresponds to the time when the
     FicTrac analysis commenced. That is, the session start time reflects the analysis time rather than
     the actual start of the experiment.
     - For camera sources (such as PGR or Basler), the session start time is either the time reported by the camera
@@ -375,114 +397,91 @@ def extract_session_start_time(
     return None
 
 
-# TODO: Parse probably will do this in a simpler way.
-def parse_fictrac_config(filename) -> dict:
+def parse_fictrac_config(file_path: FilePathType) -> dict:
     """
-    Parse a FicTrac configuration file and return a dictionary of its parameters. See the
-    definition of the parameters in https://github.com/rjdmoore/fictrac/blob/master/doc/params.md for more information.
+    Parse a FicTrac configuration file and return a dictionary of its parameters.
 
     Parameters
     ----------
-    filename : str, Path
-        Path to the configuration file.
+    file_path : str, Path
+        Path to the configuration file in txt format.
 
     Returns
     -------
     dict
         A dictionary where the keys are the parameter names and the values are the parameter values.
 
-    Raises
-    ------
-    IOError
-        If the file cannot be read.
-    ValueError
-        If a value in the file cannot be converted to the expected type.
-
-    Examples
-    --------
-    >>> config = parse_fictrac_config('/path/to/config.txt')
-    >>> print(config['src_fn'])
-    'sample.mp4'
     """
-    import re
 
-    # Tyiping information based on https://github.com/rjdmoore/fictrac/blob/master/doc/params.md
-    type_info = {
-        "src_fn": "string OR int",
-        "vfov": "float",
-        "do_display": "bool",
-        "save_debug": "bool",
-        "save_raw": "bool",
-        "sock_host": "string",
-        "sock_port": "int",
-        "com_port": "string",
-        "com_baud": "int",
-        "fisheye": "bool",
-        "q_factor": "int",
-        "src_fps": "float",
-        "max_bad_frames": "int",
-        "opt_do_global": "bool",
-        "opt_max_err": "float",
-        "thr_ratio": "float",
-        "thr_win_pc": "float",
-        "vid_codec": "string",
-        "sphere_map_fn": "string",
-        "opt_max_evals": "int",
-        "opt_bound": "float",
-        "opt_tol": "float",
-        "c2a_cnrs_xy": "vec<int>",
-        "c2a_cnrs_yz": "vec<int>",
-        "c2a_cnrs_xz": "vec<int>",
-        "c2a_src": "string",
-        "c2a_r": "vec<float>",
-        "c2a_t": "vec<float>",
-        "roi_circ": "vec<int>",
-        "roi_c": "vec<float>",
-        "roi_r": "float",
-        "roi_ignr": "vec<vec<int>>",
+    def parse_bool(x):
+        return x.lower() == "y"
+
+    def parse_vec_int(x):
+        return [int(val) for val in x.replace("{", "").replace("}", "").split(",")]
+
+    def parse_vec_float(x):
+        return [float(val) for val in x.replace("{", "").replace("}", "").split(",")]
+
+    def parse_roi_ignr(x):
+        innner_vectors = x.strip("{}").strip().split("}, {")
+        return [parse_vec_int(group) for group in innner_vectors]
+
+    def parse_int_or_string(x):
+        value = int(x) if x.isdigit() else x
+        return value
+
+    key_parsers = {
+        "src_fn": parse_int_or_string,
+        "vfov": float,
+        "do_display": parse_bool,
+        "save_debug": parse_bool,
+        "save_raw": parse_bool,
+        "sock_port": int,
+        "com_baud": int,
+        "fisheye": parse_bool,
+        "q_factor": int,
+        "src_fps": float,
+        "max_bad_frames": int,
+        "opt_do_global": parse_bool,
+        "opt_max_err": float,
+        "thr_ratio": float,
+        "thr_win_pc": float,
+        "opt_max_evals": int,
+        "opt_bound": float,
+        "opt_tol": float,
+        "c2a_cnrs_xy": parse_vec_int,
+        "c2a_cnrs_yz": parse_vec_int,
+        "c2a_cnrs_xz": parse_vec_int,
+        "c2a_r": parse_vec_float,
+        "c2a_t": parse_vec_float,
+        "roi_circ": parse_vec_int,
+        "roi_c": parse_vec_float,
+        "roi_r": float,
+        "roi_ignr": parse_roi_ignr,
     }
 
-    # Function to parse value based on type information
-    def parse_value(value_str, type_str):
-        value_str = value_str.strip()
-        if type_str == "bool":
-            return value_str == "y"
-        elif "vec" in type_str:
-            # remove curly braces and split by comma
-            values = value_str.replace("{", "").replace("}", "").split(",")
-            if "int" in type_str:
-                return [int(val) for val in values]
-            elif "float" in type_str:
-                return [float(val) for val in values]
-        elif type_str == "int":
-            return int(value_str)
-        elif type_str == "float":
-            return float(value_str)
-        else:
-            return value_str
-
     # Open and read the file
-    with open(filename, "r") as f:
+    with open(file_path, "r") as f:
         file_lines = f.readlines()
 
     parsed_config = {}
 
+    # Parse header line
     header_line = file_lines[0]
+
     version, build_date = re.search(
         r"FicTrac (v[0-9.]+) config file \(build date ([A-Za-z0-9 ]+)\)", header_line
     ).groups()
     parsed_config["version"] = version
     parsed_config["build_date"] = build_date
 
-    # Parse the file
-    file_content = file_lines[1:]
-    for line in file_content[1:]:  # Skip the first line
-        key, value_str = line.split(":")
+    # Parse the configuration lines
+    configuration_lines = (line for line in file_lines[1:] if ":" in line)
+    for line in configuration_lines:
+        key, value = line.split(":", 1)
         key = key.strip()
-        value_str = value_str.strip()
-        if key in type_info:
-            parsed_config[key] = parse_value(value_str, type_info[key])
-        else:
-            raise ValueError(f"Unknown key {key} in the file.")
+        value = value.strip()
 
+        parser = key_parsers.get(key, lambda x: x)
+        parsed_config[key] = parser(value)
     return parsed_config

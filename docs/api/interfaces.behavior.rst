@@ -13,6 +13,10 @@ FicTrac
 -------
 .. automodule:: neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface
 
+LightningPose
+-------------
+.. automodule:: neuroconv.datainterfaces.behavior.lightningpose.lightningposeconverter
+
 SLEAP
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
