@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime
 from pathlib import Path
-from platform import python_version
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest.mock import Mock
@@ -12,7 +11,6 @@ import pynwb.ecephys
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
-from packaging import version
 from pynwb import NWBFile
 from spikeinterface import WaveformExtractor, extract_waveforms
 from spikeinterface.core.generate import generate_recording, generate_sorting
@@ -485,7 +483,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         excess = 1.5  # Of what is available in memory
         num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
 
-        # Mock recording extractor with as much frames as necessary to overflow memory
+        # Mock recording extractor with as many frames as necessary to overflow memory
         mock_recorder = Mock()
         mock_recorder.get_dtype.return_value = dtype
         mock_recorder.get_num_channels.return_value = num_channels

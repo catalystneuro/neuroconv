@@ -1,3 +1,4 @@
+import inspect
 import json
 import tempfile
 from abc import abstractmethod
@@ -219,7 +220,7 @@ class TemporalAlignmentMixin:
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseImagingExtractorInterface
+    data_interface_cls: Type[BaseImagingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -496,8 +497,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseSortingExtractorInterface
-    associated_recording_cls: Optional[BaseRecordingExtractorInterface] = None
+    data_interface_cls: Type[BaseSortingExtractorInterface]
+    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
     associated_recording_kwargs: Optional[dict] = None
 
     def setUpFreshInterface(self):
@@ -512,16 +513,33 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         sorting = self.interface.sorting_extractor
         sf = sorting.get_sampling_frequency()
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
-            sorting.set_sampling_frequency(30_000)
+            sorting.set_sampling_frequency(30_000.0)
 
         # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
         if sorting.get_num_segments() == 1:
-            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
+            # TODO after 0.100 release remove this if
+            signature = inspect.signature(NwbSortingExtractor)
+            if "t_start" in signature.parameters:
+                nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf, t_start=0.0)
+            else:
+                nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             # In the NWBSortingExtractor, since unit_names could be not unique,
             # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
-            sorting_renamed = sorting.select_units(
-                unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
-            )
+            if "unit_name" in sorting.get_property_keys():
+                renamed_unit_ids = sorting.get_property("unit_name")
+                # sorting_renamed = sorting.rename_units(new_unit_ids=renamed_unit_ids)  #TODO after 0.100 release use this
+                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
+
+            else:
+                nwb_has_ids_as_strings = all(isinstance(id, str) for id in nwb_sorting.unit_ids)
+                if nwb_has_ids_as_strings:
+                    renamed_unit_ids = sorting.get_unit_ids()
+                    renamed_unit_ids = [str(id) for id in renamed_unit_ids]
+                else:
+                    renamed_unit_ids = np.arange(len(sorting.unit_ids))
+
+                # sorting_renamed = sorting.rename_units(new_unit_ids=sorting.unit_ids) #TODO after 0.100 release use this
+                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
     def check_interface_set_aligned_segment_timestamps(self):
