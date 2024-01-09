@@ -81,7 +81,7 @@ def get_device_metadata(meta) -> dict:
             "0": "NP1.0",
             "21": "NP2.0(1-shank)",
             "24": "NP2.0(4-shank)",
-            "1030": "NP1.0 NHP"
+            "1030": "NP1.0 NHP",
         }
         probe_type = str(meta["imDatPrb_type"])
         probe_type_description = probe_type_to_probe_description[probe_type]
