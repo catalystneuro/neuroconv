@@ -41,14 +41,11 @@ def _infer_dtype_using_data_chunk_iterator(candidate_dataset: Union[h5py.Dataset
 
     It can fail in rare cases but not essential to our default configuration
     """
-    try:
-        data_type = DataChunkIterator(candidate_dataset).dtype
+    if hasattr(candidate_dataset, "dtype"):
+        data_type = candidate_dataset.dtype
         return data_type
-    except Exception as exception:
-        if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
-            raise exception
-        else:
-            return np.dtype("object")
+    else:
+        return np.dtype("object")  # Think on if there is a better way to handle this edge case
 
 
 class DatasetInfo(BaseModel):
