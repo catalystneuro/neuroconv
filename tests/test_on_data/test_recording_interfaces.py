@@ -6,6 +6,7 @@ from unittest import skip, skipIf
 import jsonschema
 import numpy as np
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_equal
 from packaging import version
 from pynwb import NWBHDF5IO
 
@@ -548,7 +549,8 @@ class TestTdtRecordingInterfaceWithGain(RecordingExtractorInterfaceTestMixin, Te
         # Check that the gain is applied
         recording_extractor = self.interface.recording_extractor
         gains = recording_extractor.get_channel_gains()
-        assert np.all(gains == 1.0)
+        expected_channel_gains = [1.0] * recording_extractor.get_num_channels()
+        assert_array_equal(gains, expected_channel_gains)
 
     def check_read_nwb(self, nwbfile_path: str):
         from pynwb import NWBHDF5IO
@@ -556,7 +558,7 @@ class TestTdtRecordingInterfaceWithGain(RecordingExtractorInterfaceTestMixin, Te
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
             for _, electrical_series in nwbfile.acquisition.items():
-                assert electrical_series.conversion == 1e-6
+                self.assertEqual(electrical_series.conversion, 1e-6)
 
         return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
