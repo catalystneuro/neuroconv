@@ -539,6 +539,28 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     save_directory = OUTPUT_PATH
 
 
+class TestTdtRecordingInterfaceWithGain(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = TdtRecordingInterface
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=1.0)
+    save_directory = OUTPUT_PATH
+
+    def run_custom_checks(self):
+        # Check that the gain is applied
+        recording_extractor = self.interface.recording_extractor
+        gains = recording_extractor.get_channel_gains()
+        assert np.all(gains == 1.0)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            for _, electrical_series in nwbfile.acquisition.items():
+                assert electrical_series.conversion == 1e-6
+
+        return super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = PlexonRecordingInterface
     interface_kwargs = dict(
