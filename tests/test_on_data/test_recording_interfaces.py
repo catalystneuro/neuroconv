@@ -542,23 +542,25 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
 
 class TestTdtRecordingInterfaceWithGain(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = TdtRecordingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=1.0)
+    test_gain_value = 0.195  # arbitrary value to test gain
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
     save_directory = OUTPUT_PATH
 
     def run_custom_checks(self):
         # Check that the gain is applied
         recording_extractor = self.interface.recording_extractor
         gains = recording_extractor.get_channel_gains()
-        expected_channel_gains = [1.0] * recording_extractor.get_num_channels()
+        expected_channel_gains = [self.test_gain_value] * recording_extractor.get_num_channels()
         assert_array_equal(gains, expected_channel_gains)
 
     def check_read_nwb(self, nwbfile_path: str):
         from pynwb import NWBHDF5IO
 
+        expected_conversion_factor = self.test_gain_value * 1e-6
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
             for _, electrical_series in nwbfile.acquisition.items():
-                self.assertEqual(electrical_series.conversion, 1e-6)
+                assert np.isclose(electrical_series.conversion, expected_conversion_factor)
 
         return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
