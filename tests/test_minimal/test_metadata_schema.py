@@ -115,18 +115,6 @@ def test_invalid_ophys_metadata():
             path="$.Ophys.SegmentationImages",
         ),
         dict(
-            message="{} does not have enough properties",
-            path="$.Ophys.Fluorescence.FluorescenceChan1Plane0",
-        ),
-        dict(
-            message="{} does not have enough properties",
-            path="$.Ophys.DFOverF.DFChan1Plane0",
-        ),
-        dict(
-            message="{} does not have enough properties",
-            path="$.Ophys.SegmentationImages.SegmentationChan1Plane0",
-        ),
-        dict(
             message="'name' is a required property",
             path="$.Ophys.Fluorescence.FluorescenceChan1Plane1.raw",
         ),
@@ -145,6 +133,18 @@ def test_invalid_ophys_metadata():
         dict(
             message="'description' is a required property",
             path="$.Ophys.DFOverF.DFChan1Plane1.raw",
+        ),
+        dict(
+            message="{} should be non-empty",
+            path="$.Ophys.Fluorescence.FluorescenceChan1Plane0",
+        ),
+        dict(
+            message="{} should be non-empty",
+            path="$.Ophys.DFOverF.DFChan1Plane0",
+        ),
+        dict(
+            message="{} should be non-empty",
+            path="$.Ophys.SegmentationImages.SegmentationChan1Plane0",
         ),
     ]
 
