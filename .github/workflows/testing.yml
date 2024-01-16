@@ -48,24 +48,24 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
-        run: pytest tests/test_minimal -rsx -n auto --dist loadscope
+        run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
 
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
       - name: Run ecephys tests
-        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
+        run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
 
       - name: Install with ophys requirements
         run: pip install .[ophys]
       - name: Run ophys tests
-        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
+        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
 
       - name: Install with behavior requirements
         run: pip install .[behavior]
       - name: Run behavior tests
-        run: pytest tests/test_behavior -rsx -n auto --dist loadscope
+        run: pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
 
       - name: Install with icephys requirements
         run: pip install .[icephys]
