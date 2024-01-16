@@ -146,6 +146,10 @@ def test_invalid_ophys_metadata():
             message="'description' is a required property",
             path="$.Ophys.DFOverF.DFChan1Plane1.raw",
         ),
+        dict(
+            message="{} should be non-empty",
+            path="$.Ophys.DFOverF.DFChan1Plane0",
+        ),
     ]
 
     validator = jsonschema.Draft7Validator(metadata_schema)
