@@ -114,18 +114,18 @@ def test_invalid_ophys_metadata():
             message="'segmentation_chan1_plane0' does not match any of the regexes: '^(?!(name|description)$)[a-zA-Z0-9]+$'",
             path="$.Ophys.SegmentationImages",
         ),
-        #dict(
+        # dict(
         #    message="{} does not have enough properties",
         #    path="$.Ophys.Fluorescence.FluorescenceChan1Plane0",
-        #),
-        #dict(
+        # ),
+        # dict(
         #    message="{} does not have enough properties",
         #    path="$.Ophys.DFOverF.DFChan1Plane0",
-        #),
-        #dict(
+        # ),
+        # dict(
         #    message="{} does not have enough properties",
         #    path="$.Ophys.SegmentationImages.SegmentationChan1Plane0",
-        #),
+        # ),
         dict(
             message="'name' is a required property",
             path="$.Ophys.Fluorescence.FluorescenceChan1Plane1.raw",
