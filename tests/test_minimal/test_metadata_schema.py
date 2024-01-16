@@ -156,7 +156,7 @@ def test_invalid_ophys_metadata():
 
     errors = [{"message": error.message, "path": error.json_path} for error in validator.iter_errors(metadata)]
 
-    #assert len(errors) == len(expected_errors)
+    # assert len(errors) == len(expected_errors)
 
     for error in errors:
         assert error in expected_errors
