@@ -148,6 +148,10 @@ def test_invalid_ophys_metadata():
         ),
         dict(
             message="{} should be non-empty",
+            path="$.Ophys.Fluorescence.FluorescenceChan1Plane0",
+        ),
+        dict(
+            message="{} should be non-empty",
             path="$.Ophys.DFOverF.DFChan1Plane0",
         ),
     ]
