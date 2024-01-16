@@ -154,6 +154,10 @@ def test_invalid_ophys_metadata():
             message="{} should be non-empty",
             path="$.Ophys.DFOverF.DFChan1Plane0",
         ),
+        dict(
+            message="{} should be non-empty",
+            path="$.Ophys.SegmentationImages.SegmentationChan1Plane0",
+        ),
     ]
 
     validator = jsonschema.Draft7Validator(metadata_schema)
