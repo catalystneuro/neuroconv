@@ -11,7 +11,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         self,
         folder_path: FolderPathType,
         stream_id: str = "0",
-        gain: Optional[float] = None,
+        gain: float,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
