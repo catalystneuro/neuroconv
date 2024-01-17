@@ -536,12 +536,6 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = TdtRecordingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"))
-    save_directory = OUTPUT_PATH
-
-
-class TestTdtRecordingInterfaceWithGain(RecordingExtractorInterfaceTestMixin, TestCase):
-    data_interface_cls = TdtRecordingInterface
     test_gain_value = 0.195  # arbitrary value to test gain
     interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
     save_directory = OUTPUT_PATH
