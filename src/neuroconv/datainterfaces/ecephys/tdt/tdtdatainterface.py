@@ -10,8 +10,8 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        stream_id: str = "0",
         gain: float,
+        stream_id: str = "0",
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
@@ -24,9 +24,8 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             Path to the directory with the corresponding files (TSQ, TBK, TEV, SEV)
         stream_id : str, "0" by default
             Select from multiple streams.
-        gain : float, optional
+        gain : float
             The conversion factor from int16 to Volts.
-            The default is None.
         verbose : bool, default: True
             Allows verbose.
         es_key : str, optional
@@ -48,5 +47,4 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         channel_names = [name.replace("'", "")[1:] for name in channel_names]
         self.recording_extractor.set_property(key="channel_name", values=channel_names)
 
-        if gain is not None:
-            self.recording_extractor.set_channel_gains(gain)
+        self.recording_extractor.set_channel_gains(gain)
