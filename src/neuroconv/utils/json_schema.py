@@ -2,7 +2,7 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
-from typing import Callable, Dict, Literal
+from typing import Callable, Dict, List, Literal, Optional
 
 import hdmf.data_utils
 import numpy as np
@@ -21,15 +21,10 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         if isinstance(obj, datetime):
             return obj.isoformat()
 
-        # This should transforms numpy generic integers and floats to python floats
+        # Transform numpy generic integers and floats to python ints floats
         if isinstance(obj, np.generic):
             return obj.item()
 
-        # Numpy-versions of various numeric types
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
 
@@ -37,14 +32,26 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
+def get_base_schema(
+    tag: Optional[str] = None,
+    root: bool = False,
+    id_: Optional[str] = None,
+    required: Optional[List] = None,
+    properties: Optional[Dict] = None,
+    **kwargs,
+) -> dict:
     """Return the base schema used for all other schemas."""
-    base_schema = dict(required=[], properties={}, type="object", additionalProperties=False)
+    base_schema = dict(
+        required=required or [],
+        properties=properties or {},
+        type="object",
+        additionalProperties=False,
+    )
     if tag is not None:
         base_schema.update(tag=tag)
     if root:
         base_schema.update({"$schema": "http://json-schema.org/draft-07/schema#"})
-    if id_:
+    if id_ is not None:
         base_schema.update({"$id": id_})
     base_schema.update(**kwargs)
     return base_schema
@@ -97,10 +104,10 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
             elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                 args = param.annotation.__args__
                 valid_args = [x.__name__ in annotation_json_type_map for x in args]
-                if any(valid_args):
-                    param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
-                else:
+                if not any(valid_args):
                     raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
+                arg_types = [x for x in np.array(args)[valid_args]]
+                param_types = [annotation_json_type_map[x.__name__] for x in arg_types]
                 num_params = len(set(param_types))
                 conflict_message = (
                     "Conflicting json parameter types were detected from the annotation! "
@@ -112,7 +119,13 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 # Special condition for Optional[...]
                 if num_params == 2 and not args[1] is type(None):  # noqa: E721
                     raise ValueError(conflict_message)
+
+                # Guaranteed to only have a single index by this point
                 args_spec[param_name]["type"] = param_types[0]
+                if arg_types[0] == FilePathType:
+                    input_schema["properties"].update({param_name: dict(format="file")})
+                elif arg_types[0] == FolderPathType:
+                    input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 arg = param.annotation
                 if arg.__name__ in annotation_json_type_map:
@@ -241,7 +254,7 @@ def get_schema_from_hdmf_class(hdmf_class):
                 if docval_arg["name"] in pynwb_children_fields:
                     items = get_schema_from_hdmf_class(item)
                     schema_arg[docval_arg["name"]].update(type="array", items=items, minItems=1, maxItems=1)
-                # if it is link
+                # if it is a link
                 else:
                     target = item.__module__ + "." + item.__name__
                     schema_arg[docval_arg["name"]].update(type="string", target=target)
@@ -261,10 +274,10 @@ def get_schema_from_hdmf_class(hdmf_class):
 
 def get_metadata_schema_for_icephys():
     schema = get_base_schema(tag="Icephys")
-    schema["required"] = ["Device", "Electrode"]
+    schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(
         Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
-        Electrode=dict(
+        Electrodes=dict(
             type="array",
             minItems=1,
             items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
@@ -312,7 +325,8 @@ def get_metadata_schema_for_icephys():
 def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
     encoder = NWBMetaDataEncoder()
-    # The encoder produces a serialiazed object so we de serialized it for comparison
+    # The encoder produces a serialized object, so we deserialized it for comparison
+
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)

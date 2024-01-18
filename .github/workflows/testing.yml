@@ -14,7 +14,7 @@ on:
 
 jobs:
   run:
-    name: Minimal and full tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -48,24 +48,24 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
-        run: pytest tests/test_minimal -rsx -n auto --dist loadscope
+        run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
 
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
       - name: Run ecephys tests
-        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
+        run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
 
       - name: Install with ophys requirements
         run: pip install .[ophys]
       - name: Run ophys tests
-        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
+        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
 
       - name: Install with behavior requirements
         run: pip install .[behavior]
       - name: Run behavior tests
-        run: pytest tests/test_behavior -rsx -n auto --dist loadscope
+        run: pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
 
       - name: Install with icephys requirements
         run: pip install .[icephys]
@@ -106,7 +106,7 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-2023-07-26-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
 
 
@@ -129,7 +129,7 @@ jobs:
 
 
       - name: Run full pytest with coverage
-        run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
+        run: pytest -vv -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
         uses: codecov/codecov-action@v3

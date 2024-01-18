@@ -38,16 +38,49 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
         metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
 
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"][
-            "items"
-        ]["required"] = list()
-        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
-            "maxItems"
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
+
+        roi_response_series_schema = metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"][
+            "properties"
+        ].pop("roi_response_series")
+
+        roi_response_series_schema.pop("maxItems")
+        roi_response_series_schema["items"].update(required=list())
+
+        roi_response_series_per_plane_schema = dict(
+            type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema["items"]}
         )
+
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(
+            patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
+        )
+
+        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
+
         metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
             "properties"
         ]["Fluorescence"]
+
+        # NOTE: Would prefer to remove in favor of simply using the up-to-date metadata_schema.json
+        images_inner_schema = dict(
+            type="object",
+            properties=dict(name=dict(type="string"), description=dict(type="string")),
+        )
+
+        summary_images_per_plane_schema = dict(type="object", patternProperties={"^[a-zA-Z0-9]+$": images_inner_schema})
+
+        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"] = dict(
+            type="object",
+            required=["name"],
+            properties=dict(
+                name=dict(type="string", default="SegmentationImages"),
+                description=dict(type="string"),
+            ),
+            patternProperties={
+                "^(?!(name|description)$)[a-zA-Z0-9]+$": summary_images_per_plane_schema,
+            },
+        )
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
@@ -80,6 +113,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
@@ -112,6 +146,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
             If None, the mask information is not written to the NWB file.
             Defaults to 'image'.
+        plane_segmentation_name : str, optional
+            The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
         compression_options : dict, optional
@@ -136,6 +172,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
+            plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             compression_options=compression_options,
         )

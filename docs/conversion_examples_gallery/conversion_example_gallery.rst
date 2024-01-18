@@ -67,6 +67,7 @@ Imaging
     Bruker <imaging/brukertiff>
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
+    Miniscope <imaging/miniscope>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
     Tiff <imaging/tiff>
@@ -90,6 +91,8 @@ Behavior
 
     Audio <behavior/audio>
     DeepLabCut <behavior/deeplabcut>
+    FicTrac <behavior/fictrac>
+    LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
 

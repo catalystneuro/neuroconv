@@ -90,7 +90,7 @@ class NWBConverter:
     def validate_metadata(self, metadata: Dict[str, dict]):
         """Validate metadata against Converter metadata_schema."""
         encoder = NWBMetaDataEncoder()
-        # The encoder produces a serialiazed object so we de serialized it for comparison
+        # The encoder produces a serialized object, so we deserialized it for comparison
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
         validate(instance=decoded_metadata, schema=self.get_metadata_schema())

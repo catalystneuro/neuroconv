@@ -18,7 +18,7 @@ env:
 
 jobs:
   run:
-    name: Dev Branch Testing with Python 3.9 and ubuntu-latest
+    name: Ubuntu tests with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -44,21 +44,25 @@ jobs:
 
 
       - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full,test]
-
+        run: pip install --no-cache-dir -e .[full,test]
 
       - name: Dev gallery - ROIExtractors
-        run: pip install git+https://github.com/CatalystNeuro/roiextractors@main
+        run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
+      - name: Dev gallery - DANDI
+        run: pip install --no-cache-dir git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
-        run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+        run: pip install --no-cache-dir git+https://github.com/NeurodataWithoutBorders/pynwb@dev
       - name: Dev gallery - SpikeInterface
-        run: pip install git+https://github.com/spikeinterface/spikeinterface@main
+        run: pip install --no-cache-dir git+https://github.com/spikeinterface/spikeinterface@main
       - name: Dev gallery - NEO
-        run: pip install git+https://github.com/NeuralEnsemble/python-neo@master
+        run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
-        run: pip install git+https://github.com/hdmf-dev/hdmf@dev
+        run: pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf@dev
 
-
+      - name: Display installed packages and their sources
+        run: |
+          conda list
+          pip list
 
       - name: Get ephy_testing_data current head hash
         id: ephys
@@ -86,7 +90,7 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-2023-07-26-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
 
 

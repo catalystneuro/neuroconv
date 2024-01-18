@@ -8,7 +8,7 @@ from neuroconv.tools.hdmf import SliceableDataChunkIterator
 class TestIteratorAssertions(TestCase):
     def test_buffer_bigger_than_chunk_assertion(self):
         with self.assertRaisesWith(
-            AssertionError, exc_msg="buffer_gb (5e-06) must be greater than the chunk size (0.000996872)!"
+            AssertionError, exc_msg="buffer_gb (5e-06) must be greater than the chunk size (0.008)!"
         ):
             SliceableDataChunkIterator(data=np.empty(shape=(1000, 1000)), buffer_gb=0.000005)
 
@@ -22,13 +22,15 @@ def test_early_exit():
 def test_buffer_padding_long_shape():
     """Uses ~8 MB array with 11 MB buffer size and 1 MB chunk size (default)."""
     iterator = SliceableDataChunkIterator(data=np.empty(shape=(10**7, 20)), buffer_gb=1.1e-2)
-    assert iterator.buffer_shape == (68482, 20)
+    assert iterator.buffer_shape == (1000000, 1)
+    # Used to be (68482, 20) before HDMF 10 MB chunk change
 
 
 def test_buffer_padding_mixed_shape():
     """Uses ~15 MB array with 11 MB buffer size and 1 MB chunk size (default)."""
     iterator = SliceableDataChunkIterator(data=np.empty(shape=(20, 40, 2401)), buffer_gb=1.1e-2)
-    assert iterator.buffer_shape == (16, 32, 1920)
+    assert iterator.buffer_shape == (17, 34, 2040)
+    # Used to be (16, 32, 1920) before HDMF 10 MB chunk change
 
 
 def test_min_axis_too_large():
