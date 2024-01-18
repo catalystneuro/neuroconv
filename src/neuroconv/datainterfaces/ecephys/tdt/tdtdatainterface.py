@@ -25,7 +25,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         stream_id : str, "0" by default
             Select from multiple streams.
         gain : float
-            The conversion factor from int16 to Volts.
+            The conversion factor from int16 to microvolts.
         verbose : bool, default: True
             Allows verbose.
         es_key : str, optional
