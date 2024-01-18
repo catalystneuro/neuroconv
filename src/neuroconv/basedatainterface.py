@@ -9,7 +9,11 @@ from jsonschema.validators import validate
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
-from .utils import get_schema_from_method_signature, load_dict_from_file, NWBMetaDataEncoder
+from .utils import (
+    NWBMetaDataEncoder,
+    get_schema_from_method_signature,
+    load_dict_from_file,
+)
 from .utils.dict import DeepDict
 
 
