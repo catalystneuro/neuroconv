@@ -224,9 +224,7 @@ def get_schema_from_hdmf_class(hdmf_class):
             schema_val.update(type="string")
         elif _is_member(arg_type, collections.abc.Iterable):
             schema_val.update(type="array")
-        elif isinstance(arg_type, tuple) and (
-            np.ndarray in arg_type and hdmf.data_utils.DataIO not in arg_type
-        ):
+        elif isinstance(arg_type, tuple) and (np.ndarray in arg_type and hdmf.data_utils.DataIO not in arg_type):
             # extend type array without including type where DataIO in tuple
             schema_val.update(type="array")
         elif _is_member(arg_type, datetime):
