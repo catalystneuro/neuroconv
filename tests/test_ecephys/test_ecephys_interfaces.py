@@ -3,10 +3,10 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 from platform import python_version as get_python_version
-from sys import platform
 from tempfile import mkdtemp
 from warnings import warn
 
+import jsonschema
 import numpy as np
 import pytest
 from hdmf.testing import TestCase
@@ -40,6 +40,13 @@ class TestRecordingInterface(TestCase):
         interface = self.multi_segment_recording_interface
         metadata = interface.get_metadata()
         interface.run_conversion(stub_test=True, metadata=metadata)
+
+    def test_no_slash_in_name(self):
+        interface = self.single_segment_recording_interface
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
+        with self.assertRaises(jsonschema.exceptions.ValidationError):
+            interface.validate_metadata(metadata)
 
 
 class TestAssertions(TestCase):

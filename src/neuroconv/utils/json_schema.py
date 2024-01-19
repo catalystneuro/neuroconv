@@ -207,6 +207,9 @@ def get_schema_from_hdmf_class(hdmf_class):
     for docval_arg in docval["args"]:
         schema_arg = {docval_arg["name"]: dict(description=docval_arg["doc"])}
 
+        if docval_arg["name"] == "name":
+            schema_arg[docval_arg["name"]].update(pattern="^[^/]*$")
+
         # type float
         if docval_arg["type"] in (float, "float", int, "int") or (
             isinstance(docval_arg["type"], tuple)
