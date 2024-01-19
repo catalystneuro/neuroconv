@@ -1,9 +1,6 @@
-import traceback
-import unittest
 from pathlib import Path
 
 import jsonschema
-import pytest
 
 from neuroconv.utils import load_dict_from_file
 from neuroconv.utils.json_schema import validate_metadata
