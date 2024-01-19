@@ -32,3 +32,4 @@ doctest_optionflags = "ELLIPSIS"
 profile = "black"
 reverse_relative = true
 known_first_party = ["neuroconv"]
+sources = ["src", "test"]
