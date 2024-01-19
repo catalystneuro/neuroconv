@@ -83,7 +83,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             int(chunk_mb * 1e6 / (self.recording.get_dtype().itemsize * chunk_channels)),
         )
 
-        return chunk_frames, chunk_channels
+        return (chunk_frames, chunk_channels)
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording.get_traces(
