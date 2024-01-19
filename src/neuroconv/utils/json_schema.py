@@ -218,6 +218,9 @@ def get_schema_from_hdmf_class(hdmf_class):
 
         schema_val = dict(description=docval_arg["doc"])
 
+        if arg_name == "name":
+            schema_val.update(pattern="^[^/]*$")
+
         if _is_member(arg_type, (float, int, "float", "int")):
             schema_val.update(type="number")
         elif _is_member(arg_type, str):
