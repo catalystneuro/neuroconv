@@ -303,6 +303,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
+        use_timestamps: bool = False,
         compression: Optional[str] = "gzip",
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
@@ -329,6 +330,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
+        use_timestamps : bool, default: False
+            If True, and the recording extractor has a time vector, then force usage of that time vector
+            even if it is regular within a certain resolution.
         compression : {'gzip', 'lzf', None}
             Type of compression to use.
             Set to None to disable all compression.
@@ -374,6 +378,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,
+            use_timestamps=use_timestamps,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
