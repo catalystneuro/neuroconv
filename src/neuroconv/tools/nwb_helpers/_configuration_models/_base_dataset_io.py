@@ -1,14 +1,14 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, Tuple, Union
+from typing import Any, Dict, List, Literal, Tuple, Union
 
 import h5py
 import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
-from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator
+from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from pydantic import BaseModel, Field, root_validator
 from pynwb import NWBFile
@@ -35,20 +35,35 @@ def _find_location_in_memory_nwbfile(current_location: str, neurodata_object: Co
     )
 
 
-def _infer_dtype_using_data_chunk_iterator(candidate_dataset: Union[h5py.Dataset, zarr.Array]):
+def _infer_dtype_of_list(list_: List[Union[int, float, list]]) -> np.dtype:
     """
-    The DataChunkIterator has one of the best generic dtype inference, though logic is hard to peel out of it.
+    Attempt to infer the dtype of values in an arbitrarily sized and nested list.
 
-    It can fail in rare cases but not essential to our default configuration
+    Relies on the ability of the numpy.array call to cast the list as an array so the 'dtype' attribute can be used.
     """
-    try:
-        data_type = DataChunkIterator(candidate_dataset).dtype
-        return data_type
-    except Exception as exception:
-        if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
-            raise exception
+    for item in list_:
+        if isinstance(item, list):
+            dtype = _infer_dtype_of_list(list_=item)
+            if dtype is not None:
+                return dtype
         else:
-            return np.dtype("object")
+            return np.array([item]).dtype
+
+    raise ValueError("Unable to determine the dtype of values in the list.")
+
+
+def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
+    """Attempt to infer the dtype of the contained values of the dataset."""
+    if hasattr(dataset, "dtype"):
+        data_type = np.dtype(dataset.dtype)
+        return data_type
+
+    if isinstance(dataset, list):
+        return _infer_dtype_of_list(list_=dataset)
+
+    # Think more on if there is a better way to handle this fallback
+    data_type = np.dtype("object")
+    return data_type
 
 
 class DatasetInfo(BaseModel):
@@ -108,7 +123,7 @@ class DatasetInfo(BaseModel):
         candidate_dataset = getattr(neurodata_object, field_name)
 
         full_shape = get_data_shape(data=candidate_dataset)
-        dtype = _infer_dtype_using_data_chunk_iterator(candidate_dataset=candidate_dataset)
+        dtype = _infer_dtype(dataset=candidate_dataset)
 
         return cls(
             object_id=neurodata_object.object_id,
