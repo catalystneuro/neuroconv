@@ -31,16 +31,7 @@ Features:
   conversion_examples_gallery/conversion_example_gallery
   catalogue/catalogue
   developer_guide
-
-.. toctree::
-  :maxdepth: 2
-  :caption: API Documentation
-
-  NWBConverter <api/nwbconverter>
-  BaseDataInterface <api/basedatainterface>
-  Interfaces <api/interfaces>
-  Tools <api/tools>
-  Utils <api/utils>
+  api
 
 For more information regarding the NWB Standard, please view
 
