@@ -5,3 +5,4 @@ readthedocs-sphinx-search==0.1.2
 sphinx-toggleprompt==0.2.0
 sphinx-copybutton==0.5.0
 roiextractors
+pydata_sphinx_theme==0.12.0
