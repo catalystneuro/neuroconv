@@ -13,11 +13,15 @@ of proprietary formats to the Neurodata Without Borders (NWB) standard.
 
 Features:
 
-* Reads data from 40 popular neurophysiology data formats and writes to NWB using best practices.
+* Reads data from 42 popular neurophysiology data formats and writes to NWB using best practices.
 * Extracts relevant metadata from each format.
 * Handles large data volume by reading datasets piece-wise.
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
+
+.. seealso::
+
+  Watch a video introduction to NeuroConv `here <https://youtu.be/QofVU-59Dd4>`_
 
 .. toctree::
   :maxdepth: 2
@@ -27,16 +31,7 @@ Features:
   conversion_examples_gallery/conversion_example_gallery
   catalogue/catalogue
   developer_guide
-
-.. toctree::
-  :maxdepth: 2
-  :caption: API Documentation
-
-  NWBConverter <api/nwbconverter>
-  BaseDataInterface <api/basedatainterface>
-  Interfaces <api/interfaces>
-  Tools <api/tools>
-  Utils <api/utils>
+  api
 
 For more information regarding the NWB Standard, please view
 

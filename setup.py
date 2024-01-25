@@ -1,3 +1,5 @@
+import platform
+import sys
 from collections import defaultdict
 from pathlib import Path
 from shutil import copy
@@ -16,6 +18,13 @@ with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
 
 extras_require = defaultdict(list)
+
+extras_require["dandi"].append("dandi>=0.58.1")
+extras_require["full"].extend(extras_require["dandi"])
+
+extras_require.update(compressors=["hdf5plugin"])
+extras_require["full"].extend(["hdf5plugin"])
+
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
@@ -45,9 +54,18 @@ gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")
 if not gin_config_file_local.exists():
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
+# Bug related to sonpy on M1 Mac being installed but not running properly
+if sys.platform == "darwin" and platform.processor() == "arm":
+    extras_require.pop("spike2")
+
+    extras_require["ecephys"].remove(
+        next(requirement for requirement in extras_require["ecephys"] if "sonpy" in requirement)
+    )
+    extras_require["full"].remove(next(requirement for requirement in extras_require["full"] if "sonpy" in requirement))
+
 setup(
     name="neuroconv",
-    version="0.3.0",
+    version="0.4.7",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -64,7 +82,8 @@ setup(
     extras_require=extras_require,
     entry_points={
         "console_scripts": [
-            "neuroconv = neuroconv.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
+            "neuroconv = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli",
         ],
     },
+    license="BSD-3-Clause",
 )

@@ -10,7 +10,8 @@ from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
-    BrukerTiffImagingInterface,
+    BrukerTiffMultiPlaneImagingInterface,
+    BrukerTiffSinglePlaneImagingInterface,
     Hdf5ImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
@@ -86,7 +87,7 @@ class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
 
 
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
-    data_interface_cls = BrukerTiffImagingInterface
+    data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
@@ -104,25 +105,25 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
-            description="The plane imaged at 5e-06 meters depth.",
+            description="The imaging plane origin_coords units are in the microscope reference frame.",
             excitation_lambda=np.NAN,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
             optical_channel=[cls.optical_channel_metadata],
-            imaging_rate=30.345939461428763,
+            imaging_rate=29.873732099062256,
             grid_spacing=[1.1078125e-06, 1.1078125e-06],
+            origin_coords=[0.0, 0.0],
         )
 
         cls.two_photon_series_metadata = dict(
             name="TwoPhotonSeries",
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
-            unit="px",
+            unit="n.a.",
             dimension=[512, 512],
             imaging_plane=cls.imaging_plane_metadata["name"],
-            format="tiff",
             scan_line_rate=15840.580398865815,
-            field_of_view=[0.0005672, 0.0005672, 5e-06],
+            field_of_view=[0.0005672, 0.0005672],
         )
 
         cls.ophys_metadata = dict(
@@ -157,11 +158,254 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
             two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
             self.assertEqual(two_photon_series.description, self.two_photon_series_metadata["description"])
             self.assertEqual(two_photon_series.unit, self.two_photon_series_metadata["unit"])
-            self.assertEqual(two_photon_series.format, self.two_photon_series_metadata["format"])
             self.assertEqual(two_photon_series.scan_line_rate, self.two_photon_series_metadata["scan_line_rate"])
             assert_array_equal(two_photon_series.field_of_view[:], self.two_photon_series_metadata["field_of_view"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffMultiPlaneImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_name = "TwoPhotonSeries"
+        cls.num_frames = 5
+        cls.image_shape = (512, 512, 2)
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+        cls.imaging_plane_metadata = dict(
+            name="ImagingPlane",
+            description="The imaging plane origin_coords units are in the microscope reference frame.",
+            excitation_lambda=np.NAN,
+            indicator="unknown",
+            location="unknown",
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
+            imaging_rate=20.629515014336377,
+            grid_spacing=[1.1078125e-06, 1.1078125e-06, 0.00026],
+            origin_coords=[56.215, 14.927, 260.0],
+        )
+
+        cls.two_photon_series_metadata = dict(
+            name="TwoPhotonSeries",
+            description="The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
+            unit="n.a.",
+            dimension=[512, 512, 2],
+            imaging_plane=cls.imaging_plane_metadata["name"],
+            scan_line_rate=15842.086085895791,
+            field_of_view=[0.0005672, 0.0005672, 0.00026],
+        )
+
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
+        )
+
+    def run_custom_checks(self):
+        # check stream names
+        streams = self.data_interface_cls.get_streams(
+            folder_path=self.interface_kwargs["folder_path"], plane_separation_type="contiguous"
+        )
+        self.assertEqual(streams, self.available_streams)
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            photon_series = nwbfile.acquisition[self.photon_series_name]
+            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
+            assert_array_equal(photon_series.dimension[:], self.image_shape)
+            self.assertEqual(photon_series.rate, 20.629515014336377)
+
+
+class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        stream_name="Ch2_000002",
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_name = "TwoPhotonSeriesCh2000002"
+        cls.num_frames = 5
+        cls.image_shape = (512, 512)
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+        cls.imaging_plane_metadata = dict(
+            name="ImagingPlaneCh2000002",
+            description="The imaging plane origin_coords units are in the microscope reference frame.",
+            excitation_lambda=np.NAN,
+            indicator="unknown",
+            location="unknown",
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
+            imaging_rate=10.314757507168189,
+            grid_spacing=[1.1078125e-06, 1.1078125e-06, 0.00013],
+            origin_coords=[56.215, 14.927, 130.0],
+        )
+
+        cls.two_photon_series_metadata = dict(
+            name=cls.photon_series_name,
+            description="Imaging data acquired from the Bruker Two-Photon Microscope.",
+            unit="n.a.",
+            dimension=[512, 512],
+            imaging_plane=cls.imaging_plane_metadata["name"],
+            scan_line_rate=15842.086085895791,
+            field_of_view=[0.0005672, 0.0005672, 0.00013],
+        )
+
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
+        )
+
+    def run_custom_checks(self):
+        # check stream names
+        streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
+        self.assertEqual(streams, self.available_streams)
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_nwbfile_temporal_alignment(self):
+        nwbfile_path = str(
+            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+        )
+
+        interface = self.data_interface_cls(**self.test_kwargs)
+
+        aligned_starting_time = 1.23
+        interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+
+        metadata = interface.get_metadata()
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            photon_series = nwbfile.acquisition[self.photon_series_name]
+            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
+            assert_array_equal(photon_series.dimension[:], self.image_shape)
+            self.assertEqual(photon_series.rate, 10.314757507168189)
+
+
+class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
+        ),
+        stream_name="Ch2",
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_name = "TwoPhotonSeriesCh2"
+        cls.num_frames = 10
+        cls.image_shape = (512, 512)
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.8.64.200")
+        cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+        cls.imaging_plane_metadata = dict(
+            name="ImagingPlaneCh2",
+            description="The imaging plane origin_coords units are in the microscope reference frame.",
+            excitation_lambda=np.NAN,
+            indicator="unknown",
+            location="unknown",
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
+            imaging_rate=29.873615189896864,
+            grid_spacing=[1.1078125e-06, 1.1078125e-06],
+            origin_coords=[0.0, 0.0],
+        )
+
+        cls.two_photon_series_metadata = dict(
+            name=cls.photon_series_name,
+            description="Imaging data acquired from the Bruker Two-Photon Microscope.",
+            unit="n.a.",
+            dimension=[512, 512],
+            imaging_plane=cls.imaging_plane_metadata["name"],
+            scan_line_rate=15835.56350852745,
+            field_of_view=[0.0005672, 0.0005672],
+        )
+
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
+        )
+
+    def run_custom_checks(self):
+        # check stream names
+        streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
+        self.assertEqual(streams, self.available_streams)
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 7, 6, 15, 13, 58))
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            photon_series = nwbfile.acquisition[self.photon_series_name]
+            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
+            assert_array_equal(photon_series.dimension[:], self.image_shape)
+            self.assertEqual(photon_series.rate, 29.873615189896864)
+
+    def check_nwbfile_temporal_alignment(self):
+        nwbfile_path = str(
+            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+        )
+
+        interface = self.data_interface_cls(**self.test_kwargs)
+
+        aligned_starting_time = 1.23
+        interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+
+        metadata = interface.get_metadata()
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
 
 
 class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):

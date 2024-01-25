@@ -20,8 +20,11 @@ def _open_with_pyopenephys(folder_path: FolderPathType):
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface for converting binary OpenEphys data (.dat files). Uses
-    :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`."""
+    """
+    Primary data interface for converting binary OpenEphys data (.dat files).
+
+    Uses :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`.
+    """
 
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
@@ -47,6 +50,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         self,
         folder_path: FolderPathType,
         stream_name: Optional[str] = None,
+        block_index: Optional[int] = None,
         stub_test: bool = False,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
@@ -61,23 +65,25 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
             Call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
+        block_index : int, optional, default: None
+            The index of the block to extract from the data.
         stub_test : bool, default: False
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
-
         try:
             _open_with_pyopenephys(folder_path=folder_path)
         except Exception as error:
             # Type of error might depend on pyopenephys version and/or platform
             error_case_1 = (
-                type(error) == Exception
+                type(error) is Exception
                 and str(error) == "Only 'binary' and 'openephys' format are supported by pyopenephys"
             )
-            error_case_2 = type(error) == OSError and "Unique settings file not found in" in str(error)
+            error_case_2 = type(error) is OSError and "Unique settings file not found in" in str(error)
             if error_case_1 or error_case_2:  # Raise a more informative error instead.
                 raise ValueError(
-                    "Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains sub-folders of the "
+                    "Unable to identify the OpenEphys folder structure! "
+                    "Please check that your `folder_path` contains sub-folders of the "
                     "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
                 )
             else:
@@ -86,15 +92,19 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
             raise ValueError(
-                "More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. "
-                "To see what streams are available, call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
+                "More than one stream is detected! "
+                "Please specify which stream you wish to load with the `stream_name` argument. "
+                "To see what streams are available, call "
+                " `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
             )
         if stream_name is not None and stream_name not in available_streams:
             raise ValueError(
                 f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
             )
 
-        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key)
+        super().__init__(
+            folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
+        )
 
         if stub_test:
             self.subset_channels = [0, 1]

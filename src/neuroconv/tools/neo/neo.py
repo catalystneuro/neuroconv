@@ -1,6 +1,7 @@
 import distutils.version
 import uuid
 import warnings
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -32,11 +33,11 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
     The typical information we look for is the information accepted by pynwb.icephys.IntracellularElectrode:
       - name – the name of this electrode
       - device – the device that was used to record from this electrode
-      - description – Recording description, description of electrode (e.g., whole-cell, sharp, etc)
+      - description – Recording description, description of electrode (e.g., whole-cell, sharp, etc.)
       - comment: Free-form text (can be from Methods)
       - slice – Information about slice used for recording.
       - seal – Information about seal used for recording.
-      - location – Area, layer, comments on estimation, stereotaxis coordinates (if in vivo, etc).
+      - location – Area, layer, comments on estimation, stereotaxis coordinates (if in vivo, etc.).
       - resistance – Electrode resistance COMMENT: unit: Ohm.
       - filtering – Electrode specific filtering.
       - initial_access_resistance – Initial access resistance.
@@ -180,7 +181,7 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
     ]
 
     if "Electrodes" not in metadata["Icephys"] or len(metadata["Icephys"]["Electrodes"]) == 0:
-        metadata["Icephys"]["Electrodes"] = defaults
+        metadata["Icephys"]["Electrodes"] = deepcopy(defaults)
 
     assert all(
         [isinstance(x, dict) for x in metadata["Icephys"]["Electrodes"]]
@@ -189,7 +190,8 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
     # Create Icephys electrode from metadata
     for elec in metadata["Icephys"]["Electrodes"]:
         if elec.get("name", defaults[0]["name"]) not in nwbfile.icephys_electrodes:
-            device_name = elec.get("device_name", defaults[0]["device_name"])
+            device_name = elec.pop("device_name", None) or elec.pop("device", defaults[0]["device_name"])
+            # elec.pop("device_name", 0)
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
                 add_device_from_metadata(nwbfile, modality="Icephys", metadata=new_device_metadata)
@@ -197,7 +199,8 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
                     f"Device '{device_name}' not detected in "
                     "attempted link to icephys electrode! Automatically generating."
                 )
-            electrode_kwargs = dict(
+            electrode_kwargs = elec
+            electrode_kwargs.update(
                 name=elec.get("name", defaults[0]["name"]),
                 description=elec.get("description", defaults[0]["description"]),
                 device=nwbfile.devices[device_name],

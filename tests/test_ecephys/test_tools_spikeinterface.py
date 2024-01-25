@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime
 from pathlib import Path
-from platform import python_version
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest.mock import Mock
@@ -12,7 +11,6 @@ import pynwb.ecephys
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
-from packaging import version
 from pynwb import NWBFile
 from spikeinterface import WaveformExtractor, extract_waveforms
 from spikeinterface.core.generate import generate_recording, generate_sorting
@@ -485,7 +483,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         excess = 1.5  # Of what is available in memory
         num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
 
-        # Mock recording extractor with as much frames as necessary to overflow memory
+        # Mock recording extractor with as many frames as necessary to overflow memory
         mock_recorder = Mock()
         mock_recorder.get_dtype.return_value = dtype
         mock_recorder.get_num_channels.return_value = num_channels
@@ -837,6 +835,41 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
+    def test_property_metadata_mismatch(self):
+        """
+        Adding recordings that do not contain all properties described in
+        metadata should not error.
+        """
+        self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+        self.recording_1.set_property(key="property_1", values=[f"value_{n+1}" for n in range(self.num_channels)])
+        self.recording_2.set_property(key="property_2", values=[f"value_{n+1}" for n in range(self.num_channels)])
+
+        metadata = dict(
+            Ecephys=dict(
+                Electrodes=[
+                    dict(name="common_property", description="no description."),
+                    dict(name="property_1", description="no description."),
+                    dict(name="property_2", description="no description."),
+                ]
+            )
+        )
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile, metadata=metadata)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile, metadata=metadata)
+
+        actual_common_property_values = list(self.nwbfile.electrodes["common_property"].data)
+        expected_common_property_values = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
+        self.assertListEqual(actual_common_property_values, expected_common_property_values)
+
+        actual_property_1_values = list(self.nwbfile.electrodes["property_1"].data)
+        expected_property_1_values = ["value_1", "value_2", "value_3", "value_4", "", ""]
+        self.assertListEqual(actual_property_1_values, expected_property_1_values)
+
+        actual_property_2_values = list(self.nwbfile.electrodes["property_2"].data)
+        expected_property_2_values = ["", "", "value_1", "value_2", "value_3", "value_4"]
+        self.assertListEqual(actual_property_2_values, expected_property_2_values)
+
 
 class TestAddUnitsTable(TestCase):
     @classmethod
@@ -876,7 +909,7 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 
     def test_non_overwriting_unit_names_sorting_property(self):
-        "add_units_table function should not ovewrtie the sorting object unit_name property"
+        "add_units_table function should not overwrite the sorting object unit_name property"
         unit_names = ["name a", "name b", "name c", "name d"]
         self.sorting_1.set_property(key="unit_name", values=unit_names)
         add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
@@ -906,16 +939,6 @@ class TestAddUnitsTable(TestCase):
         add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["a", "b", "c", "d", "e", "f"]
-        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
-        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
-
-    def test_non_overwriting_unit_names_sorting_property(self):
-        "add_units_table function should not ovewrtie the sorting object unit_name property"
-        unit_names = ["name a", "name b", "name c", "name d"]
-        self.sorting_1.set_property(key="unit_name", values=unit_names)
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
-
-        expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 
@@ -1102,9 +1125,6 @@ class TestAddUnitsTable(TestCase):
         assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
 
 
-@unittest.skipIf(
-    version.parse(python_version()) < version.parse("3.8"), "SpikeInterface.extract_waveforms() requires Python>=3.8"
-)
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1114,10 +1134,12 @@ class TestWriteWaveforms(TestCase):
 
         cls.num_units = 4
         cls.num_channels = 4
-        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3])
-        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3])
-        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3, 4])
-        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        duration_1 = 6
+        duration_2 = 7
+        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1])
+        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1])
+        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1, duration_2])
+        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1, duration_2])
         single_segment_rec.annotate(is_filtered=True)
         multi_segment_rec.annotate(is_filtered=True)
         single_segment_rec = single_segment_rec.save()

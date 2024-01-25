@@ -1,18 +1,18 @@
-import json
+"""Collection of helper functions related to NWB."""
 import uuid
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-import jsonschema
+from pydantic import FilePath
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from ..utils import FilePathType, dict_deep_update
-from ..utils.dict import DeepDict, load_dict_from_file
-from ..utils.json_schema import validate_metadata
+from ...utils.dict import DeepDict, load_dict_from_file
+from ...utils.json_schema import validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -50,13 +50,12 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
-
     # Validate metadata
-    schema_path = Path(__file__).resolve().parent.parent / "schemas/base_metadata_schema.json"
+    schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
-    nwbfile_kwargs = metadata["NWBFile"]
+    nwbfile_kwargs = deepcopy(metadata["NWBFile"])
     # convert ISO 8601 string to datetime
     if isinstance(nwbfile_kwargs.get("session_start_time"), str):
         nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
@@ -129,7 +128,7 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
 
 @contextmanager
 def make_or_load_nwbfile(
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,

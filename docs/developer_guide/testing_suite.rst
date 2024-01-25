@@ -20,7 +20,7 @@ Then install all required and optional dependencies in a fresh environment.
 
 .. code:: bash
 
-  pip install -e . neuroconv[test,full]
+  pip install -e .[test,full]
 
 
 Then simply run all tests with pytest
@@ -28,6 +28,10 @@ Then simply run all tests with pytest
 .. code:: bash
 
   pytest
+
+.. note::
+
+  You will likely observe many failed tests if the test data is not available. See the section 'Testing on Example Data' for instructions on how to download the test data.
 
 
 Minimal
