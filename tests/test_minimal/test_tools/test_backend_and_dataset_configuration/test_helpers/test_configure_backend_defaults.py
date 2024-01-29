@@ -1,4 +1,5 @@
 """Unit tests for `get_default_dataset_configurations`."""
+
 from pathlib import Path
 from typing import Literal, Tuple
 

@@ -1,4 +1,5 @@
 """Author: Ben Dichter."""
+
 from typing import Literal, Optional
 
 import numpy as np

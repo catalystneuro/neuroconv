@@ -1,4 +1,5 @@
 """Unit tests for `get_default_dataset_io_configurations`."""
+
 from typing import Literal
 
 import numpy as np
