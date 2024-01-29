@@ -2,6 +2,7 @@
 Unit tests for `get_default_dataset_io_configurations` operating on already written files open in append mode.
 Mostly testing that the right objects are skipped from identification as candidates for configuration.
 """
+
 from pathlib import Path
 
 import numpy as np

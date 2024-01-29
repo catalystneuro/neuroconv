@@ -1,4 +1,5 @@
 """Utilities used by the SpikeGLX interfaces."""
+
 import json
 from datetime import datetime
 from pathlib import Path
