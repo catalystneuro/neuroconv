@@ -1,4 +1,5 @@
 """Integration tests for `get_default_backend_configuration`."""
+
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch

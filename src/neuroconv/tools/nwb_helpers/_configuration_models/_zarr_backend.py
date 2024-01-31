@@ -1,4 +1,5 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
+
 from typing import ClassVar, Dict, Literal, Type
 
 import psutil

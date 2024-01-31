@@ -1,4 +1,5 @@
 """Collection of modifications of HDMF functions that are to be tested/used on this repo until propagation upstream."""
+
 import math
 from typing import Tuple
 
