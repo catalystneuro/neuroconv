@@ -1,4 +1,5 @@
 """Unit tests for the DatasetConfiguration Pydantic model."""
+
 import pytest
 
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration

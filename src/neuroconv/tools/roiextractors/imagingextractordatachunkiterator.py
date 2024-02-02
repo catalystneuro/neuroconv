@@ -1,4 +1,5 @@
 """General purpose iterator for all ImagingExtractor data."""
+
 import math
 from typing import Optional, Tuple
 

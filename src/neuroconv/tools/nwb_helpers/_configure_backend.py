@@ -1,4 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
+
 from typing import Union
 
 from hdmf.common import Data

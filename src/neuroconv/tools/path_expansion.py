@@ -1,4 +1,5 @@
 """Helpful classes for expanding file or folder paths on a system given an f-string rule for matching patterns."""
+
 import abc
 import os
 from datetime import date, datetime
