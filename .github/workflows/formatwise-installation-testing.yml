@@ -17,10 +17,10 @@ jobs:
         format: [ {type: recording, name: spikeglx}, {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut} ]  # SpikeGLX is the test of the 'empty' requirements functionality - missing: ced recording gallery and video behavior gallery
     steps:
       - uses: s-weigand/setup-conda@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -42,7 +42,7 @@ jobs:
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
       - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
@@ -51,7 +51,7 @@ jobs:
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
@@ -60,7 +60,7 @@ jobs:
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
       - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
