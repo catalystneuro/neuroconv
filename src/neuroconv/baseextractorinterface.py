@@ -18,7 +18,9 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     ExtractorName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor").
     Extractor = None  # Class loads dynamically on first call to .get_extractor()
     help: Optional[str] = None  # Help string for the extractor. If defined, this is used for the help message of GUIDE.
-    display_name: Optional[str] = None  # Display name for the extractor. If defined, this is used for the display name of GUIDE.
+    display_name: Optional[str] = (
+        None  # Display name for the extractor. If defined, this is used for the display name of GUIDE.
+    )
 
     @classmethod
     def get_extractor(cls):
