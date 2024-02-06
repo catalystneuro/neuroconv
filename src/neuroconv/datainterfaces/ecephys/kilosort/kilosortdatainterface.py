@@ -5,6 +5,9 @@ from ....utils import FolderPathType
 class KiloSortSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a KiloSortingExtractor from spikeinterface."""
 
+    help = "Interface for kilosort sorting data."
+    display_name = "KiloSort Sorting"
+
     def __init__(
         self,
         folder_path: FolderPathType,

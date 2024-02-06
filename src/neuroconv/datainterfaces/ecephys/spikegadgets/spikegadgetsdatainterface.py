@@ -5,8 +5,13 @@ from ....utils import ArrayType, FilePathType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
-    """Data interface class for converting data in the SpikeGadgets format.
-    Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`."""
+    """
+    Data interface class for converting data in the SpikeGadgets format.
+    Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`.
+    """
+
+    help = "Interface for SpikeGadgets recording data."
+    display_name = "SpikeGadgets Recording"
 
     @classmethod
     def get_source_schema(cls) -> dict:

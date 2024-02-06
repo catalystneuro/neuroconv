@@ -22,6 +22,9 @@ from .utils.json_schema import NWBMetaDataEncoder
 class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
+    help: Optional[str] = None
+    display_name: Optional[str] = None
+
     data_interface_classes = None
 
     @classmethod

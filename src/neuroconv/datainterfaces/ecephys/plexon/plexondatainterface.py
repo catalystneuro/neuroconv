@@ -10,6 +10,9 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.PlexonRecordingExtractor`.
     """
 
+    help = "Interface for Plexon recording data."
+    display_name = "Plexon Recording"
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Plexon.

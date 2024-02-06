@@ -12,6 +12,9 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.MEArecRecordingExtractor`.
     """
 
+    help = "Interface for MEArec recording data."
+    display_name = "MEArec Recording"
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MEArec.
