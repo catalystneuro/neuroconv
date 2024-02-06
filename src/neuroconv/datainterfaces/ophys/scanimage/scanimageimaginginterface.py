@@ -26,7 +26,10 @@ def extract_extra_metadata(file_path) -> dict:
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
+    """Interface for ScanImage TIFF files."""
     ExtractorName = "ScanImageTiffImagingExtractor"
+    help = "Interface for ScanImage TIFF files."
+    display_name = "ScanImage Imaging"
 
     @classmethod
     def get_source_schema(cls) -> dict:

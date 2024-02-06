@@ -12,7 +12,10 @@ from ....utils.path import infer_path
 
 
 class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
-    """Data interface for Neuralynx NVT files. NVT files store position tracking information"""
+    """Data interface for Neuralynx NVT files. NVT files store position tracking information."""
+
+    help = "Interface for writing Neuralynx position tracking .nvt files to NWB."
+    display_name = "Neuralynx NVT"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
