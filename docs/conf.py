@@ -116,4 +116,3 @@ extlinks = {
 html_sidebars = {
     "conversion_example_gallery": ["page-toc", "edit-this-page", "sourcelink"]
 }
-
