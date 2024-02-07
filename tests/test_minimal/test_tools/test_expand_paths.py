@@ -2,10 +2,10 @@ import json
 import unittest
 from datetime import datetime
 from pathlib import Path
+from typing import List, Tuple
 
 import pytest
 from parse import parse
-from typing import List, Tuple
 
 from neuroconv.tools import LocalPathExpander
 from neuroconv.tools.path_expansion import construct_path_template
