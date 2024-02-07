@@ -97,6 +97,9 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
     :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
+    help = "Interface for converting NeuroScope (.dat) recording data."
+    display_name = "NeuroScope Recording"
+
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
         """Auto-populates ecephys metadata from the xml_file_path."""

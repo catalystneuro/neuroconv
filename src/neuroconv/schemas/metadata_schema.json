@@ -86,7 +86,7 @@
         "Position": {
           "type": "object",
           "properties": {
-            "name": {"type": "string", "default": "Position"},
+            "name": {"type": "string", "default": "Position", "pattern": "^[^/]*$"},
             "spatial_series": {
               "type": "array",
               "items": {
@@ -105,7 +105,7 @@
         "BehavioralEvents": {
           "type": "object",
           "properties": {
-            "name": {"type": "string", "default": "BehavioralEvents"},
+            "name": {"type": "string", "default": "BehavioralEvents", "pattern": "^[^/]*$"},
               "time_series": {
               "type": "array",
               "items": {
@@ -134,7 +134,7 @@
             "type": "object",
             "required": ["name", "description"],
             "properties": {
-              "name": {"type": "string", "default": "ElectricalSeries"},
+              "name": {"type": "string", "default": "ElectricalSeries", "pattern": "^[^/]*$"},
               "description": {"type": "string"}
             }
           }
@@ -146,7 +146,7 @@
             "type": "object",
             "required": ["name", "description", "location", "device"],
             "properties": {
-              "name": {"type": "string", "default": "ElectrodeGroup"},
+              "name": {"type": "string", "default": "ElectrodeGroup", "pattern": "^[^/]*$"},
               "description": {"type": "string"},
               "location": {"type": "string"},
               "device": {"type": "string"},
@@ -165,7 +165,7 @@
           "type": "object",
           "required": ["name"],
           "properties": {
-            "name": {"type": "string", "default": "DfOverF"}
+            "name": {"type": "string", "default": "DfOverF", "pattern": "^[^/]*$"}
           },
           "patternProperties": {
             "^(?!name$)[a-zA-Z0-9]+$": {
@@ -184,7 +184,7 @@
           "type": "object",
           "required": ["name"],
           "properties": {
-            "name": {"type": "string", "default": "Fluorescence"}
+            "name": {"type": "string", "default": "Fluorescence", "pattern": "^[^/]*$"}
           },
           "patternProperties": {
             "^(?!name$)[a-zA-Z0-9]+$": {
@@ -211,7 +211,7 @@
                 "type": "object",
                 "required": ["name", "description"],
                 "properties": {
-                  "name": {"type": "string", "default": "PlaneSegmentation"},
+                  "name": {"type": "string", "default": "PlaneSegmentation", "pattern": "^[^/]*$"},
                   "description": {"type": "string", "default": "Segmented ROIs"},
                   "imaging_plane": {"type": "string", "description": "name or tag of corresponding ImagingPlane"},
                   "tag": {"type": "string", "description": "optional tag to be used to link to this PlaneSegmentation"}
@@ -227,7 +227,7 @@
             "type": "object",
             "required": ["name", "description"],
             "properties": {
-              "name": {"type": "string", "default": "ImagingPlane"},
+              "name": {"type": "string", "default": "ImagingPlane", "pattern": "^[^/]*$"},
               "description": {"type": "string", "description": "An area in the brain where imaging was done"},
               "device": {"type": "string"},
               "excitation_lambda": {"type": "number"},
@@ -240,7 +240,7 @@
                   "title": "OpticalChannel",
                   "type": "object",
                   "properties": {
-                    "name": {"type": "string", "default": "OpticalChannel"},
+                    "name": {"type": "string", "default": "OpticalChannel", "pattern": "^[^/]*$"},
                     "description": {"type": "string"},
                     "emission_lambda": {"type": "number"},
                     "tag": {"type": "string"}
@@ -257,7 +257,7 @@
             "type": "object",
             "required": ["name", "description"],
             "properties": {
-              "name": {"type": "string", "default": "TwoPhotonSeries"},
+              "name": {"type": "string", "default": "TwoPhotonSeries", "pattern": "^[^/]*$"},
               "description": {"type": "string"},
               "imaging_plane": {"type": "string"}
             }
@@ -270,7 +270,7 @@
             "type": "object",
             "required": ["name", "description"],
             "properties": {
-              "name": {"type": "string", "default": "OnePhotonSeries"},
+              "name": {"type": "string", "default": "OnePhotonSeries", "pattern": "^[^/]*$"},
               "description": {"type": "string"},
               "imaging_plane": {"type": "string"}
             }
@@ -280,7 +280,7 @@
           "type": "object",
           "required": ["name"],
           "properties": {
-            "name": {"type": "string", "default": "SegmentationImages"},
+            "name": {"type": "string", "default": "SegmentationImages", "pattern": "^[^/]*$"},
             "description": {"type": "string"}
           },
           "patternProperties": {
@@ -324,7 +324,7 @@
         "type": "object",
         "required": ["name"],
         "properties": {
-          "name": {"type": "string", "default": "Device"},
+          "name": {"type": "string", "default": "Device", "pattern": "^[^/]*$"},
           "tag": {"type": "string"}
         }
       }

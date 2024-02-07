@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.types import FolderPathType
 
@@ -5,8 +7,16 @@ from ....utils.types import FolderPathType
 class TdtRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Tucker-Davis Technologies (TDT) data."""
 
+    display_name = "TDT Recording"
+    help = "Interface for TDT recording data."
+
     def __init__(
-        self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True, es_key: str = "ElectricalSeries"
+        self,
+        folder_path: FolderPathType,
+        gain: float,
+        stream_id: str = "0",
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Initialize reading of a TDT recording.
@@ -17,6 +27,8 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             Path to the directory with the corresponding files (TSQ, TBK, TEV, SEV)
         stream_id : str, "0" by default
             Select from multiple streams.
+        gain : float
+            The conversion factor from int16 to microvolts.
         verbose : bool, default: True
             Allows verbose.
         es_key : str, optional
@@ -37,3 +49,5 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         channel_names = self.recording_extractor.get_property("channel_name")
         channel_names = [name.replace("'", "")[1:] for name in channel_names]
         self.recording_extractor.set_property(key="channel_name", values=channel_names)
+
+        self.recording_extractor.set_channel_gains(gain)

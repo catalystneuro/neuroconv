@@ -17,6 +17,9 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
     """
 
+    help = "Interface for Axona recording data."
+    display_name = "Axona Recording"
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 

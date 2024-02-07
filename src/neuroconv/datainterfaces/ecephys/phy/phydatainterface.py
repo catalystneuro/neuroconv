@@ -5,8 +5,13 @@ from ....utils import FolderPathType
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):
-    """Primary data interface class for converting Phy data. Uses
-    :py:class:`~spikeinterface.extractors.PhySortingExtractor`."""
+    """
+    Primary data interface class for converting Phy data. Uses
+    :py:class:`~spikeinterface.extractors.PhySortingExtractor`.
+    """
+
+    help = "Interface for Phy sorting data."
+    display_name = "Phy Sorting"
 
     def __init__(
         self,

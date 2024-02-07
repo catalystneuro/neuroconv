@@ -1,4 +1,5 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
+
 from typing import Any, Dict, List, Literal, Union
 
 import numcodecs
@@ -49,16 +50,16 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         arbitrary_types_allowed = True
         validate_assignment = True
 
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
-    ] = Field(
-        default="gzip",  # TODO: would like this to be 'auto'
-        description=(
-            "The specified compression method to apply to this dataset. "
-            "Can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object."
-            "Set to `None` to disable compression."
-        ),
+    compression_method: Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None] = (
+        Field(
+            default="gzip",  # TODO: would like this to be 'auto'
+            description=(
+                "The specified compression method to apply to this dataset. "
+                "Can be either a string that matches an available method on your system, "
+                "or an instantiated numcodec.Codec object."
+                "Set to `None` to disable compression."
+            ),
+        )
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.

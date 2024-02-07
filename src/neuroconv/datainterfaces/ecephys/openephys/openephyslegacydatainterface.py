@@ -7,8 +7,11 @@ from ....utils import FolderPathType
 
 
 class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface for converting legacy Open Ephys data (.continuous files).
-    Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`."""
+    """
+    Primary data interface for converting legacy Open Ephys data (.continuous files).
+
+    Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`.
+    """
 
     @classmethod
     def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
@@ -31,11 +34,13 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         self,
         folder_path: FolderPathType,
         stream_name: Optional[str] = None,
+        block_index: Optional[int] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
+
         See :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor` for options.
 
         Parameters
@@ -44,21 +49,27 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             Path to OpenEphys directory.
         stream_name : str, optional
             The name of the recording stream.
+        block_index : int, optional, default: None
+            The index of the block to extract from the data.
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
             raise ValueError(
-                "More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. "
-                "To see what streams are available, call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
+                "More than one stream is detected! "
+                "Please specify which stream you wish to load with the `stream_name` argument. "
+                "To see what streams are available, call "
+                "`OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
             )
         if stream_name is not None and stream_name not in available_streams:
             raise ValueError(
                 f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
             )
 
-        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key)
+        super().__init__(
+            folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
+        )
 
     def get_metadata(self):
         metadata = super().get_metadata()
@@ -74,7 +85,10 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
                 extracted_date, extracted_timestamp = date_created.split(" ")
                 if len(extracted_timestamp) != len("%H%M%S"):
                     warn(
-                        f"The timestamp for starting time from openephys metadata is ambiguous ('{extracted_timestamp}')! Only the date will be auto-populated in metadata. Please update the timestamp manually to record this value with the highest known temporal resolution."
+                        "The timestamp for starting time from openephys metadata is ambiguous "
+                        f"('{extracted_timestamp}')! Only the date will be auto-populated in metadata. "
+                        "Please update the timestamp manually to record this value with the highest known "
+                        "temporal resolution."
                     )
                     session_start_time = datetime.strptime(extracted_date, "%d-%b-%Y")
                 else:
