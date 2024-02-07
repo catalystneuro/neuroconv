@@ -1,5 +1,6 @@
 .. _conversion_gallery:
 
+
 Conversion Gallery
 ==================
 
@@ -12,11 +13,12 @@ Extracellular electrophysiology
 Recording
 ~~~~~~~~~
 
+.. include:: conversion_examples_gallery/recording/alphaomega.rst
+.. include:: conversion_examples_gallery/recording/axona.rst
+
 .. toctree::
     :maxdepth: 1
 
-    AlphaOmega <recording/alphaomega>
-    Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     European Data Format (EDF) <recording/edf>

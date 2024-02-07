@@ -1,5 +1,5 @@
-Axona data conversion
----------------------
+Axona
+^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Axona data.
 
