@@ -1,5 +1,5 @@
 .. _conversion_gallery:
-
+:html_theme.sidebar_secondary.remove:
 
 Conversion Gallery
 ==================

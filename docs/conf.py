@@ -112,3 +112,8 @@ extlinks = {
     "format-request-form": ("https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement"
                             "%2Cdata+interfaces&template=format_request.yml&title=%5BNew+Format%5D%3A+", "")
 }
+
+html_sidebars = {
+    "conversion_example_gallery": ["page-toc", "edit-this-page", "sourcelink"]
+}
+
