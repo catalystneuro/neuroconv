@@ -909,7 +909,7 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 
     def test_non_overwriting_unit_names_sorting_property(self):
-        "add_units_table function should not ovewrtie the sorting object unit_name property"
+        "add_units_table function should not overwrite the sorting object unit_name property"
         unit_names = ["name a", "name b", "name c", "name d"]
         self.sorting_1.set_property(key="unit_name", values=unit_names)
         add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
@@ -939,16 +939,6 @@ class TestAddUnitsTable(TestCase):
         add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["a", "b", "c", "d", "e", "f"]
-        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
-        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
-
-    def test_non_overwriting_unit_names_sorting_property(self):
-        "add_units_table function should not ovewrtie the sorting object unit_name property"
-        unit_names = ["name a", "name b", "name c", "name d"]
-        self.sorting_1.set_property(key="unit_name", values=unit_names)
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
-
-        expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 

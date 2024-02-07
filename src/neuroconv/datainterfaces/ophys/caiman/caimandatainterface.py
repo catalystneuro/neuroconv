@@ -5,6 +5,9 @@ from ....utils import FilePathType
 class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for CaimanSegmentationExtractor."""
 
+    help = "Interface for Caiman segmentation data."
+    display_name = "CaImAn Segmentation"
+
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
 

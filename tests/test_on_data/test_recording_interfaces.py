@@ -6,6 +6,7 @@ from unittest import skip, skipIf
 import jsonschema
 import numpy as np
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_equal
 from packaging import version
 from pynwb import NWBHDF5IO
 
@@ -535,8 +536,27 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = TdtRecordingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"))
+    test_gain_value = 0.195  # arbitrary value to test gain
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
     save_directory = OUTPUT_PATH
+
+    def run_custom_checks(self):
+        # Check that the gain is applied
+        recording_extractor = self.interface.recording_extractor
+        gains = recording_extractor.get_channel_gains()
+        expected_channel_gains = [self.test_gain_value] * recording_extractor.get_num_channels()
+        assert_array_equal(gains, expected_channel_gains)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        from pynwb import NWBHDF5IO
+
+        expected_conversion_factor = self.test_gain_value * 1e-6
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            for _, electrical_series in nwbfile.acquisition.items():
+                assert np.isclose(electrical_series.conversion, expected_conversion_factor)
+
+        return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -546,3 +566,6 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCas
         file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
     )
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2010, 2, 22, 20, 0, 57)

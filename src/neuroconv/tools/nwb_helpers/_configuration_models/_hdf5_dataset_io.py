@@ -1,4 +1,5 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
+
 from typing import Any, Dict, Literal, Union
 
 import h5py
