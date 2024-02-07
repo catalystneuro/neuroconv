@@ -566,3 +566,6 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCas
         file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
     )
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2010, 2, 22, 20, 0, 57)
