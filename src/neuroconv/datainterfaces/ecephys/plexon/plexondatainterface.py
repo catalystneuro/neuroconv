@@ -1,5 +1,6 @@
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils import DeepDict
 from ....utils.types import FilePathType
 
 
@@ -26,6 +27,18 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         """
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        neo_reader = self.recording_extractor.neo_reader
+
+        if hasattr(neo_reader, "raw_annotations"):
+            block_ind = self.recording_extractor.block_index
+            neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
+            if "rec_datetime" in neo_metadata:
+                metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
+
+        return metadata
 
 
 class PlexonSortingInterface(BaseSortingExtractorInterface):
