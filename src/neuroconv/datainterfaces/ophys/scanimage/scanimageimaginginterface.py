@@ -3,7 +3,9 @@ import json
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
-from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import extract_extra_metadata
+from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
+    extract_extra_metadata,
+)
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
