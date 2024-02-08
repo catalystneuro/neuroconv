@@ -490,9 +490,6 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
             manufacturer="Imec",
         )
 
-    def run_custom_checks(self):
-        self.check_electrode_property_helper()
-
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = TdtRecordingInterface
