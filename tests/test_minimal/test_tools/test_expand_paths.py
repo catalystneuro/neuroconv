@@ -466,6 +466,18 @@ test_cases = [
         ),
         expected="/steinmetzlab/Subjects/{subject_id}/{session_date}/{session_id}/raw_video_data/_iblrig_{camera_id}.mp4",
     ),
+    dict(
+        test_input=dict(
+            path="/steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4",
+            metadata=dict(
+                subject_id="NR_0017",
+                session_id="2022-03-22/001",
+                camera_type="leftCamera",
+                video_id="6252a2f0-c10f-4e49-b085-75749ba29c35",
+            ),
+        ),
+        expected="/steinmetzlab/Subjects/{subject_id}/{session_id}/raw_video_data/_iblrig_{camera_type}.raw.{video_id}.mp4",
+    ),
 ]
 
 
