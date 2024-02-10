@@ -494,7 +494,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0_imec0" / "snippet_g0_imec0.ap.bin")
+        file_path=str(DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0" / "snippet_g0_imec0" / "snippet_g0_imec0.ap.bin")
     )
     save_directory = OUTPUT_PATH
 
