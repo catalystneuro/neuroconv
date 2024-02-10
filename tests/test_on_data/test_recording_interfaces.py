@@ -512,7 +512,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
             description="{"
             '"probe_type": "1030", '
             '"probe_type_description": "NP1.0 NHP", '
-            '"flex_part_number": "NP2_FLEX_0", '
+            '"flex_part_number": "NPNH_AFLEX_00", '
             '"connected_base_station_part_number": "NP2_QBSC_00"'
             "}",
             manufacturer="Imec",
