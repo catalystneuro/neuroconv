@@ -41,7 +41,7 @@ jobs:
 
 
       - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
+        run: pip install .
       - name: Run import tests
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
@@ -50,7 +50,8 @@ jobs:
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
-
+      - name: Install additional specific testing-only requirements
+        run: pip install .[test]
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
@@ -75,8 +76,8 @@ jobs:
 
 
 
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full]
+      - name: Install full requirements
+        run: pip install -e .[full]  # -e needed for codecov report
 
 
 
