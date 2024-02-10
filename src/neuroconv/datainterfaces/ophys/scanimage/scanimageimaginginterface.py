@@ -3,26 +3,12 @@ import json
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
+from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
+    extract_extra_metadata,
+)
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....tools import get_package
 from ....utils import FilePathType
-
-
-def extract_extra_metadata(file_path) -> dict:
-    ScanImageTiffReader = get_package(
-        package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
-    )
-    src_file = ScanImageTiffReader.ScanImageTiffReader(str(file_path))
-    extra_metadata = {}
-    for metadata_string in (src_file.description(iframe=0), src_file.metadata()):
-        metadata_dict = {
-            x.split("=")[0].strip(): x.split("=")[1].strip()
-            for x in metadata_string.replace("\n", "\r").split("\r")
-            if "=" in x
-        }
-        extra_metadata = dict(**extra_metadata, **metadata_dict)
-    return extra_metadata
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
