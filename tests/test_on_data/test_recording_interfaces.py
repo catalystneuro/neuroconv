@@ -491,6 +491,27 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
         )
 
 
+class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = SpikeGLXRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0_imec0" / "snippet_g0_imec0.ap.bin")
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
+        assert metadata["Ecephys"]["Device"][-1] == dict(
+            name="Neuropixel-Imec",
+            description="{"
+            '"probe_type": "1030", '
+            '"probe_type_description": "NP1.0 NHP", '
+            '"flex_part_number": "NP2_FLEX_0", '
+            '"connected_base_station_part_number": "NP2_QBSC_00"'
+            "}",
+            manufacturer="Imec",
+        )
+
+
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = TdtRecordingInterface
     test_gain_value = 0.195  # arbitrary value to test gain
