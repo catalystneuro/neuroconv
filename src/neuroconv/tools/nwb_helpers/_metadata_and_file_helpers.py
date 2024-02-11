@@ -1,4 +1,5 @@
 """Collection of helper functions related to NWB."""
+
 import uuid
 from contextlib import contextmanager
 from copy import deepcopy

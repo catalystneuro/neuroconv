@@ -70,7 +70,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         ),
         param(
             data_interface=TdtRecordingInterface,
-            interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05")),
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=1.0),
             case_name="multi_segment",
         ),
         param(

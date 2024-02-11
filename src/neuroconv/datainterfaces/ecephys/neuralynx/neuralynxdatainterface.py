@@ -13,6 +13,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
+    help = "Interface for Neuralynx recording data."
+    display_name = "Neuralynx Recording"
+
     @classmethod
     def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor

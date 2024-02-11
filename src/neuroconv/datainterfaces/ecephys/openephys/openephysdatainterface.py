@@ -11,6 +11,8 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     """Abstract class that defines which interface class to use for a given Open Ephys recording."""
 
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
+    help = "Interface for OpenEphys recording data."
+    display_name = "OpenEphys Recording"
 
     def __new__(
         cls,

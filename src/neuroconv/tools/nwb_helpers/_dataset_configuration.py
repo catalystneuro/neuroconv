@@ -1,4 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
+
 from typing import Generator, Literal, Union
 
 import h5py
@@ -30,6 +31,9 @@ def _is_dataset_written_to_file(
 
     This object should then be skipped by the `get_io_datasets` function when working in append mode.
     """
+    if existing_file is None:
+        return False
+
     return (
         isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
         and backend == "hdf5"

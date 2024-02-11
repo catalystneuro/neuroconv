@@ -1,4 +1,5 @@
 """Utilities used by the SpikeGLX interfaces."""
+
 import json
 from datetime import datetime
 from pathlib import Path
@@ -96,7 +97,12 @@ def get_device_metadata(meta) -> dict:
 
     metadata_dict = dict()
     if "imDatPrb_type" in meta:
-        probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
+        probe_type_to_probe_description = {
+            "0": "NP1.0",
+            "21": "NP2.0(1-shank)",
+            "24": "NP2.0(4-shank)",
+            "1030": "NP1.0 NHP",
+        }
         probe_type = str(meta["imDatPrb_type"])
         probe_type_description = probe_type_to_probe_description[probe_type]
         metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)

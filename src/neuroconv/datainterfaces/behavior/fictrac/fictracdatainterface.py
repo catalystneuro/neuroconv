@@ -17,6 +17,9 @@ from ....utils import FilePathType, calculate_regular_series_rate
 class FicTracDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for FicTrac datasets."""
 
+    display_name = "FicTrac"
+    help = "Interface for FicTrac .dat files."
+
     keywords = [
         "fictrack",
         "visual tracking",

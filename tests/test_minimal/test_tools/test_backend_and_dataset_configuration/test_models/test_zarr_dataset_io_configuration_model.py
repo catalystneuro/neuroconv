@@ -1,4 +1,5 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
+
 from io import StringIO
 from unittest.mock import patch
 

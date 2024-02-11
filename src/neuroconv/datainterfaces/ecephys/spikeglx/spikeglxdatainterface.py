@@ -1,4 +1,5 @@
 """DataInterfaces for SpikeGLX."""
+
 import warnings
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,8 @@ from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
+    help = "Interface for SpikeGLX recording data."
+    display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + [
         "Neuropixels",
     ]

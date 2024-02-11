@@ -4,10 +4,13 @@ from ....utils.types import FolderPathType
 
 class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary data interface class for converting AlphaOmega data.
+    Primary data interface class for converting AlphaOmega recording data.
 
     Uses the :py:class:`~spikeinterface.extractors.AlphaOmegaRecordingExtractor`.
     """
+
+    help = "Interface class for converting AlphaOmega recording data."
+    display_name = "AlphaOmega Recording"
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """

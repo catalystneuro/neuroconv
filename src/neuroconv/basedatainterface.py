@@ -1,13 +1,19 @@
+import json
 import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
 
+from jsonschema.validators import validate
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
-from .utils import get_schema_from_method_signature, load_dict_from_file
+from .utils import (
+    NWBMetaDataEncoder,
+    get_schema_from_method_signature,
+    load_dict_from_file,
+)
 from .utils.dict import DeepDict
 
 
@@ -41,6 +47,15 @@ class BaseDataInterface(ABC):
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
 
         return metadata
+
+    def validate_metadata(self, metadata: dict) -> None:
+        """Validate the metadata against the schema."""
+        encoder = NWBMetaDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_metadata = encoder.encode(metadata)
+        decoded_metadata = json.loads(serialized_metadata)
+        validate(instance=decoded_metadata, schema=self.get_metadata_schema())
 
     def create_nwbfile(self, metadata=None, **conversion_options) -> NWBFile:
         nwbfile = make_nwbfile_from_metadata(metadata)

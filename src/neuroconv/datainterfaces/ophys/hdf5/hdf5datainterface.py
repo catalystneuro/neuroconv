@@ -3,7 +3,10 @@ from ....utils import ArrayType, FilePathType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
-    """Data Interface for Hdf5ImagingExtractor."""
+    """Interface for HDF5 imaging data."""
+
+    help = "Interface for HDF5 imaging data."
+    display_name = "HDF5 Imaging"
 
     def __init__(
         self,

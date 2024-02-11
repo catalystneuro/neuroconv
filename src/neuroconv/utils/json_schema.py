@@ -190,6 +190,14 @@ def unroot_schema(schema: dict):
     return {k: v for k, v in schema.items() if k in terms}
 
 
+def _is_member(types, target_types):
+    if not isinstance(target_types, tuple):
+        target_types = (target_types,)
+    if not isinstance(types, tuple):
+        types = (types,)
+    return any(t in target_types for t in types)
+
+
 def get_schema_from_hdmf_class(hdmf_class):
     """Get metadata schema from hdmf class."""
     schema = get_base_schema()
@@ -205,68 +213,53 @@ def get_schema_from_hdmf_class(hdmf_class):
         pynwb_children_fields.remove("device")
     docval = hdmf_class.__init__.__docval__
     for docval_arg in docval["args"]:
-        schema_arg = {docval_arg["name"]: dict(description=docval_arg["doc"])}
+        arg_name = docval_arg["name"]
+        arg_type = docval_arg["type"]
 
-        # type float
-        if docval_arg["type"] in (float, "float", int, "int") or (
-            isinstance(docval_arg["type"], tuple)
-            and any([it in docval_arg["type"] for it in [float, "float", int, "int"]])
-        ):
-            schema_arg[docval_arg["name"]].update(type="number")
-        # type string
-        elif docval_arg["type"] is str or (isinstance(docval_arg["type"], tuple) and str in docval_arg["type"]):
-            schema_arg[docval_arg["name"]].update(type="string")
-        # type array
-        elif docval_arg["type"] is collections.abc.Iterable or (
-            isinstance(docval_arg["type"], tuple) and collections.abc.Iterable in docval_arg["type"]
-        ):
-            schema_arg[docval_arg["name"]].update(type="array")
-        elif isinstance(docval_arg["type"], tuple) and (
-            np.ndarray in docval_arg["type"] and hdmf.data_utils.DataIO not in docval_arg["type"]
-        ):
+        schema_val = dict(description=docval_arg["doc"])
+
+        if arg_name == "name":
+            schema_val.update(pattern="^[^/]*$")
+
+        if _is_member(arg_type, (float, int, "float", "int")):
+            schema_val.update(type="number")
+        elif _is_member(arg_type, str):
+            schema_val.update(type="string")
+        elif _is_member(arg_type, collections.abc.Iterable):
+            schema_val.update(type="array")
+        elif isinstance(arg_type, tuple) and (np.ndarray in arg_type and hdmf.data_utils.DataIO not in arg_type):
             # extend type array without including type where DataIO in tuple
-            schema_arg[docval_arg["name"]].update(type="array")
-        # type datetime
-        elif docval_arg["type"] is datetime or (
-            isinstance(docval_arg["type"], tuple) and datetime in docval_arg["type"]
-        ):
-            schema_arg[docval_arg["name"]].update(type="string", format="date-time")
-        # if TimeSeries, skip it
-        elif docval_arg["type"] is pynwb.base.TimeSeries or (
-            isinstance(docval_arg["type"], tuple) and pynwb.base.TimeSeries in docval_arg["type"]
-        ):
-            continue
-        # if PlaneSegmentation, skip it
-        elif docval_arg["type"] is pynwb.ophys.PlaneSegmentation or (
-            isinstance(docval_arg["type"], tuple) and pynwb.ophys.PlaneSegmentation in docval_arg["type"]
-        ):
+            schema_val.update(type="array")
+        elif _is_member(arg_type, datetime):
+            schema_val.update(type="string", format="date-time")
+        elif _is_member(arg_type, (pynwb.base.TimeSeries, pynwb.ophys.PlaneSegmentation)):
             continue
         else:
-            if not isinstance(docval_arg["type"], tuple):
-                docval_arg_type = [docval_arg["type"]]
+            if not isinstance(arg_type, tuple):
+                docval_arg_type = [arg_type]
             else:
-                docval_arg_type = docval_arg["type"]
+                docval_arg_type = arg_type
             # if another nwb object (or list of nwb objects)
             if any([hasattr(t, "__nwbfields__") for t in docval_arg_type]):
                 is_nwb = [hasattr(t, "__nwbfields__") for t in docval_arg_type]
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
-                if docval_arg["name"] in pynwb_children_fields:
+                if arg_name in pynwb_children_fields:
                     items = get_schema_from_hdmf_class(item)
-                    schema_arg[docval_arg["name"]].update(type="array", items=items, minItems=1, maxItems=1)
+                    schema_val.update(type="array", items=items, minItems=1, maxItems=1)
                 # if it is a link
                 else:
                     target = item.__module__ + "." + item.__name__
-                    schema_arg[docval_arg["name"]].update(type="string", target=target)
+                    schema_val.update(type="string", target=target)
             else:
                 continue
         # Check for default arguments
         if "default" in docval_arg:
             if docval_arg["default"] is not None:
-                schema_arg[docval_arg["name"]].update(default=docval_arg["default"])
+                schema_val.update(default=docval_arg["default"])
         else:
-            schema["required"].append(docval_arg["name"])
-        schema["properties"].update(schema_arg)
+            schema["required"].append(arg_name)
+        schema["properties"][arg_name] = schema_val
     if "allow_extra" in docval:
         schema["additionalProperties"] = docval["allow_extra"]
     return schema
