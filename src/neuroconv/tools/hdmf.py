@@ -42,10 +42,11 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     @staticmethod
     def estimate_default_buffer_shape(
         buffer_gb: float, chunk_shape: Tuple[int, ...], maxshape: Tuple[int, ...], dtype: np.dtype
-    ) -> Tuple[int]:
+    ) -> Tuple[int, ...]:
         num_axes = len(maxshape)
         chunk_bytes = math.prod(chunk_shape) * dtype.itemsize
 
+        assert num_axes > 0, f"The number of axes ({num_axes}) is less than one!"
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
             buffer_gb >= chunk_bytes / 1e9
@@ -62,9 +63,14 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         axis_sizes_bytes = maxshape * dtype.itemsize
         target_buffer_bytes = buffer_gb * 1e9
 
+        # Recording indices of shortest axes for later use
+        if num_axes > 1:  # Only store two shortest if more than 1
+            smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
+        elif num_axes == 1:
+            smallest_chunk_axis = 0
+
         if min(axis_sizes_bytes) > target_buffer_bytes:
             if num_axes > 1:
-                smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
                 # If the smallest full axis does not fit within the buffer size, form a square along the smallest axes
                 sub_square_buffer_shape = np.array(chunk_shape)
                 if min(axis_sizes_bytes) > target_buffer_bytes:
@@ -72,18 +78,10 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                     for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
                         sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
                     return tuple(sub_square_buffer_shape)
-            elif num_axes == 1:
-                smallest_chunk_axis = 0
+            elif num_axes == 1 and axis_sizes_bytes[0] > target_buffer_bytes:
                 # Handle the case where the single axis is too large to fit in the buffer
-                if axis_sizes_bytes[0] > target_buffer_bytes:
-                    k1 = math.floor(target_buffer_bytes / chunk_bytes)
-                    return tuple(
-                        [
-                            k1 * chunk_shape[0],
-                        ]
-                    )
-            else:
-                raise ValueError(f"num_axes ({num_axes}) is less than one!")
+                k1 = math.floor(target_buffer_bytes / chunk_bytes)
+                return (k1 * chunk_shape[0],)
 
         # Original one-shot estimation has good performance for certain shapes
         chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
