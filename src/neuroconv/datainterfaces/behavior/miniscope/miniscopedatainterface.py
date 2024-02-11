@@ -10,8 +10,10 @@ from ....utils import DeepDict, FolderPathType
 class MiniscopeBehaviorInterface(BaseDataInterface):
     """Data Interface for Miniscope behavior data."""
 
-    help = "Interface for Miniscope behavior data."
     display_name = "Miniscope Behavior"
+    keywords = ("video",)
+    associated_suffixes = (".avi",)
+    info = "Interface for Miniscope behavior video data."
 
     def __init__(self, folder_path: FolderPathType):
         """

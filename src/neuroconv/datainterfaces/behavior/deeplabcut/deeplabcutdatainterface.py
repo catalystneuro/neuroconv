@@ -54,8 +54,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
     display_name = "DeepLabCut"
-
-    keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
+    keywords = ("DLC",)
+    associated_suffixes = (".h5",)
+    info = "Interface for handling data from DeepLabCut."
 
     _timestamps = None
 

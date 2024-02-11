@@ -25,8 +25,10 @@ def get_start_datetime(neo_reader):
 class AbfInterface(BaseIcephysInterface):
     """Interface for ABF intracellular electrophysiology data."""
 
-    help = "Interface for ABF intracellular electrophysiology data."
     display_name = "ABF Icephys"
+    associated_suffixes = (".abf",)
+    info = "Interface for ABF intracellular electrophysiology data."
+
     ExtractorName = "AxonIO"
 
     @classmethod
