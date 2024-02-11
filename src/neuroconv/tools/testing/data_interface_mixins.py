@@ -498,7 +498,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.run_custom_checks()
 
     def check_neo_extensions_in_associated_suffixes(self):
-        if not hasattr(self.interface.recording_extractor, "neo_reader") or not hasattr(self.interface.recording_extractor.neo_reader, "extensions"):
+        if not hasattr(self.interface.recording_extractor, "neo_reader") or not hasattr(
+            self.interface.recording_extractor.neo_reader, "extensions"
+        ):
             return
 
         neo_suffixes = self.interface.recording_extractor.neo_reader.extensions
