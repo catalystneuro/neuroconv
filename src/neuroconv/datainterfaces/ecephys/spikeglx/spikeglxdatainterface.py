@@ -39,7 +39,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     keywords = BaseRecordingExtractorInterface.keywords + [
         "Neuropixels",
     ]
-    associated_suffixes= [".imec", ".ap", ".lf", ".meta", ".bin"]
+    associated_suffixes = [".imec", ".ap", ".lf", ".meta", ".bin"]
     help = "Interface for SpikeGLX recording data."
 
     ExtractorName = "SpikeGLXRecordingExtractor"
