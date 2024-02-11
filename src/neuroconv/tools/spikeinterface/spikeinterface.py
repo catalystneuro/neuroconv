@@ -2,6 +2,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from numbers import Real
+from pathlib import Path
 from typing import List, Literal, Optional, Union
 
 import numpy as np
@@ -549,8 +550,9 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression : {'gzip', 'lzf'}, optional
+    compression: {None, 'gzip', 'lzf'}, default: 'gzip'
         Type of compression to use. Set to None to disable all compression.
+        To use the `configure_backend` function, you should set this to None.
     compression_opts: int, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}, default: 'v2'
@@ -601,19 +603,20 @@ def add_electrical_series(
         width = int(np.ceil(np.log10((recording.get_num_segments()))))
         eseries_kwargs["name"] += f"{segment_index:0{width}}"
 
-    # Indexes by channel ids if they are integer or by indices otherwise.
-    channel_name_array = recording.get_channel_ids()
-    if np.issubdtype(channel_name_array.dtype, np.integer):
-        channel_indices = channel_name_array
-    else:
-        channel_indices = recording.ids_to_indices(channel_name_array)
-
+    # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    # That uses either the `channel_name` property or the channel ids as string otherwise.
+    channel_names = recording.get_property("channel_name")
+    if channel_names is None:
+        channel_names = recording.get_channel_ids().astype("str")
 
-    table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_indices]
+    # We use those channels to select the electrodes to be added to the ElectricalSeries
+    channel_name_column = nwbfile.electrodes["channel_name"][:]
+    mask = np.isin(channel_name_column, channel_names)
+    table_ids = np.nonzero(mask)[0]
 
     electrode_table_region = nwbfile.create_electrode_table_region(
-        region=table_ids, description="electrode_table_region"
+        region=table_ids.tolist(), description="electrode_table_region"
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
@@ -647,9 +650,13 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
-    )
+    if compression is not None:
+        # in this case we assume HDF5 backend and compression
+        eseries_kwargs.update(
+            data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+        )
+    else:
+        eseries_kwargs.update(data=ephys_data_iterator)
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
     if recording.has_time_vector(segment_index=segment_index):
@@ -669,10 +676,15 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_timestamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
-            data=shifted_timestamps, compression=compression, compression_opts=compression_opts
-        )
-        eseries_kwargs.update(timestamps=wrapped_timestamps)
+        if compression is not None:
+            # in this case we assume HDF5 backend and compression
+            timestamps_iterator = H5DataIO(
+                data=shifted_timestamps, compression=compression, compression_opts=compression_opts
+            )
+        else:
+            timestamps_iterator = shifted_timestamps
+
+        eseries_kwargs.update(timestamps=timestamps_iterator)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -734,10 +746,6 @@ def add_recording(
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
-    assert get_package_version("pynwb") >= Version(
-        "1.3.3"
-    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
-
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
@@ -849,9 +857,9 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}
-        Type of compression to use.
-        Set to None to disable all compression.
+    compression: {None, 'gzip', 'lzp'}, default: 'gzip'
+        Type of compression to use. Set to None to disable all compression.
+        To use the `configure_backend` function, you should set this to None.
     compression_opts: int, optional, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}

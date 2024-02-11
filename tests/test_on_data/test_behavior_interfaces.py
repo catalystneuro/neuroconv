@@ -480,7 +480,7 @@ class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 5, 15, 10, 35, 29)
 
 
-class TestSLEAPInterface(TestCase):
+class CustomTestSLEAPInterface(TestCase):
     savedir = OUTPUT_PATH
 
     @parameterized.expand(

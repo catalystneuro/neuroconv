@@ -19,7 +19,7 @@ Convert TDT data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.tdt.t
     >>> # For this data interface we need to pass the folder_path with the location of the data
     >>> folder_path = f"{ECEPHY_DATA_PATH}/tdt/aep_05"
     >>> # Change the folder_path to the location of the data in your system
-    >>> interface = TdtRecordingInterface(folder_path=folder_path, verbose=False)
+    >>> interface = TdtRecordingInterface(folder_path=folder_path, gain=1.0, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()

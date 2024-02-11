@@ -10,6 +10,9 @@ from ....utils import DeepDict, FolderPathType
 class MiniscopeBehaviorInterface(BaseDataInterface):
     """Data Interface for Miniscope behavior data."""
 
+    help = "Interface for Miniscope behavior data."
+    display_name = "Miniscope Behavior"
+
     def __init__(self, folder_path: FolderPathType):
         """
         Initialize reading recordings from the Miniscope behavioral camera.

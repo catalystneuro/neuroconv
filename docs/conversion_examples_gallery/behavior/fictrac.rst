@@ -1,13 +1,13 @@
 FicTrac data conversion
 --------------------------
 
-Install NeuroConv with the additional dependencies necessary for reading FicTrac data.
+Install NeuroConv with the additional dependencies necessary for reading `FicTrac <https://rjdmoore.net/fictrac/>`_ data.
 
 .. code-block:: bash
 
     pip install neuroconv[fictrac]
 
-Convert FicTrac pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface.FicTracDataInterface`.
+Convert FicTrac spherical motion and fictive animal path data in a FicTrac ``.dat`` file to NWB using :py:class:`~neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface.FicTracDataInterface`.
 
 .. code-block:: python
 

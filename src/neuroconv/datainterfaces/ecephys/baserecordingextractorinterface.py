@@ -7,7 +7,12 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import NWBMetaDataEncoder, get_base_schema, get_schema_from_hdmf_class
+from ...utils import (
+    DeepDict,
+    NWBMetaDataEncoder,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -73,7 +78,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         channel_groups_array = self.recording_extractor.get_channel_groups()
@@ -94,30 +99,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
 
         return metadata
-
-    def get_electrode_table_json(self) -> List[Dict[str, Any]]:
-        """
-        A convenience function for collecting and organizing the property values of the underlying recording extractor.
-
-        Uses the structure of the Handsontable (list of dict entries) component of the NWB GUIDE.
-        """
-        property_names = set(self.recording_extractor.get_property_keys()) - {
-            "contact_vector",  # TODO: add consideration for contact vector (probeinterface) info
-            "location",  # testing
-        }
-        electrode_ids = self.recording_extractor.get_channel_ids()
-
-        table = list()
-        for electrode_id in electrode_ids:
-            electrode_column = dict()
-            for property_name in property_names:
-                recording_property_value = self.recording_extractor.get_property(key=property_name, ids=[electrode_id])[
-                    0  # First axis is always electodes in SI
-                ]  # Since only fetching one electrode at a time, use trivial zero-index
-                electrode_column.update({property_name: recording_property_value})
-            table.append(electrode_column)
-        table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
-        return table_as_json
 
     def get_original_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
         """
