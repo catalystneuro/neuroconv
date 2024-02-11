@@ -83,6 +83,13 @@ class DataInterfaceTestMixin:
         validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
+    def check_guide_attributes_are_not_empty(self):
+        """Various class attributes of data interfaces are used for display in the NWB GUIDE."""
+        assert self.interface.display_name is not None and self.interface.display_name != ""
+        assert len(self.interface.keywords) != 0
+        assert len(self.interface.associated_suffixes) != 0
+        assert self.interface.display_name is not None and self.interface.info != ""
+
     def run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
@@ -112,6 +119,8 @@ class DataInterfaceTestMixin:
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                self.check_guide_attributes_are_not_empty()
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
@@ -486,6 +495,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                         group_mode="by_shank",
                     )
 
+                self.check_guide_attributes_are_not_empty()
                 self.check_neo_extensions_in_associated_suffixes()
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
@@ -497,7 +507,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 # Any extra custom checks to run
                 self.run_custom_checks()
 
-    def check_neo_extensions_in_associated_suffixes(self):
+    def check_neo_suffixes_are_in_associated_suffixes(self):
         if not hasattr(self.interface.recording_extractor, "neo_reader") or not hasattr(
             self.interface.recording_extractor.neo_reader, "extensions"
         ):
@@ -506,7 +516,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         neo_suffixes = self.interface.recording_extractor.neo_reader.extensions
         reformatted_suffixes = [f".{suffix}" for suffix in neo_suffixes]
 
-        assert all(suffix in self.interfaces.associated_suffixes for suffix in reformatted_suffixes)
+        assert all(suffix in self.interface.associated_suffixes for suffix in reformatted_suffixes)
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

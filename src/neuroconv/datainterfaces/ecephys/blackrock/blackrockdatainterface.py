@@ -11,8 +11,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Blackrock data using a
     :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
-    help = "Interface for Blackrock recording data."
     display_name = "Blackrock Recording"
+    associated_suffixes = (".ns{stream_number}",)
+    info = "Interface for Blackrock recording data."
 
     @classmethod
     def get_source_schema(cls):

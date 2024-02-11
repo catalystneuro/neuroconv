@@ -18,7 +18,8 @@ from ...utils import (
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
     """Parent class for all RecordingExtractorInterfaces."""
 
-    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "voltage", "recording"]
+    keywords = BaseExtractorInterface.keywords + ("extracellular electrophysiology", "voltage", "recording")
+
     ExtractorModuleName = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
