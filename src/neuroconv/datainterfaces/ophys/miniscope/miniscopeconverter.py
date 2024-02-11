@@ -11,6 +11,10 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 class MiniscopeConverter(NWBConverter):
     """Primary conversion class for handling Miniscope data streams."""
 
+    display_name = "Miniscope Imaging and Video"
+    associated_suffixes = MiniscopeImagingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
+    info = "Converter for handling both imaging and video recordings from Miniscope."
+
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)

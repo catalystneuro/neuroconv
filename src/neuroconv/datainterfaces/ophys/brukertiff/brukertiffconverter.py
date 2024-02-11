@@ -12,6 +12,10 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class BrukerTiffMultiPlaneConverter(NWBConverter):
+    display_name = "Bruker TIFF Imaging (multiple channels, multiple planes)"
+    associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
+    info = "Interface for handling all channels and all planes of Bruker imaging data."
+
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)
@@ -112,6 +116,10 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
 
 class BrukerTiffSinglePlaneConverter(NWBConverter):
+    display_name = "Bruker TIFF Imaging (multiple channels, single plane)"
+    associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
+    info = "Interface for handling multiple channels of a single plane of Bruker imaging data."
+
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)

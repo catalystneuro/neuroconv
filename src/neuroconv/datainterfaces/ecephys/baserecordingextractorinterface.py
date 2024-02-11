@@ -18,7 +18,7 @@ from ...utils import (
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
     """Parent class for all RecordingExtractorInterfaces."""
 
-    keywords = BaseExtractorInterface.keywords + ("extracellular electrophysiology", "voltage", "recording")
+    keywords = ("extracellular electrophysiology", "voltage", "recording")
 
     ExtractorModuleName = "spikeinterface.extractors"
 

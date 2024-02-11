@@ -13,7 +13,7 @@ from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 class BaseSortingExtractorInterface(BaseExtractorInterface):
     """Primary class for all SortingExtractor interfaces."""
 
-    keywords = BaseExtractorInterface.keywords + ("extracellular electrophysiology", "spike sorting")
+    keywords = ("extracellular electrophysiology", "spike sorting")
 
     ExtractorModuleName = "spikeinterface.extractors"
 
