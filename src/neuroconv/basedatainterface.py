@@ -3,7 +3,7 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from jsonschema.validators import validate
 from pynwb import NWBFile
@@ -21,6 +21,10 @@ class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
     keywords: List[str] = []
+    common_suffixes: List[str] = []
+    display_name: Union[str, None] = None
+    help: Union[str, None] = None
+    
 
     @classmethod
     def get_source_schema(cls):
