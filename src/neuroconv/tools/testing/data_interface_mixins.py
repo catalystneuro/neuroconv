@@ -485,6 +485,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                         generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
                         group_mode="by_shank",
                     )
+
+                self.check_neo_extensions_in_associated_suffixes()
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
@@ -494,6 +496,15 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
+
+    def check_neo_extensions_in_associated_suffixes(self):
+        if not hasattr(self.interface.recording_extractor, "neo_reader") or not hasattr(self.interface.recording_extractor.neo_reader, "extensions"):
+            return
+
+        neo_suffixes = self.interface.recording_extractor.neo_reader.extensions
+        reformatted_suffixes = [f".{suffix}" for suffix in neo_suffixes]
+
+        assert all(suffix in self.interfaces.associated_suffixes for suffix in reformatted_suffixes)
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
