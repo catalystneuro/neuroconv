@@ -42,7 +42,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     common_suffixes = ["^.imec\d+$", ".ap", ".lf", ".bin"]
     help = "Interface for SpikeGLX recording data."
 
-
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod

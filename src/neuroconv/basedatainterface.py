@@ -24,7 +24,6 @@ class BaseDataInterface(ABC):
     keywords: List[str] = []
     common_suffixes: List[str] = []
     help: Union[str, None] = None
-    
 
     @classmethod
     def get_source_schema(cls):
