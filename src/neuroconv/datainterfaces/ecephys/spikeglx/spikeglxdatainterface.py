@@ -35,11 +35,13 @@ def add_recording_extractor_properties(recording_extractor) -> None:
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-    help = "Interface for SpikeGLX recording data."
     display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + [
         "Neuropixels",
     ]
+    common_suffixes = ["^.imec\d+$", ".ap", ".lf", ".bin"]
+    help = "Interface for SpikeGLX recording data."
+
 
     ExtractorName = "SpikeGLXRecordingExtractor"
 
