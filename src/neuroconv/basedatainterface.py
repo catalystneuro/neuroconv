@@ -22,7 +22,7 @@ class BaseDataInterface(ABC):
 
     display_name: Union[str, None] = None
     keywords: List[str] = []
-    common_suffixes: List[str] = []
+    associated_suffixes: List[str] = []
     help: Union[str, None] = None
 
     @classmethod
