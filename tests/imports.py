@@ -93,13 +93,23 @@ def test_datainterfaces():
 
 
 def test_guide_attributes():
+    """The GUIDE fetches this information from each class to render the selection of interfaces."""
     from neuroconv.datainterfaces import interface_list
 
     guide_attribute_names = ["display_name", "keywords", "associated_suffixes", "info"]
-    guide_attributes_per_interface = {
-        interface.__name__: {attribute: getattr(interface, attribute) for attribute in guide_attribute_names}
-        for interface in interface_list
-    }
+    guide_attributes_per_interface = dict()
+    for interface in interface_list:
+        interface_guide_attributes = dict()
+        for attribute in guide_attribute_names:
+            attribute_value = getattr(interface, attribute)
+            assert attribute_value is not None, f"{interface.__name__} is missing GUIDE related attribute {attribute}."
+            if isinstance(attribute_value, tuple):
+                assert (
+                    len(attribute_value) > 0
+                ), f"{interface.__name__} is missing entries in GUIDE related attribute {attribute}."
+
+            interface_guide_attributes.update({attribute: getattr(interface, attribute)})
+        guide_attributes_per_interface.update({interface.__name__: interface_guide_attributes})
 
     assert guide_attributes_per_interface == {
         "NeuralynxRecordingInterface": {
@@ -476,3 +486,12 @@ def test_guide_attributes():
             "info": "Interface for writing a time intervals table from an excel file.",
         },
     }
+    # Above assertion is for easy viewing of aggregated content for comparison
+    # Below is preventive measure from adding interface without info
+    assert not any(
+        [
+            value is None
+            for inteface_attributes in guide_attributes_per_interface.values()
+            for value in inteface_attributes
+        ]
+    )
