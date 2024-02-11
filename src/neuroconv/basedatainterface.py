@@ -20,9 +20,9 @@ from .utils.dict import DeepDict
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
+    display_name: Union[str, None] = None
     keywords: List[str] = []
     common_suffixes: List[str] = []
-    display_name: Union[str, None] = None
     help: Union[str, None] = None
     
 
