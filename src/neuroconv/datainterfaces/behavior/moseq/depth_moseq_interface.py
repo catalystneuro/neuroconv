@@ -1,4 +1,5 @@
 """Primary class for converting MoSeq Extraction data."""
+
 from datetime import datetime
 
 import h5py
