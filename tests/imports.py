@@ -4,6 +4,7 @@ This module is meant for the tests to be run as stand-alone to emulate a fresh i
 Run them by using:
 pytest tests/import_structure.py::TestImportStructure::test_name
 """
+
 from unittest import TestCase
 
 

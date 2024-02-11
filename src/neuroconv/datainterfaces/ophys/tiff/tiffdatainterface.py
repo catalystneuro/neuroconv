@@ -3,7 +3,10 @@ from ....utils import FilePathType
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
-    """Data Interface for TiffImagingExtractor."""
+    """Interface for multi-page TIFF files."""
+
+    help = "Interface for multi-page TIFF files."
+    display_name = "TIFF Imaging"
 
     @classmethod
     def get_source_schema(cls) -> dict:

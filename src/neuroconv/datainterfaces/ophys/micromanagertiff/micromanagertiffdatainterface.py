@@ -7,6 +7,9 @@ from ....utils import FolderPathType
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for MicroManagerTiffImagingExtractor."""
 
+    display_name = "Micro-Manager TIFF Imaging"
+    help = "Interface for Micro-Manager TIFF imaging data."
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()

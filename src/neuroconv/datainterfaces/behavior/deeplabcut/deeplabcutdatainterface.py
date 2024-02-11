@@ -53,6 +53,8 @@ def write_subject_to_nwb(
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
+    display_name = "DeepLabCut"
+
     keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
 
     _timestamps = None

@@ -1,4 +1,5 @@
 """DataInterfaces for SpikeGLX."""
+
 import warnings
 from pathlib import Path
 from typing import Optional
@@ -34,6 +35,8 @@ def add_recording_extractor_properties(recording_extractor) -> None:
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
+    help = "Interface for SpikeGLX recording data."
+    display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + [
         "Neuropixels",
     ]

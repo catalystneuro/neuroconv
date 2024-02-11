@@ -284,6 +284,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
+    help = "Interface for spike sorted data in the CellExplorer format."
+    display_name = "CellExplorer"
+
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         self.session_path = Path(folder_path)
 
