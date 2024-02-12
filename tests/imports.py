@@ -7,6 +7,8 @@ pytest tests/import_structure.py::TestImportStructure::test_name
 
 from unittest import TestCase
 
+from neuroconv import BaseDataInterface
+
 
 def _strip_magic_module_attributes(ls: list) -> list:
     exclude_keys = [
@@ -89,3 +91,11 @@ class TestImportStructure(TestCase):
         ] + interface_name_list
 
         assert sorted(current_structure) == sorted(expected_structure)
+
+
+def test_datainterfaces_import():
+    """Minimal installation should be able to import interfaces from the .datainterfaces submodule."""
+    # Nothing special about SpikeGLX; just need to pick something to import to ensure a minimal install doesn't fail
+    from neuroconv.datainterfaces import SpikeGLXRecodingInterface
+
+    assert isinstance(SpikeGLXRecodingInterface, BaseDataInterface)
