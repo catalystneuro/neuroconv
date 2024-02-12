@@ -7,6 +7,8 @@ pytest tests/import_structure.py::TestImportStructure::test_name
 
 from unittest import TestCase
 
+from neuroconv import BaseDataInterface
+
 
 def _strip_magic_module_attributes(ls: list) -> list:
     exclude_keys = [
@@ -73,9 +75,7 @@ def test_datainterfaces():
     from neuroconv import datainterfaces
 
     current_structure = _strip_magic_module_attributes(ls=datainterfaces.__dict__)
-
-    from neuroconv.datainterfaces import interface_list
-
+    
     interface_name_list = [interface.__name__ for interface in interface_list]
     expected_structure = [
         # Sub-modules
@@ -92,6 +92,14 @@ def test_datainterfaces():
     assert sorted(current_structure) == sorted(expected_structure)
 
 
+def test_datainterfaces_import():
+    """Minimal installation should be able to import interfaces from the .datainterfaces submodule."""
+    # Nothing special about SpikeGLX; just need to pick something to import to ensure a minimal install doesn't fail
+    from neuroconv.datainterfaces import SpikeGLXRecodingInterface
+
+    assert isinstance(SpikeGLXRecodingInterface, BaseDataInterface)
+
+
 def test_guide_attributes():
     """The GUIDE fetches this information from each class to render the selection of interfaces."""
     from neuroconv.datainterfaces import interface_list
@@ -102,6 +110,7 @@ def test_guide_attributes():
         interface_guide_attributes = dict()
         for attribute in guide_attribute_names:
             attribute_value = getattr(interface, attribute)
+
             assert attribute_value is not None, f"{interface.__name__} is missing GUIDE related attribute {attribute}."
             if isinstance(attribute_value, tuple):
                 assert (
