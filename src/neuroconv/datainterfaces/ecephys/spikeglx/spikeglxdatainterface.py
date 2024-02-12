@@ -7,31 +7,13 @@ from typing import Optional
 import numpy as np
 
 from .spikeglx_utils import (
+    add_recording_extractor_properties,
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FilePathType, get_schema_from_method_signature
-
-
-def add_recording_extractor_properties(recording_extractor) -> None:
-    """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
-    probe = recording_extractor.get_probe()
-    channel_ids = recording_extractor.get_channel_ids()
-
-    if probe.get_shank_count() > 1:
-        group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
-        shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
-    else:
-        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
-        group_name = ["s0"] * len(channel_ids)
-
-    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
-    recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
-
-    contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
-    recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
@@ -84,11 +66,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.source_data["file_path"] = str(file_path)
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
-        # Mount the probe
-        # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
-        meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
-        probe = read_spikeglx(meta_filename)
-        self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
