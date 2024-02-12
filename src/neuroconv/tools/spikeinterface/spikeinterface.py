@@ -16,7 +16,6 @@ from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from ..importing import get_package_version
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
@@ -257,7 +256,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     channel_ids = recording.get_channel_ids()
     if "channel_name" in data_to_add:
         # if 'channel_name' is set as a property, it is used to override default channel_ids (and "id")
-        channel_name_array = data_to_add["channel_name"]["data"]
+        channel_name_array = data_to_add["channel_name"]["data"].astype("str", copy=False)
     else:
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
