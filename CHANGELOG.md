@@ -27,7 +27,7 @@
 * Removed `.get_electrode_table_json()` on the `BaseRecordingExtractorInterface` in favor of GUIDE specific interactions. [PR #431](https://github.com/catalystneuro/neuroconv/pull/431)
 
 ### Testing
-* `RecordingExtractorInterfaceTestMixin` now compares either `group_name`, `group` or an `empty` or `ElectrodeGroup` to the `group` property in the `NWBRecordingExtractor` instead of comparing `group` to `group`.  [PR #736](https://github.com/catalystneuro/neuroconv/pull/736)
+* `RecordingExtractorInterfaceTestMixin` now compares either `group_name`, `group` or a default value of  `ElectrodeGroup` to the `group` property in the `NWBRecordingExtractor` instead of comparing `group` to `group` as it was done before [PR #736](https://github.com/catalystneuro/neuroconv/pull/736)
 
 
 
