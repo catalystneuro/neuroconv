@@ -75,7 +75,7 @@ def test_datainterfaces():
     from neuroconv import datainterfaces
 
     current_structure = _strip_magic_module_attributes(ls=datainterfaces.__dict__)
-    
+
     interface_name_list = [interface.__name__ for interface in interface_list]
     expected_structure = [
         # Sub-modules
