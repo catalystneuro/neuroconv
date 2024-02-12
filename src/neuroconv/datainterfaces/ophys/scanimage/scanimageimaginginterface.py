@@ -3,9 +3,6 @@ import json
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
-from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
-    extract_extra_metadata,
-)
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
@@ -42,6 +39,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
         """
+        from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
+            extract_extra_metadata,
+        )
+
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
         if "state.acq.frameRate" in self.image_metadata:
