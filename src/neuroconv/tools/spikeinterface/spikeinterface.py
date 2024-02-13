@@ -16,7 +16,6 @@ from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from ..importing import get_package_version
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
@@ -257,7 +256,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     channel_ids = recording.get_channel_ids()
     if "channel_name" in data_to_add:
         # if 'channel_name' is set as a property, it is used to override default channel_ids (and "id")
-        channel_name_array = data_to_add["channel_name"]["data"]
+        channel_name_array = data_to_add["channel_name"]["data"].astype("str", copy=False)
     else:
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
@@ -277,15 +276,14 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
 
-    # If no group_names are provided, use information from groups or default values
+    # If no group_names are provided, use information from groups. Use default values if nothing is provided.
     if "group_name" in data_to_add:
         group_name_array = data_to_add["group_name"]["data"].astype("str", copy=False)
+    elif "group" in data_to_add:
+        group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
     else:
-        if "group" in data_to_add:
-            group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
-        else:
-            default_group_name = "ElectrodeGroup"
-            group_name_array = np.full(channel_name_array.size, fill_value=default_group_name)
+        default_group_name = "ElectrodeGroup"
+        group_name_array = np.full(channel_name_array.size, fill_value=default_group_name)
 
     group_name_array[group_name_array == ""] = "ElectrodeGroup"
     data_to_add["group_name"].update(description="group_name", data=group_name_array, index=False)
@@ -306,7 +304,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     required_schema_property_to_default_value = dict(
         id=None,
         group=None,
-        group_name="default",
+        group_name="ElectrodeGroup",
         location="unknown",
     )
     optional_schema_property_to_default_value = dict(
