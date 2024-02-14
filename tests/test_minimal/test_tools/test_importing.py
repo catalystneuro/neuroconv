@@ -1,26 +1,21 @@
-"""
-This module is meant for the tests to be run as stand-alone to emulate a fresh import.
+"""Tests for neuroconv.tools.importing module."""
 
-Run them by using:
-pytest tests/import_structure.py::TestImportStructure::test_name
-"""
-
-from neuroconv import get_data_interfaces_summaries
+from neuroconv import get_format_summaries
 
 
 def test_guide_attributes():
     """The GUIDE fetches this information from each class to render the selection of interfaces."""
-    data_interface_summaries = get_data_interfaces_summaries()
+    summaries = get_format_summaries()
 
     # Blocking assertion when adding new interfaces
-    for interface_name, interface_summary in data_interface_summaries.items():
-        for key, value in interface_summary.items():
-            assert value is not None, f"{interface_name} is missing GUIDE related attribute {key}."
+    for name, summary in summaries.items():
+        for key, value in summary.items():
+            assert value is not None, f"{name} is missing GUIDE related attribute {key}."
             if isinstance(value, tuple):
-                assert len(value) > 0, f"{interface_name} is missing entries in GUIDE related attribute {key}."
+                assert len(value) > 0, f"{name} is missing entries in GUIDE related attribute {key}."
 
     # For easier reference to global commonalities
-    assert data_interface_summaries == {
+    assert summaries == {
         "NeuralynxRecordingInterface": {
             "display_name": "Neuralynx Recording",
             "keywords": ("extracellular electrophysiology", "voltage", "recording"),
@@ -470,5 +465,72 @@ def test_guide_attributes():
             "keywords": ("table", "trials", "epochs", "time intervals"),
             "associated_suffixes": (".xlsx", ".xls", ".xlsm"),
             "info": "Interface for writing a time intervals table from an excel file.",
+        },
+        "LightningPoseConverter": {
+            "display_name": "Lightning Pose Converter",
+            "keywords": ("pose estimation", "video"),
+            "associated_suffixes": (".csv", ".mp4"),
+            "info": "Interface for handling multiple streams of lightning pose data.",
+        },
+        "SpikeGLXConverterPipe": {
+            "display_name": "SpikeGLX Converter",
+            "keywords": (
+                "extracellular electrophysiology",
+                "voltage",
+                "recording",
+                "Neuropixels",
+                "extracellular electrophysiology",
+                "voltage",
+                "recording",
+                "Neuropixels",
+            ),
+            "associated_suffixes": (".imec{probe_number}", ".ap", ".lf", ".meta", ".bin", ".nidq", ".meta", ".bin"),
+            "info": "Converter for multi-stream SpikeGLX recording data.",
+        },
+        "BrukerTiffMultiPlaneConverter": {
+            "display_name": "Bruker TIFF Imaging (multiple channels, multiple planes)",
+            "keywords": (
+                "ophys",
+                "optical electrophysiology",
+                "fluorescence",
+                "microscopy",
+                "two photon",
+                "one photon",
+                "voltage imaging",
+                "calcium imaging",
+            ),
+            "associated_suffixes": (".ome", ".tif", ".xml", ".env"),
+            "info": "Interface for handling all channels and all planes of Bruker imaging data.",
+        },
+        "BrukerTiffSinglePlaneConverter": {
+            "display_name": "Bruker TIFF Imaging (multiple channels, single plane)",
+            "keywords": (
+                "ophys",
+                "optical electrophysiology",
+                "fluorescence",
+                "microscopy",
+                "two photon",
+                "one photon",
+                "voltage imaging",
+                "calcium imaging",
+            ),
+            "associated_suffixes": (".ome", ".tif", ".xml", ".env"),
+            "info": "Interface for handling multiple channels of a single plane of Bruker imaging data.",
+        },
+        "MiniscopeConverter": {
+            "display_name": "Miniscope Imaging and Video",
+            "keywords": (
+                "ophys",
+                "optical electrophysiology",
+                "fluorescence",
+                "microscopy",
+                "two photon",
+                "one photon",
+                "voltage imaging",
+                "calcium imaging",
+                "video",
+            ),
+            "associated_suffixes": (".avi", ".csv", ".json", ".avi"),
+            "info": "Converter for handling both imaging and video recordings from Miniscope.",
         },
     }

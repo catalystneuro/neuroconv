@@ -1,7 +1,7 @@
 """Collection of all helper functions that require at least one external dependency (some being optional as well)."""
 
 from .importing import (
-    get_data_interfaces_summaries,
+    get_format_summaries,
     get_package,
     get_package_version,
     is_package_installed,

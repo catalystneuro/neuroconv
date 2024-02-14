@@ -23,8 +23,8 @@ class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
     display_name: Union[str, None] = None
-    keywords: Tuple[str] = []
-    associated_suffixes: Tuple[str] = []
+    keywords: Tuple[str] = tuple()
+    associated_suffixes: Tuple[str] = tuple()
     info: Union[str, None] = None
 
     data_interface_classes = None

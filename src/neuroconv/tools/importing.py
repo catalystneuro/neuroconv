@@ -128,17 +128,18 @@ def get_package(
     )
 
 
-def get_data_interfaces_summaries() -> Dict[str, Dict[str, Union[str, Tuple[str, ...], None]]]:
-    """Simple helper function for compiling high level summaries of all data interfaces."""
-    from ..datainterfaces import (
-        interface_list,  # Local scope import to avoid circularity
-    )
+def get_format_summaries() -> Dict[str, Dict[str, Union[str, Tuple[str, ...], None]]]:
+    """Simple helper function for compiling high level summaries of all format interfaces and converters."""
+    # Local scope import to avoid circularity
+    from ..converters import converter_list
+    from ..datainterfaces import interface_list
 
     summary_attribute_keys = ["display_name", "keywords", "associated_suffixes", "info"]
 
-    data_interface_summaries = {
+    combined_list = interface_list + converter_list
+    summaries = {
         interface.__name__: {key: getattr(interface, key) for key in summary_attribute_keys}
-        for interface in interface_list
+        for interface in combined_list
     }
 
-    return data_interface_summaries
+    return summaries
