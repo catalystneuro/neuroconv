@@ -338,6 +338,17 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             group_names_in_nwb = self.nwb_recording.get_property("group")
             np.testing.assert_array_equal(group_name_array, group_names_in_nwb)
 
+    def check_neo_suffixes_are_in_associated_suffixes(self):
+        if not hasattr(self.interface.recording_extractor, "neo_reader") or not hasattr(
+            self.interface.recording_extractor.neo_reader, "extensions"
+        ):
+            return
+
+        neo_suffixes = self.interface.recording_extractor.neo_reader.extensions
+        reformatted_suffixes = [f".{suffix}" for suffix in neo_suffixes]
+
+        assert all(suffix in self.interface.associated_suffixes for suffix in reformatted_suffixes)
+
     def check_interface_set_aligned_timestamps(self):
         self.setUpFreshInterface()
 
@@ -510,7 +521,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                         group_mode="by_shank",
                     )
 
-                self.check_neo_extensions_in_associated_suffixes()
+                self.check_neo_suffixes_are_in_associated_suffixes()
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
@@ -520,17 +531,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
-
-    def check_neo_suffixes_are_in_associated_suffixes(self):
-        if not hasattr(self.interface.recording_extractor, "neo_reader") or not hasattr(
-            self.interface.recording_extractor.neo_reader, "extensions"
-        ):
-            return
-
-        neo_suffixes = self.interface.recording_extractor.neo_reader.extensions
-        reformatted_suffixes = [f".{suffix}" for suffix in neo_suffixes]
-
-        assert all(suffix in self.interface.associated_suffixes for suffix in reformatted_suffixes)
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
