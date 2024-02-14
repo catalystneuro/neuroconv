@@ -58,6 +58,8 @@ jobs:
         run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
         run: pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf@dev
+      - name: Dev gallery - HDMF-ZARR
+        run : pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
       - name: Display installed packages and their sources
         run: |
