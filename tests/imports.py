@@ -1,8 +1,7 @@
 """
-This module is meant for the tests to be run as stand-alone to emulate a fresh import.
+This module is meant to be run stand-alone to emulate a fresh import, not detected automatically via pytest.
 
-Run them by using:
-pytest tests/import_structure.py::TestImportStructure::test_name
+Run them by calling: pytest tests/imports.py::TestImportStructure::{test_name}
 """
 
 from unittest import TestCase
@@ -45,6 +44,7 @@ class TestImportStructure(TestCase):
             "BaseTemporalAlignmentInterface",
             "BaseExtractorInterface",
             "run_conversion_from_yaml",
+            "get_format_summaries",
         ]
         assert sorted(current_structure) == sorted(expected_structure)
 
@@ -61,6 +61,7 @@ class TestImportStructure(TestCase):
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             "path_expansion",
             # Functions and classes imported on the __init__
+            "get_format_summaries",
             "get_package",
             "processes",
             "deploy_process",
