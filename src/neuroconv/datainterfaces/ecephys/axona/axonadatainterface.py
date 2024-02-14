@@ -1,3 +1,5 @@
+"""Collection of Axona interfaces."""
+
 from pynwb import NWBFile
 
 from .axona_utils import (
@@ -96,7 +98,11 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class AxonaUnitRecordingInterface(AxonaRecordingInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
+    """Primary data interface class for converting a AxonaRecordingExtractor."""
+
+    display_name = "Axona Units"
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona recording data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -119,6 +125,11 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 
 
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
+
+    display_name = "Axona LFP"
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona LFP data."
+
     ExtractorName = "NumpyRecording"
 
     @classmethod
@@ -139,7 +150,12 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
 
 
 class AxonaPositionDataInterface(BaseDataInterface):
-    """Primary data interface class for converting Axona position data"""
+    """Primary data interface class for converting Axona position data."""
+
+    display_name = "Axona Position"
+    keywords = ("position tracking",)
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona position data."
 
     @classmethod
     def get_source_schema(cls) -> dict:

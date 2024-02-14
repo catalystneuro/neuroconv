@@ -24,6 +24,8 @@ except ImportError:
 class BaseIcephysInterface(BaseExtractorInterface):
     """Primary class for all intracellular NeoInterfaces."""
 
+    keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
+
     ExtractorModuleName = "neo"
 
     @classmethod

@@ -19,6 +19,17 @@ from ...utils import (
 class BaseImagingExtractorInterface(BaseExtractorInterface):
     """Parent class for all ImagingExtractorInterfaces."""
 
+    keywords = (
+        "ophys",
+        "optical electrophysiology",
+        "fluorescence",
+        "microscopy",
+        "two photon",
+        "one photon",
+        "voltage imaging",
+        "calcium imaging",
+    )
+
     ExtractorModuleName = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):

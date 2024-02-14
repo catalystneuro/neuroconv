@@ -6,7 +6,7 @@ from importlib.metadata import version as importlib_version
 from importlib.util import find_spec
 from platform import processor, python_version
 from types import ModuleType
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from packaging import version
 
@@ -126,3 +126,19 @@ def get_package(
         f"\nThe required package'{package_name}' is not installed!\n"
         f"To install this package, please run\n\n\t{installation_instructions}\n"
     )
+
+
+def get_data_interfaces_summaries() -> Dict[str, Dict[str, Union[str, Tuple[str, ...], None]]]:
+    """Simple helper function for compiling high level summaries of all data interfaces."""
+    from ..datainterfaces import (
+        interface_list,  # Local scope import to avoid circularity
+    )
+
+    summary_attribute_keys = ["display_name", "keywords", "associated_suffixes", "info"]
+
+    data_interface_summaries = {
+        interface.__name__: {key: getattr(interface, key) for key in summary_attribute_keys}
+        for interface in interface_list
+    }
+
+    return data_interface_summaries

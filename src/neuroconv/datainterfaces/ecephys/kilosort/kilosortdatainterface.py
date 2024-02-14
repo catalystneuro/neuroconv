@@ -6,6 +6,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a KiloSortingExtractor from spikeinterface."""
 
     display_name = "KiloSort Sorting"
+    associated_suffixes = (".npy",)
     info = "Interface for KiloSort sorting data."
 
     def __init__(
