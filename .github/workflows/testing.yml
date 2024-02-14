@@ -44,9 +44,9 @@ jobs:
         run: pip install .
       - name: Run import tests
         run: |
-          pytest tests/imports.py::test_top_level
-          pytest tests/imports.py::test_tools
-          pytest tests/imports.py::test_datainterfaces
+          pytest tests/imports.py::TestImportStructure::test_top_level
+          pytest tests/imports.py::TestImportStructure::test_tools
+          pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
