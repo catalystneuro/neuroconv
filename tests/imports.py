@@ -58,16 +58,18 @@ class TestImportStructure(TestCase):
             "yaml_conversion_specification",  # Attached to namespace  by top __init__ call of NWBConverter
             # Sub-modules
             "importing",  # Attached to namespace by importing get_package
+            "hdmf",
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             "path_expansion",
+            "processes",
             # Functions and classes imported on the __init__
             "get_format_summaries",
             "get_package",
-            "processes",
+            "get_package_version",
+            "is_package_installed",
             "deploy_process",
             "LocalPathExpander",
             "get_module",
-            "hdmf",
         ]
         assert sorted(current_structure) == sorted(expected_structure)
 
