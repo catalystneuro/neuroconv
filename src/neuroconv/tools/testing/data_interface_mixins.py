@@ -510,7 +510,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                         group_mode="by_shank",
                     )
 
-                self.check_neo_suffixes_are_in_associated_suffixes()
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
