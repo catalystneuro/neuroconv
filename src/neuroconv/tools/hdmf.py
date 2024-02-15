@@ -1,10 +1,16 @@
 """Collection of modifications of HDMF functions that are to be tested/used on this repo until propagation upstream."""
 
 import math
+import warnings
 from typing import Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
+
+# Elevate any overflow warnings to trigger error, hopefully get full traceback too...
+# This is usually an indicator of something going terribly wrong with the estimation calculations and should be
+# avoided at all costs.
+warnings.filterwarnings(action="error", message="overflow encountered *")
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
