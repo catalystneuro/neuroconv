@@ -59,11 +59,12 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         ), f"buffer_gb ({buffer_gb}) must be greater than the chunk size ({chunk_bytes / 1e9})!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        maxshape = np.array(maxshape)
-
         # Early termination condition
         if math.prod(maxshape) * dtype.itemsize / 1e9 < buffer_gb:
             return tuple(maxshape)
+
+        # Note: must occur after taking `math.prod` of it in line above; otherwise it triggers an overflow warning
+        maxshape = np.array(maxshape)
 
         buffer_bytes = chunk_bytes
         axis_sizes_bytes = maxshape * dtype.itemsize
@@ -92,10 +93,10 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         # Original one-shot estimation has good performance for certain shapes
         chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
         chunk_scaling_factor = math.floor(chunk_to_buffer_ratio ** (1 / num_axes))
-        unpadded_buffer_shape = [
-            np.clip(a=int(x), a_min=chunk_shape[j], a_max=maxshape[j])
+        unpadded_buffer_shape = tuple(
+            int(np.clip(a=int(x), a_min=chunk_shape[j], a_max=maxshape[j]))
             for j, x in enumerate(chunk_scaling_factor * np.array(chunk_shape))
-        ]
+        )
 
         unpadded_buffer_bytes = math.prod(unpadded_buffer_shape) * dtype.itemsize
 
@@ -118,13 +119,14 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                 k3 = math.floor(target_buffer_bytes / buffer_bytes)
                 padded_buffer_shape[axis] *= k3
                 break
+        padded_buffer_shape = tuple(int(value) for value in padded_buffer_shape)  # To avoid overflow from math.prod
 
         padded_buffer_bytes = math.prod(padded_buffer_shape) * dtype.itemsize
 
         if padded_buffer_bytes >= unpadded_buffer_bytes:
-            return tuple(padded_buffer_shape)
+            return padded_buffer_shape
         else:
-            return tuple(unpadded_buffer_shape)
+            return unpadded_buffer_shape
 
 
 class SliceableDataChunkIterator(GenericDataChunkIterator):
