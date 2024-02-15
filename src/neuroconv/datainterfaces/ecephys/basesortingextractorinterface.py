@@ -172,9 +172,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
             else:
                 self.set_aligned_segment_timestamps(
-                    [
-                        segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
-                    ]
+                    [segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()]
                 )
         else:
             for sorting_segment in self.sorting_extractor._sorting_segments:
