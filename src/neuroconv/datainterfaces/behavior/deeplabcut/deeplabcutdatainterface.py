@@ -116,7 +116,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        timestamps : list, np.ndarray
+        aligned_timestamps : list, np.ndarray
             alternative timestamps vector.
         """
 

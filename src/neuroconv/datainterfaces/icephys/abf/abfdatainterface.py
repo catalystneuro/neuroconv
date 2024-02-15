@@ -168,6 +168,7 @@ class AbfInterface(BaseIcephysInterface):
             The relative starting times of each video.
             Outer list is over file paths (readers).
             Inner list is over segments of each recording.
+        stub_test : bool, default=False
         """
         number_of_files_from_starting_times = len(aligned_segment_starting_times)
         assert number_of_files_from_starting_times == len(self.readers_list), (
