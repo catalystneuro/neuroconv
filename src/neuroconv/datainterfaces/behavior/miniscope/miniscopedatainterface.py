@@ -44,7 +44,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         miniscope_config_files = natsort.natsorted(list(folder_path.glob(f"*/BehavCam*/{configuration_file_name}")))
         assert (
             miniscope_config_files
-        ), f"The configuration files ({configuration_file_name} files) are missing from '{self.folder_path}'."
+        ), f"The configuration files ({configuration_file_name} files) are missing from '{folder_path}'."
 
         behavcam_subfolders = list(folder_path.glob(f"*/BehavCam*/"))
         self._miniscope_config = read_miniscope_config(folder_path=str(behavcam_subfolders[0]))
