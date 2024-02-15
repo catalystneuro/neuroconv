@@ -9,10 +9,11 @@ from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
+    DeepDict,
     dict_deep_update,
     fill_defaults,
     get_base_schema,
-    get_schema_from_hdmf_class, DeepDict,
+    get_schema_from_hdmf_class,
 )
 
 
