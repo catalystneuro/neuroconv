@@ -210,8 +210,12 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         ----------
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        metadata: dict, optional
+            metadata info for constructing the nwb file.
+        compression: str, default: 'gzip'
+            The type of compression to use. Should be one of 'gzip', 'lzf'. If None, no compression is used.
+        compression_opts: int, optional
+
         """
 
         import pandas as pd

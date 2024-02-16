@@ -1,5 +1,4 @@
 from pathlib import Path
-from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
