@@ -7,6 +7,9 @@ from ....utils import FilePathType
 class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for ExtractSegmentationExtractor."""
 
+    help = "Interface for EXTRACT segmentation."
+    display_name = "EXTRACT Segmentation"
+
     def __init__(
         self,
         file_path: FilePathType,

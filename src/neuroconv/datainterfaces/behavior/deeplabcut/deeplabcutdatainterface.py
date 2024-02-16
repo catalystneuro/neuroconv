@@ -1,4 +1,3 @@
-from datetime import time
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -52,6 +51,8 @@ def write_subject_to_nwb(
 
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
+
+    display_name = "DeepLabCut"
 
     keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
 
@@ -114,7 +115,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        timestamps : list, np.ndarray
+        aligned_timestamps : list, np.ndarray
             alternative timestamps vector.
         """
 

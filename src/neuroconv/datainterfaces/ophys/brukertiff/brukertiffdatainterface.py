@@ -8,7 +8,10 @@ from ....utils.dict import DeepDict
 
 
 class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
-    """Data Interface for BrukerTiffMultiPlaneImagingExtractor."""
+    """Interface for Bruker multi-plane TIFF files using BrukerTiffMultiPlaneImagingExtractor from roiextractors."""
+
+    help = "Interface for Bruker multi-plane TIFF imaging data."
+    display_name = "Bruker Multi-Plane TIFF Imaging"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -172,6 +175,9 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
 class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for BrukerTiffSinglePlaneImagingExtractor."""
+
+    display_name = "Bruker Tiff Single-Plane TIFF Imaging"
+    help = "Read TIFF files from a Bruker Tiff Single-Plane Imaging dataset."
 
     @classmethod
     def get_source_schema(cls) -> dict:

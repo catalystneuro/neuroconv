@@ -1,4 +1,5 @@
 """Tool functions related to imports."""
+
 import sys
 from importlib import import_module
 from importlib.metadata import version as importlib_version
