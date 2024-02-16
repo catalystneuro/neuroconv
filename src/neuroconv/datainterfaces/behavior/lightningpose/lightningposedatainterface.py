@@ -187,6 +187,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             The description defining what the (0, 0) coordinate corresponds to.
         confidence_definition : str, optional
             The description of how the confidence was computed, e.g., 'Softmax output of the deep neural network'.
+        stub_test : bool, default: False
         """
         from ndx_pose import PoseEstimation, PoseEstimationSeries
 
