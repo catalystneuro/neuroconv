@@ -1,5 +1,5 @@
-Neuralynx data conversion
--------------------------
+Neuralynx sorting
+^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading neuralynx data.
 

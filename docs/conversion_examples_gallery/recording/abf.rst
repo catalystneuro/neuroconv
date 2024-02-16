@@ -1,5 +1,5 @@
-ABF data conversion
--------------------
+ABF
+---
 
 Install NeuroConv with the additional dependencies necessary for reading ABF data.
 

@@ -1,5 +1,5 @@
-Comma-Separated Values (CSV) files
-----------------------------------
+Comma-Separated Values (CSV)
+----------------------------
 
 Install NeuroConv. No extra dependencies are necessary for reading CSV.
 

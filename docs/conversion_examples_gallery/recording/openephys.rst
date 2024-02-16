@@ -1,5 +1,5 @@
-OpenEphys data conversion
--------------------------
+OpenEphys
+^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading OpenEphys data.
 

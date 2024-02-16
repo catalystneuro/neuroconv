@@ -1,5 +1,5 @@
-Spike2 data conversion
-----------------------
+Spike2
+^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Spike2 data by CED.
 

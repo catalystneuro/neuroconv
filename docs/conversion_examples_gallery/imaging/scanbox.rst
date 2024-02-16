@@ -1,5 +1,5 @@
-Scanbox data conversion
------------------------
+Scanbox
+^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Scanbox data.
 

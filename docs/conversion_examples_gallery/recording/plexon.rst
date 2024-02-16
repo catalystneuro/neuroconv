@@ -1,5 +1,5 @@
-Plexon Recording Conversion
----------------------------
+Plexon
+^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Plexon acquisition data.
 

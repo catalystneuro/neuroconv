@@ -1,5 +1,5 @@
-KiloSort data conversion
-------------------------
+KiloSort
+^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading kilosort data.
 

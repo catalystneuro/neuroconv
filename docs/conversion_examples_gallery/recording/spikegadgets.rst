@@ -1,5 +1,5 @@
-Spikegadgets data conversion
-----------------------------
+Spikegadgets
+^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Spikegadgets data.
 

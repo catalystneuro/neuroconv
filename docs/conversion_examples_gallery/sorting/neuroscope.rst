@@ -1,5 +1,5 @@
-NeuroScope sorting data conversion
-----------------------------------
+NeuroScope sorting
+^^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading neuroscope data.
 

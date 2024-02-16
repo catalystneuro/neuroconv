@@ -1,5 +1,5 @@
 suite2p
--------
+^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading suite2p data.
 

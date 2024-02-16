@@ -1,5 +1,5 @@
-MEArec conversion
------------------
+MEArec
+^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading MEArec data.
 

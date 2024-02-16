@@ -1,5 +1,5 @@
-Audio data conversion
----------------------
+Audio
+-----
 
 Install NeuroConv with the additional dependencies necessary for reading audio data.
 

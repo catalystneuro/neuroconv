@@ -1,6 +1,5 @@
-Blackrock data conversion
--------------------------
-
+Blackrock recording
+^^^^^^^^^^^^^^^^^^^
 Install NeuroConv with the additional dependencies necessary for reading Blackrock data.
 
 .. code-block:: bash

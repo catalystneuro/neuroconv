@@ -1,5 +1,5 @@
-European Data Format (EDF) conversion
--------------------------------------
+European Data Format (EDF)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading EDF data.
 

@@ -1,5 +1,5 @@
-SLEAP data conversion
----------------------
+SLEAP
+-----
 
 Install NeuroConv with the additional dependencies necessary for reading SLEAP data.
 

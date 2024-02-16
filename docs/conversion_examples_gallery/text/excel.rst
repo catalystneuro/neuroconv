@@ -1,5 +1,5 @@
-Excel data conversion
----------------------
+Excel
+-----
 
 Install NeuroConv with the additional dependencies necessary for reading Excel data.
 
@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading Excel d
 
     pip install neuroconv[excel]
 
-Convert Excel data to NWB using
+Convert Excel files (.xls, .xlsx) to NWB using
 :py:class:`~neuroconv.datainterfaces.text.excel.exceltimeintervalsinterface.ExcelTimeIntervalsInterface`.
 
 The Excel file must contain a header row that contains at least the column names "start_time" and "stop_time".

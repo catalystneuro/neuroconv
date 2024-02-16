@@ -1,5 +1,5 @@
-NeuroScope data conversion
---------------------------
+NeuroScope
+^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading NeuroScope data.
 

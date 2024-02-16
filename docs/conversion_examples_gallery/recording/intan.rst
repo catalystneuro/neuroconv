@@ -1,6 +1,5 @@
-Intan data conversion
----------------------
-
+Intan
+^^^^^
 Install NeuroConv with the additional dependencies necessary for reading Intan data.
 
 .. code-block:: bash

@@ -1,5 +1,5 @@
-Video data conversion (multimedia formats)
-------------------------------------------
+Video (multimedia formats)
+--------------------------
 
 Install NeuroConv with the additional dependencies necessary for reading multimedia data.
 
@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading multime
 
     pip install neuroconv[video]
 
-This interface can handle conversions from avi, mov, mp4, wmv, flv and most FFmpeg_ supported formats to NWB using the
+This interface can handle conversions from .avi, .mov, .mp4, .wmv, .flv and most FFmpeg_-supported formats to NWB using the
 :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface` class.
 
 .. _FFmpeg: https://ffmpeg.org/
