@@ -1,4 +1,3 @@
-from datetime import time
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -116,7 +115,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        timestamps : list, np.ndarray
+        aligned_timestamps : list, np.ndarray
             alternative timestamps vector.
         """
 

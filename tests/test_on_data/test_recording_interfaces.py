@@ -3,7 +3,6 @@ from platform import python_version
 from sys import platform
 from unittest import skip, skipIf
 
-import jsonschema
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
