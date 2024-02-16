@@ -1,7 +1,7 @@
 import json
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import NWBMetaDataEncoder, get_schema_from_hdmf_class
+from ....utils.json_schema import NWBMetaDataEncoder
 from ....utils.types import FilePathType
 
 
