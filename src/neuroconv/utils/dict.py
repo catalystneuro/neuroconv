@@ -22,7 +22,7 @@ class NoDatesSafeLoader(yaml.SafeLoader):
         Remove implicit resolvers for a particular tag.
 
         Takes care not to modify resolvers in super classes.
-        Solution taken from https://stackoverflow.com/a/37958106/11483674
+        Solution taken from https://stackoverflow.com/a/37958106
         We want to load datetimes as strings, not dates, because we go on to serialise as jsonwhich doesn't have the
         advanced types of yaml, and leads to incompatibilities down the track.
         """
