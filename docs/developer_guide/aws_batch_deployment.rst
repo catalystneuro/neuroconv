@@ -11,7 +11,7 @@ Semi-automated Deployment of NeuroConv on AWS Batch
 Step 1: Transfer data to Elastic File System (EFS)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The nice thing about using EFS is that we are only ever billed for our literal amount of disk storage over time, and do not need to specify a particular fixed allocation or scaling stategy.
+The nice thing about using EFS is that we are only ever billed for our literal amount of disk storage over time, and do not need to specify a particular fixed allocation or scaling strategy.
 
 It is also relatively easy to mount across multiple AWS Batch jobs simultaneously.
 
@@ -27,7 +27,7 @@ To easily transfer data from a Google Drive (or theoretically any backend suppor
 
     All path references must point to `/mnt/data/` as the base in order to persist across jobs.
 
-.. code:
+.. code: python
 
     import os
     from datetime import datetime
@@ -61,10 +61,10 @@ An example `RCLONE_COMMAND` for a drive named 'MyDrive' and the GIN testing data
 
 .. code:
 
-    RCLONE_COMMAND = f"sync MyDrive:/ephy_testing_data/spikeglx/Noise4Sam_g0 /mnt/data/Noise4Sam_g0"
+    RCLONE_COMMAND = "sync MyDrive:/ephy_testing_data/spikeglx/Noise4Sam_g0 /mnt/data/Noise4Sam_g0"
 
 
-Step 2: Run the YAML Conversion Specificattion
+Step 2: Run the YAML Conversion Specification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Continuing the example above, if we have the YAML file `test_batch.yml`
