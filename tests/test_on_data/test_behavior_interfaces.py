@@ -18,13 +18,13 @@ from pynwb.behavior import Position, SpatialSeries
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
+    FacemapInterface,
     FicTracDataInterface,
     LightningPoseDataInterface,
     MiniscopeBehaviorInterface,
     NeuralynxNvtInterface,
     SLEAPInterface,
     VideoInterface,
-    FacemapInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,

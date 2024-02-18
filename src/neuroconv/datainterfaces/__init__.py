@@ -1,6 +1,7 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.facemap.facemapdatainterface import FacemapInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
@@ -9,7 +10,6 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
-from .behavior.facemap.facemapdatainterface import FacemapInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface

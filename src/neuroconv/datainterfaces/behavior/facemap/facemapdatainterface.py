@@ -3,7 +3,7 @@ from typing import Optional
 import h5py
 import numpy as np
 from pynwb.base import TimeSeries
-from pynwb.behavior import EyeTracking, SpatialSeries, PupilTracking
+from pynwb.behavior import EyeTracking, PupilTracking, SpatialSeries
 from pynwb.file import NWBFile
 
 from ..video.video_utils import get_video_timestamps
@@ -113,4 +113,3 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         """
 
         self.add_pupil_data(nwbfile=nwbfile)
-
