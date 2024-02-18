@@ -9,6 +9,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
+from .behavior.facemap.facemapdatainterface import FacemapInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -155,6 +156,7 @@ interface_list = [
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
+    FacemapInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -183,11 +185,13 @@ interfaces_by_category = dict(
     },
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
+        AudioInterface=AudioInterface,
         Video=VideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
+        FacemapInterface=FacemapInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

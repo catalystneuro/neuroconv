@@ -24,6 +24,7 @@ from neuroconv.datainterfaces import (
     NeuralynxNvtInterface,
     SLEAPInterface,
     VideoInterface,
+    FacemapInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
