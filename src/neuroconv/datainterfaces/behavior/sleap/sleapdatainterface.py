@@ -14,9 +14,9 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     """Data interface for SLEAP datasets."""
 
     display_name = "SLEAP"
-    help = "Interface for SLEAP pose estimation datasets."
-
-    keywords = BaseTemporalAlignmentInterface.keywords + ["SLEAP", "pose estimation"]
+    keywords = ("pose estimation", "tracking", "video")
+    associated_suffixes = (".slp", ".mp4")
+    info = "Interface for SLEAP pose estimation datasets."
 
     def __init__(
         self,

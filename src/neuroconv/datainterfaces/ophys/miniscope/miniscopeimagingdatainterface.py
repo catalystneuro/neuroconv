@@ -12,7 +12,9 @@ from ....utils import DeepDict, FolderPathType, dict_deep_update
 class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for MiniscopeImagingExtractor."""
 
-    help = "Interface for Miniscope imaging data."
+    display_name = "Miniscope Imaging"
+    associated_suffixes = (".avi", ".csv", ".json")
+    info = "Interface for Miniscope imaging data."
 
     def __init__(self, folder_path: FolderPathType):
         """

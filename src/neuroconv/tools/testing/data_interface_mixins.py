@@ -112,6 +112,7 @@ class DataInterfaceTestMixin:
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
+
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
@@ -292,7 +293,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 file_path=nwbfile_path, electrical_series_name=electrical_series_name
             )
 
-            ## Set channel_ids right for comparison
+            # Set channel_ids right for comparison
             # Neuroconv ALWAYS writes a string property `channel_name`` to the electrode table.
             # And the NwbRecordingExtractor always uses `channel_name` property as the channel_ids
             # `check_recordings_equal` compares ids so we need to rename the channels or the original recordings
@@ -323,7 +324,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
-            ## Compare channel groups
+            # Compare channel groups
             # Neuroconv ALWAYS writes a string property `group_name` to the electrode table.
             # The NwbRecordingExtractor takes the `group_name` from the electrode table and sets it `group` property
             if "group_name" in properties_in_the_recording:
@@ -508,6 +509,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                         generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
                         group_mode="by_shank",
                     )
+
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()

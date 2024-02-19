@@ -44,7 +44,8 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     """Interface for Suite2p segmentation data."""
 
     display_name = "Suite2p Segmentation"
-    help = "Interface for Suite2p segmentation."
+    associated_suffixes = (".npy",)
+    info = "Interface for Suite2p segmentation."
 
     @classmethod
     def get_available_planes(cls, folder_path: FolderPathType) -> dict:
