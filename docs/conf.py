@@ -29,7 +29,7 @@ html_static_path = ["_static"]
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'favicon.ico'
+html_favicon = '_static/favicon.ico'
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
 # html_css_files = [

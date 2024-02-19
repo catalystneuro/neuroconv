@@ -21,6 +21,11 @@ from ....utils import (
 class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for Lightning Pose datasets."""
 
+    display_name = "Lightning Pose"
+    keywords = ("pose estimation", "video")
+    associated_suffixes = (".csv", ".mp4")
+    info = "Interface for handling a single stream of lightning pose data."
+
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
@@ -187,6 +192,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             The description defining what the (0, 0) coordinate corresponds to.
         confidence_definition : str, optional
             The description of how the confidence was computed, e.g., 'Softmax output of the deep neural network'.
+        stub_test : bool, default: False
         """
         from ndx_pose import PoseEstimation, PoseEstimationSeries
 

@@ -8,7 +8,8 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for MicroManagerTiffImagingExtractor."""
 
     display_name = "Micro-Manager TIFF Imaging"
-    help = "Interface for Micro-Manager TIFF imaging data."
+    associated_suffixes = (".ome", ".tif", ".json")
+    info = "Interface for Micro-Manager TIFF imaging data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
