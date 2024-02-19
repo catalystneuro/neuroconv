@@ -115,3 +115,79 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
             assert written_data.compressor == numcodecs.GZip(level=1)
 
         assert_array_equal(x=integer_array, y=written_data[:])
+
+
+@pytest.mark.parametrize(
+    "case_name,iterator,iterator_options",
+    [
+        ("unwrapped", lambda x: x, dict()),
+        ("generic", SliceableDataChunkIterator, dict()),
+        ("classic", DataChunkIterator, dict(iter_axis=1, buffer_size=30_000)),
+        # Need to hardcode buffer size in classic case or else it takes forever...
+    ],
+)
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_time_series_timestamps_linkage(
+    tmpdir: Path,
+    integer_array: np.ndarray,
+    case_name: str,
+    iterator: callable,
+    iterator_options: dict,
+    backend: Literal["hdf5", "zarr"],
+):
+    data_1 = iterator(integer_array, **iterator_options)
+    data_2 = iterator(integer_array, **iterator_options)
+
+    timestamps_array = np.linspace(start=0.0, stop=1.0, num=data_array.shape[0])
+    timestamps = iterator(timestamps_array)
+    
+    nwbfile = mock_NWBFile()
+    time_series_1 = mock_TimeSeries(name="TestTimeSeries1", data=data_1, timestamps=timestamps)
+    nwbfile.add_acquisition(time_series1)
+    
+    time_series_2 = mock_TimeSeries(name="TestTimeSeries2", data=data_2, timestamps=time_series_1)
+    nwbfile.add_acquisition(time_series2)
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+    dataset_configuration_1 = backend_configuration.dataset_configurations["acquisition/TestTimeSeries1/data"]
+    dataset_configuration_2 = backend_configuration.dataset_configurations["acquisition/TestTimeSeries2/data"]
+    timestamps_configuration_1 = backend_configuration.dataset_configurations["acquisition/TestTimeSeries1/timestamps"]
+    assert "acquisition/TestTimeSeries2/timestamps" not in backend_configuration.dataset_configurations
+
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    if case_name != "unwrapped":  # TODO: eventually, even this case will be buffered automatically
+        assert nwbfile.acquisition["TestTimeSeries1"].data
+        assert nwbfile.acquisition["TestTimeSeries2"].data
+        assert nwbfile.acquisition["TestTimeSeries1"].timestamps
+
+    nwbfile_path = str(tmpdir / f"test_time_series_timestamps_linkage_{case_name}_data.nwb.{backend}")
+    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
+        written_nwbfile = io.read()
+
+        written_data_1 = written_nwbfile.acquisition["TestTimeSeries1"].data
+        if backend == "hdf5":
+            assert written_data_1.compression == "gzip"
+        elif backend == "zarr":
+            assert written_data_1.compressor == numcodecs.GZip(level=1)
+        assert_array_equal(x=integer_array, y=written_data_1[:])
+
+        written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
+        if backend == "hdf5":
+            assert written_data_2.compression == "gzip"
+        elif backend == "zarr":
+            assert written_data_2.compressor == numcodecs.GZip(level=1)
+        assert_array_equal(x=integer_array, y=written_data_2[:])
+
+        timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
+        if backend == "hdf5":
+            assert timestamps_1.compression == "gzip"
+        elif backend == "zarr":
+            assert timestamps_1.compressor == numcodecs.GZip(level=1)
+        assert_array_equal(x=timestamps_array, y=timestamps_1[:])
+
+        timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
+        assert timestamps_2 == timestamps_1
