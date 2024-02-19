@@ -140,11 +140,11 @@ def test_time_series_timestamps_linkage(
 
     timestamps_array = np.linspace(start=0.0, stop=1.0, num=data_array.shape[0])
     timestamps = iterator(timestamps_array)
-    
+
     nwbfile = mock_NWBFile()
     time_series_1 = mock_TimeSeries(name="TestTimeSeries1", data=data_1, timestamps=timestamps)
     nwbfile.add_acquisition(time_series1)
-    
+
     time_series_2 = mock_TimeSeries(name="TestTimeSeries2", data=data_2, timestamps=time_series_1)
     nwbfile.add_acquisition(time_series2)
 
