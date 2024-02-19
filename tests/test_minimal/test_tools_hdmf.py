@@ -53,7 +53,7 @@ def test_sliceable_data_chunk_iterator():
 
 
 def test_sliceable_data_chunk_iterator_edge_case_1():
-    """Caused in error prior to https://github.com/catalystneuro/neuroconv/pull/735."""
+    """Caused an error prior to https://github.com/catalystneuro/neuroconv/pull/735."""
     shape = (3600, 304, 608)
     buffer_gb = 0.5
 
