@@ -9,8 +9,9 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
     Using the :py:class:`~spikeinterface.extractors.BiocamRecordingExtractor`.
     """
 
-    help = "Interface for Biocam recording data."
     display_name = "Biocam Recording"
+    associated_suffixes = (".bwr",)
+    info = "Interface for Biocam recording data."
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """

@@ -5,8 +5,9 @@ from ....utils import FilePathType
 class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for SimaSegmentationExtractor."""
 
-    help = "Interface for SIMA segmentation."
     display_name = "SIMA Segmentation"
+    associated_suffixes = (".sima",)
+    info = "Interface for SIMA segmentation."
 
     def __init__(self, file_path: FilePathType, sima_segmentation_label: str = "auto_ROIs"):
         """

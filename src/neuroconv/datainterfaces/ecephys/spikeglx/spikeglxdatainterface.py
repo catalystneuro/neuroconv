@@ -17,11 +17,10 @@ from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-    help = "Interface for SpikeGLX recording data."
     display_name = "SpikeGLX Recording"
-    keywords = BaseRecordingExtractorInterface.keywords + [
-        "Neuropixels",
-    ]
+    keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
+    associated_suffixes = (".imec{probe_number}", ".ap", ".lf", ".meta", ".bin")
+    info = "Interface for SpikeGLX recording data."
 
     ExtractorName = "SpikeGLXRecordingExtractor"
 

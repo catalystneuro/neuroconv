@@ -3,7 +3,7 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, Tuple, Union
 
 from jsonschema.validators import validate
 from pynwb import NWBFile
@@ -20,7 +20,10 @@ from .utils.dict import DeepDict
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
-    keywords: List[str] = []
+    display_name: Union[str, None] = None
+    keywords: Tuple[str] = tuple()
+    associated_suffixes: Tuple[str] = tuple()
+    info: Union[str, None] = None
 
     @classmethod
     def get_source_schema(cls):

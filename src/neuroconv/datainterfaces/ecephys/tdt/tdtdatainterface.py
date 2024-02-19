@@ -1,5 +1,3 @@
-from typing import Optional
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.types import FolderPathType
 
@@ -8,7 +6,8 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Tucker-Davis Technologies (TDT) data."""
 
     display_name = "TDT Recording"
-    help = "Interface for TDT recording data."
+    associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
+    info = "Interface for TDT recording data."
 
     def __init__(
         self,

@@ -6,7 +6,6 @@ from pynwb import NWBFile
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
-    FilePathType,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
@@ -23,6 +22,8 @@ except ImportError:
 
 class BaseIcephysInterface(BaseExtractorInterface):
     """Primary class for all intracellular NeoInterfaces."""
+
+    keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
 
     ExtractorModuleName = "neo"
 
