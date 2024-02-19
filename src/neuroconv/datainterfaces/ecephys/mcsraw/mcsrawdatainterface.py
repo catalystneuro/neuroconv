@@ -9,8 +9,9 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     Using the :py:class:`~spikeinterface.extractors.MCSRawRecordingExtractor`.
     """
 
-    help = "Interface for MCSRaw recording data."
     display_name = "MCSRaw Recording"
+    associated_suffixes = (".raw",)
+    info = "Interface for MCSRaw recording data."
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """

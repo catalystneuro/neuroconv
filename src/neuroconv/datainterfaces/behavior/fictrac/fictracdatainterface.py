@@ -18,15 +18,15 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for FicTrac datasets."""
 
     display_name = "FicTrac"
-    help = "Interface for FicTrac .dat files."
-
-    keywords = [
+    keywords = (
         "fictrack",
         "visual tracking",
         "fictive path",
         "spherical treadmill",
         "visual fixation",
-    ]
+    )
+    associated_suffixes = (".dat",)
+    info = "Interface for FicTrac .dat files."
 
     timestamps_column = 21
     # Columns in the .dat binary file with the data. The full description of the header can be found in:
@@ -210,8 +210,12 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         ----------
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        metadata: dict, optional
+            metadata info for constructing the nwb file.
+        compression: str, default: 'gzip'
+            The type of compression to use. Should be one of 'gzip', 'lzf'. If None, no compression is used.
+        compression_opts: int, optional
+
         """
 
         import pandas as pd
