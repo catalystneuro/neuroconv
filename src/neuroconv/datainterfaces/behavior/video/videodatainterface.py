@@ -20,6 +20,12 @@ from ....utils import get_base_schema, get_schema_from_hdmf_class
 class VideoInterface(BaseDataInterface):
     """Data interface for writing videos as ImageSeries."""
 
+    display_name = "Video"
+    keywords = ("movie", "natural behavior", "tracking")
+    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
+    # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
+    info = "Interface for handling standard video file formats."
+
     def __init__(self, file_paths: list, verbose: bool = False):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.

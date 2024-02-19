@@ -26,6 +26,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     Uses :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`.
     """
 
+    display_name = "OpenEphys Binary Recording"
+    associated_suffixes = (".dat", ".oebin", ".npy")
+    info = "Interface for converting binary OpenEphys recording data."
+
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod

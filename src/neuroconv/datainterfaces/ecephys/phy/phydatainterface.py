@@ -10,8 +10,9 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     :py:class:`~spikeinterface.extractors.PhySortingExtractor`.
     """
 
-    help = "Interface for Phy sorting data."
     display_name = "Phy Sorting"
+    associated_suffixes = (".npy",)
+    info = "Interface for Phy sorting data."
 
     def __init__(
         self,
