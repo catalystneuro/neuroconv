@@ -26,7 +26,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
         # avoided at all costs.
         warnings.filterwarnings(action="error", message="overflow encountered *")
-        
+
         assert chunk_mb > 0.0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
         # Eventually, Pydantic validation can handle this validation for us
 
@@ -53,7 +53,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
         # avoided at all costs.
         warnings.filterwarnings(action="error", message="overflow encountered *")
-        
+
         num_axes = len(maxshape)
         chunk_bytes = math.prod(chunk_shape) * dtype.itemsize
 
