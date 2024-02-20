@@ -24,17 +24,15 @@ def configure_backend(
         # TODO: update buffer shape in iterator, if present
 
         nwbfile_object = nwbfile_objects[object_id]
+        is_dataset_linked = isinstance(nwbfile_object.fields.get(dataset_name), TimeSeries)
         # Table columns
         if isinstance(nwbfile_object, Data):
             nwbfile_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
         # TimeSeries data or timestamps
-        elif isinstance(nwbfile_object, TimeSeries) and not isinstance(
-            nwbfile_object.fields.get(dataset_name), TimeSeries
-        ):
-            # print(f"here: \n\t{nwbfile_object.name=}\n\n\t\t{dataset_name=}")
+        elif isinstance(nwbfile_object, TimeSeries) and not is_dataset_linked:
             nwbfile_object.set_data_io(dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs)
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
-        elif isinstance(nwbfile_object, TimeSeries) and isinstance(nwbfile_object.fields.get(dataset_name), TimeSeries):
+        elif isinstance(nwbfile_object, TimeSeries) and is_dataset_linked:
             continue
         # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
         else:
