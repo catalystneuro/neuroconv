@@ -55,14 +55,6 @@ To install the current unreleased `main` branch (requires `git` to be installed 
 pip install git+https://github.com/catalystneuro/neuroconv.git@main
 ```
 
-To install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs), run:
-
-```shell
-git clone https://github.com/catalystneuro/neuroconv
-cd neuroconv
-pip install -e .
-```
-
 NeuroConv also supports a variety of extra dependencies that can be specified inside square brackets, such as
 
 ```shell
