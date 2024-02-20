@@ -85,7 +85,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                     for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
                         sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
                     return tuple(sub_square_buffer_shape)
-            elif num_axes == 1 and axis_sizes_bytes[0] > target_buffer_bytes:
+            elif num_axes == 1:
                 # Handle the case where the single axis is too large to fit in the buffer
                 k1 = math.floor(target_buffer_bytes / chunk_bytes)
                 return (k1 * chunk_shape[0],)
