@@ -7,11 +7,6 @@ from typing import Tuple
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 
-# Elevate any overflow warnings to trigger error, hopefully get full traceback too...
-# This is usually an indicator of something going terribly wrong with the estimation calculations and should be
-# avoided at all costs.
-warnings.filterwarnings(action="error", message="overflow encountered *")
-
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> Tuple[int]:
@@ -27,6 +22,11 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
         Keeps the dimensional ratios of the original data.
         """
+        # Elevate any overflow warnings to trigger error.
+        # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
+        # avoided at all costs.
+        warnings.filterwarnings(action="error", message="overflow encountered *")
+        
         assert chunk_mb > 0.0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
         # Eventually, Pydantic validation can handle this validation for us
 
@@ -49,6 +49,11 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     def estimate_default_buffer_shape(
         buffer_gb: float, chunk_shape: Tuple[int, ...], maxshape: Tuple[int, ...], dtype: np.dtype
     ) -> Tuple[int, ...]:
+        # Elevate any overflow warnings to trigger error.
+        # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
+        # avoided at all costs.
+        warnings.filterwarnings(action="error", message="overflow encountered *")
+        
         num_axes = len(maxshape)
         chunk_bytes = math.prod(chunk_shape) * dtype.itemsize
 
