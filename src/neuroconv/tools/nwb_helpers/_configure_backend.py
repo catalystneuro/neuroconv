@@ -31,7 +31,6 @@ def configure_backend(
         elif isinstance(nwbfile_object, TimeSeries) and not isinstance(
             nwbfile_object.fields.get(dataset_name), TimeSeries
         ):
-            # print(f"here: \n\t{nwbfile_object.name=}\n\n\t\t{dataset_name=}")
             nwbfile_object.set_data_io(dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs)
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(nwbfile_object, TimeSeries) and isinstance(nwbfile_object.fields.get(dataset_name), TimeSeries):
