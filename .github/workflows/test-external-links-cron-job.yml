@@ -1,6 +1,7 @@
 name: Testing External Links Cron Job
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
 
