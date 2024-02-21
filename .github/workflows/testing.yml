@@ -129,17 +129,6 @@ jobs:
         name: Download behavior dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
-      - name: Check for Codecov Token
-        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        run: |
-          if [ -z "${{ secrets.CODECOV_TOKEN }}" ]; then
-            echo "Codecov token is missing"
-            exit 1
-          else
-            echo "Codecov token is available"
-          fi
-        shell: bash
-
       - name: Run full pytest with coverage
         run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
