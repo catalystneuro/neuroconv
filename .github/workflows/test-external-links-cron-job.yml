@@ -20,4 +20,6 @@ jobs:
       - name: Install package for API docs
         run: pip install .[docs]
       - name: Test External Links
+      # This command runs Sphinx's linkcheck with a configuration override to ensure no links are ignored during the check.
+      # The -D option here explicitly sets linkcheck_ignore to an empty list, overriding any ignore patterns set in conf.py.
         run: sphinx-build -b linkcheck -D linkcheck_ignore=[] ./docs ./docs/_build/  # The -D overrides the conf.py file to ignore the linkcheck_ignore list
