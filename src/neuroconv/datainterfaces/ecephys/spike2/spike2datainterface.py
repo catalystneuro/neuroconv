@@ -40,8 +40,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
-        Initialize reading of Spike2 file. CEDRecordingInterface will soon be deprecated. Please use
-        Spike2RecordingInterface instead.
+        Initialize reading of Spike2 file.
 
         Parameters
         ----------
