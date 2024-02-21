@@ -2,3 +2,4 @@ include *.yml
 include *.json
 include src/neuroconv/schemas/*
 include src/neuroconv/tools/testing/_path_expander_demo_ibl_filepaths.txt
+include docs/img/neuroconv_logo.png
