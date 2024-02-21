@@ -36,25 +36,35 @@ Features:
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
 ## Installation
-To install the latest stable release of **neuroconv** though PyPI, type:
+We always recommend installing and running Python packages in a clean environment. One way to do this is via [conda environments](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#activating-an-environment):
+
+```shell
+conda create --name <give the environment a name> --python <choose a version of Python to use>
+conda activate <environment name>
+```
+
+To install the latest stable release of **neuroconv** though PyPI, run:
+
 ```shell
 pip install neuroconv
 ```
 
-For more flexibility we recommend installing the latest version directly from GitHub. The following commands create an environment with all the required dependencies and the latest updates:
+To install the current unreleased `main` branch (requires `git` to be installed in your environment, such was via `conda install git`), run:
 
-```shell
-git clone https://github.com/catalystneuro/neuroconv
-cd neuroconv
-conda env create -f make_environment.yml
-conda activate neuroconv_environment
-```
-Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs).
-
-Finally, if you prefer to avoid `conda` altogether, the following commands provide a clean installation within the current environment:
 ```shell
 pip install git+https://github.com/catalystneuro/neuroconv.git@main
 ```
+
+NeuroConv also supports a variety of extra dependencies that can be specified inside square brackets, such as
+
+```shell
+pip install neuroconv[dandi]
+```
+
+which will then install extra dependencies related to usage of the DANDI CLI (such as automatic upload to the [DANDI Archive](https://www.dandiarchive.org/)).
+
+You can read more about these options in the main [installation guide](https://neuroconv.readthedocs.io/en/main/user_guide/datainterfaces.html#installation).
+
 
 ## Documentation
 See our [ReadTheDocs page](https://neuroconv.readthedocs.io/en/main/) for full documentation, including a gallery of all supported formats.
