@@ -57,6 +57,7 @@ html_theme_options = {
 }
 
 linkcheck_anchors = False
+linkcheck_ignore = ["https://buzsakilab.com/wp/"]   # Ignoring because their ssl certificate is expired
 
 # --------------------------------------------------
 # Extension configuration
