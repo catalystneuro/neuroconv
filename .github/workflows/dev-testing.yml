@@ -43,8 +43,8 @@ jobs:
 
 
 
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install --no-cache-dir -e .[full,test]
+      - name: Install full requirements
+        run: pip install --no-cache-dir .[full,test]
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
