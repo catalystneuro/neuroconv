@@ -71,7 +71,7 @@ class BaseDataInterface(ABC):
 
     def run_conversion(
         self,
-        nwbfile_path: str,
+        nwbfile_path: Optional[str] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
