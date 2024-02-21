@@ -61,8 +61,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`.
     """
 
-    help = "Interface for Intan recording data."
     display_name = "Intan Recording"
+    associated_suffixes = (".rhd", ".rhs")
+    info = "Interface for Intan recording data."
 
     def __init__(
         self,

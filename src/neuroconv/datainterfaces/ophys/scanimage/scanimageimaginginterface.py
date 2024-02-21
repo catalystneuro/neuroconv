@@ -11,9 +11,11 @@ from ....utils import FilePathType
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
     """Interface for ScanImage TIFF files."""
 
-    ExtractorName = "ScanImageTiffImagingExtractor"
-    help = "Interface for ScanImage TIFF files."
     display_name = "ScanImage Imaging"
+    associated_suffixes = (".tif",)
+    info = "Interface for ScanImage TIFF files."
+
+    ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:

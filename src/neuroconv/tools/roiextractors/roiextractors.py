@@ -249,6 +249,9 @@ def add_imaging_plane(
         The metadata in the nwb conversion tools format.
     imaging_plane_name: str
         The name of the imaging plane to be added.
+    imaging_plane_index: int, optional
+
+
     Returns
     -------
     NWBFile
@@ -359,6 +362,9 @@ def add_photon_series(
     parent_container: {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
         When 'processing/ophys' is chosen, the photon series is added to ``nwbfile.processing['ophys']``.
+    iterator_type: str, default: 'v2'
+        The type of iterator to use when adding the photon series to the NWB file.
+    iterator_options: dict, optional
 
     Returns
     -------
@@ -1219,10 +1225,6 @@ def write_segmentation(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-    buffer_size : int, default: 10
-        The buffer size in GB.
-    plane_num : int, default: 0
-        The plane number to be extracted.
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
@@ -1244,6 +1246,10 @@ def write_segmentation(
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
         Defaults to 'image'.
+    iterator_options: dict, optional
+        A dictionary with options for the internal iterators that process the data.
+    compression_options: dict, optional
+        A dictionary with options for the internal compression of the data.
     """
     assert (
         nwbfile_path is None or nwbfile is None

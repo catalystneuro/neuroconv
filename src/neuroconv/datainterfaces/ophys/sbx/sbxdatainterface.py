@@ -5,8 +5,9 @@ from ....utils import FilePathType
 class SbxImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for SbxImagingExtractor."""
 
-    help = "Interface for Scanbox imaging data."
     display_name = "Scanbox Imaging"
+    associated_suffixes = (".sbx",)
+    info = "Interface for Scanbox imaging data."
 
     def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
         """

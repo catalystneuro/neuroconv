@@ -13,8 +13,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
-    help = "Interface for Neuralynx recording data."
     display_name = "Neuralynx Recording"
+    associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
+    info = "Interface for Neuralynx recording data."
 
     @classmethod
     def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
@@ -85,6 +86,10 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    display_name = "Neuralynx Sorting"
+    associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
+    info = "Interface for Neuralynx sorting data."
+
     def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
         """_summary_
 
