@@ -111,21 +111,3 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 new_recording.get_times(segment_index=segment_index)
                 for segment_index in range(self._number_of_segments)
             ]
-
-
-# include for backwards compatibility
-class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
-    """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
-
-    ExtractorName = "SpikeGLXRecordingExtractor"
-
-    def __init__(
-        self,
-        file_path: FilePathType,
-        verbose: bool = True,
-        es_key: str = "ElectricalSeriesLF",
-    ):
-        warnings.warn(
-            "SpikeGLXLFPExtractor will be deprecated. Use SpikeGLXRecordingExtractor instead.", DeprecationWarning
-        )
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
