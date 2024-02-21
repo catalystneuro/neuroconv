@@ -8,14 +8,14 @@ on:
 jobs:
 
   run-daily-tests:
-    uses: ./.github/workflows/testing.yml@main
+    uses: ./.github/workflows/testing.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
 
   run-daily-doc-link-checks:
-    uses: ./.github/workflows/test-external-links.yml@main
+    uses: ./.github/workflows/test-external-links.yml
 
   notify:
     runs-on: ubuntu-latest

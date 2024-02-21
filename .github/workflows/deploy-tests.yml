@@ -12,7 +12,7 @@ concurrency:  # Cancel previous workflows on the same pull request
 jobs:
 
   assess-file-changes:
-    uses: ./.github/workflows/assess-file-changes.yml@main
+    uses: ./.github/workflows/assess-file-changes.yml
 
   detect-changelog-updates:
     needs: assess-file-changes
@@ -30,7 +30,7 @@ jobs:
   run-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: ./.github/workflows/testing.yml@main
+    uses: ./.github/workflows/testing.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -40,14 +40,14 @@ jobs:
   run-live-service-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: ./.github/workflows/live-service-testing.yml@main
+    uses: ./.github/workflows/live-service-testing.yml
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
   run-dev-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: ./.github/workflows/dev-testing.yml@main
+    uses: ./.github/workflows/dev-testing.yml
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -57,7 +57,7 @@ jobs:
   run-doctests-only:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' || needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
-    uses: ./.github/workflows/doctests.yml@main
+    uses: ./.github/workflows/doctests.yml
 
   check-final-status:
     name: All tests passing
