@@ -139,4 +139,5 @@ jobs:
           file: ./codecov.xml
           flags: unittests
           name: codecov-umbrella
-          yml: ./codecov.yml
+          codecov_yml_path: ./codecov.yml
+          verbose: true
