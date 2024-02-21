@@ -18,6 +18,7 @@ from pynwb.behavior import Position, SpatialSeries
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
+    FacemapInterface,
     FicTracDataInterface,
     LightningPoseDataInterface,
     MiniscopeBehaviorInterface,
