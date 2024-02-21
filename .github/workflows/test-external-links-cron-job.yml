@@ -1,8 +1,8 @@
-name: Testing External Links
+name: Testing External Links Cron Job
+
 on:
-  pull_request:
-  merge_group:
-  workflow_call:
+  schedule:
+    - cron: "0 16 * * *"  # Daily at noon EST
 
 jobs:
   build-and-test:
@@ -18,6 +18,6 @@ jobs:
         with:
           python-version: "3.10"
       - name: Install package for API docs
-        run: pip install -e .[full,docs]
+        run: pip install -e .[docs]
       - name: Test External Links
-        run: sphinx-build -b linkcheck ./docs ./docs/_build/
+        run: sphinx-build -b linkcheck -D linkcheck_ignore=[] ./docs ./docs/_build/  # The -D overrides the conf.py file to ignore the linkcheck_ignore list
