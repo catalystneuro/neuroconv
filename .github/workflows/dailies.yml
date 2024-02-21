@@ -31,4 +31,4 @@ jobs:
         subject: NeuroConv Daily Failure
         to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}  # add more with commas, no separation
         from: NeuroConv
-        body: "The daily workflow for the NWB Inspector failed: please check status at https://github.com/./actions/workflows/dailies.yml"
+        body: "The daily workflow for the NWB Inspector failed: please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
