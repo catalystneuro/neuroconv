@@ -226,7 +226,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
 
     assert all(
         [property["name"] != "group" for property in electrodes_metadata]
-    ), "Passing metadata field 'group' is deprecated; pass group_name instead!"  # TODO: remove completely by 8/21/2024
+    ), "The recording property 'group' is not allowed; please use 'group_name' instead!"
 
     # Transform to a dict that maps property name to its description
     property_descriptions = dict()
