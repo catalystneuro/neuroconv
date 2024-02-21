@@ -10,6 +10,8 @@ on:
         required: true
       S3_GIN_BUCKET:
         required: true
+      CODECOV_TOKEN:
+        required: true
   workflow_dispatch:
 
 jobs:
@@ -148,4 +150,6 @@ jobs:
           file: ./codecov.xml
           flags: unittests
           name: codecov-umbrella
-          yml: ./codecov.yml
+          codecov_yml_path: ./codecov.yml
+          fail_ci_if_error: true
+          verbose: true
