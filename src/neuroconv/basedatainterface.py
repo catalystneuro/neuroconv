@@ -67,7 +67,7 @@ class BaseDataInterface(ABC):
 
     @abstractmethod
     def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def run_conversion(
         self,
@@ -94,10 +94,10 @@ class BaseDataInterface(ABC):
             The default is False (append mode).
         """
         if nwbfile_path is None:
-            warnings.warn(
-                "Using DataInterface.run_conversion() without specifying nwbfile_path is deprecated. To create an "
-                "NWBFile object in memory, use DataInterface.create_nwbfile(). To append to an existing NWBFile object,"
-                " use DataInterface.add_to_nwbfile()."
+            warnings.warn(  # TODO: remove on or after 6/21/2024
+                "Using DataInterface.run_conversion without specifying nwbfile_path is deprecated. To create an "
+                "NWBFile object in memory, use DataInterface.create_nwbfile. To append to an existing NWBFile object,"
+                " use DataInterface.add_to_nwbfile."
             )
 
         if metadata is None:
