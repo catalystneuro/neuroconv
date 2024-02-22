@@ -30,7 +30,7 @@ def test_dataset_info_repr():
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
         "DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
+        "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
         "full_shape=(1800000, 384))"
     )
     assert repr(dataset_info) == expected_repr
