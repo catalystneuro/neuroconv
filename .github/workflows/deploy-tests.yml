@@ -38,12 +38,12 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
 
-  # run-live-service-tests:
-  #   needs: assess-file-changes
-  #   if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-  #   uses: ./.github/workflows/live-service-testing.yml
-  #   secrets:
-  #     DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+  run-live-service-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: ./.github/workflows/live-service-testing.yml
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
   run-dev-tests:
     needs: assess-file-changes
