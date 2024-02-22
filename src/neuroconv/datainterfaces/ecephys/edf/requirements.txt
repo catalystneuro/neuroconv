@@ -1,2 +1,1 @@
-pyedflib>=0.1.30
-numpy<1.25.0;python_version>="3.11"
+pyedflib>=0.1.36
