@@ -77,8 +77,8 @@ class DatasetInfo(BaseModel):
         arbitrary_types_allowed = True
 
     object_id: str = Field(description="The UUID of the neurodata object containing the dataset.")
-    location: str = Field(  # TODO: in v2, use init_var=False or assign as a property
-        description="The relative location of the this dataset within the in-memory NWBFile."
+    location_in_file: str = Field(  # TODO: in v2, use init_var=False or assign as a property
+        description="The relative location of the this dataset within the in-memory NWBFile. (e.g. 'acquisition/TestElectricalSeries/data')"
     )
     dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.")
     dtype: np.dtype = Field(  # TODO: When using Pydantic v2, replace np.dtype with InstanceOf[np.dtype]
@@ -102,8 +102,8 @@ class DatasetInfo(BaseModel):
         source_size_in_gb = math.prod(self.full_shape) * self.dtype.itemsize / 1e9
 
         string = (
-            f"\n{self.location}"
-            f"\n{'-' * len(self.location)}"
+            f"\n{self.location_in_file}"
+            f"\n{'-' * len(self.location_in_file)}"
             f"\n  dtype : {self.dtype}"
             f"\n  full shape of source array : {self.full_shape}"
             f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
@@ -111,7 +111,7 @@ class DatasetInfo(BaseModel):
         return string
 
     def __init__(self, **values):
-        location = values["location"]
+        location = values["location_in_file"]
 
         # For more efficient / explicit reference downstream, instead of reparsing from location multiple times
         dataset_name = location.split("/")[-1]
@@ -120,7 +120,9 @@ class DatasetInfo(BaseModel):
 
     @classmethod
     def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> "DatasetInfo":
-        location = _find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
+        location_in_file = _find_location_in_memory_nwbfile(
+            current_location=field_name, neurodata_object=neurodata_object
+        )
         candidate_dataset = getattr(neurodata_object, field_name)
 
         full_shape = get_data_shape(data=candidate_dataset)
@@ -129,7 +131,7 @@ class DatasetInfo(BaseModel):
         return cls(
             object_id=neurodata_object.object_id,
             object_name=neurodata_object.name,
-            location=location,
+            location_in_file=location_in_file,
             full_shape=full_shape,
             dtype=dtype,
         )
@@ -178,8 +180,8 @@ class DatasetIOConfiguration(BaseModel, ABC):
         disk_space_usage_per_chunk_in_mb = math.prod(self.chunk_shape) * self.dataset_info.dtype.itemsize / 1e6
 
         string = (
-            f"\n{self.dataset_info.location}"
-            f"\n{'-' * len(self.dataset_info.location)}"
+            f"\n{self.dataset_info.location_in_file}"
+            f"\n{'-' * len(self.dataset_info.location_in_file)}"
             f"\n  dtype : {self.dataset_info.dtype}"
             f"\n  full shape of source array : {self.dataset_info.full_shape}"
             f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
@@ -207,37 +209,37 @@ class DatasetIOConfiguration(BaseModel, ABC):
         chunk_shape = values["chunk_shape"]
         buffer_shape = values["buffer_shape"]
         full_shape = values["dataset_info"].full_shape
-        location = values["dataset_info"].location  # For more identifiable error messages.
+        location_in_file = values["dataset_info"].location_in_file  # For more identifiable error messages.
 
         if len(chunk_shape) != len(buffer_shape):
             raise ValueError(
-                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location}'!"
+                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location_in_file}'!"
             )
         if len(buffer_shape) != len(full_shape):
             raise ValueError(
-                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location}'!"
+                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"
             )
 
         if any(chunk_axis <= 0 for chunk_axis in chunk_shape):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} are less than or equal to zero for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
         if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
             raise ValueError(
                 f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
 
         if any(chunk_axis > buffer_axis for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=} for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
         if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
             raise ValueError(
                 f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
 
         if any(
@@ -247,7 +249,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         ):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
 
         return values
