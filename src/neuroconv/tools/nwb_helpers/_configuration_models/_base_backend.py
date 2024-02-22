@@ -41,7 +41,7 @@ class BackendConfiguration(BaseModel):
     def from_nwbfile(cls, nwbfile: NWBFile) -> "BackendConfiguration":
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
-            default_dataset_configuration.dataset_info.location: default_dataset_configuration
+            default_dataset_configuration.dataset_info.location_in_file: default_dataset_configuration
             for default_dataset_configuration in default_dataset_configurations
         }
 

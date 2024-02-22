@@ -156,7 +156,7 @@ def test_zarr_dataset_configuration_repr():
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
         "ZarrDatasetIOConfiguration(dataset_info=DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
+        "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
         "full_shape=(1800000, 384)), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
         "compression_options=None, filter_methods=None, filter_options=None)"
     )

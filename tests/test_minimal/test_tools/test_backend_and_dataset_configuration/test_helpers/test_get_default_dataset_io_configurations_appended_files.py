@@ -63,7 +63,7 @@ def test_unwrapped_time_series_hdf5(hdf5_nwbfile_path):
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, HDF5DatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == new_time_series.object_id
-    assert dataset_configuration.dataset_info.location == "acquisition/NewTimeSeries/data"
+    assert dataset_configuration.dataset_info.location_in_file == "acquisition/NewTimeSeries/data"
     assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
@@ -86,7 +86,7 @@ def test_unwrapped_time_series_zarr(zarr_nwbfile_path):
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, ZarrDatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == new_time_series.object_id
-    assert dataset_configuration.dataset_info.location == "acquisition/NewTimeSeries/data"
+    assert dataset_configuration.dataset_info.location_in_file == "acquisition/NewTimeSeries/data"
     assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
@@ -112,7 +112,7 @@ def test_unwrapped_dynamic_table_hdf5(hdf5_nwbfile_path):
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, HDF5DatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == column.object_id
-    assert dataset_configuration.dataset_info.location == "acquisition/TestDynamicTable/TestColumn/data"
+    assert dataset_configuration.dataset_info.location_in_file == "acquisition/TestDynamicTable/TestColumn/data"
     assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
@@ -136,7 +136,7 @@ def test_unwrapped_dynamic_table_zarr(zarr_nwbfile_path):
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, ZarrDatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == column.object_id
-    assert dataset_configuration.dataset_info.location == "acquisition/TestDynamicTable/TestColumn/data"
+    assert dataset_configuration.dataset_info.location_in_file == "acquisition/TestDynamicTable/TestColumn/data"
     assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
