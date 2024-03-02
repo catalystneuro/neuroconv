@@ -1,5 +1,13 @@
 # Upcoming
 
+### Improvements
+
+* Upgraded Pydantic support to `>v2.0.0`.
+* Absorbed the `DatasetInfo` model into the `DatasetIOConfiguration` model.
+* Keyword argument `field_name` of the `DatasetIOConfiguration.from_neurodata_object` method has been renamed to `dataset_name` to be more consistent with its usage. This only affects direct initialization of the model; usage via the `BackendConfiguration` constructor and its associated helper functions in `neuroconv.tools.nwb_helpers` is unaffected.
+
+
+
 # v0.4.7 (February 21, 2024)
 
 ### Deprecation

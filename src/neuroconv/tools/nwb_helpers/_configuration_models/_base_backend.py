@@ -5,6 +5,7 @@ from typing import ClassVar, Dict, Literal, Type
 from hdmf.container import DataIO
 from pydantic import BaseModel, Field
 from pynwb import NWBFile
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from .._dataset_configuration import get_default_dataset_io_configurations
@@ -38,7 +39,7 @@ class BackendConfiguration(BaseModel):
         return string
 
     @classmethod
-    def from_nwbfile(cls, nwbfile: NWBFile) -> "BackendConfiguration":
+    def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
             default_dataset_configuration.dataset_info.location_in_file: default_dataset_configuration
