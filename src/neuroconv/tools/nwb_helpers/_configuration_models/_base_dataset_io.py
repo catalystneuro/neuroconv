@@ -142,15 +142,15 @@ class DatasetIOConfiguration(BaseModel, ABC):
         `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
-        source_size_in_gb = math.prod(self.dataset_info.full_shape) * self.dataset_info.dtype.itemsize / 1e9
-        maximum_ram_usage_per_iteration_in_gb = math.prod(self.buffer_shape) * self.dataset_info.dtype.itemsize / 1e9
-        disk_space_usage_per_chunk_in_mb = math.prod(self.chunk_shape) * self.dataset_info.dtype.itemsize / 1e6
+        source_size_in_gb = math.prod(self.full_shape) * self.dtype.itemsize / 1e9
+        maximum_ram_usage_per_iteration_in_gb = math.prod(self.buffer_shape) * self.dtype.itemsize / 1e9
+        disk_space_usage_per_chunk_in_mb = math.prod(self.chunk_shape) * self.dtype.itemsize / 1e6
 
         string = (
-            f"\n{self.dataset_info.location_in_file}"
-            f"\n{'-' * len(self.dataset_info.location_in_file)}"
-            f"\n  dtype : {self.dataset_info.dtype}"
-            f"\n  full shape of source array : {self.dataset_info.full_shape}"
+            f"\n{self.location_in_file}"
+            f"\n{'-' * len(self.location_in_file)}"
+            f"\n  dtype : {self.dtype}"
+            f"\n  full shape of source array : {self.full_shape}"
             f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
             # TODO: add nicer auto-selection/rendering of units and amount for source data size
             "\n"
@@ -182,7 +182,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
 
         chunk_shape = values["chunk_shape"]
         buffer_shape = values["buffer_shape"]
-        full_shape = values["dataset_info"].full_shape
+        full_shape = values["full_shape"]
 
         if len(chunk_shape) != len(buffer_shape):
             raise ValueError(

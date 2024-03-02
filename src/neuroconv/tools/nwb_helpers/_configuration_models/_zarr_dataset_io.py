@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Literal, Union
 
 import numcodecs
 import zarr
-from pydantic import Field, InstanceOf, root_validator
+from pydantic import Field, InstanceOf, model_validator
 
 from ._base_dataset_io import DatasetIOConfiguration
 
@@ -87,10 +87,10 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return string
 
-    @root_validator
+    @model_validator(mode="before")
     def validate_filter_methods_and_options_length_match(cls, values: Dict[str, Any]):
-        filter_methods = values["filter_methods"]
-        filter_options = values["filter_options"]
+        filter_methods = values.get("filter_methods", None)
+        filter_options = values.get("filter_options", None)
 
         if filter_methods is None and filter_options is not None:
             raise ValueError(

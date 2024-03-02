@@ -17,8 +17,8 @@ def configure_backend(
 
     data_io_class = backend_configuration.data_io_class
     for dataset_configuration in backend_configuration.dataset_configurations.values():
-        object_id = dataset_configuration.dataset_info.object_id
-        dataset_name = dataset_configuration.dataset_info.dataset_name
+        object_id = dataset_configuration.object_id
+        dataset_name = dataset_configuration.dataset_name
         data_io_kwargs = dataset_configuration.get_data_io_kwargs()
 
         # TODO: update buffer shape in iterator, if present
@@ -30,7 +30,9 @@ def configure_backend(
             nwbfile_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
         # TimeSeries data or timestamps
         elif isinstance(nwbfile_object, TimeSeries) and not is_dataset_linked:
-            nwbfile_object.set_data_io(dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs)
+            nwbfile_object.set_data_io(
+                dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+            )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(nwbfile_object, TimeSeries) and is_dataset_linked:
             continue
