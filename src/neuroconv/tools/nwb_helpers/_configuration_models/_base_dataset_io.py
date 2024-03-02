@@ -11,7 +11,14 @@ import zarr
 from hdmf import Container
 from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.utils import get_data_shape
-from pydantic import BaseModel, Field, InstanceOf, PositiveInt, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    InstanceOf,
+    PositiveInt,
+    model_validator,
+)
 from pynwb import NWBFile
 from typing_extensions import Self
 
@@ -79,6 +86,8 @@ def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
 
 class DatasetIOConfiguration(BaseModel, ABC):
     """A data model for configuring options about an object that will become a HDF5 or Zarr Dataset in the file."""
+
+    model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
     # Immutable fields about the dataset
     object_id: str = Field(description="The UUID of the neurodata object containing the dataset.", frozen=True)

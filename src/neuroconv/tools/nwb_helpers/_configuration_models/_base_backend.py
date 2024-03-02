@@ -3,7 +3,7 @@
 from typing import ClassVar, Dict, Literal, Type
 
 from hdmf.container import DataIO
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pynwb import NWBFile
 from typing_extensions import Self
 
@@ -14,9 +14,11 @@ from .._dataset_configuration import get_default_dataset_io_configurations
 class BackendConfiguration(BaseModel):
     """A model for matching collections of DatasetConfigurations to a specific backend."""
 
-    backend: ClassVar[Literal["hdf5", "zarr"]] = Field(
-        description="The name of the backend used to configure the NWBFile."
-    )
+    backend: ClassVar[Literal["hdf5", "zarr"]]
+    data_io_class: ClassVar[Type[DataIO]]
+
+    model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
+
     data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
     dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
         description=(
