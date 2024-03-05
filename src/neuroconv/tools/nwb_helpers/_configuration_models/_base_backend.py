@@ -19,7 +19,6 @@ class BackendConfiguration(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
-    data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
     dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations (e.g. `acquisition/TestElectricalSeriesAP/data`) "
