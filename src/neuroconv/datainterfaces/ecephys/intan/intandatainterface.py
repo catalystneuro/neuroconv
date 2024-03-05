@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from packaging.version import Version
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....tools import get_package
+from ....tools import get_package, get_package_version
 from ....utils import FilePathType, get_schema_from_hdmf_class
 
 
@@ -38,11 +39,18 @@ def extract_electrode_metadata_with_pyintan(file_path) -> dict:
 
 def extract_electrode_metadata(recording_extractor) -> dict:
 
-    # The channel ids of INTAN are of the following form A-000, A-001, A-002, B-000, B-001, B-002, etc.
-    channel_ids = recording_extractor.get_channel_ids()
-    group_names = [channel.split("-")[0] for channel in channel_ids]
+    neo_version = get_package_version(name="neo")
+
+    # The native native_channel_name in Intan have the following form: A-000, A-001, A-002, B-000, B-001, B-002, etc.
+    if neo_version > Version("0.13.0"):  # TODO: Remove after the release of neo 0.14.0
+        native_channel_names = recording_extractor.get_channel_ids()
+    else:
+        # Previous to version 0.13.1 the native_channel_name was stored as channel_name
+        native_channel_names = recording_extractor.get_property("channel_name")
+
+    group_names = [channel.split("-")[0] for channel in native_channel_names]
     unique_group_names = set(group_names)
-    group_electrode_numbers = [int(channel.split("-")[1]) for channel in channel_ids]
+    group_electrode_numbers = [int(channel.split("-")[1]) for channel in native_channel_names]
     custom_names = list()
 
     electrodes_metadata = dict(
