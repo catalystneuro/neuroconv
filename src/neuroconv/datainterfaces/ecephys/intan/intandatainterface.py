@@ -37,11 +37,12 @@ def extract_electrode_metadata_with_pyintan(file_path) -> dict:
 
 
 def extract_electrode_metadata(recording_extractor) -> dict:
-    channel_name_array = recording_extractor.get_property("channel_name")
 
-    group_names = [channel.split("-")[0] for channel in channel_name_array]
+    # The channel ids of INTAN are of the following form A-000, A-001, A-002, B-000, B-001, B-002, etc.
+    channel_ids = recording_extractor.get_channel_ids()
+    group_names = [channel.split("-")[0] for channel in channel_ids]
     unique_group_names = set(group_names)
-    group_electrode_numbers = [int(channel.split("-")[1]) for channel in channel_name_array]
+    group_electrode_numbers = [int(channel.split("-")[1]) for channel in channel_ids]
     custom_names = list()
 
     electrodes_metadata = dict(
