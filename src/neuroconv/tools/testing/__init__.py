@@ -1,5 +1,4 @@
 from ._mock._mock_dataset_models import (
-    mock_DatasetInfo,
     mock_HDF5BackendConfiguration,
     mock_HDF5DatasetIOConfiguration,
     mock_ZarrBackendConfiguration,
