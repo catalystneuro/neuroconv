@@ -3,8 +3,9 @@
 from typing import ClassVar, Dict, Literal, Type
 
 from hdmf.container import DataIO
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pynwb import NWBFile
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from .._dataset_configuration import get_default_dataset_io_configurations
@@ -13,10 +14,11 @@ from .._dataset_configuration import get_default_dataset_io_configurations
 class BackendConfiguration(BaseModel):
     """A model for matching collections of DatasetConfigurations to a specific backend."""
 
-    backend: ClassVar[Literal["hdf5", "zarr"]] = Field(
-        description="The name of the backend used to configure the NWBFile."
-    )
-    data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
+    backend: ClassVar[Literal["hdf5", "zarr"]]
+    data_io_class: ClassVar[Type[DataIO]]
+
+    model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
+
     dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations (e.g. `acquisition/TestElectricalSeriesAP/data`) "
@@ -38,10 +40,10 @@ class BackendConfiguration(BaseModel):
         return string
 
     @classmethod
-    def from_nwbfile(cls, nwbfile: NWBFile) -> "BackendConfiguration":
+    def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
-            default_dataset_configuration.dataset_info.location_in_file: default_dataset_configuration
+            default_dataset_configuration.location_in_file: default_dataset_configuration
             for default_dataset_configuration in default_dataset_configurations
         }
 
