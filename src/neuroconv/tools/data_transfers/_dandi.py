@@ -21,7 +21,7 @@ def automatic_dandi_upload(
     cleanup: bool = False,
     number_of_jobs: Union[int, None] = None,
     number_of_threads: Union[int, None] = None,
-):
+) -> List[Path]:
     """
     Fully automated upload of NWBFiles to a DANDISet.
 
@@ -117,3 +117,5 @@ def automatic_dandi_upload(
             rmtree(path=nwb_folder_path)
         except PermissionError:  # pragma: no cover
             warn("Unable to clean up source files and dandiset! Please manually delete them.")
+
+    return organized_nwbfiles
