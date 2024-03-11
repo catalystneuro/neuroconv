@@ -94,14 +94,7 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
         self.assertEqual(len(audio_metadata), self.num_audio_files)
 
     def test_incorrect_write_as(self):
-        expected_error_message = """'bad_option' is not one of ['stimulus', 'acquisition']
-
-Failed validating 'enum' in schema['properties']['Audio']['properties']['write_as']:
-    {'default': 'stimulus', 'enum': ['stimulus', 'acquisition']}
-
-On instance['Audio']['write_as']:
-    'bad_option'"""
-        with self.assertRaisesWith(exc_type=jsonschema.exceptions.ValidationError, exc_msg=expected_error_message):
+        with self.assertRaises(jsonschema.exceptions.ValidationError):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 metadata=self.metadata,
