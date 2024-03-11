@@ -7,6 +7,7 @@ from typing import Dict, Union
 import numpy as np
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
+from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
 from neuroconv.utils import (
     NWBMetaDataEncoder,
     dict_deep_update,
@@ -15,8 +16,6 @@ from neuroconv.utils import (
     get_schema_from_method_signature,
     load_dict_from_file,
 )
-
-from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
 
 
 def compare_dicts(a: dict, b: dict):
@@ -245,26 +244,16 @@ def test_np_array_encoding():
 def test_get_schema_from_NWBDataInterface():
     schema = get_schema_from_method_signature(AlphaOmegaRecordingInterface.__init__)
     assert schema == {
-        "required": [
-            "folder_path"
-        ],
+        "required": ["folder_path"],
         "properties": {
             "folder_path": {
                 "format": "directory",
                 "description": "Path to the folder of .mpx files.",
-                "type": "string"
-            },
-            "verbose": {
-                "description": "Allows verbose.\nDefault is True.",
-                "type": "boolean",
-                "default": True
-            },
-            "es_key": {
                 "type": "string",
-                "default": "ElectricalSeries"
-            }
+            },
+            "verbose": {"description": "Allows verbose.\nDefault is True.", "type": "boolean", "default": True},
+            "es_key": {"type": "string", "default": "ElectricalSeries"},
         },
         "type": "object",
-        "additionalProperties": False
+        "additionalProperties": False,
     }
-
