@@ -16,6 +16,8 @@ from neuroconv.utils import (
     load_dict_from_file,
 )
 
+from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
+
 
 def compare_dicts(a: dict, b: dict):
     a = sort_item(a)
@@ -238,3 +240,31 @@ def test_np_array_encoding():
     np_array = np.array([1, 2, 3])
     encoded = json.dumps(np_array, cls=NWBMetaDataEncoder)
     assert encoded == "[1, 2, 3]"
+
+
+def test_get_schema_from_NWBDataInterface():
+    schema = get_schema_from_method_signature(AlphaOmegaRecordingInterface.__init__)
+    assert schema == {
+        "required": [
+            "folder_path"
+        ],
+        "properties": {
+            "folder_path": {
+                "format": "directory",
+                "description": "Path to the folder of .mpx files.",
+                "type": "string"
+            },
+            "verbose": {
+                "description": "Allows verbose.\nDefault is True.",
+                "type": "boolean",
+                "default": True
+            },
+            "es_key": {
+                "type": "string",
+                "default": "ElectricalSeries"
+            }
+        },
+        "type": "object",
+        "additionalProperties": False
+    }
+
