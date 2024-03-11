@@ -97,14 +97,16 @@ def automatic_dandi_upload(
             dandi_stem_split.insert(1, f"ses-{session_id}")
             corrected_name = "_".join(dandi_stem_split) + ".nwb"
             organized_nwbfile.rename(organized_nwbfile.parent / corrected_name)
-    organized_nwbfiles = dandiset_path.rglob("*.nwb")
+
+    organized_nwbfiles = [str(x) for x in dandiset_path.rglob("*.nwb")]
     # The above block can be removed once they add the feature
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
     dandi_instance = "dandi-staging" if staging else "dandi"  # Test
+
     dandi_upload(
-        paths=[str(x) for x in organized_nwbfiles],
+        paths=organized_nwbfiles,
         dandi_instance=dandi_instance,
         jobs=number_of_jobs,
         jobs_per_file=number_of_threads,
