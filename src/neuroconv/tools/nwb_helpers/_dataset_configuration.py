@@ -1,4 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
+
 from typing import Generator, Literal, Union
 
 import h5py
@@ -113,7 +114,7 @@ def get_default_dataset_io_configurations(
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=column, field_name="data"
+                    neurodata_object=column, dataset_name="data"
                 )
 
                 yield dataset_io_configuration
@@ -122,11 +123,11 @@ def get_default_dataset_io_configurations(
             # The most common example of this is ndx-events Events/LabeledEvents types
             time_series = neurodata_object  # for readability
 
-            for field_name in ("data", "timestamps"):
-                if field_name not in time_series.fields:  # timestamps is optional
+            for dataset_name in ("data", "timestamps"):
+                if dataset_name not in time_series.fields:  # timestamps is optional
                     continue
 
-                candidate_dataset = getattr(time_series, field_name)
+                candidate_dataset = getattr(time_series, dataset_name)
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
@@ -141,7 +142,7 @@ def get_default_dataset_io_configurations(
                     continue  # skip
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=time_series, field_name=field_name
+                    neurodata_object=time_series, dataset_name=dataset_name
                 )
 
                 yield dataset_io_configuration

@@ -4,4 +4,6 @@ sphinx_rtd_theme==1.0.0
 readthedocs-sphinx-search==0.1.2
 sphinx-toggleprompt==0.2.0
 sphinx-copybutton==0.5.0
-roiextractors
+roiextractors  # Needed for the API documentation
+spikeinterface  # Needed for the API documentation
+pydata_sphinx_theme==0.12.0

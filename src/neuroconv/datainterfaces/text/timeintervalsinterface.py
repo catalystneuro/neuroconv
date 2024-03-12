@@ -14,6 +14,8 @@ from ...utils.types import FilePathType
 class TimeIntervalsInterface(BaseDataInterface):
     """Abstract Interface for time intervals."""
 
+    keywords = ("table", "trials", "epochs", "time intervals")
+
     def __init__(
         self,
         file_path: FilePathType,

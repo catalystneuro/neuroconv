@@ -281,6 +281,10 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     The extraction of channel metadata is described in the function: `add_channel_metadata_to_recoder`
     """
 
+    display_name = "CellExplorer Recording"
+    associated_suffixes = (".dat", ".session", ".sessionInfo", ".mat")
+    info = "Interface for CellExplorer recording data."
+
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
@@ -342,12 +346,15 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):
-    keywords = BaseRecordingExtractorInterface.keywords + [
+    display_name = "CellExplorer LFP"
+    keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",
         "LFP",
         "local field potential",
         "LF",
-    ]
+    )
+    associated_suffixes = (".lfp", ".session", ".mat")
+    info = "Interface for CellExplorer LFP recording data."
 
     sampling_frequency_key = "srLfp"
     binary_file_extension = "lfp"
@@ -384,6 +391,10 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
+
+    display_name = "CellExplorer Sorting"
+    associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
+    info = "Interface for CellExplorer sorting data."
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """

@@ -65,7 +65,7 @@ if sys.platform == "darwin" and platform.processor() == "arm":
 
 setup(
     name="neuroconv",
-    version="0.4.7",
+    version="0.4.8",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -86,4 +86,13 @@ setup(
         ],
     },
     license="BSD-3-Clause",
+    classifiers=[
+        "Framework :: NeuroConv",
+        "Intended Audience :: Science/Research",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+    ],
 )

@@ -5,6 +5,10 @@ from ....utils import FilePathType
 class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for CaimanSegmentationExtractor."""
 
+    display_name = "CaImAn Segmentation"
+    associated_suffixes = (".hdf5",)
+    info = "Interface for Caiman segmentation data."
+
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
 

@@ -41,7 +41,11 @@ def _update_metadata_links_for_plane_segmentation_name(metadata: dict, plane_seg
 
 
 class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
-    """Data interface for Suite2pSegmentationExtractor."""
+    """Interface for Suite2p segmentation data."""
+
+    display_name = "Suite2p Segmentation"
+    associated_suffixes = (".npy",)
+    info = "Interface for Suite2p segmentation."
 
     @classmethod
     def get_available_planes(cls, folder_path: FolderPathType) -> dict:

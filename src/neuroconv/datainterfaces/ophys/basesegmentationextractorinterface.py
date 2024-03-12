@@ -1,4 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
+
 from typing import Optional
 
 import numpy as np
@@ -12,6 +13,8 @@ from ...utils import fill_defaults, get_base_schema, get_schema_from_hdmf_class
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     """Parent class for all SegmentationExtractorInterfaces."""
+
+    keywords = ("segmentation", "roi", "cells")
 
     ExtractorModuleName = "roiextractors"
 

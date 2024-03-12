@@ -1,7 +1,7 @@
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from jsonschema import validate
 from pynwb import NWBFile
@@ -21,6 +21,11 @@ from .utils.json_schema import NWBMetaDataEncoder
 
 class NWBConverter:
     """Primary class for all NWB conversion classes."""
+
+    display_name: Union[str, None] = None
+    keywords: Tuple[str] = tuple()
+    associated_suffixes: Tuple[str] = tuple()
+    info: Union[str, None] = None
 
     data_interface_classes = None
 

@@ -1,4 +1,5 @@
 """Author: Ben Dichter."""
+
 from typing import Literal, Optional
 
 import numpy as np
@@ -8,6 +9,7 @@ from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
+    DeepDict,
     dict_deep_update,
     fill_defaults,
     get_base_schema,
@@ -17,6 +19,17 @@ from ...utils import (
 
 class BaseImagingExtractorInterface(BaseExtractorInterface):
     """Parent class for all ImagingExtractorInterfaces."""
+
+    keywords = (
+        "ophys",
+        "optical electrophysiology",
+        "fluorescence",
+        "microscopy",
+        "two photon",
+        "one photon",
+        "voltage imaging",
+        "calcium imaging",
+    )
 
     ExtractorModuleName = "roiextractors"
 
@@ -72,7 +85,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()

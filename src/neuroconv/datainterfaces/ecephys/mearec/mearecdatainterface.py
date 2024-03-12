@@ -1,7 +1,7 @@
 import json
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import NWBMetaDataEncoder, get_schema_from_hdmf_class
+from ....utils.json_schema import NWBMetaDataEncoder
 from ....utils.types import FilePathType
 
 
@@ -11,6 +11,10 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
 
     Uses the :py:class:`~spikeinterface.extractors.MEArecRecordingExtractor`.
     """
+
+    display_name = "MEArec Recording"
+    associated_suffixes = (".h5",)
+    info = "Interface for MEArec recording data."
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """

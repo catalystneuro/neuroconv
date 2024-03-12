@@ -4,7 +4,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
 
+import pytest
+from parse import parse
+
 from neuroconv.tools import LocalPathExpander
+from neuroconv.tools.path_expansion import construct_path_template
 from neuroconv.tools.testing import generate_path_expander_demo_ibl
 from neuroconv.utils import NWBMetaDataEncoder
 
@@ -421,3 +425,108 @@ def test_expand_paths_ibl(tmpdir):
 
     tc = unittest.TestCase()
     tc.assertCountEqual(path_expansion_results, expected)
+
+
+# contruct_path_template tests
+
+
+test_cases = [
+    dict(
+        test_input=dict(
+            path="/data/subject456/session123/file.txt", metadata=dict(subject_id="subject456", session_id="session123")
+        ),
+        expected="/data/{subject_id}/{session_id}/file.txt",
+    ),
+    dict(
+        test_input=dict(
+            path="/data/subject789/session456/image.txt",
+            metadata=dict(subject_id="subject789", session_id="session456", file_type="image"),
+        ),
+        expected="/data/{subject_id}/{session_id}/{file_type}.txt",
+    ),
+    dict(
+        test_input=dict(
+            path="/SenzaiY/YMV01/YMV01_170818/YMV01_170818.eeg", metadata=dict(session_id="170818", subject_id="YMV01")
+        ),
+        expected="/SenzaiY/{subject_id}/{subject_id}_{session_id}/{subject_id}_{session_id}.eeg",
+    ),
+    dict(
+        test_input=dict(path="/SenzaiY/YMV01/YMV01_170818/", metadata=dict(session_id="170818", subject_id="YMV01")),
+        expected="/SenzaiY/{subject_id}/{subject_id}_{session_id}/",
+    ),
+    dict(
+        test_input=dict(
+            path="/steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4",
+            metadata=dict(
+                session_id="001",
+                subject_id="NR_0017",
+                camera_id="leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35",
+                session_date="2022-03-22",
+            ),
+        ),
+        expected="/steinmetzlab/Subjects/{subject_id}/{session_date}/{session_id}/raw_video_data/_iblrig_{camera_id}.mp4",
+    ),
+    dict(
+        test_input=dict(
+            path="/steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4",
+            metadata=dict(
+                subject_id="NR_0017",
+                session_id="2022-03-22/001",
+                camera_type="leftCamera",
+                video_id="6252a2f0-c10f-4e49-b085-75749ba29c35",
+            ),
+        ),
+        expected="/steinmetzlab/Subjects/{subject_id}/{session_id}/raw_video_data/_iblrig_{camera_type}.raw.{video_id}.mp4",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", test_cases)
+def test_construct_path_template_with_varied_cases(case):
+    result = construct_path_template(case["test_input"]["path"], **case["test_input"]["metadata"])
+    assert result == case["expected"]
+
+    # Test parsing the generated string yields original metadata
+    parsed_metadata = parse(case["expected"], case["test_input"]["path"]).named
+    assert parsed_metadata == case["test_input"]["metadata"]
+
+
+def test_empty_subject_id():
+    path = "/data/subject456/session123/file.txt"
+    with pytest.raises(ValueError):
+        construct_path_template(path, subject_id="", session_id="session123")
+
+
+def test_empty_session_id():
+    path = "/data/subject456/session123/file.txt"
+    with pytest.raises(ValueError):
+        construct_path_template(path, subject_id="subject456", session_id="")
+
+
+def test_missing_subject_id_in_path():
+    path = "/data/subject456/session123/file.txt"
+    with pytest.raises(ValueError):
+        construct_path_template(path, subject_id="subject789", session_id="session123")
+
+
+def test_missing_session_id_in_path():
+    path = "/data/subject456/session123/file.txt"
+    with pytest.raises(ValueError):
+        construct_path_template(path, subject_id="subject456", session_id="session789")
+
+
+def test_empty_metadata_value():
+    with pytest.raises(ValueError):
+        construct_path_template(
+            "/data/subject789/session456/image.txt", subject_id="subject789", session_id="session456", file_type=""
+        )
+
+
+def test_missing_metadata_value_in_path():
+    with pytest.raises(ValueError):
+        construct_path_template(
+            "/data/subject789/session456/image.txt",
+            subject_id="subject789",
+            session_id="session456",
+            file_type="document",
+        )

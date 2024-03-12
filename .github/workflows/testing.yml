@@ -10,6 +10,8 @@ on:
         required: true
       S3_GIN_BUCKET:
         required: true
+      CODECOV_TOKEN:
+        required: true
   workflow_dispatch:
 
 jobs:
@@ -19,14 +21,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: s-weigand/setup-conda@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -41,7 +42,7 @@ jobs:
 
 
       - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
+        run: pip install .
       - name: Run import tests
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
@@ -50,7 +51,8 @@ jobs:
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
-
+      - name: Install additional specific testing-only requirements
+        run: pip install .[test]
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
@@ -75,8 +77,8 @@ jobs:
 
 
 
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full]
+      - name: Install full requirements
+        run: pip install .[full]
 
 
 
@@ -84,7 +86,7 @@ jobs:
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
       - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
@@ -93,7 +95,7 @@ jobs:
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
@@ -102,7 +104,7 @@ jobs:
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
       - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
@@ -126,16 +128,16 @@ jobs:
         name: Download behavior dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
-
-
       - name: Run full pytest with coverage
-        run: pytest -vv -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
+        run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./codecov.xml
           flags: unittests
           name: codecov-umbrella
-          yml: ./codecov.yml
+          codecov_yml_path: ./codecov.yml
+          fail_ci_if_error: true
+          verbose: true
