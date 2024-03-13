@@ -1254,7 +1254,7 @@ def write_sorting(
 
 
 def add_waveforms(
-    waveform_extractor,
+    waveform_extractor: "WaveformExtractor",
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     recording: Optional[BaseRecording] = None,
@@ -1353,7 +1353,7 @@ def add_waveforms(
 
 
 def write_waveforms(
-    waveform_extractor,
+    waveform_extractor: "WaveformExtractor",
     nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
