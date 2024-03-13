@@ -26,7 +26,7 @@ class BaseDataInterface(ABC):
     info: Union[str, None] = None
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 

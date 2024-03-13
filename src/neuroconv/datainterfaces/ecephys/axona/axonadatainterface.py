@@ -162,12 +162,20 @@ class AxonaPositionDataInterface(BaseDataInterface):
         return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, file_path: str):
+        """
+
+        Parameters
+        ----------
+        file_path: str
+            Path to .bin or .set file.
+        """
         super().__init__(filename=file_path)
         self.source_data = dict(file_path=file_path)
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
         """
         Run conversion for this data interface.
+
         Parameters
         ----------
         nwbfile : NWBFile
