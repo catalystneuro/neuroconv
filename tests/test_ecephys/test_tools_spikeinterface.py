@@ -1131,7 +1131,7 @@ from neuroconv.tools import get_package_version
 spike_interface_version = get_package_version("spikeinterface")
 
 
-@unittest.skipIf(spike_interface_version > Version("0.100"))
+@unittest.skipIf(spike_interface_version > Version("0.100"), reason="WaeformExtractor not available in spikeinterface")
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
