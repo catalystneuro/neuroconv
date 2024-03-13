@@ -1150,7 +1150,6 @@ def add_sorting(
         nwbfile=nwbfile,
         property_descriptions=property_descriptions,
         skip_properties=skip_properties,
-        skip_features=skip_features,
         write_in_processing_module=write_in_processing_module,
         units_table_name=units_name,
         unit_table_description=units_description,
