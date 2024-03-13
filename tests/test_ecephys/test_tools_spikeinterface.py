@@ -12,7 +12,6 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBFile
-from spikeinterface import WaveformExtractor, extract_waveforms
 from spikeinterface.core.generate import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 
@@ -1125,9 +1124,19 @@ class TestAddUnitsTable(TestCase):
         assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
 
 
+from packaging.version import Version
+
+from neuroconv.tools import get_package_version
+
+spike_interface_version = get_package_version("spikeinterface")
+
+
+@unittest.skipIf(spike_interface_version > Version("0.100"))
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
+        from spikeinterface import WaveformExtractor, extract_waveforms
+
         """Use common recording objects and values."""
         from spikeinterface.postprocessing import compute_template_metrics
         from spikeinterface.qualitymetrics import compute_quality_metrics

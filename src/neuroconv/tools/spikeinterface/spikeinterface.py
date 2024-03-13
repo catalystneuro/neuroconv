@@ -9,7 +9,7 @@ import psutil
 import pynwb
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
-from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
+from spikeinterface import BaseRecording, BaseSorting
 
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -1254,7 +1254,7 @@ def write_sorting(
 
 
 def add_waveforms(
-    waveform_extractor: WaveformExtractor,
+    waveform_extractor,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     recording: Optional[BaseRecording] = None,
@@ -1353,7 +1353,7 @@ def add_waveforms(
 
 
 def write_waveforms(
-    waveform_extractor: WaveformExtractor,
+    waveform_extractor,
     nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
