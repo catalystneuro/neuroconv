@@ -1,6 +1,7 @@
 import datetime
 import json
 from typing import Optional
+from warnings import warn
 
 from dateutil.parser import parse as dateparse
 
@@ -15,7 +16,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage TIFF files."
 
-    ExtractorName = "ScanImageTiffImagingExtractor"
+    ExtractorName = "ScanImageTiffSinglePlaneImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -26,7 +27,9 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        fallback_sampling_frequency: Optional[float] = None,
+        channel_name: Optional[str] = None,
+        plane_name: Optional[str] = None,
+        fallback_sampling_frequency: Optional[float] = None,  # TODO: to be removed
         verbose: bool = True,
     ):
         """
@@ -41,25 +44,47 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
         """
+        from roiextractors import ScanImageTiffSinglePlaneImagingExtractor
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
         )
 
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
-        if "state.acq.frameRate" in self.image_metadata:
-            sampling_frequency = float(self.image_metadata["state.acq.frameRate"])
-        elif "SI.hRoiManager.scanFrameRate" in self.image_metadata:
-            sampling_frequency = float(self.image_metadata["SI.hRoiManager.scanFrameRate"])
-        else:
-            assert_msg = (
-                "sampling frequency not found in image metadata, "
-                "input the frequency using the argument `fallback_sampling_frequency`"
-            )
-            assert fallback_sampling_frequency is not None, assert_msg
-            sampling_frequency = fallback_sampling_frequency
+        # TODO: decide whether to support older versions of ScanImage
+        if "state.software.version" in self.image_metadata:
+            raise ValueError("This interface is only compatible with ScanImage versions 2020 and later.")
 
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        if fallback_sampling_frequency is not None:
+            warn(
+                message="Keyword argument 'fallback_sampling_frequency' is deprecated."
+                "The sampling frequency extracted from the metadata of the tiff file.",
+                category=DeprecationWarning,
+            )
+
+        avaliable_channels = ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=file_path)
+        if channel_name is None:
+            if len(avaliable_channels) > 1:
+                raise ValueError(
+                    "More than one channel is detected! Please specify which channel you wish to load "
+                    "with the `channel_name` argument. To see which channels are available, use "
+                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                )
+            channel_name = avaliable_channels[0]
+        assert channel_name in avaliable_channels, f"Channel {channel_name} not found in the tiff file."
+
+        avaliable_planes = ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=file_path)
+        if plane_name is None:
+            if len(avaliable_planes) > 1:
+                raise ValueError(
+                    "More than one plane is detected! Please specify which plane you wish to load "
+                    "with the `plane_name` argument. To see which planes are available, use "
+                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
+                )
+            plane_name = avaliable_planes[0]
+        assert plane_name in avaliable_planes, f"Plane {plane_name} not found in the tiff file."
+
+        super().__init__(file_path=file_path, channel_name=channel_name, plane_name=plane_name, verbose=verbose)
 
     def get_metadata(self) -> dict:
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
