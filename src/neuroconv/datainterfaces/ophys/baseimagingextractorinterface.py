@@ -85,11 +85,13 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(
+        self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries"
+    ) -> DeepDict:
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
+        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=photon_series_type)
         metadata = dict_deep_update(default_metadata, metadata)
 
         # fix troublesome data types
