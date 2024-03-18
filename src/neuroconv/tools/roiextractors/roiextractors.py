@@ -846,6 +846,9 @@ def add_plane_segmentation(
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
+def add_background_plane_segmentation():
+    pass
+
 
 def add_fluorescence_traces(
     segmentation_extractor: SegmentationExtractor,
@@ -1063,6 +1066,9 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
 
     return data_interface
 
+def add_background_fluorescence_traces():
+    pass
+
 
 def add_summary_images(
     nwbfile: NWBFile,
@@ -1169,6 +1175,7 @@ def add_segmentation(
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
+    add_background_plane_segmentation()
 
     # Add fluorescence traces:
     add_fluorescence_traces(
@@ -1179,6 +1186,7 @@ def add_segmentation(
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
+    add_background_fluorescence_traces()
 
     # Adding summary images (mean and correlation)
     add_summary_images(
