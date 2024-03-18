@@ -1,2 +1,1 @@
 spikeinterface>=0.100.0
-packaging<22.0

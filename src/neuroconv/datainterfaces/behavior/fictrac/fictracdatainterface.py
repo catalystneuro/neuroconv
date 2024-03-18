@@ -18,15 +18,15 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for FicTrac datasets."""
 
     display_name = "FicTrac"
-    help = "Interface for FicTrac .dat files."
-
-    keywords = [
+    keywords = (
         "fictrack",
         "visual tracking",
         "fictive path",
         "spherical treadmill",
         "visual fixation",
-    ]
+    )
+    associated_suffixes = (".dat",)
+    info = "Interface for FicTrac .dat files."
 
     timestamps_column = 21
     # Columns in the .dat binary file with the data. The full description of the header can be found in:

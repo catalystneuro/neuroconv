@@ -3,7 +3,7 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, Tuple, Union
 
 from jsonschema.validators import validate
 from pynwb import NWBFile
@@ -20,10 +20,13 @@ from .utils.dict import DeepDict
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
-    keywords: List[str] = []
+    display_name: Union[str, None] = None
+    keywords: Tuple[str] = tuple()
+    associated_suffixes: Tuple[str] = tuple()
+    info: Union[str, None] = None
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
@@ -64,7 +67,7 @@ class BaseDataInterface(ABC):
 
     @abstractmethod
     def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def run_conversion(
         self,
@@ -91,10 +94,10 @@ class BaseDataInterface(ABC):
             The default is False (append mode).
         """
         if nwbfile_path is None:
-            warnings.warn(
-                "Using DataInterface.run_conversion() without specifying nwbfile_path is deprecated. To create an "
-                "NWBFile object in memory, use DataInterface.create_nwbfile(). To append to an existing NWBFile object,"
-                " use DataInterface.add_to_nwbfile()."
+            warnings.warn(  # TODO: remove on or after 6/21/2024
+                "Using DataInterface.run_conversion without specifying nwbfile_path is deprecated. To create an "
+                "NWBFile object in memory, use DataInterface.create_nwbfile. To append to an existing NWBFile object,"
+                " use DataInterface.add_to_nwbfile."
             )
 
         if metadata is None:

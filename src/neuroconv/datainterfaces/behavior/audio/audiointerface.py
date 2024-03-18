@@ -26,8 +26,10 @@ def _check_audio_names_are_unique(metadata: dict):
 class AudioInterface(BaseTemporalAlignmentInterface):
     """Data interface for writing .wav audio recordings to an NWB file."""
 
-    help = "Interface for writing audio recordings to an NWB file."
     display_name = "Wav Audio"
+    keywords = ("sound", "microphone")
+    associated_suffixes = (".wav",)
+    info = "Interface for writing audio recordings to an NWB file."
 
     def __init__(self, file_paths: list, verbose: bool = False):
         """
