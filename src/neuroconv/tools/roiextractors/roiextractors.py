@@ -846,6 +846,7 @@ def add_plane_segmentation(
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
+
 def add_background_plane_segmentation():
     pass
 
@@ -1065,6 +1066,7 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
     ophys.add(data_interface)
 
     return data_interface
+
 
 def add_background_fluorescence_traces():
     pass
