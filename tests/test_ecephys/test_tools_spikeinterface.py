@@ -106,7 +106,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_write_multiple_electrical_series_from_same_group(self):
+    def test_write_multiple_electrical_series_from_same_electrode_group(self):
         metadata = dict(
             Ecephys=dict(
                 ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="raw series"),
@@ -134,7 +134,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         self.assertIn("ElectricalSeriesLFP", self.nwbfile.acquisition)
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
 
-    def test_write_multiple_electrical_series_from_different_groups(self):
+    def test_write_multiple_electrical_series_with_different_electrode_groups(self):
         metadata = dict(
             Ecephys=dict(
                 ElectricalSeriesRaw1=dict(name="ElectricalSeriesRaw1", description="raw series"),

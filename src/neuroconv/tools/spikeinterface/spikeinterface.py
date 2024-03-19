@@ -601,23 +601,27 @@ def add_electrical_series(
 
     # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
     # That uses either the `channel_name` property or the channel ids as string otherwise.
     channel_names = recording.get_property("channel_name")
     if channel_names is None:
         channel_names = recording.get_channel_ids().astype("str")
+
     if "group_name" in recording.get_property_keys():
-        group_names = recording.get_property("group_name")
+        group_names = recording.get_property("group_name").astype("str")
+    elif "group" in recording.get_property_keys():
+        group_names = recording.get_property("group").astype("str")
     else:
-        group_names = recording.get_channel_groups()
+        group_names = np.full(channel_names.size, fill_value="ElectrodeGroup")
 
     # We use those channels to select the electrodes to be added to the ElectricalSeries
-    channel_name_column = nwbfile.electrodes["channel_name"][:]
-    channel_mask = np.isin(channel_name_column, channel_names)
-    group_name_column = nwbfile.electrodes["group_name"][:]
-    group_mask = np.isin(group_name_column, group_names)
-    (table_ids,) = np.nonzero(np.logical_and(channel_mask, group_mask))
+    channel_names_in_electrode_table = nwbfile.electrodes["channel_name"][:]
+    channel_mask = np.isin(channel_names_in_electrode_table, channel_names)
+    group_names_in_electrode_table = nwbfile.electrodes["group_name"][:]
+    group_mask = np.isin(group_names_in_electrode_table, group_names)
+    (electrode_table_indices,) = np.nonzero(np.logical_and(channel_mask, group_mask))
     electrode_table_region = nwbfile.create_electrode_table_region(
-        region=table_ids.tolist(), description="electrode_table_region"
+        region=electrode_table_indices.tolist(), description="electrode_table_region"
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
