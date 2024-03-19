@@ -605,12 +605,17 @@ def add_electrical_series(
     channel_names = recording.get_property("channel_name")
     if channel_names is None:
         channel_names = recording.get_channel_ids().astype("str")
+    if "group_name" in recording.get_property_keys():
+        group_names = recording.get_property("group_name")
+    else:
+        group_names = recording.get_channel_groups()
 
     # We use those channels to select the electrodes to be added to the ElectricalSeries
     channel_name_column = nwbfile.electrodes["channel_name"][:]
-    mask = np.isin(channel_name_column, channel_names)
-    table_ids = np.nonzero(mask)[0]
-
+    channel_mask = np.isin(channel_name_column, channel_names)
+    group_name_column = nwbfile.electrodes["group_name"][:]
+    group_mask = np.isin(group_name_column, group_names)
+    (table_ids,) = np.nonzero(np.logical_and(channel_mask, group_mask))
     electrode_table_region = nwbfile.create_electrode_table_region(
         region=table_ids.tolist(), description="electrode_table_region"
     )

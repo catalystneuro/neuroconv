@@ -152,6 +152,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
+        # check channel names and group names
+        electrodes = self.nwbfile.acquisition["ElectricalSeriesRaw1"].electrodes[:]
+        np.testing.assert_equal(electrodes["channel_name"], self.test_recording_extractor.channel_ids.astype("str"))
+        np.testing.assert_equal(
+            electrodes["group_name"], self.test_recording_extractor.get_channel_groups().astype("str")
+        )
         # set new channel groups to create a new  electrode_group
         self.test_recording_extractor.set_channel_groups(["group1"] * len(self.test_recording_extractor.channel_ids))
         add_electrical_series(
@@ -164,6 +170,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
         self.assertIn("ElectricalSeriesRaw2", self.nwbfile.acquisition)
         self.assertEqual(len(self.nwbfile.electrodes), 2 * len(self.test_recording_extractor.channel_ids))
+        # check channel names and group names
+        electrodes = self.nwbfile.acquisition["ElectricalSeriesRaw2"].electrodes[:]
+        np.testing.assert_equal(electrodes["channel_name"], self.test_recording_extractor.channel_ids.astype("str"))
+        np.testing.assert_equal(
+            electrodes["group_name"], self.test_recording_extractor.get_channel_groups().astype("str")
+        )
 
         self.test_recording_extractor.set_channel_groups(original_groups)
 
@@ -1131,7 +1143,9 @@ from neuroconv.tools import get_package_version
 spike_interface_version = get_package_version("spikeinterface")
 
 
-@unittest.skipIf(spike_interface_version > Version("0.100"), reason="WaeformExtractor not available in spikeinterface")
+@unittest.skipIf(
+    spike_interface_version >= Version("0.101"), reason="WaveformExtractor not available in spikeinterface"
+)
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
