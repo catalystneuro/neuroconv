@@ -27,8 +27,6 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
           password: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
-      - name: test
-        run: pwd
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
