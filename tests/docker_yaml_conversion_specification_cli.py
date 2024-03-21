@@ -1,5 +1,5 @@
 """
-This file is hidden from normal pytest globbing by appending the _test to the end instead of the beginning.
+This file is hidden from normal pytest globbing by not including 'test' in the filename.
 
 Instead, the tests must be invoked directly from the file. This is designed mostly for use in the GitHub Actions.
 """
