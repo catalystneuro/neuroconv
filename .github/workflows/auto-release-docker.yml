@@ -1,4 +1,4 @@
-name: Upload Docker Image to GHCR
+name: Upload Docker Image of Latest Release to GHCR
 
 on:
   workflow_run:
