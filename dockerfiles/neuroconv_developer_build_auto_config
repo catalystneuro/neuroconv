@@ -1,8 +1,3 @@
-FROM python:3.11.7-slim
+FROM https://github.com/catalystneuro/neuroconv:latest
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
-ADD /neuroconv /neuroconv
-RUN cd neuroconv \
- && pip install -e .[full]
-CMD echo "$YAML_STREAM" > run.yml \
-  && cat run.yml \
-  && neuroconv run.yml
+CMD echo "$NEUROCONV_YAML" > run.yml && neuroconv run.yml
