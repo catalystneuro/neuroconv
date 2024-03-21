@@ -23,3 +23,4 @@ and synchronize data across multiple sources.
   schemas
   csvs
   expand_path
+  docker_demo
