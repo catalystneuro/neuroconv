@@ -136,8 +136,8 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
         yaml_string = "".join(yaml_lines)
         os.environ["NEUROCONV_YAML"] = yaml_string
-        os.environ["NEUROCONV_DATA_PATH"] = DATA_PATH
-        os.environ["NEUROCONV_OUTPUT_PATH"] = OUTPUT_PATH
+        os.environ["NEUROCONV_DATA_PATH"] = str(DATA_PATH)
+        os.environ["NEUROCONV_OUTPUT_PATH"] = str(OUTPUT_PATH)
 
         deploy_process(
             command=(
