@@ -2,18 +2,8 @@ name: Docker CLI tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  workflow_call:
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
-      S3_GIN_BUCKET:
-        required: true
-      CODECOV_TOKEN:
-        required: true
   workflow_dispatch:
-  push:  # on first commit
+  push:  # remove once on main
 
 jobs:
   run:
