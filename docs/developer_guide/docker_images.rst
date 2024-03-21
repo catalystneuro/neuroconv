@@ -1,13 +1,15 @@
 Manually Build Docker Images
 ----------------------------
 
-.. note:: It is highly recommended to build the docker image on the same basic system or architecture type that you intend to run it on, *i.e.*, AWS Linux AMI 64-bit (x86), as it may experience difficulties running on other radically different systems (like an M1 Mac).
+.. note:: It is recommended to build the docker image on the same system architecture that you intend to run it on, *i.e.*, AWS Linux AMI 64-bit (x86), as it may experience difficulties running on other significantly different systems (like an M1 Mac).
 
-.. note:: The NeuroConv docker container comes prepackaged with all required installations, *i.e.*, equivalent to `pip install neuroconv[full]`. As such it is fairly heavy, so be sure that whatever system (or specifically CI environment) you build with has sufficient disk space.
+.. note:: The NeuroConv docker container comes prepackaged with all required installations, *i.e.*, equivalent to `pip install neuroconv[full]`. As such it is relatively heavy, so be sure that whatever environment you intend to use it in (such as in continuous integration) has sufficient disk space.
 
 
 Latest Release
 ~~~~~~~~~~~~~~
+
+To manually build the most recent release, navigate to the 'neuroconv/dockerfiles' folder and run...
 
 .. code::
 
