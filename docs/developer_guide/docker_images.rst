@@ -69,7 +69,7 @@ and can then run the entrypoint (equivalent to the usual command line usage) on 
 
 .. code::
 
-    docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:latest neuroconv /desired/alias/of/drive/your_specification_file.yml
+    docker run -it --volume /your/local/volume/:/desired/alias/of/volume/ ghcr.io/catalystneuro/neuroconv:latest neuroconv /desired/alias/of/drive/your_specification_file.yml
 
 
 
@@ -82,13 +82,15 @@ The only potential downside with this usage is the maximum size of an environmen
 
 Otherwise, in any cloud deployment, the YAML file transfer will have to be managed separately, likely as a part of the data transfer or an entirely separate step.
 
-To use this alternative image on a local environment, you no longer need to invoke the ``neuroconv`` entrypoint pointing to a file. Instead, just set the environment variable and run the docker container on the mounted volume...
+To use this alternative image on a local environment, you no longer need to invoke the ``neuroconv`` entrypoint pointing to a file. Instead, just set the environment variables and run the docker container on the mounted volume...
 
 .. code::
 
-    export YAML_STREAM="<copy and paste contents of YAML file (manually replace instances of double quotes with single quotes)>"  # On Windows, use `set` instead of `export`
-    docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:yaml_variable
+    export YAML_STREAM="<copy and paste contents of YAML file (manually replace instances of double quotes with single quotes)>"
+    export NEUROCONV_DATA_PATH="/desired/alias/of/volume/"
+    export NEUROCONV_OUTPUT_PATH="/desired/alias/of/volume/"
+    docker run -it --volume /your/local/volume/:/desired/alias/of/volume/ ghcr.io/catalystneuro/neuroconv:yaml_variable
 
 .. note::
 
-    When  using YAML files through the docker containers, always be sure that the file and folder paths are absolute stemming from the base volume as mounted inside the container; otherwise, the NWB file will be written inside pf the container but will then not be accessible outside of it.
+    On Windows, use ``set`` instead of ``export``.
