@@ -1,4 +1,4 @@
-name: Upload Docker Image of Latest Release to GHCR
+name: Build and Upload Docker Image of Latest Release to GHCR
 
 on:
   workflow_run:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   release-image:
-    name: Release NeuroConv Image
+    name: Build and Upload Docker Image of Latest Release to GHCR
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,4 +39,4 @@ jobs:
           push: true  # Push is a shorthand for --output=type=registry
           tags: ghcr.io/catalystneuro/neuroconv:latest,ghcr.io/catalystneuro/neuroconv:${{ steps.parsed_version.outputs.version_tag }}
           context: .
-          file: dockerfiles/neuroconv_developer_build_dockerfile
+          file: dockerfiles/neuroconv_latest_release_dockerfile
