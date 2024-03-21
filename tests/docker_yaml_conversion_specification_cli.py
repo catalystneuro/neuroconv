@@ -24,12 +24,13 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
     source_volume = os.getenv("NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME", "/home/runner/work/neuroconv")
 
     def test_run_conversion_from_yaml_cli(self):
-        path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
+        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
+
         deploy_process(
             command=(
                 "docker run -t "
-                f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:{self.tag}"
+                f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:{self.tag} "
                 f"neuroconv /neuroconv/tests/test_on_data/conversion_specifications/{yaml_file_path} "
                 f"--data-folder-path /neuroconv/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
@@ -70,12 +71,14 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
     def test_run_conversion_from_yaml_default_nwbfile_name(self):
         self.test_folder = self.test_folder / "test_organize"
         self.test_folder.mkdir(exist_ok=True)
-        path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
+
+        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_missing_nwbfile_names.yml"
+
         deploy_process(
             command=(
                 "docker run -t "
-                f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:{self.tag}"
+                f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:{self.tag} "
                 f"neuroconv {yaml_file_path} "
                 f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
@@ -125,7 +128,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             assert "spike_times" in nwbfile.units
 
     def test_run_conversion_from_yaml_variable(self):
-        path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
+        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
         with open(file=yaml_file_path, mode="r") as io:
