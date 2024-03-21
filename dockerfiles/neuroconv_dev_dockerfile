@@ -1,5 +1,5 @@
 FROM python:3.11.7-slim
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
-ADD /neuroconv /neuroconv
+ADD neuroconv neuroconv
 RUN cd neuroconv && pip install .[full]
 CMD ["python -m"]
