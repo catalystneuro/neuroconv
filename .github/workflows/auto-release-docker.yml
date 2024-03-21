@@ -22,7 +22,7 @@ jobs:
           version_tag=${tags: -6 : 6}
           echo "version_tag=$version_tag" >> $GITHUB_OUTPUT
       - name: Printout parsed version for GitHub Action log
-        run: echo "$latest_tag"
+        run: echo ${{ steps.parsed_version.outputs.version_tag }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -38,5 +38,5 @@ jobs:
         with:
           push: true  # Push is a shorthand for --output=type=registry
           tags: ghcr.io/catalystneuro/neuroconv:latest,ghcr.io/catalystneuro/neuroconv:${{ steps.parsed_version.outputs.version_tag }}
-          context: docker
+          context: .
           file: dockerfiles/neuroconv_developer_build_dockerfile
