@@ -1,5 +1,11 @@
 # Upcoming
 
+### Features
+
+* Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
+
+
+
 # v0.4.8 (March 20, 2024)
 
 ### Bug fixes
