@@ -19,6 +19,8 @@ jobs:
           tags="$(git tag --list)"
           latest_tag=${tags: -6 : 6}
           echo "latest_tag=$latest_tag" >> "$GITHUB_ENV"
+      - name: Printout parsed version for GitHub Action log
+        run: echo "$latest_tag"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
