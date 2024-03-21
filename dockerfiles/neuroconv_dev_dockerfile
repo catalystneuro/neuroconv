@@ -1,7 +1,5 @@
 FROM continuumio/anaconda3:latest
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
 RUN conda create -n neuroconv python=3.11.7
-RUN conda activate neuroconv &
-  conda install git &
-  python -m pip install git+https://github.com/catalystneuro/neuroconv.git@main
+RUN conda activate neuroconv && conda install git && python -m pip install git+https://github.com/catalystneuro/neuroconv.git@main
 CMD ["python -m"]
