@@ -5,6 +5,7 @@ on:
     workflows: [auto-publish]
     types: [completed]
   workflow_dispatch:
+  push:
 
 jobs:
   release-image:
