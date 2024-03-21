@@ -91,4 +91,4 @@ For example, assuming a MacOSX user with username 'MyUser', and assuming the ``d
 
 .. code::
 
-    docker run -t --volume /Users/MyUser/demo_neuroconv_docker:/demo_neuroconv_docker/ ghcr.io/catalystneuro/neuroconv:latest neuroconv /demo_neuroconv_docker/test_docker_yaml.yml
+    docker run -t --volume /Users/MyUser/demo_neuroconv_docker:/demo_neuroconv_docker/ ghcr.io/catalystneuro/neuroconv:latest neuroconv /demo_neuroconv_docker/test_docker_yaml.yml --output-folder demo_output
