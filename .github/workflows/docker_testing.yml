@@ -88,4 +88,4 @@ jobs:
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
       - name: Run docker tests
-        run: pytest tests/test_on_data/docker_yaml_conversion_specification_cli_test.py -vv -rsx
+        run: pytest tests/docker_yaml_conversion_specification_cli.py -vv -rsx
