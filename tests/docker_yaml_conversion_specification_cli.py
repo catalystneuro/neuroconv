@@ -14,8 +14,8 @@ from pynwb import NWBHDF5IO
 
 from neuroconv.tools import deploy_process
 
-from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .setup_paths import OUTPUT_PATH
+from .test_on_data.setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+from .test_on_data.setup_paths import OUTPUT_PATH
 
 
 class TestLatestDockerYAMLConversionSpecification(TestCase):
@@ -30,8 +30,8 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             command=(
                 "docker run -it "
                 f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:{self.tag}"
-                f"neuroconv {yaml_file_path} "
-                f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
+                f"neuroconv /neuroconv/tests/test_on_data/conversion_specifications/{yaml_file_path} "
+                f"--data-folder-path /neuroconv/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         )
 
