@@ -1,4 +1,5 @@
 FROM python:3.11.7-slim
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
+RUN apt update && apt install musl-dev python3-dev -y
 RUN pip install neuroconv[full]
 CMD ["python -m"]
