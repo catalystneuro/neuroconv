@@ -1,7 +1,7 @@
 Docker Demo
 -----------
 
-The following is an explicit demonstration of how to use the Docker-based CLI for NeuroConv.
+The following is an explicit demonstration of how to use the Docker-based NeuroConv YAML specification via the command line.
 
 It relies on some of the GIN data from the main testing suite, see :ref:`example_data` for more details.
 
@@ -11,9 +11,10 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
     Docker relies heavily on absolute system paths, but these can vary depending on your system.
 
     For Windows, this might be something like: ``C:/Users/MyUser/Downloads/``.
+
     For MacOSX it might be: ``/Users/username/``.
 
-    This demo will use home directory of an Ubuntu (Linux) system for a user named 'MyUser': ``/home/MyUser``.
+    For this demo, we will use the home directory of an Ubuntu (Linux) system for a user named 'MyUser' as our base: ``/home/MyUser``.
 
 
 .. note::
@@ -23,7 +24,7 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
     If this is the case for your system, then any time you see the ``docker`` usage on the command like you will need to prepend as ``sudo docker``.
 
 
-1. Make a new folder for the demo conversion named ``demo_neuroconv_docker``.
+1. In your base directory (which this demo will refer to as ``/home/MyUser/``), make a new folder for the demo conversion named ``demo_neuroconv_docker``.
 
 2. Make a subfolder in ``demo_neuroconv_docker`` called ``demo_output``.
 
@@ -102,8 +103,6 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
 .. code::
 
     docker run -t --volume /home/user/demo_neuroconv_docker:/demo_neuroconv_docker ghcr.io/catalystneuro/neuroconv:latest neuroconv /demo_neuroconv_docker/demo_neuroconv_docker_yaml.yml --output-folder-path /demo_neuroconv_docker/demo_output
-
-docker run -t --volume /home/ubuntu/demo_neuroconv_docker:/demo_neuroconv_docker ghcr.io/catalystneuro/neuroconv:latest neuroconv /demo_neuroconv_docker/demo_neuroconv_docker_yaml.yml --output-folder-path /demo_neuroconv_docker/demo_output
 
 Voilà! If everything occurred successfully, you should see...
 
