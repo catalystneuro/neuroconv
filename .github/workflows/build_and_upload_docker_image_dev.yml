@@ -29,4 +29,4 @@ jobs:
           push: true  # Push is a shorthand for --output=type=registry
           tags: ghcr.io/catalystneuro/neuroconv:dev
           context: .
-          file: dockerfiles/neuroconv_dev_branch_dockerfile
+          file: dockerfiles/neuroconv_dev_dockerfile
