@@ -2,7 +2,7 @@ name: Build and Upload Docker Image of Current Dev Branch to GHCR
 
 on:
   schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
+    - cron: "0 16 * * 1"  # Weekly at noon EST on Monday
   workflow_dispatch:
   push:  # remove after merge; can't trigger manually until on main
 
