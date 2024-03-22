@@ -21,7 +21,7 @@ from .test_on_data.setup_paths import OUTPUT_PATH
 class TestLatestDockerYAMLConversionSpecification(TestCase):
     test_folder = OUTPUT_PATH
     tag = os.getenv("NEUROCONV_DOCKER_TESTS_TAG", "latest")
-    source_volume = os.getenv("NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME", "/home/runner/work/neuroconv")
+    source_volume = os.getenv("NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME", "/home/runner/work/neuroconv/neuroconv")
 
     def test_run_conversion_from_yaml_cli(self):
         path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
