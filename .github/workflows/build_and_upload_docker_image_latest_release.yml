@@ -5,6 +5,7 @@ on:
     workflows: [auto-publish]
     types: [completed]
   workflow_dispatch:
+  push:
 
 concurrency:  # Cancel previous workflows on the same pull request
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,3 +44,4 @@ jobs:
           tags: ghcr.io/catalystneuro/neuroconv:latest,ghcr.io/catalystneuro/neuroconv:${{ steps.parsed_version.outputs.version_tag }}
           context: .
           file: dockerfiles/neuroconv_latest_release_dockerfile
+          provenance: false

@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: "0 16 * * 1"  # Weekly at noon EST on Monday
   workflow_dispatch:
+  push:
 
 concurrency:  # Cancel previous workflows on the same pull request
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,3 +39,4 @@ jobs:
           tags: ghcr.io/catalystneuro/neuroconv:dev,ghcr.io/catalystneuro/neuroconv:${{ steps.date.outputs.date_tag }}
           context: .
           file: dockerfiles/neuroconv_dev_dockerfile
+          provenance: false
