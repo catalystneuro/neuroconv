@@ -77,5 +77,10 @@ jobs:
         name: Download behavior dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
+      - name: Pull docker image
+        run: |
+          docker pull ghcr.io/catalystneuro/neuroconv:latest
+          docker pull ghcr.io/catalystneuro/neuroconv:yaml_variable
+
       - name: Run docker tests
         run: pytest tests/docker_yaml_conversion_specification_cli.py -vv -rsx
