@@ -15,5 +15,6 @@ The most common contribution is for a user/developer to help us integrate a new 
     Testing Suite <developer_guide/testing_suite>
     Coding Style <developer_guide/style_guide>
     Building the Documentation <developer_guide/building_documentation>
+    Building the Docker Image <developer_guide/docker_images.rst>
 
 Or feel free to raise a `bug report <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=bug&template=bug_report.yml&title=%5BBug%5D%3A+>`_ or `feature request <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement&template=feature_request.yml&title=%5BFeature%5D%3A+>`_ for our maintainers to prioritize!
