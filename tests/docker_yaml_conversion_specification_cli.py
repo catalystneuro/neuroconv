@@ -90,7 +90,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
                 '-e NEUROCONV_YAML="$NEUROCONV_YAML" '
-                '-e NEUROCONV_DATA_PATH="${NEUROCONV_DATA_PATH" '
+                '-e NEUROCONV_DATA_PATH="$NEUROCONV_DATA_PATH" '
                 '-e NEUROCONV_OUTPUT_PATH="$NEUROCONV_OUTPUT_PATH" '
                 "ghcr.io/catalystneuro/neuroconv:yaml_variable"
             ),
