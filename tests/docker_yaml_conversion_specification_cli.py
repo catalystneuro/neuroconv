@@ -31,7 +31,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             command=(
                 "docker run -t "
                 f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:{self.tag} "
-                f"neuroconv /neuroconv/tests/test_on_data/conversion_specifications/{yaml_file_path} "
+                f"neuroconv {yaml_file_path} "
                 f"--data-folder-path /neuroconv/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             ),
             catch_output=True,
@@ -86,6 +86,9 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             command=(
                 "docker run -t "
                 f"--volume {self.source_volume}:/neuroconv ghcr.io/catalystneuro/neuroconv:yaml_variable"
+                "-e NEUROCONV_YAML=$NEUROCONV_YAML"
+                "-e NEUROCONV_DATA_PATH=$NEUROCONV_DATA_PATH"
+                "-e NEUROCONV_OUTPUT_PATH=$NEUROCONV_OUTPUT_PATH"
             ),
             catch_output=True,
         )
