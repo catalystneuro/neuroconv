@@ -30,9 +30,6 @@ jobs:
           pip install pytest
           pip install .
 
-      - name: Pull docker image
-        run: docker pull ghcr.io/catalystneuro/neuroconv:latest
-
       - name: Get ephy_testing_data current head hash
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
