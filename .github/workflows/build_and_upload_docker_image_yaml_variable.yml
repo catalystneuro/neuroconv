@@ -5,7 +5,7 @@ on:
     workflows: [build_and_upload_docker_image_latest_release]
     types: [completed]
   workflow_dispatch:
-  #push:  # remove after merge; can't trigger manually until on main
+  push:
 
 concurrency:  # Cancel previous workflows on the same pull request
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,3 +35,4 @@ jobs:
           tags: ghcr.io/catalystneuro/neuroconv:yaml_variable
           context: .
           file: dockerfiles/neuroconv_latest_yaml_variable
+          provenance: false
