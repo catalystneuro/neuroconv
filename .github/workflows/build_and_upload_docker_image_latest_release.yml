@@ -5,6 +5,7 @@ on:
     workflows: [auto-publish]
     types: [completed]
   workflow_dispatch:
+  push:  # remove after merge; can't trigger manually until on main
 
 concurrency:  # Cancel previous workflows on the same pull request
   group: ${{ github.workflow }}-${{ github.ref }}
