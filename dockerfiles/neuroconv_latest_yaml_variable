@@ -1,3 +1,3 @@
 FROM ghcr.io/catalystneuro/neuroconv:latest
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
-CMD echo "$NEUROCONV_YAML" > run.yml && neuroconv run.yml --data-folder-path $NEUROCONV_DATA_PATH --output-folder-path $NEUROCONV_OUTPUT_PATH
+CMD echo "$NEUROCONV_YAML" > run.yml && python -m neuroconv run.yml --data-folder-path "$NEUROCONV_DATA_PATH" --output-folder-path "$NEUROCONV_OUTPUT_PATH"
