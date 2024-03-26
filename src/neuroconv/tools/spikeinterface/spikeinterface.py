@@ -511,6 +511,7 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
+    use_timestamps: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
@@ -546,6 +547,9 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
+    use_timestamps : bool, default: False
+        If True, and the recording extractor has a time vector, then force usage of that time vector
+        even if it is regular within a certain resolution.
     compression: {None, 'gzip', 'lzf'}, default: 'gzip'
         Type of compression to use. Set to None to disable all compression.
         To use the `configure_backend` function, you should set this to None.
@@ -664,7 +668,10 @@ def add_electrical_series(
         eseries_kwargs.update(data=ephys_data_iterator)
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
-    if recording.has_time_vector(segment_index=segment_index):
+    if recording.has_time_vector(segment_index=segment_index) and use_timestamps:
+        timestamps = recording.get_times(segment_index=segment_index)
+        rate = None
+    elif recording.has_time_vector(segment_index=segment_index) and use_timestamps:
         # First we check if the recording has a time vector to avoid creating artificial timestamps
         timestamps = recording.get_times(segment_index=segment_index)
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
@@ -746,6 +753,7 @@ def add_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
+    use_timestamps: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
@@ -790,6 +798,7 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
+    use_timestamps: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
@@ -862,6 +871,9 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
+    use_timestamps : bool, default: False
+        If True, and the recording extractor has a time vector, then force usage of that time vector
+        even if it is regular within a certain resolution.
     compression: {None, 'gzip', 'lzp'}, default: 'gzip'
         Type of compression to use. Set to None to disable all compression.
         To use the `configure_backend` function, you should set this to None.
@@ -906,6 +918,7 @@ def write_recording(
             es_key=es_key,
             write_electrical_series=write_electrical_series,
             write_scaled=write_scaled,
+            use_timestamps=use_timestamps,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
