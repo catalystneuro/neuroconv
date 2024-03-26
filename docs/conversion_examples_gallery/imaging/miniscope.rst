@@ -1,5 +1,5 @@
-Miniscope data conversion
--------------------------
+Miniscope
+^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Miniscope data.
 

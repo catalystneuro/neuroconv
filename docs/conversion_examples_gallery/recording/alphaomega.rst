@@ -1,5 +1,5 @@
-AlphaOmega conversion
----------------------
+AlphaOmega
+^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading AlphaOmega data.
 

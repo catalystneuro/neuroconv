@@ -1,5 +1,5 @@
-Tucker-Davis Technologies (TDT) data conversion
------------------------------------------------
+Tucker-Davis Technologies (TDT)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading TDT data.
 

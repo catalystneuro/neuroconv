@@ -1,5 +1,5 @@
-Plexon sorting data conversion
-------------------------------
+Plexon sorting
+^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Plexon data.
 

@@ -1,5 +1,5 @@
-Bruker TIFF data conversion
----------------------------
+Bruker TIFF
+^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Bruker TIFF data.
 

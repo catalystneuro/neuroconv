@@ -1,5 +1,5 @@
-FicTrac data conversion
---------------------------
+FicTrac
+-------
 
 Install NeuroConv with the additional dependencies necessary for reading `FicTrac <https://rjdmoore.net/fictrac/>`_ data.
 

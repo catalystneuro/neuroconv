@@ -1,5 +1,5 @@
-Blackrock sorting data conversion
----------------------------------
+Blackrock sorting
+^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Blackrock sorting data.
 

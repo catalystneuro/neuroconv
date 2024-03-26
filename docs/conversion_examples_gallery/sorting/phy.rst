@@ -1,5 +1,5 @@
-Phy sorting data conversion
----------------------------
+Phy sorting
+^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Phy data.
 

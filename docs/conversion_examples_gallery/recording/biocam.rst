@@ -1,5 +1,5 @@
-Biocam conversion
------------------
+Biocam
+^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Biocam data.
 

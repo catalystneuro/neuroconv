@@ -1,5 +1,5 @@
-Micro-Manager TIFF data conversion
-----------------------------------
+Micro-Manager TIFF
+^^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Micro-Manager TIFF data.
 

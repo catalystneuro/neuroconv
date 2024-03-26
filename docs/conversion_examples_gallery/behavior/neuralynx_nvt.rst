@@ -1,5 +1,5 @@
-Neuralynx NVT data conversion
------------------------------
+Neuralynx NVT
+-------------
 
 Neuralynx NVT files contain information about position tracking. This interface requires no additional dependencies,
 so you can install NeuroConv using:
