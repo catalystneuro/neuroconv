@@ -1,1 +1,1 @@
-spikeinterface>=0.100.0
+spikeinterface=git+https://github.com/SpikeInterface/spikeinterface.git@main

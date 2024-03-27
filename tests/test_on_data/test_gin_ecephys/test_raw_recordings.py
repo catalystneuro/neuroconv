@@ -189,6 +189,23 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             )
         )
 
+    # Intan multiple files format
+    parameterized_recording_list.append(
+        param(
+            data_interface=IntanRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / "intan_fpc_test_231117_052630/info.rhd")),
+            case_name="one-file-per-channel",
+        )
+    )
+
+    parameterized_recording_list.append(
+        param(
+            data_interface=IntanRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / "intan_fps_test_231117_052500/info.rhd")),
+            case_name="one-file-per-signal",
+        )
+    )
+
     file_name_list = ["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"]
     num_channels_list = [512, 128]
     file_name_num_channels_pairs = zip(file_name_list, num_channels_list)
