@@ -1,5 +1,8 @@
 # Upcoming
 
+### Features
+* Support "one-file-per-signal" and "one-file-per-channel" mode with `IntanRecordingInterface` [PR #791](https://github.com/catalystneuro/neuroconv/pull/791)
+
 # v0.4.8 (March 20, 2024)
 
 ### Bug fixes
