@@ -1,1 +1,1 @@
-spikeinterface=git+https://github.com/SpikeInterface/spikeinterface.git@main
+spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@main
