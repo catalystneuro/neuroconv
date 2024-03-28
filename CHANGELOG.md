@@ -1,5 +1,9 @@
 # Upcoming
 
+### Improvements
+
+* In `add_electrodes()` custom properties are added to the electrodes table in the order they are set in the recording extractor. [PR #793](https://github.com/catalystneuro/neuroconv/issues/793)
+
 # v0.4.8 (March 20, 2024)
 
 ### Bug fixes
