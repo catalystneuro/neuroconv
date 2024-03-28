@@ -319,6 +319,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     schema_properties = required_schema_properties | optional_schema_properties
 
     electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
+    order_of_properties = list(data_to_add.keys())
     extracted_properties = set(data_to_add)
     properties_to_add_by_rows = required_schema_properties | electrode_table_previous_properties
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
@@ -387,7 +388,9 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     indexes_for_default_values = electrodes_df.index.difference(indexes_for_new_data).values
 
     # Add properties as columns
-    for property in properties_to_add_by_columns - {"channel_name"}:
+    unordered_properties_to_add_by_columns = properties_to_add_by_columns - {"channel_name"}
+    ordered_properties_to_add_by_columns = sorted(unordered_properties_to_add_by_columns, key=order_of_properties.index)
+    for property in ordered_properties_to_add_by_columns:
         cols_args = data_to_add[property]
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
