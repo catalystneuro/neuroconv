@@ -87,6 +87,9 @@ def get_default_segmentation_metadata() -> DeepDict:
         PlaneSegmentation=dict(
             raw=default_fluorescence_roi_response_series,
         ),
+        BackgroundPlaneSegmentation=dict(
+            neuropil=dict(name="Neuropil", description="Array of neuropil traces.", unit="n.a."),
+        ),
     )
 
     default_dff_roi_response_series = dict(
@@ -928,6 +931,7 @@ def add_fluorescence_traces(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_name: Optional[str] = None,
+    background_plane_segmentation_name: Optional[str] = None,
     plane_index: Optional[int] = None,  # TODO: to be removed
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
@@ -973,6 +977,10 @@ def add_fluorescence_traces(
     plane_segmentation_name = (
         plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     )
+    background_plane_segmentation_name = (
+        background_plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    )
     # df/F metadata
     df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
     df_over_f_name = df_over_f_metadata["name"]
@@ -998,14 +1006,16 @@ def add_fluorescence_traces(
         return nwbfile
 
     # Create a reference for ROIs from the plane segmentation
-    roi_table_region = _create_roi_table_region(
+    roi_table_region, background_roi_table_region = _create_roi_table_region(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata_copy,
         plane_segmentation_name=plane_segmentation_name,
+        background_plane_segmentation_name=background_plane_segmentation_name,
     )
 
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
+    background_roi_response_series_kwargs = dict(rois=background_roi_table_region, unit="n.a.")
 
     # Add timestamps or rate
     if segmentation_extractor.has_time_vector():
@@ -1013,11 +1023,16 @@ def add_fluorescence_traces(
         estimated_rate = calculate_regular_series_rate(series=timestamps)
         if estimated_rate:
             roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+            background_roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
             roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            background_roi_response_series_kwargs.update(
+                timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None
+            )
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         roi_response_series_kwargs.update(rate=rate)
+        background_roi_response_series_kwargs.update(rate=rate)
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
@@ -1034,6 +1049,8 @@ def add_fluorescence_traces(
         trace_to_data_interface.update(dff=df_over_f_data_interface)
 
     for trace_name, trace in traces_to_add.items():
+        if trace_name == "Neuropil":
+            continue
         # Decide which data interface to use based on the trace name
         data_interface = trace_to_data_interface[trace_name]
         data_interface_metadata = df_over_f_metadata if isinstance(data_interface, DfOverF) else fluorescence_metadata
@@ -1063,6 +1080,37 @@ def add_fluorescence_traces(
 
         # Add trace to the data interface
         data_interface.add_roi_response_series(roi_response_series)
+
+    # add neuropil/background traces
+    if "Neuropil" in traces_to_add:
+        trace_name = "Neuropil"
+        data_interface = trace_to_data_interface[trace_name]
+        data_interface_metadata = fluorescence_metadata
+        assert background_plane_segmentation_name in data_interface_metadata, (
+            f"Plane segmentation '{background_plane_segmentation_name}' not found in "
+            f"{data_interface_metadata} metadata."
+        )
+        trace_metadata = data_interface_metadata[background_plane_segmentation_name][trace_name]
+        if trace_metadata is None:
+            raise ValueError(f"Metadata for '{trace_name}' trace not found in {data_interface_metadata}.")
+
+        if trace_metadata["name"] in data_interface.roi_response_series:
+            return nwbfile
+
+        # Pop the rate from the metadata if irregular time series
+        if "timestamps" in background_roi_response_series_kwargs and "rate" in trace_metadata:
+            trace_metadata.pop("rate")
+
+        # Build the roi response series
+        background_roi_response_series_kwargs.update(
+            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
+            rois=background_roi_table_region,
+            **trace_metadata,
+        )
+        background_roi_response_series = RoiResponseSeries(**background_roi_response_series_kwargs)
+
+        # Add trace to the data interface
+        data_interface.add_roi_response_series(background_roi_response_series)
 
     return nwbfile
 
@@ -1110,9 +1158,11 @@ def _create_roi_table_region(
 
     # Get plane segmentation from the image segmentation
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
+    background_plane_segmentation = image_segmentation.plane_segmentations[background_plane_segmentation_name]
 
     # Create a reference for ROIs from the plane segmentation
     id_list = list(plane_segmentation.id)
+    background_id_list = list(background_plane_segmentation.id)
 
     imaging_plane_name = plane_segmentation.imaging_plane.name
     roi_table_region = plane_segmentation.create_roi_table_region(
@@ -1120,7 +1170,12 @@ def _create_roi_table_region(
         description=f"The ROIs for {imaging_plane_name}.",
     )
 
-    return roi_table_region
+    background_roi_table_region = background_plane_segmentation.create_roi_table_region(
+        region=[background_id_list.index(id) for id in segmentation_extractor.get_background_ids()],
+        description=f"The background ROIs for {imaging_plane_name}.",
+    )
+
+    return roi_table_region, background_roi_table_region
 
 
 def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str):
@@ -1261,6 +1316,7 @@ def add_segmentation(
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
+        background_plane_segmentation_name=background_plane_segmentation_name,
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
