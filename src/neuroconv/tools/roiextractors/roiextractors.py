@@ -109,9 +109,25 @@ def get_default_segmentation_metadata() -> DeepDict:
                 name="PlaneSegmentation",
                 description="Segmented ROIs",
                 imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
-            )
+            ),
+            dict(
+                name="BackgroundPlaneSegmentation",
+                description="Segmented Background Components",
+                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
+            ),
         ],
     )
+
+    # default_background_image_segmentation = dict(
+    #     name="BackgroundImageSegmentation",
+    #     plane_segmentations=[
+    #         dict(
+    #             name="BackgroundPlaneSegmentation",
+    #             description="Segmented Background Components",
+    #             imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
+    #         )
+    #     ],
+    # )
 
     default_segmentation_images = dict(
         name="SegmentationImages",
@@ -126,6 +142,7 @@ def get_default_segmentation_metadata() -> DeepDict:
             Fluorescence=default_fluorescence,
             DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
+            # BackgroundImageSegmentation=default_background_image_segmentation,
             SegmentationImages=default_segmentation_images,
         ),
     )
@@ -681,6 +698,7 @@ def add_plane_segmentation(
     metadata: Optional[dict],
     plane_segmentation_name: Optional[str] = None,
     plane_segmentation_index: Optional[int] = None,  # TODO: to be removed
+    background_plane_segmentation_name: Optional[str] = None,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
@@ -766,6 +784,20 @@ def add_plane_segmentation(
             f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations']."
         )
 
+    background_plane_segmentation_name = (
+        background_plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    )
+    background_plane_segmentation_metadata = None
+    for meta in metadata_copy["Ophys"]["ImageSegmentation"]["plane_segmentations"]:
+        if meta["name"] == background_plane_segmentation_name:
+            background_plane_segmentation_metadata = meta
+            break
+    if background_plane_segmentation_metadata is None:
+        raise ValueError(
+            f"Metadata for Plane Segmentation '{background_plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations']."
+        )
+
     imaging_plane_name = plane_segmentation_metadata["imaging_plane"]
     add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     add_image_segmentation(nwbfile=nwbfile, metadata=metadata_copy)
@@ -777,6 +809,7 @@ def add_plane_segmentation(
     # Check if the plane segmentation already exists in the image segmentation
     if plane_segmentation_name not in image_segmentation.plane_segmentations:
         roi_ids = segmentation_extractor.get_roi_ids()
+        background_ids = segmentation_extractor.get_background_ids()
 
         if include_roi_acceptance:
             accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
@@ -785,14 +818,23 @@ def add_plane_segmentation(
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
         plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
         plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
+        background_plane_segmentation_kwargs = deepcopy(background_plane_segmentation_metadata)
+        background_plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
         if mask_type is None:
             plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
+            background_plane_segmentation = PlaneSegmentation(id=background_ids, **background_plane_segmentation_kwargs)
         elif mask_type == "image":
             plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
                 data=H5DataIO(segmentation_extractor.get_roi_image_masks().T, **compression_options),
+            )
+            background_plane_segmentation = PlaneSegmentation(id=background_ids, **background_plane_segmentation_kwargs)
+            background_plane_segmentation.add_column(
+                name="image_mask",
+                description="Image masks for each background ROI.",
+                data=H5DataIO(segmentation_extractor.get_background_image_masks().T, **compression_options),
             )
         elif mask_type == "pixel" or mask_type == "voxel":
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
@@ -821,6 +863,35 @@ def add_plane_segmentation(
             for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
                 plane_segmentation.add_roi(**{"id": roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
 
+            # TODO: Make sure pixel masks are tested properly
+            background_pixel_masks = segmentation_extractor.get_background_pixel_masks()
+            num_pixel_dims = background_pixel_masks[0].shape[1]
+
+            assert num_pixel_dims in [3, 4], (
+                "The segmentation extractor returned a pixel mask that is not 3- or 4- dimensional! "
+                "Please open a ticket with https://github.com/catalystneuro/roiextractors/issues"
+            )
+            if mask_type == "pixel" and num_pixel_dims == 4:
+                warn(
+                    "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
+                    "Using mask_type='voxel' instead."
+                )
+                mask_type = "voxel"
+            if mask_type == "voxel" and num_pixel_dims == 3:
+                warn(
+                    "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
+                    "Using mask_type='pixel' instead."
+                )
+                mask_type = "pixel"
+
+            mask_type_kwarg = f"{mask_type}_mask"
+            background_plane_segmentation = PlaneSegmentation(**background_plane_segmentation_kwargs)
+
+            for background_id, background_pixel_mask in zip(background_ids, background_pixel_masks):
+                background_plane_segmentation.add_roi(
+                    **{"id": background_id, mask_type_kwarg: [tuple(x) for x in background_pixel_mask]}
+                )
+
         if include_roi_centroids:
             # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
             tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
@@ -844,7 +915,12 @@ def add_plane_segmentation(
             )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
+        image_segmentation.add_plane_segmentation(plane_segmentations=[background_plane_segmentation])
     return nwbfile
+
+
+def add_background_plane_segmentation():
+    pass
 
 
 def add_fluorescence_traces(
@@ -996,6 +1072,7 @@ def _create_roi_table_region(
     nwbfile: NWBFile,
     metadata: dict,
     plane_segmentation_name: Optional[str] = None,
+    background_plane_segmentation_name: Optional[str] = None,
     plane_index: Optional[int] = None,
 ):
     """Private method to create ROI table region.
@@ -1024,6 +1101,7 @@ def _create_roi_table_region(
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
+        background_plane_segmentation_name=background_plane_segmentation_name,
     )
 
     image_segmentation_name = image_segmentation_metadata["name"]
@@ -1062,6 +1140,10 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
     ophys.add(data_interface)
 
     return data_interface
+
+
+def add_background_fluorescence_traces():
+    pass
 
 
 def add_summary_images(
@@ -1146,6 +1228,7 @@ def add_segmentation(
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
     plane_segmentation_name: Optional[str] = None,
+    background_plane_segmentation_name: Optional[str] = None,
     plane_num: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
@@ -1163,12 +1246,14 @@ def add_segmentation(
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
+        background_plane_segmentation_name=background_plane_segmentation_name,
         include_roi_centroids=include_roi_centroids,
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
+    # add_background_plane_segmentation()
 
     # Add fluorescence traces:
     add_fluorescence_traces(
@@ -1179,6 +1264,7 @@ def add_segmentation(
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
+    add_background_fluorescence_traces()
 
     # Adding summary images (mean and correlation)
     add_summary_images(
