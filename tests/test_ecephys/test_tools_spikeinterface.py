@@ -881,6 +881,32 @@ class TestAddElectrodes(TestCase):
         expected_property_2_values = ["", "", "value_1", "value_2", "value_3", "value_4"]
         self.assertListEqual(actual_property_2_values, expected_property_2_values)
 
+    def test_custom_property_order(self):
+        """
+        Test that custom properties are be added to the electrodes table in the order they are set.
+        """
+        self.recording_1.set_property(key="custom_property_x", values=[0.1] * self.num_channels)
+        self.recording_1.set_property(key="custom_property_y", values=[0.2] * self.num_channels)
+        self.recording_1.set_property(key="custom_property_z", values=[0.3] * self.num_channels)
+        self.recording_1.set_property(key="custom_property_1", values=["value_1"] * self.num_channels)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_columns_in_order = [
+            "location",
+            "group",
+            "group_name",
+            "channel_name",
+            "custom_property_x",
+            "custom_property_y",
+            "custom_property_z",
+            "custom_property_1",
+            "rel_x",
+            "rel_y",
+        ]
+        electrodes_columns = list(self.nwbfile.electrodes.colnames)
+        self.assertListEqual(expected_columns_in_order, electrodes_columns)
+
 
 class TestAddUnitsTable(TestCase):
     @classmethod
