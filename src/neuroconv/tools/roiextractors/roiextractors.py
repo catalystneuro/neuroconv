@@ -784,6 +784,10 @@ def add_plane_segmentation(
             f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations']."
         )
 
+    background_plane_segmentation_name = (
+        background_plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    )
     background_plane_segmentation_metadata = None
     for meta in metadata_copy["Ophys"]["ImageSegmentation"]["plane_segmentations"]:
         if meta["name"] == background_plane_segmentation_name:
@@ -1068,6 +1072,7 @@ def _create_roi_table_region(
     nwbfile: NWBFile,
     metadata: dict,
     plane_segmentation_name: Optional[str] = None,
+    background_plane_segmentation_name: Optional[str] = None,
     plane_index: Optional[int] = None,
 ):
     """Private method to create ROI table region.
@@ -1096,7 +1101,7 @@ def _create_roi_table_region(
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
-        background_plane_segmentation_name="BackgroundPlaneSegmentation",
+        background_plane_segmentation_name=background_plane_segmentation_name,
     )
 
     image_segmentation_name = image_segmentation_metadata["name"]
@@ -1223,6 +1228,7 @@ def add_segmentation(
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
     plane_segmentation_name: Optional[str] = None,
+    background_plane_segmentation_name: Optional[str] = None,
     plane_num: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
@@ -1240,7 +1246,7 @@ def add_segmentation(
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
-        background_plane_segmentation_name="BackgroundPlaneSegmentation",
+        background_plane_segmentation_name=background_plane_segmentation_name,
         include_roi_centroids=include_roi_centroids,
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
