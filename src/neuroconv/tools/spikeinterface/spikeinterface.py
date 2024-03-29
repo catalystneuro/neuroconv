@@ -248,6 +248,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     default_metadata = get_default_electrodes_metadata(recording=recording, exclude=exclude)
+    metadata = metadata or dict()
     metadata = dict_deep_update(default_metadata, metadata)
 
     # Test that metadata has the expected structure
