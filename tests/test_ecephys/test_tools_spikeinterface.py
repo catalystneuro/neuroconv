@@ -888,22 +888,44 @@ class TestAddElectrodes(TestCase):
         self.recording_1.set_property(key="custom_property_x", values=[0.1] * self.num_channels)
         self.recording_1.set_property(key="custom_property_y", values=[0.2] * self.num_channels)
         self.recording_1.set_property(key="custom_property_z", values=[0.3] * self.num_channels)
-        self.recording_1.set_property(key="custom_property_1", values=["value_1"] * self.num_channels)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        self.recording_2.set_property(key="custom_property_2", values=["value_1"] * self.num_channels)
+
+        metadata = dict(
+            Ecephys=dict(
+                Electrodes=[
+                    dict(name="custom_property_x", description="custom description."),
+                    dict(name="custom_property_y", description="custom description."),
+                    dict(name="custom_property_z", description="custom description."),
+                    dict(name="custom_property_2", description="custom description."),
+                ]
+            )
+        )
 
         expected_columns_in_order = [
             "location",
             "group",
             "group_name",
             "channel_name",
+            "rel_x",
+            "rel_y",
             "custom_property_x",
             "custom_property_y",
             "custom_property_z",
-            "custom_property_1",
-            "rel_x",
-            "rel_y",
+            "custom_property_2",
         ]
+
+        add_electrodes(
+            recording=self.recording_1,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+        )
+        add_electrodes(
+            recording=self.recording_2,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+        )
+
         electrodes_columns = list(self.nwbfile.electrodes.colnames)
         self.assertListEqual(expected_columns_in_order, electrodes_columns)
 
