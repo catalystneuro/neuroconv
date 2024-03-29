@@ -49,6 +49,42 @@ def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
     return metadata
 
 
+def get_default_electrodes_metadata(recording: BaseRecording, exclude: tuple = ()):
+    """
+    Return default metadata for all electrode fields.
+
+    Parameters
+    ----------
+    recording: spikeinterface.BaseRecording
+    exclude: tuple
+        An iterable containing the string names of channel properties in the RecordingExtractor
+        object to ignore.
+    """
+    recording_properties_si_mapping = dict(brain_area="location", location=["rel_x", "rel_y", "rel_z"])
+    metadata = get_nwb_metadata(recording=recording)
+    metadata["Ecephys"].update(Electrodes=list())
+    electrodes_metadata = metadata["Ecephys"]["Electrodes"]
+    electrodes_metadata.append(dict(name="group_name", description="no description"))
+    electrodes_metadata.append(dict(name="channel_name", description="no description"))
+
+    recorder_properties = recording.get_property_keys()
+    excluded_properties = list(exclude) + ["group", "contact_vector"]
+    properties_to_add_to_metadata = [
+        property for property in recorder_properties if property not in excluded_properties
+    ]
+
+    for property in properties_to_add_to_metadata:
+        if property == "brain_area":
+            electrodes_metadata.append(dict(name="location", description="location"))
+        elif property == "location":
+            for location_property in recording_properties_si_mapping[property]:
+                electrodes_metadata.append(dict(name=location_property, description="no description"))
+        else:
+            electrodes_metadata.append(dict(name=property, description="no description"))
+
+    return metadata
+
+
 def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
     """
     Add device information to nwbfile object.
@@ -211,10 +247,11 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
+    default_metadata = get_default_electrodes_metadata(recording=recording, exclude=exclude)
+    metadata = dict_deep_update(default_metadata, metadata)
+
     # Test that metadata has the expected structure
-    electrodes_metadata = list()
-    if metadata is not None:
-        electrodes_metadata = metadata.get("Ecephys", dict()).get("Electrodes", list())
+    electrodes_metadata = metadata["Ecephys"]["Electrodes"]
 
     required_keys = {"name", "description"}
     assert all(
@@ -319,7 +356,6 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     schema_properties = required_schema_properties | optional_schema_properties
 
     electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
-    order_of_properties = list(data_to_add.keys())
     extracted_properties = set(data_to_add)
     properties_to_add_by_rows = required_schema_properties | electrode_table_previous_properties
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
