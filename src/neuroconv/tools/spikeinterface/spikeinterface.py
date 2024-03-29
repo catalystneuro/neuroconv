@@ -425,6 +425,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
 
     # Add properties as columns
     unordered_properties_to_add_by_columns = properties_to_add_by_columns - {"channel_name"}
+    order_of_properties = [property["name"] for property in electrodes_metadata]
     ordered_properties_to_add_by_columns = sorted(unordered_properties_to_add_by_columns, key=order_of_properties.index)
     for property in ordered_properties_to_add_by_columns:
         cols_args = data_to_add[property]
