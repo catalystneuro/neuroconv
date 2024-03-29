@@ -18,16 +18,16 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 
-# @parameterized_class(
-#     [
-#         {"conversion_options": {"mask_type": "image"}},
-#         {"conversion_options": {"mask_type": "pixel"}},
-#         {"conversion_options": {"mask_type": "voxel"}},
-#         {"conversion_options": {"mask_type": None}},
-#         {"conversion_options": {"include_roi_centroids": False}},
-#         {"conversion_options": {"include_roi_acceptance": False}},
-#     ]
-# )
+@parameterized_class(
+    [
+        {"conversion_options": {"mask_type": "image"}},
+        {"conversion_options": {"mask_type": "pixel"}},
+        {"conversion_options": {"mask_type": "voxel"}},
+        {"conversion_options": {"mask_type": None}},
+        {"conversion_options": {"include_roi_centroids": False}},
+        {"conversion_options": {"include_roi_acceptance": False}},
+    ]
+)
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CaimanSegmentationInterface
     interface_kwargs = dict(
