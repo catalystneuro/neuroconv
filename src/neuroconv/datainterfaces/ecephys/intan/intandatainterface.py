@@ -1,4 +1,5 @@
-from pathlib import Path
+import warnings
+from typing import Optional
 
 from packaging.version import Version
 from pynwb.ecephys import ElectricalSeries
@@ -6,35 +7,6 @@ from pynwb.ecephys import ElectricalSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package, get_package_version
 from ....utils import FilePathType, get_schema_from_hdmf_class
-
-
-def extract_electrode_metadata_with_pyintan(file_path) -> dict:
-    pyintan = get_package(package_name="pyintan")
-
-    if ".rhd" in Path(file_path).suffixes:
-        intan_file_metadata = pyintan.intan.read_rhd(file_path)[1]
-    else:
-        intan_file_metadata = pyintan.intan.read_rhs(file_path)[1]
-
-    exclude_chan_types = ["AUX", "ADC", "VDD", "_STIM", "ANALOG"]
-
-    valid_channels = [
-        x for x in intan_file_metadata if not any([y in x["native_channel_name"] for y in exclude_chan_types])
-    ]
-
-    group_names = [channel["native_channel_name"].split("-")[0] for channel in valid_channels]
-    unique_group_names = set(group_names)
-    group_electrode_numbers = [channel["native_order"] for channel in valid_channels]
-    custom_names = [channel["custom_channel_name"] for channel in valid_channels]
-
-    electrodes_metadata = dict(
-        group_names=group_names,
-        unique_group_names=unique_group_names,
-        group_electrode_numbers=group_electrode_numbers,
-        custom_names=custom_names,
-    )
-
-    return electrodes_metadata
 
 
 def extract_electrode_metadata(recording_extractor) -> dict:
@@ -73,11 +45,12 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     display_name = "Intan Recording"
     associated_suffixes = (".rhd", ".rhs")
     info = "Interface for Intan recording data."
+    stream_id = "0"  # This is the only stream_id of Intan that might have neural data
 
     def __init__(
         self,
         file_path: FilePathType,
-        stream_id: str = "0",
+        stream_id: Optional[str] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
@@ -95,7 +68,13 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         """
 
-        self.stream_id = stream_id
+        if stream_id is not None:
+            warnings.warn(
+                "Use of the 'stream_id' parameter is deprecated and it will be removed after September 2024.",
+                DeprecationWarning,
+            )
+            self.stream_id = stream_id
+
         super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
         electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 

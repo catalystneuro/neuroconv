@@ -1,5 +1,7 @@
 # Upcoming
 
+### Deprecations
+* Removed `stream_id` as an argument from `IntanRecordingInterface` [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
 # v0.4.8 (March 20, 2024)
 
 ### Bug fixes
