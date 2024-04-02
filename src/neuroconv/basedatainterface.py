@@ -71,7 +71,7 @@ class BaseDataInterface(ABC):
         self,
         backend: Literal["hdf5", "zarr"] = "hdf5",
         metadata: Optional[dict] = None,
-        conversion_options: Optional[dict] = None,
+        **conversion_options,
     ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
@@ -82,14 +82,11 @@ class BaseDataInterface(ABC):
             The type of backend used to create the file.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        conversion_options : dict, optional
-            Similar to source_data, a dictionary containing keywords for each interface for which non-default
-            conversion specification is requested.
+        **conversion_options
+            Additional keyword arguments to pass to the `.add_to_nwbfile` method.
         """
         if metadata is None:
             metadata = self.get_metadata()
-        if conversion_options is None:
-            conversion_options = dict()
 
         with make_or_load_nwbfile(metadata=metadata, verbose=self.verbose) as nwbfile:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
@@ -148,7 +145,7 @@ class BaseDataInterface(ABC):
 
         if isinstance(backend, str):
             backend_configuration = self.get_default_backend_configuration(
-                backend=backend, metadata=metadata, conversion_options=conversion_options
+                backend=backend, metadata=metadata, **conversion_options
             )
         else:
             backend_configuration = backend
