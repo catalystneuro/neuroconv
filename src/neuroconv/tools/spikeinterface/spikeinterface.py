@@ -175,7 +175,12 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
 
-def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None, exclude: tuple = ()):
+def add_electrodes(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict = None,
+    exclude: Optional[tuple] = None,
+):
     """
     Add channels from recording object as electrodes to nwbfile object.
 
@@ -236,8 +241,13 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
     data_to_add = defaultdict(dict)
 
+    if exclude is None:
+        exclude = tuple()
+
+    exclude = list(exclude)
+
     recorder_properties = recording.get_property_keys()
-    excluded_properties = list(exclude) + ["contact_vector"]
+    excluded_properties = exclude + ["offset_to_uV", "gain_to_uV", "contact_vector"]
     properties_to_extract = [property for property in recorder_properties if property not in excluded_properties]
 
     for property in properties_to_extract:
