@@ -9,6 +9,7 @@
 
 ### Features
 * Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #784](https://github.com/catalystneuro/neuroconv/pull/800)
+* Added `get_default_backend_configuration` method to all `DataInterface` classes. Also added HDF5 `backend` control to all standalone `.run_conversion(...)` methods for those interfaces. [PR #784](https://github.com/catalystneuro/neuroconv/pull/801)
 
 ### Improvements
 * Upgraded Pydantic support to `>v2.0.0`. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)

@@ -149,7 +149,7 @@ class DataInterfaceTestMixin:
     #             self.run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
 
     #             # TODO: enabling roundtrip reads will require adding Zarr read support to SI, ROIExtractors, etc.
-    #             # Just checking it can be generally opened sucessfully for now
+    #             # Just checking it can be generally opened successfully for now
     #             # self.check_read_nwb(nwbfile_path=self.nwbfile_path)
     #             self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
