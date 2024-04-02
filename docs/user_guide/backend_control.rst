@@ -1,0 +1,205 @@
+Backend Configuration
+=====================
+
+NeuroConv offers highly convenient control over the type of file backend and the way its datasets are configured.
+
+Find out more about possible file types in the `main NWB documentation <https://nwb-overview.readthedocs.io/en/latest/faq_details/why_hdf5.html#why-use-hdf5-as-the-primary-backend-for-nwb>`_.
+
+Find out more about chunking, compression, and buffering in the `advanced NWB tutorials <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/h5dataio.html#sphx-glr-tutorials-advanced-io-h5dataio-py>`_.
+
+
+
+Default configuration
+---------------------
+
+By default, NeuroConv will create NWB files using the HDF5 backend.
+
+By default, all datasets will be chunked into ~10 MB pieces, each piece compressed using GZIP (level 4), and large amounts of data will be buffered by ~500 MB at a time.
+
+To retrieve a default configuration for an in-memory ``NWBFile`` object, simply call the ``get_default_backend_configuration`` function...
+
+.. code-block:: python
+
+    from datetime import datetime
+    from uuid import uuid4
+
+    from dateutil import tz
+    from neuroconv.tools.nwb_helpers import get_default_backend_configuration
+    from pynwb import NWBFile, TimeSeries
+
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    nwbfile = NWBFile(
+        identifier=str(uuid.uuid4()),
+        session_start_time=session_start_time,
+        session_description="A session of my experiment.",
+    )
+
+    time_series = TimeSeries(
+        name="MyTimeSeries",
+        description="A time series from my experiment.",
+        unit="cm/s",
+        data=[1., 2., 3.],
+        timestamps=[0.0, 0.2, 0.4],
+    )
+    nwbfile.add_acquisition(time_series)
+
+    default_backend_configuration = get_default_backend_configuration(
+        nwbfile=nwbfile, backend="hdf5"
+    )
+
+From which a printout of the contents looks like...
+
+.. code-block:: python
+
+    print(default_backend_configuration)
+
+.. code-block:: bash
+
+    Configurable datasets identified using the hdf5 backend
+    -------------------------------------------------------
+
+    acquisition/MyTimeSeries/data
+    -----------------------------
+      dtype : float64
+      full shape of source array : (3,)
+      full size of source array : 0.00 GB
+
+      buffer shape : (3,)
+      expected RAM usage : 0.00 GB
+
+      chunk shape : (3,)
+      disk space usage per chunk : 0.00 MB
+
+      compression method : gzip
+
+
+    acquisition/MyTimeSeries/timestamps
+    -----------------------------------
+      dtype : float64
+      full shape of source array : (3,)
+      full size of source array : 0.00 GB
+
+      buffer shape : (3,)
+      expected RAM usage : 0.00 GB
+
+      chunk shape : (3,)
+      disk space usage per chunk : 0.00 MB
+
+      compression method : gzip
+
+
+Customization
+-------------
+
+To modify the chunking or buffering patterns and compression method or options, simply change those values in the ``.dataset_configurations`` object using the location of each dataset as a specifier.
+
+Let's demonstrate this by modifying everything we can for the ``data`` field of the ``TimeSeries`` object generated above...
+
+.. code-block:: python
+
+    dataset_configuration = default_backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"]
+    dataset_configuration.chunk_shape = (1,)
+    dataset_configuration.buffer_shape = (2,)
+    dataset_configuration.compression_method = "Zstd"
+    dataset_configuration.compression_options = dict(clevel=3)
+
+Some details to note about what can be changed...
+
+.. note::
+
+    Core fields such as the maximum shape and dtype of the source data cannot be altered using this method.
+
+.. note::
+
+    The ``buffer_shape`` must be a multiple of the ``chunk_shape`` along each axis.
+
+.. note::
+
+    You can see what compression methods are available on your installation by examining the following...
+
+    .. code-block:: python
+
+      from neuroconv.tools.nwb_helpers import AVAILABLE_HDF5_COMPRESSION_METHODS
+
+      AVAILABLE_HDF5_COMPRESSION_METHODS
+
+    .. code-block:: bash
+
+      {'gzip': 'gzip',
+       ...
+       'Zstd': hdf5plugin._filters.Zstd}
+
+    And likewise for ``AVAILABLE_ZARR_COMPRESSION_METHODS``.
+
+We can confirm these values are saved by re-printing that particular dataset configuration...
+
+.. code-block:: python
+
+    print(dataset_configuration)
+
+.. code-block:: bash
+
+    acquisition/MyTimeSeries/data
+    -----------------------------
+      dtype : float64
+      full shape of source array : (3,)
+      full size of source array : 0.00 GB
+
+      buffer shape : (2,)
+      expected RAM usage : 0.00 GB
+
+      chunk shape : (1,)
+      disk space usage per chunk : 0.00 MB
+
+      compression method : Zstd
+      compression options : {'clevel': 3}
+
+
+
+Configure & write (tools)
+-------------------------
+
+Putting everything together and implementing our configuration by calling ``configure_backend`` on the in-memory ``NWBFile`` object, the following code writes our NWB file to disk...
+
+.. code-block::
+
+    from datetime import datetime
+
+    from dateutil import tz
+    from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
+    from pynwb import TimeSeries
+
+    nwbfile_path = "./my_nwbfile.nwb"
+
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    metadata = dict(NWBFile=dict(session_start_time=session_start_time))
+
+    with make_or_load_nwbfile(
+        nwbfile_path=nwbfile_path,
+        metadata=metadata,
+        overwrite=True,
+        verbose=True,
+    ) as nwbfile:
+
+        time_series = TimeSeries(
+            name="MyTimeSeries",
+            description="A time series from my experiment.",
+            unit="cm/s",
+            data=[1., 2., 3.],
+            timestamps=[0.0, 0.2, 0.4],
+        )
+        nwbfile.add_acquisition(time_series)
+
+        default_backend_configuration = get_default_backend_configuration(
+            nwbfile=nwbfile, backend="hdf5"
+        )
+
+        configure_backend(
+            nwbfile=nwbfile, backend_configuration=default_backend_configuration
+        )
+
+
+Configure & write (pipelines)
+-----------------------------
+
+Coming soon...
