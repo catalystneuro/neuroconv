@@ -170,18 +170,23 @@ def make_or_load_nwbfile(
         "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
         "passed! Cannot reconcile which nwbfile object to write."
     )
-    if not backend_io_class.can_read(path=nwbfile_path_in):
-        raise IOError(f"The chosen backend ({backend}) is unable to read the file! Please select a different backend.")
-
+    if overwrite is False and backend == "zarr":
+        # TODO: remove when https://github.com/hdmf-dev/hdmf-zarr/issues/182 is resolved
+        raise NotImplementedError("Appending a Zarr file is not yet supported!")
     load_kwargs = dict()
     success = True
     file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
     if nwbfile_path_in:
-        load_kwargs.update(path=nwbfile_path_in)
+        load_kwargs.update(path=str(nwbfile_path_in))
         if file_initially_exists and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
             load_kwargs.update(mode="w")
+
+        if load_kwargs["mode"] == "r+" and not backend_io_class.can_read(path=str(nwbfile_path_in)):
+            raise IOError(
+                f"The chosen backend ({backend}) is unable to read the file! Please select a different backend."
+            )
 
         io = backend_io_class(**load_kwargs)
 
