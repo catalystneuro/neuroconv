@@ -157,6 +157,7 @@ class BaseDataInterface(ABC):
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
+            backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
             self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
