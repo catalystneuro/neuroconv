@@ -4,6 +4,7 @@ from typing import Union
 
 from hdmf.common import Data
 from pynwb import NWBFile, TimeSeries
+from pynwb.base import TimeSeriesReferenceVectorData
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
@@ -65,6 +66,9 @@ def configure_backend(
             )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(nwbfile_object, TimeSeries) and is_dataset_linked:
+            continue
+        # Skip the setting of a DataIO when target dataset is a reference type
+        elif isinstance(nwbfile_object, TimeSeriesReferenceVectorData):
             continue
         # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
         else:
