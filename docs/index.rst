@@ -23,9 +23,6 @@ Features:
 
   Watch a video introduction to NeuroConv `here <https://youtu.be/QofVU-59Dd4>`_
 
-.. toctree::
-  :maxdepth: 2
-  :caption: Contents
 
   user_guide/user_guide
   conversion_examples_gallery/conversion_example_gallery
