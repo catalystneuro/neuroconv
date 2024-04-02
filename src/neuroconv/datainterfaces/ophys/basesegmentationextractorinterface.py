@@ -113,6 +113,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         stub_frames: int = 100,
+        include_background: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
@@ -130,6 +131,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             The metadata for the interface
         stub_test : bool, default: False
         stub_frames : int, default: 100
+        include_background : bool, default: False
+            Whether to include the background plane segmentation and fluorescence traces in the NWB file.
         include_roi_centroids : bool, default: True
             Whether to include the ROI centroids on the PlaneSegmentation table.
             If there are a very large number of ROIs (such as in whole-brain recordings),
@@ -172,6 +175,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
+            include_background=include_background,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

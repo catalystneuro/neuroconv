@@ -1333,6 +1333,7 @@ def add_segmentation(
     metadata: Optional[dict] = None,
     plane_segmentation_name: Optional[str] = None,
     background_plane_segmentation_name: Optional[str] = None,
+    include_background: bool = False,
     plane_num: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
@@ -1356,15 +1357,16 @@ def add_segmentation(
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
-    add_background_plane_segmentation(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        background_plane_segmentation_name=background_plane_segmentation_name,
-        mask_type=mask_type,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
+    if include_background:
+        add_background_plane_segmentation(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            background_plane_segmentation_name=background_plane_segmentation_name,
+            mask_type=mask_type,
+            iterator_options=iterator_options,
+            compression_options=compression_options,
+        )
 
     # Add fluorescence traces:
     add_fluorescence_traces(
@@ -1375,14 +1377,15 @@ def add_segmentation(
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
-    add_background_fluorescence_traces(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        background_plane_segmentation_name=background_plane_segmentation_name,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
+    if include_background:
+        add_background_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            background_plane_segmentation_name=background_plane_segmentation_name,
+            iterator_options=iterator_options,
+            compression_options=compression_options,
+        )
 
     # Adding summary images (mean and correlation)
     add_summary_images(
@@ -1400,6 +1403,7 @@ def write_segmentation(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    include_background: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
@@ -1429,6 +1433,8 @@ def write_segmentation(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
+    include_background : bool, default: False
+        Whether to include the background plane segmentation and fluorescence traces in the NWB file.
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
@@ -1500,6 +1506,7 @@ def write_segmentation(
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 plane_num=plane_no_loop,
+                include_background=include_background,
                 include_roi_centroids=include_roi_centroids,
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,

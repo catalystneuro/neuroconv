@@ -20,12 +20,13 @@ except ImportError:
 
 @parameterized_class(
     [
-        {"conversion_options": {"mask_type": "image"}},
-        {"conversion_options": {"mask_type": "pixel"}},
-        {"conversion_options": {"mask_type": "voxel"}},
-        {"conversion_options": {"mask_type": None}},
-        {"conversion_options": {"include_roi_centroids": False}},
-        {"conversion_options": {"include_roi_acceptance": False}},
+        {"conversion_options": {"mask_type": "image", "include_background": True}},
+        {"conversion_options": {"mask_type": "pixel", "include_background": True}},
+        {"conversion_options": {"mask_type": "voxel", "include_background": True}},
+        {"conversion_options": {"mask_type": None, "include_background": True}},
+        {"conversion_options": {"include_roi_centroids": False, "include_background": True}},
+        {"conversion_options": {"include_roi_acceptance": False, "include_background": True}},
+        {"conversion_options": {"include_background": False}},
     ]
 )
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin, TestCase):
