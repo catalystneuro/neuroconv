@@ -236,6 +236,17 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
+        # Read NWB file
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            electrodes = nwbfile.electrodes
+            electrodes_columns = electrodes.colnames
+
+            assert "offset_to_uV" not in electrodes_columns
+            assert "grain_to_uV" not in electrodes_columns
+
         es_key = converter.data_interface_objects["TestRecording"].es_key
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
