@@ -5,7 +5,9 @@ NeuroConv offers highly convenient control over the type of file backend and the
 
 Find out more about possible file types in the `main NWB documentation <https://nwb-overview.readthedocs.io/en/latest/faq_details/why_hdf5.html#why-use-hdf5-as-the-primary-backend-for-nwb>`_.
 
-Find out more about chunking, compression, and buffering in the `advanced NWB tutorials <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/h5dataio.html#sphx-glr-tutorials-advanced-io-h5dataio-py>`_.
+Find out more about chunking and compression in the `advanced NWB tutorials for dataset I/O settings <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/h5dataio.html#sphx-glr-tutorials-advanced-io-h5dataio-py>`_.
+
+Find out more about chunking and compression in the `advanced NWB tutorials for iterative data write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_.
 
 
 
@@ -14,7 +16,7 @@ Default configuration
 
 By default, NeuroConv will create NWB files using the HDF5 backend.
 
-By default, all datasets will be chunked into ~10 MB pieces, each piece compressed using GZIP (level 4), and large amounts of data will be buffered by ~500 MB at a time.
+By default, all datasets will be chunked into ~10 MB pieces, each piece compressed using GZIP (level 4), and large amounts of data will be buffered ~500 MB at a time.
 
 To retrieve a default configuration for an in-memory ``NWBFile`` object, simply call the ``get_default_backend_configuration`` function...
 
@@ -97,7 +99,8 @@ Let's demonstrate this by modifying everything we can for the ``data`` field of 
 
 .. code-block:: python
 
-    dataset_configuration = default_backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"]
+    dataset_configurations = default_backend_configuration.dataset_configurations
+    dataset_configuration = dataset_configurations["acquisition/MyTimeSeries/data"]
     dataset_configuration.chunk_shape = (1,)
     dataset_configuration.buffer_shape = (2,)
     dataset_configuration.compression_method = "Zstd"
@@ -178,6 +181,7 @@ Putting everything together and implementing our configuration by calling ``conf
         nwbfile_path=nwbfile_path,
         metadata=metadata,
         overwrite=True,
+        backend="hdf5",
         verbose=True,
     ) as nwbfile:
 
@@ -197,6 +201,7 @@ Putting everything together and implementing our configuration by calling ``conf
         configure_backend(
             nwbfile=nwbfile, backend_configuration=default_backend_configuration
         )
+
 
 
 Configure & write (pipelines)
