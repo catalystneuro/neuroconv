@@ -130,30 +130,31 @@ class DataInterfaceTestMixin:
                 # Any extra custom checks to run
                 self.run_custom_checks()
 
-    def test_conversion_as_lone_interface_zarr(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
+    # TODO: enable when all H5DataIO prewraps are gone
+    # def test_conversion_as_lone_interface_zarr(self):
+    #     interface_kwargs = self.interface_kwargs
+    #     if isinstance(interface_kwargs, dict):
+    #         interface_kwargs = [interface_kwargs]
+    #     for num, kwargs in enumerate(interface_kwargs):
+    #         with self.subTest(str(num)):
+    #             self.case = num
+    #             self.test_kwargs = kwargs
+    #             self.interface = self.data_interface_cls(**self.test_kwargs)
 
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+    #             self.check_metadata_schema_valid()
+    #             self.check_conversion_options_schema_valid()
+    #             self.check_metadata()
+    #             self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
 
-                self.run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+    #             self.run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
 
-                # TODO: enabling roundtrip reads will require adding Zarr read support to SI, ROIExtractors, etc.
-                # Just checking it can be generally opened sucessfully for now
-                # self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-                self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+    #             # TODO: enabling roundtrip reads will require adding Zarr read support to SI, ROIExtractors, etc.
+    #             # Just checking it can be generally opened sucessfully for now
+    #             # self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+    #             self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
-                # Any extra custom checks to run
-                self.run_custom_checks()
+    #             # Any extra custom checks to run
+    #             self.run_custom_checks()
 
 
 class TemporalAlignmentMixin:

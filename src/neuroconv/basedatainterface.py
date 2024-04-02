@@ -110,7 +110,9 @@ class BaseDataInterface(ABC):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        backend: Union[Literal["hdf5", "zarr"], HDF5BackendConfiguration, ZarrBackendConfiguration] = "hdf5",
+        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
+        # backend: Union[Literal["hdf5", "zarr"], HDF5BackendConfiguration, ZarrBackendConfiguration] = "hdf5",
+        backend: Union[Literal["hdf5"], HDF5BackendConfiguration] = "hdf5",
         **conversion_options,
     ):
         """
@@ -128,8 +130,8 @@ class BaseDataInterface(ABC):
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        backend : "hdf5", "zarr", a HDF5BackendConfiguration, or a ZarrBackendConfiguration, default: "hdf5"
-            If "hdf5" or "zarr", this type of backend will be used to create the file,
+        backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
+            If "hdf5", this type of backend will be used to create the file,
             with all datasets using the default values.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
@@ -148,7 +150,6 @@ class BaseDataInterface(ABC):
             backend_configuration = self.get_default_backend_configuration(
                 backend=backend, metadata=metadata, conversion_options=conversion_options
             )
-            print(backend_configuration)
         else:
             backend_configuration = backend
 
