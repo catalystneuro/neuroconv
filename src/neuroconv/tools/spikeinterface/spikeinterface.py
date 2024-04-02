@@ -1422,7 +1422,7 @@ def write_waveforms(
 
         add_waveforms(
             waveform_extractor=waveform_extractor,
-            nwbfile=nwbfile,
+            nwbfile=nwbfile_out,
             metadata=metadata,
             recording=recording,
             unit_ids=unit_ids,
