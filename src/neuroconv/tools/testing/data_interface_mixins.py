@@ -88,7 +88,7 @@ class DataInterfaceTestMixin:
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, backend=backend, **self.conversion_options
         )
 
     @abstractmethod
@@ -143,7 +143,7 @@ class DataInterfaceTestMixin:
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
 
                 self.run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
 

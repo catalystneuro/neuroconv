@@ -148,6 +148,7 @@ class BaseDataInterface(ABC):
             backend_configuration = self.get_default_backend_configuration(
                 backend=backend, metadata=metadata, conversion_options=conversion_options
             )
+            print(backend_configuration)
         else:
             backend_configuration = backend
 
