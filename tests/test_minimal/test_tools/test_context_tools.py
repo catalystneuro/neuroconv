@@ -6,6 +6,7 @@ from tempfile import mkdtemp
 from unittest.mock import patch
 
 from hdmf.testing import TestCase
+from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries
 
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
@@ -74,11 +75,23 @@ class TestMakeOrLoadNWBFile(TestCase):
             pass
         assert not nwbfile_path.exists()
 
-    def test_make_or_load_nwbfile_write(self):
+    def test_make_or_load_nwbfile_write_hdf5(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb"
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="hdf5"
+        ) as nwbfile:
             nwbfile.add_acquisition(self.time_series_1)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_write_zarr(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb.zarr"
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="zarr"
+        ) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with NWBZarrIO(path=nwbfile_path, mode="r") as io:
             nwbfile_out = io.read()
             assert "test1" in nwbfile_out.acquisition
 
@@ -91,27 +104,87 @@ class TestMakeOrLoadNWBFile(TestCase):
             self.assertCountEqual(nwbfile_out.acquisition["test1"].data, self.time_series_1.data)
         assert not nwbfile_out.acquisition["test1"].data  # A closed h5py.Dataset returns false
 
-    def test_make_or_load_nwbfile_overwrite(self):
+    def test_make_or_load_nwbfile_overwrite_hdf5(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_overwrite.nwb"
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="hdf5"
+        ) as nwbfile:
             nwbfile.add_acquisition(self.time_series_1)
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="hdf5"
+        ) as nwbfile:
             nwbfile.add_acquisition(self.time_series_2)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile_out = io.read()
             assert "test1" not in nwbfile_out.acquisition
             assert "test2" in nwbfile_out.acquisition
 
-    def test_make_or_load_nwbfile_append(self):
-        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb"
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+    def test_make_or_load_nwbfile_overwrite_zarr(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_overwrite.nwb.zarr"
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="zarr"
+        ) as nwbfile:
             nwbfile.add_acquisition(self.time_series_1)
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path) as nwbfile:
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="zarr"
+        ) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" not in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_append_hdf5(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb"
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="hdf5"
+        ) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, overwrite=False, backend="hdf5") as nwbfile:
             nwbfile.add_acquisition(self.time_series_2)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile_out = io.read()
             assert "test1" in nwbfile_out.acquisition
             assert "test2" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_append_zarr(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb.zarr"
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="zarr"
+        ) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, overwrite=False, backend="zarr") as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_append_hdf5_using_zarr_error(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb"
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="hdf5"
+        ) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with self.assertRaisesWith(
+            exc_type=IOError,
+            exc_msg="The chosen backend (hdf5) is unable to read the file! Please select a different backend.",
+        ):
+            with make_or_load_nwbfile(nwbfile_path=nwbfile_path, overwrite=False, backend="zarr") as nwbfile:
+                nwbfile.add_acquisition(self.time_series_2)
+
+    def test_make_or_load_nwbfile_append_zarr_using_hdf5_error(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb.zarr"
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True, backend="zarr"
+        ) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with self.assertRaisesWith(
+            exc_type=IOError,
+            exc_msg="The chosen backend (zarr) is unable to read the file! Please select a different backend.",
+        ):
+            with make_or_load_nwbfile(nwbfile_path=nwbfile_path, overwrite=False, backend="hdf5") as nwbfile:
+                nwbfile.add_acquisition(self.time_series_2)
 
     def test_make_or_load_nwbfile_pass_nwbfile(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_pass_nwbfile.nwb"
