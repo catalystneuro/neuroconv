@@ -23,9 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
@@ -43,8 +42,8 @@ jobs:
 
 
 
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install --no-cache-dir -e .[full,test]
+      - name: Install full requirements
+        run: pip install --no-cache-dir .[full,test]
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
@@ -58,10 +57,11 @@ jobs:
         run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
         run: pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf@dev
+      - name: Dev gallery - HDMF-ZARR
+        run : pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
       - name: Display installed packages and their sources
         run: |
-          conda list
           pip list
 
       - name: Get ephy_testing_data current head hash

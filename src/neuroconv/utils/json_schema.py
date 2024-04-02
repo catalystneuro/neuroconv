@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from typing import Callable, Dict, List, Literal, Optional
 
+import docstring_parser
 import hdmf.data_utils
 import numpy as np
 import pynwb
@@ -88,10 +89,14 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
         FolderPathType="string",
     )
     args_spec = dict()
+    parsed_docstring = docstring_parser.parse(method.__doc__)
     for param_name, param in inspect.signature(method).parameters.items():
         if param_name in exclude:
             continue
         args_spec[param_name] = dict()
+        for doc_param in parsed_docstring.params:
+            if doc_param.arg_name == param_name and doc_param.description:
+                args_spec[param_name].update(description=doc_param.description)
         if param.annotation:
             if getattr(param.annotation, "__origin__", None) == Literal:
                 args_spec[param_name]["enum"] = list(param.annotation.__args__)

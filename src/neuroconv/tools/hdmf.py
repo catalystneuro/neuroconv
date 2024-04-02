@@ -1,6 +1,7 @@
 """Collection of modifications of HDMF functions that are to be tested/used on this repo until propagation upstream."""
 
 import math
+import warnings
 from typing import Tuple
 
 import numpy as np
@@ -21,6 +22,11 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
         Keeps the dimensional ratios of the original data.
         """
+        # Elevate any overflow warnings to trigger error.
+        # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
+        # avoided at all costs.
+        warnings.filterwarnings(action="error", message="overflow encountered *")
+
         assert chunk_mb > 0.0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
         # Eventually, Pydantic validation can handle this validation for us
 
@@ -42,29 +48,41 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     @staticmethod
     def estimate_default_buffer_shape(
         buffer_gb: float, chunk_shape: Tuple[int, ...], maxshape: Tuple[int, ...], dtype: np.dtype
-    ) -> Tuple[int]:
+    ) -> Tuple[int, ...]:
+        # Elevate any overflow warnings to trigger error.
+        # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
+        # avoided at all costs.
+        warnings.filterwarnings(action="error", message="overflow encountered *")
+
         num_axes = len(maxshape)
         chunk_bytes = math.prod(chunk_shape) * dtype.itemsize
 
+        assert num_axes > 0, f"The number of axes ({num_axes}) is less than one!"
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
             buffer_gb >= chunk_bytes / 1e9
         ), f"buffer_gb ({buffer_gb}) must be greater than the chunk size ({chunk_bytes / 1e9})!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        maxshape = np.array(maxshape)
-
         # Early termination condition
         if math.prod(maxshape) * dtype.itemsize / 1e9 < buffer_gb:
             return tuple(maxshape)
+
+        # Note: must occur after taking `math.prod` of it in line above; otherwise it triggers an overflow warning
+        maxshape = np.array(maxshape)
 
         buffer_bytes = chunk_bytes
         axis_sizes_bytes = maxshape * dtype.itemsize
         target_buffer_bytes = buffer_gb * 1e9
 
+        # Recording indices of shortest axes for later use
+        if num_axes > 1:  # Only store two shortest if more than 1
+            smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
+        elif num_axes == 1:
+            smallest_chunk_axis = 0
+
         if min(axis_sizes_bytes) > target_buffer_bytes:
             if num_axes > 1:
-                smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
                 # If the smallest full axis does not fit within the buffer size, form a square along the smallest axes
                 sub_square_buffer_shape = np.array(chunk_shape)
                 if min(axis_sizes_bytes) > target_buffer_bytes:
@@ -73,25 +91,17 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                         sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
                     return tuple(sub_square_buffer_shape)
             elif num_axes == 1:
-                smallest_chunk_axis = 0
                 # Handle the case where the single axis is too large to fit in the buffer
-                if axis_sizes_bytes[0] > target_buffer_bytes:
-                    k1 = math.floor(target_buffer_bytes / chunk_bytes)
-                    return tuple(
-                        [
-                            k1 * chunk_shape[0],
-                        ]
-                    )
-            else:
-                raise ValueError(f"num_axes ({num_axes}) is less than one!")
+                k1 = math.floor(target_buffer_bytes / chunk_bytes)
+                return (k1 * chunk_shape[0],)
 
         # Original one-shot estimation has good performance for certain shapes
         chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
         chunk_scaling_factor = math.floor(chunk_to_buffer_ratio ** (1 / num_axes))
-        unpadded_buffer_shape = [
-            np.clip(a=int(x), a_min=chunk_shape[j], a_max=maxshape[j])
+        unpadded_buffer_shape = tuple(
+            int(np.clip(a=int(x), a_min=chunk_shape[j], a_max=maxshape[j]))
             for j, x in enumerate(chunk_scaling_factor * np.array(chunk_shape))
-        ]
+        )
 
         unpadded_buffer_bytes = math.prod(unpadded_buffer_shape) * dtype.itemsize
 
@@ -114,13 +124,14 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                 k3 = math.floor(target_buffer_bytes / buffer_bytes)
                 padded_buffer_shape[axis] *= k3
                 break
+        padded_buffer_shape = tuple(int(value) for value in padded_buffer_shape)  # To avoid overflow from math.prod
 
         padded_buffer_bytes = math.prod(padded_buffer_shape) * dtype.itemsize
 
         if padded_buffer_bytes >= unpadded_buffer_bytes:
-            return tuple(padded_buffer_shape)
+            return padded_buffer_shape
         else:
-            return tuple(unpadded_buffer_shape)
+            return unpadded_buffer_shape
 
 
 class SliceableDataChunkIterator(GenericDataChunkIterator):

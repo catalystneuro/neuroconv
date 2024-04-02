@@ -5,32 +5,17 @@ from typing import Optional
 from dateutil.parser import parse as dateparse
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....tools import get_package
 from ....utils import FilePathType
-
-
-def extract_extra_metadata(file_path) -> dict:
-    ScanImageTiffReader = get_package(
-        package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
-    )
-    src_file = ScanImageTiffReader.ScanImageTiffReader(str(file_path))
-    extra_metadata = {}
-    for metadata_string in (src_file.description(iframe=0), src_file.metadata()):
-        metadata_dict = {
-            x.split("=")[0].strip(): x.split("=")[1].strip()
-            for x in metadata_string.replace("\n", "\r").split("\r")
-            if "=" in x
-        }
-        extra_metadata = dict(**extra_metadata, **metadata_dict)
-    return extra_metadata
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
     """Interface for ScanImage TIFF files."""
 
-    ExtractorName = "ScanImageTiffImagingExtractor"
-    help = "Interface for ScanImage TIFF files."
     display_name = "ScanImage Imaging"
+    associated_suffixes = (".tif",)
+    info = "Interface for ScanImage TIFF files."
+
+    ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -56,6 +41,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
         """
+        from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
+            extract_extra_metadata,
+        )
+
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
         if "state.acq.frameRate" in self.image_metadata:

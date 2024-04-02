@@ -29,7 +29,7 @@ html_static_path = ["_static"]
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'favicon.ico'
+html_favicon = "_static/favicon.ico"
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
 # html_css_files = [
@@ -53,10 +53,14 @@ html_theme_options = {
             "icon": "fa-brands fa-github",
             "type": "fontawesome",
         },
-    ]
+    ],
 }
 
 linkcheck_anchors = False
+linkcheck_ignore = [
+    "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
+    r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
+]
 
 # --------------------------------------------------
 # Extension configuration

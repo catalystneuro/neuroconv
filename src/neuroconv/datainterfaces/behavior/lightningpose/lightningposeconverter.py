@@ -17,6 +17,11 @@ from neuroconv.utils import (
 class LightningPoseConverter(NWBConverter):
     """Primary conversion class for handling Lightning Pose data streams."""
 
+    display_name = "Lightning Pose Converter"
+    keywords = ("pose estimation", "video")
+    associated_suffixes = (".csv", ".mp4")
+    info = "Interface for handling multiple streams of lightning pose data."
+
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)

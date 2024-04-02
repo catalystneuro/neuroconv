@@ -7,7 +7,11 @@ from ....utils.types import FilePathType
 
 
 class ExcelTimeIntervalsInterface(TimeIntervalsInterface):
-    """Interface for adding data from an Excel file to NWB as a TimeIntervals object"""
+    """Interface for adding data from an Excel file to NWB as a TimeIntervals object."""
+
+    display_name = "Excel time interval table"
+    associated_suffixes = (".xlsx", ".xls", ".xlsm")
+    info = "Interface for writing a time intervals table from an excel file."
 
     def __init__(
         self,

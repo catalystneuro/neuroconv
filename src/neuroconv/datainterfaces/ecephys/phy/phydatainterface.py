@@ -10,8 +10,15 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     :py:class:`~spikeinterface.extractors.PhySortingExtractor`.
     """
 
-    help = "Interface for Phy sorting data."
     display_name = "Phy Sorting"
+    associated_suffixes = (".npy",)
+    info = "Interface for Phy sorting data."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        schema = super().get_source_schema()
+        schema["properties"]["exclude_cluster_groups"]["items"] = dict(type="string")
+        return schema
 
     def __init__(
         self,

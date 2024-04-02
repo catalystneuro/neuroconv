@@ -6,11 +6,8 @@ from unittest.mock import patch
 import pytest
 from numcodecs import GZip
 
-from neuroconv.tools.nwb_helpers import (
-    AVAILABLE_ZARR_COMPRESSION_METHODS,
-    ZarrDatasetIOConfiguration,
-)
-from neuroconv.tools.testing import mock_DatasetInfo, mock_ZarrDatasetIOConfiguration
+from neuroconv.tools.nwb_helpers import AVAILABLE_ZARR_COMPRESSION_METHODS
+from neuroconv.tools.testing import mock_ZarrDatasetIOConfiguration
 
 
 def test_zarr_dataset_io_configuration_print():
@@ -155,9 +152,9 @@ def test_zarr_dataset_configuration_repr():
 
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
-        "ZarrDatasetIOConfiguration(dataset_info=DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
-        "full_shape=(1800000, 384)), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
+        "ZarrDatasetIOConfiguration(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
+        "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
+        "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
         "compression_options=None, filter_methods=None, filter_options=None)"
     )
     assert repr(zarr_dataset_configuration) == expected_repr
@@ -165,8 +162,7 @@ def test_zarr_dataset_configuration_repr():
 
 def test_validator_filter_options_has_methods():
     with pytest.raises(ValueError) as error_info:
-        ZarrDatasetIOConfiguration(
-            dataset_info=mock_DatasetInfo(),
+        mock_ZarrDatasetIOConfiguration(
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
             filter_methods=None,
@@ -175,15 +171,14 @@ def test_validator_filter_options_has_methods():
 
     expected_error = (
         "`filter_methods` is `None` but `filter_options` is not `None` "
-        "(received `filter_options=[{'clevel': 5}]`)! (type=value_error)"
+        "(received `filter_options=[{'clevel': 5}]`)! [type=value_error, "
     )
     assert expected_error in str(error_info.value)
 
 
 def test_validator_filter_methods_length_match_options():
     with pytest.raises(ValueError) as error_info:
-        ZarrDatasetIOConfiguration(
-            dataset_info=mock_DatasetInfo(),
+        mock_ZarrDatasetIOConfiguration(
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
             filter_methods=["blosc", "delta"],
@@ -192,7 +187,7 @@ def test_validator_filter_methods_length_match_options():
 
     expected_error = (
         "Length mismatch between `filter_methods` (2 methods specified) and `filter_options` (1 options found)! "
-        "`filter_methods` and `filter_options` should be the same length. (type=value_error)"
+        "`filter_methods` and `filter_options` should be the same length. [type=value_error, "
     )
     assert expected_error in str(error_info.value)
 

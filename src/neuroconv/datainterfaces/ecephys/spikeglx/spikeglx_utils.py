@@ -7,6 +7,25 @@ from pathlib import Path
 from ....utils import FilePathType
 
 
+def add_recording_extractor_properties(recording_extractor) -> None:
+    """Automatically add shank group_name and shank_electrode_number for spikeglx."""
+    probe = recording_extractor.get_probe()
+    channel_ids = recording_extractor.get_channel_ids()
+
+    if probe.get_shank_count() > 1:
+        group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
+        shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
+    else:
+        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
+        group_name = ["s0"] * len(channel_ids)
+
+    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
+    recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
+
+    contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
+    recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+
+
 def get_session_start_time(recording_metadata: dict) -> datetime:
     """
     Fetches the session start time from the recording_metadata dictionary.
@@ -78,7 +97,12 @@ def get_device_metadata(meta) -> dict:
 
     metadata_dict = dict()
     if "imDatPrb_type" in meta:
-        probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
+        probe_type_to_probe_description = {
+            "0": "NP1.0",
+            "21": "NP2.0(1-shank)",
+            "24": "NP2.0(4-shank)",
+            "1030": "NP1.0 NHP",
+        }
         probe_type = str(meta["imDatPrb_type"])
         probe_type_description = probe_type_to_probe_description[probe_type]
         metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
