@@ -58,7 +58,7 @@ We are happy to help and appreciate your feedback.
 
 .. toctree::
   :maxdepth: 2
-  :caption: Contents
+  :hidden:
 
   user_guide/user_guide
   conversion_examples_gallery/conversion_example_gallery
