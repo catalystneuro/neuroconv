@@ -81,7 +81,7 @@ class BaseDataInterface(ABC):
         backend : "hdf5" or "zarr", default: "hdf5"
             The type of backend used to create the file.
         metadata : dict, optional
-            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+            Metadata dictionary with information used to create the NWBFile.
         **conversion_options
             Additional keyword arguments to pass to the `.add_to_nwbfile` method.
         """
@@ -93,12 +93,37 @@ class BaseDataInterface(ABC):
             return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
     def create_nwbfile(self, metadata=None, **conversion_options) -> NWBFile:
+        """
+        The protocol for adding this interfaces data to a PyNWB neurodata type in the in-memory pynwb.NWBFile object.
+
+        Parameters
+        ----------
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile.
+        **conversion_options
+            Additional keyword arguments to pass to the `.add_to_nwbfile` method.
+
+        Returns
+        -------
+        nwbfile : pynwb.NWBFile
+            The in-memory object with this interface's data added to it.
+        """
         nwbfile = make_nwbfile_from_metadata(metadata)
         self.add_to_nwbfile(nwbfile, metadata=metadata, **conversion_options)
         return nwbfile
 
     @abstractmethod
     def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options) -> None:
+        """
+        The protocol for adding this interfaces data to a PyNWB neurodata type in the in-memory pynwb.NWBFile object.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The in-memory object to add the data to.
+        **conversion_options
+            Additional keyword arguments to pass to the `.add_to_nwbfile` method.
+        """
         raise NotImplementedError
 
     def run_conversion(
