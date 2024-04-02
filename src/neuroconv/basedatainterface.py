@@ -3,12 +3,19 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Literal, Optional, Tuple, Union
 
 from jsonschema.validators import validate
 from pynwb import NWBFile
 
-from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
+from .tools.nwb_helpers import (
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+    make_nwbfile_from_metadata,
+    make_or_load_nwbfile,
+)
 from .utils import (
     NWBMetaDataEncoder,
     get_schema_from_method_signature,
@@ -60,6 +67,34 @@ class BaseDataInterface(ABC):
         decoded_metadata = json.loads(serialized_metadata)
         validate(instance=decoded_metadata, schema=self.get_metadata_schema())
 
+    def get_default_backend_configuration(
+        self,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+        metadata: Optional[dict] = None,
+        conversion_options: Optional[dict] = None,
+    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+        """
+        Fill and return a default backend configuration to serve as a starting point for further customization.
+
+        Parameters
+        ----------
+        backend : "hdf5" or "zarr", default: "hdf5"
+            The type of backend used to create the file.
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+        if conversion_options is None:
+            conversion_options = dict()
+
+        with make_or_load_nwbfile(metadata=metadata, verbose=self.verbose) as nwbfile:
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+            return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
     def create_nwbfile(self, metadata=None, **conversion_options) -> NWBFile:
         nwbfile = make_nwbfile_from_metadata(metadata)
         self.add_to_nwbfile(nwbfile, metadata=metadata, **conversion_options)
@@ -75,6 +110,7 @@ class BaseDataInterface(ABC):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        backend: Union[Literal["hdf5", "zarr"], HDF5BackendConfiguration, ZarrBackendConfiguration] = "hdf5",
         **conversion_options,
     ):
         """
@@ -92,6 +128,11 @@ class BaseDataInterface(ABC):
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
+        backend : "hdf5", "zarr", a HDF5BackendConfiguration, or a ZarrBackendConfiguration, default: "hdf5"
+            If "hdf5" or "zarr", this type of backend will be used to create the file,
+            with all datasets using the default values.
+            To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
+            BackendConfiguration object, and pass that instead.
         """
         if nwbfile_path is None:
             warnings.warn(  # TODO: remove on or after 6/21/2024
@@ -103,6 +144,13 @@ class BaseDataInterface(ABC):
         if metadata is None:
             metadata = self.get_metadata()
 
+        if isinstance(backend, str):
+            backend_configuration = self.get_default_backend_configuration(
+                backend=backend, metadata=metadata, conversion_options=conversion_options
+            )
+        else:
+            backend_configuration = backend
+
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
@@ -111,3 +159,4 @@ class BaseDataInterface(ABC):
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
             self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+            configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)

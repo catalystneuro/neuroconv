@@ -4,8 +4,9 @@ import tempfile
 from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Type, Union
+from typing import List, Literal, Optional, Type, Union
 
+import hdmf_zarr
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
 from jsonschema.validators import Draft7Validator, validate
@@ -83,7 +84,7 @@ class DataInterfaceTestMixin:
         validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
-    def run_conversion(self, nwbfile_path: str):
+    def run_conversion(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         self.interface.run_conversion(
@@ -94,6 +95,11 @@ class DataInterfaceTestMixin:
     def check_read_nwb(self, nwbfile_path: str):
         """Read the produced NWB file and compare it to the interface."""
         pass
+
+    def check_basic_zarr_read(self, nwbfile_path: str):
+        """Ensure NWBZarrIO can read the file."""
+        with hdmf_zarr.NWBZarrIO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
 
     def check_extracted_metadata(self, metadata: dict):
         """Override this method to make assertions about specific extracted metadata values."""
@@ -117,8 +123,34 @@ class DataInterfaceTestMixin:
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
+
+                self.run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
+    def test_conversion_as_lone_interface_zarr(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+
+                self.run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+
+                # TODO: enabling roundtrip reads will require adding Zarr read support to SI, ROIExtractors, etc.
+                # Just checking it can be generally opened sucessfully for now
+                # self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+                self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
