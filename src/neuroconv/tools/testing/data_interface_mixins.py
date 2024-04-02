@@ -6,9 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Optional, Type, Union
 
-import hdmf_zarr
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
+from hdmf_zarr import NWBZarrIO
 from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
@@ -98,8 +98,8 @@ class DataInterfaceTestMixin:
 
     def check_basic_zarr_read(self, nwbfile_path: str):
         """Ensure NWBZarrIO can read the file."""
-        with hdmf_zarr.NWBZarrIO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
+        with NWBZarrIO(path=nwbfile_path, mode="r") as io:
+            io.read()
 
     def check_extracted_metadata(self, metadata: dict):
         """Override this method to make assertions about specific extracted metadata values."""
