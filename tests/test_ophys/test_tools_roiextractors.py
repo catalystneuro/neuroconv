@@ -619,7 +619,7 @@ class TestAddPlaneSegmentation(TestCase):
         )
         with assert_raises(AssertionError):
             add_plane_segmentation(
-                segmentation_extractor=self.segmentation_extractor,
+                segmentation_extractor=segmentation_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
                 mask_type="invalid",
