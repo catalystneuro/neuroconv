@@ -1,5 +1,9 @@
 # Upcoming
 
+### Bug fixes
+* Fixed writing waveforms directly to file [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+* Replaced `waveform_extractor.is_extension` with `waveform_extractor.has_extension`[PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+
 ### Deprecations
 * Removed `stream_id` as an argument from `IntanRecordingInterface` [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
 
@@ -19,7 +23,7 @@
 * Keyword argument `field_name` of the `DatasetIOConfiguration.from_neurodata_object` method has been renamed to `dataset_name` to be more consistent with its usage. This only affects direct initialization of the model; usage via the `BackendConfiguration` constructor and its associated helper functions in `neuroconv.tools.nwb_helpers` is unaffected. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
 * Manual construction of a `DatasetIOConfiguration` now requires the field `dataset_name`, and will be validated to match the final path of `location_in_file`. Usage via the automated constructors is unchanged. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
 * Enhance `get_schema_from_method_signature` to extract descriptions from the method docval. [PR #771](https://github.com/catalystneuro/neuroconv/pull/771)
-
+* Avoid writing `channel_to_uV` and `offset_to_uV` in `add_electrodes`  [PR #803](https://github.com/catalystneuro/neuroconv/pull/803)
 
 
 # v0.4.7 (February 21, 2024)
