@@ -323,7 +323,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             self.nwb_recording = NwbRecordingExtractor(
-                file_path=nwbfile_path, electrical_series_name=electrical_series_name
+                file_path=nwbfile_path,
+                electrical_series_name=electrical_series_name,
+                use_pynwb=True,
             )
 
             # Set channel_ids right for comparison
