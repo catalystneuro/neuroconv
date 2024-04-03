@@ -175,7 +175,12 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
 
-def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None, exclude: tuple = ()):
+def add_electrodes(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict = None,
+    exclude: tuple = (),
+):
     """
     Add channels from recording object as electrodes to nwbfile object.
 
@@ -237,7 +242,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     data_to_add = defaultdict(dict)
 
     recorder_properties = recording.get_property_keys()
-    excluded_properties = list(exclude) + ["contact_vector"]
+    excluded_properties = list(exclude) + ["offset_to_uV", "gain_to_uV", "contact_vector"]
     properties_to_extract = [property for property in recorder_properties if property not in excluded_properties]
 
     for property in properties_to_extract:
@@ -1307,12 +1312,12 @@ def add_waveforms(
 
     # metrics properties (quality, template) are added as properties to the sorting copy
     sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
-    if waveform_extractor.is_extension("quality_metrics"):
+    if waveform_extractor.has_extension("quality_metrics"):
         qm = waveform_extractor.load_extension("quality_metrics").get_data()
         for prop in qm.columns:
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, qm[prop])
-    if waveform_extractor.is_extension("template_metrics"):
+    if waveform_extractor.has_extension("template_metrics"):
         tm = waveform_extractor.load_extension("template_metrics").get_data()
         for prop in tm.columns:
             if prop not in sorting_copy.get_property_keys():
@@ -1422,7 +1427,7 @@ def write_waveforms(
 
         add_waveforms(
             waveform_extractor=waveform_extractor,
-            nwbfile=nwbfile,
+            nwbfile=nwbfile_out,
             metadata=metadata,
             recording=recording,
             unit_ids=unit_ids,
