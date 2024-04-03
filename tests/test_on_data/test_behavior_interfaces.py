@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -333,7 +334,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
 
     save_directory = OUTPUT_PATH
 
-    def run_conversion(self, nwbfile_path: str):
+    def run_conversion(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
@@ -341,7 +342,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
             self.interface.set_aligned_timestamps(self._custom_timestamps_case_1)
             assert len(self.interface._timestamps) == 2330
 
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, backend=backend)
 
     def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:

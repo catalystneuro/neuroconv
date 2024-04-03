@@ -4,7 +4,6 @@ from typing import Union
 
 from hdmf.common import Data
 from pynwb import NWBFile, TimeSeries
-from pynwb.base import TimeSeriesReferenceVectorData
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
@@ -54,24 +53,26 @@ def configure_backend(
 
         # TODO: update buffer shape in iterator, if present
 
-        nwbfile_object = nwbfile_objects[object_id]
-        is_dataset_linked = isinstance(nwbfile_object.fields.get(dataset_name), TimeSeries)
+        neurodata_object = nwbfile_objects[object_id]
+        is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
+
         # Table columns
-        if isinstance(nwbfile_object, Data):
-            nwbfile_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
+        if isinstance(neurodata_object, Data):
+            neurodata_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
+
         # TimeSeries data or timestamps
-        elif isinstance(nwbfile_object, TimeSeries) and not is_dataset_linked:
-            nwbfile_object.set_data_io(
+        elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
+            neurodata_object.set_data_io(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
+
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
-        elif isinstance(nwbfile_object, TimeSeries) and is_dataset_linked:
+        elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue
-        # Skip the setting of a DataIO when target dataset is a reference type
-        elif isinstance(nwbfile_object, TimeSeriesReferenceVectorData):
-            continue
+
         # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
         else:
             raise NotImplementedError(
-                f"Unsupported object type {type(nwbfile_object)} for backend configuration of {nwbfile_object.name}!"
+                f"Unsupported object type {type(neurodata_object)} for backend configuration "
+                f"of {neurodata_object.name}!"
             )
