@@ -88,7 +88,7 @@ def get_default_segmentation_metadata() -> DeepDict:
             raw=default_fluorescence_roi_response_series,
         ),
         BackgroundPlaneSegmentation=dict(
-            neuropil=dict(name="Neuropil", description="Array of neuropil traces.", unit="n.a."),
+            neuropil=dict(name="neuropil", description="Array of neuropil traces.", unit="n.a."),
         ),
     )
 
@@ -983,7 +983,7 @@ def add_fluorescence_traces(
     traces_to_add = {
         trace_name: trace
         for trace_name, trace in traces_to_add.items()
-        if trace is not None and trace.size != 0 and trace_name != "Neuropil"
+        if trace is not None and trace.size != 0 and trace_name != "neuropil"
     }
     if not traces_to_add:
         return nwbfile
@@ -1229,7 +1229,7 @@ def add_background_fluorescence_traces(
     traces_to_add = {
         trace_name: trace
         for trace_name, trace in traces_to_add.items()
-        if trace is not None and trace.size != 0 and trace_name == "Neuropil"
+        if trace is not None and trace.size != 0 and trace_name == "neuropil"
     }
     if not traces_to_add:
         return nwbfile
