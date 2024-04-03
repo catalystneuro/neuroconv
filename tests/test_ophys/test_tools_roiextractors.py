@@ -609,6 +609,23 @@ class TestAddPlaneSegmentation(TestCase):
         assert "pixel_mask" not in plane_segmentation
         assert "voxel_mask" not in plane_segmentation
 
+    def test_invalid_mask_type(self):
+        """Test that an invalid mask_type raises a AssertionError."""
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        with assert_raises(AssertionError):
+            add_plane_segmentation(
+                segmentation_extractor=self.segmentation_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                mask_type="invalid",
+                plane_segmentation_name=self.plane_segmentation_name,
+            )
+
     def test_pixel_masks_auto_switch(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
