@@ -1,7 +1,12 @@
 # Upcoming
 
+### Bug fixes
+* Fixed writing waveforms directly to file [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+
 ### Deprecations
 * Removed `stream_id` as an argument from `IntanRecordingInterface` [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
+* Replaced `waveform_extractor.is_extension` with `waveform_extractor.has_extension`[PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+
 # v0.4.8 (March 20, 2024)
 
 ### Bug fixes
