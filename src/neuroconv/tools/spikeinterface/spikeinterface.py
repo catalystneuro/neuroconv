@@ -1307,12 +1307,12 @@ def add_waveforms(
 
     # metrics properties (quality, template) are added as properties to the sorting copy
     sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
-    if waveform_extractor.is_extension("quality_metrics"):
+    if waveform_extractor.has_extension("quality_metrics"):
         qm = waveform_extractor.load_extension("quality_metrics").get_data()
         for prop in qm.columns:
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, qm[prop])
-    if waveform_extractor.is_extension("template_metrics"):
+    if waveform_extractor.has_extension("template_metrics"):
         tm = waveform_extractor.load_extension("template_metrics").get_data()
         for prop in tm.columns:
             if prop not in sorting_copy.get_property_keys():
@@ -1422,7 +1422,7 @@ def write_waveforms(
 
         add_waveforms(
             waveform_extractor=waveform_extractor,
-            nwbfile=nwbfile,
+            nwbfile=nwbfile_out,
             metadata=metadata,
             recording=recording,
             unit_ids=unit_ids,
