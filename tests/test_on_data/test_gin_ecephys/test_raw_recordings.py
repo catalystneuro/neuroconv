@@ -255,7 +255,9 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segment.
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
+            nwb_recording = NwbRecordingExtractor(
+                file_path=nwbfile_path, electrical_series_name=electrical_series_name, use_pynwb=True
+            )
             if "channel_name" in recording.get_property_keys():
                 renamed_channel_ids = recording.get_property("channel_name")
             else:
