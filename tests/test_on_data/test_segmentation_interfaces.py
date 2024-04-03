@@ -37,6 +37,17 @@ class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin, T
     save_directory = OUTPUT_PATH
 
 
+class TestCaimanSegmentationInterface_invalid(SegmentationExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = CaimanSegmentationInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5")
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_invalid_mask_type(self):
+        self.check_invalid_mask_type()
+
+
 class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CnmfeSegmentationInterface
     interface_kwargs = dict(

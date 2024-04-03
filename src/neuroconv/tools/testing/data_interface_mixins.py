@@ -267,6 +267,17 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAl
         segmentation = self.interface.segmentation_extractor
         check_segmentations_equal(segmentation, nwb_segmentation)
 
+    def check_invalid_mask_type(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        self.test_kwargs = interface_kwargs[0]
+        self.conversion_options["mask_type"] = "invalid"
+        self.interface = self.data_interface_cls(**self.test_kwargs)
+        self.nwbfile_path = str(self.save_directory / "invalid_mask_type.nwb")
+        with self.assertRaises(AssertionError):
+            self.run_conversion(nwbfile_path=self.nwbfile_path)
+
 
 class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """
