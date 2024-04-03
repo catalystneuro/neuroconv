@@ -9,7 +9,7 @@ from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.base import DynamicTable
+from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
 
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
@@ -120,6 +120,10 @@ def get_default_dataset_io_configurations(
                 if any(isinstance(value, Container) for value in candidate_dataset):
                     continue  # Skip
 
+                # Skip when columns whose values are a reference type
+                if isinstance(column, TimeSeriesReferenceVectorData):
+                    continue
+
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
                     neurodata_object=column, dataset_name="data"
                 )
@@ -135,18 +139,20 @@ def get_default_dataset_io_configurations(
                     continue
 
                 candidate_dataset = getattr(time_series, dataset_name)
+
+                # Skip if already written to file
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
-                    continue  # skip
+                    continue
 
                 # Skip over datasets that are already wrapped in DataIO
                 if isinstance(candidate_dataset, DataIO):
                     continue
 
-                # Edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
+                # Skip edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
                 if isinstance(candidate_dataset, np.ndarray) and candidate_dataset.size == 0:
-                    continue  # skip
+                    continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
                     neurodata_object=time_series, dataset_name=dataset_name
