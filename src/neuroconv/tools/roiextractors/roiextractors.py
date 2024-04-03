@@ -948,7 +948,7 @@ def add_fluorescence_traces(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_name: Optional[str] = None,
-    background_plane_segmentation_name: Optional[str] = None,
+    include_background_segmentation: bool = False,
     plane_index: Optional[int] = None,  # TODO: to be removed
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
@@ -968,6 +968,9 @@ def add_fluorescence_traces(
         The metadata for the fluorescence traces.
     plane_segmentation_name : str, optional
         The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
+    include_background_segmentation : bool, default: False
+        Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
+        neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
     iterator_options : dict, optional
     compression_options : dict, optional
 
@@ -981,10 +984,10 @@ def add_fluorescence_traces(
     traces_to_add = segmentation_extractor.get_traces_dict()
     # Filter empty data and background traces
     traces_to_add = {
-        trace_name: trace
-        for trace_name, trace in traces_to_add.items()
-        if trace is not None and trace.size != 0 and trace_name != "neuropil"
+        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
     }
+    if include_background_segmentation:
+        traces_to_add.pop("neuropil")
     if not traces_to_add:
         return nwbfile
 
@@ -1333,7 +1336,7 @@ def add_segmentation(
     metadata: Optional[dict] = None,
     plane_segmentation_name: Optional[str] = None,
     background_plane_segmentation_name: Optional[str] = None,
-    include_background: bool = False,
+    include_background_segmentation: bool = False,
     plane_num: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
@@ -1357,7 +1360,7 @@ def add_segmentation(
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
-    if include_background:
+    if include_background_segmentation:
         add_background_plane_segmentation(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
@@ -1374,10 +1377,11 @@ def add_segmentation(
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
+        include_background_segmentation=include_background_segmentation,
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
-    if include_background:
+    if include_background_segmentation:
         add_background_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
@@ -1403,7 +1407,7 @@ def write_segmentation(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    include_background: bool = False,
+    include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
@@ -1433,8 +1437,9 @@ def write_segmentation(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-    include_background : bool, default: False
-        Whether to include the background plane segmentation and fluorescence traces in the NWB file.
+    include_background_segmentation : bool, default: False
+        Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
+        neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
@@ -1506,7 +1511,7 @@ def write_segmentation(
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 plane_num=plane_no_loop,
-                include_background=include_background,
+                include_background_segmentation=include_background_segmentation,
                 include_roi_centroids=include_roi_centroids,
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,

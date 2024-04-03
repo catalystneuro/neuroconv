@@ -799,7 +799,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         cls.session_start_time = datetime.now().astimezone()
 
         cls.fluorescence_name = "Fluorescence"
-        cls.background_name = "Background"
         cls.df_over_f_name = "DfOverF"
 
         cls.raw_roi_response_series_metadata = dict(
@@ -844,11 +843,8 @@ class TestAddFluorescenceTraces(unittest.TestCase):
                     name=self.fluorescence_name,
                     raw=self.raw_roi_response_series_metadata,
                     deconvolved=self.deconvolved_roi_response_series_metadata,
-                ),
-                BackgroundPlaneSegmentation=dict(
-                    name=self.background_name,
                     neuropil=self.neuropil_roi_response_series_metadata,
-                ),
+                )
             )
         )
 
@@ -879,7 +875,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         fluorescence = ophys.get(self.fluorescence_name)
 
         self.assertEqual(fluorescence.name, self.fluorescence_name)
-        self.assertEqual(len(fluorescence.roi_response_series), 2)
+        self.assertEqual(len(fluorescence.roi_response_series), 3)
 
         self.assertEqual(
             fluorescence["RoiResponseSeries"].description,
@@ -896,20 +892,22 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.deconvolved_roi_response_series_metadata["description"],
         )
 
-        # self.assertEqual(
-        #     fluorescence["Neuropil"].unit,
-        #     self.neuropil_roi_response_series_metadata["unit"],
-        # )
+        self.assertEqual(
+            fluorescence["Neuropil"].unit,
+            self.neuropil_roi_response_series_metadata["unit"],
+        )
 
-        # self.assertAlmostEqual(
-        #     fluorescence["Neuropil"].rate,
-        #     self.segmentation_extractor.get_sampling_frequency(),
-        #     places=3,
-        # )
+        self.assertAlmostEqual(
+            fluorescence["Neuropil"].rate,
+            self.segmentation_extractor.get_sampling_frequency(),
+            places=3,
+        )
 
         traces = self.segmentation_extractor.get_traces_dict()
 
-        for nwb_series_name, roiextractors_name in zip(["RoiResponseSeries", "Deconvolved"], ["raw", "deconvolved"]):
+        for nwb_series_name, roiextractors_name in zip(
+            ["RoiResponseSeries", "Deconvolved", "Neuropil"], ["raw", "deconvolved", "neuropil"]
+        ):
             series_outer_data = fluorescence[nwb_series_name].data
             assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
 
@@ -1023,7 +1021,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
 
         assert "Deconvolved" not in roi_response_series
-        self.assertEqual(len(roi_response_series), 1)
+        self.assertEqual(len(roi_response_series), 2)
 
     def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
         """Test that roi response series with all zero values are not added to the
@@ -1041,7 +1039,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
 
         # assert "Deconvolved" not in roi_response_series
-        self.assertEqual(len(roi_response_series), 2)
+        self.assertEqual(len(roi_response_series), 3)
 
     def test_no_traces_are_added(self):
         """Test that no traces are added to the nwbfile if they are all zeros or
@@ -1135,7 +1133,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         ophys = get_module(self.nwbfile, "ophys")
         roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
 
-        self.assertEqual(len(roi_response_series), 2)
+        self.assertEqual(len(roi_response_series), 3)
 
         # check that raw traces are not overwritten
         self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
@@ -1384,6 +1382,7 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["deconvolved"].update(
             name="DeconvolvedSecondPlane"
         )
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["neuropil"].update(name="NeuropilSecondPlane")
         metadata["Ophys"]["DfOverF"][second_plane_segmentation_name]["dff"].update(name="RoiResponseSeriesSecondPlane")
 
         add_fluorescence_traces(
@@ -1405,7 +1404,7 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         fluorescence = ophys.get(self.fluorescence_name)
         self.assertEqual(fluorescence.name, self.fluorescence_name)
-        self.assertEqual(len(fluorescence.roi_response_series), 4)
+        self.assertEqual(len(fluorescence.roi_response_series), 6)
 
         df_over_f = ophys.get(self.df_over_f_name)
         self.assertEqual(df_over_f.name, self.df_over_f_name)
