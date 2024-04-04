@@ -1,4 +1,5 @@
 import math
+import re
 import unittest
 from copy import deepcopy
 from datetime import datetime
@@ -11,6 +12,7 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pynwb.testing.mock.file
+import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
@@ -617,7 +619,11 @@ class TestAddPlaneSegmentation(TestCase):
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
-        with assert_raises(AssertionError):
+        expected_error_message = re.escape(
+            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', or "
+            "None (to not write any masks)! Received 'invalid'."
+        )
+        with pytest.raises(AssertionError, match=expected_error_message):
             add_plane_segmentation(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=self.nwbfile,
