@@ -214,8 +214,8 @@ The information found for the first matching directory is similar.
         }
     }
 
-Example 3: `IBL Brain Wide Map Data <https://ibl.flatironinstitute.org/public>`_
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 3: `IBL Brain Wide Map Data <https://www.internationalbrainlab.com/data>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The IBL's Brain Wide Map features data from several labs of mice performing a visual decision-making task. Some
 experimental sessions, such as those from the Steinmetz Lab, include video recordings of the experiments from three
