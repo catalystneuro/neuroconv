@@ -13,6 +13,10 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`.
     """
 
+    display_name = "OpenEphys Legacy Recording"
+    associated_suffixes = (".continuous", ".openephys", ".xml")
+    info = "Interface for converting legacy OpenEphys recording data."
+
     @classmethod
     def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor

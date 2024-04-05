@@ -1,3 +1,5 @@
+"""Collection of Axona interfaces."""
+
 from pynwb import NWBFile
 
 from .axona_utils import (
@@ -17,8 +19,9 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
     """
 
-    help = "Interface for Axona recording data."
     display_name = "Axona Recording"
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona recording data."
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -95,7 +98,11 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class AxonaUnitRecordingInterface(AxonaRecordingInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
+    """Primary data interface class for converting a AxonaRecordingExtractor."""
+
+    display_name = "Axona Units"
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona recording data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -118,6 +125,11 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 
 
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
+
+    display_name = "Axona LFP"
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona LFP data."
+
     ExtractorName = "NumpyRecording"
 
     @classmethod
@@ -138,19 +150,32 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
 
 
 class AxonaPositionDataInterface(BaseDataInterface):
-    """Primary data interface class for converting Axona position data"""
+    """Primary data interface class for converting Axona position data."""
+
+    display_name = "Axona Position"
+    keywords = ("position tracking",)
+    associated_suffixes = (".bin", ".set")
+    info = "Interface for Axona position data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
         return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, file_path: str):
+        """
+
+        Parameters
+        ----------
+        file_path: str
+            Path to .bin or .set file.
+        """
         super().__init__(filename=file_path)
         self.source_data = dict(file_path=file_path)
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
         """
         Run conversion for this data interface.
+
         Parameters
         ----------
         nwbfile : NWBFile

@@ -10,8 +10,9 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`.
     """
 
-    help = "Interface for SpikeGadgets recording data."
     display_name = "SpikeGadgets Recording"
+    associated_suffixes = (".rec",)
+    info = "Interface for SpikeGadgets recording data."
 
     @classmethod
     def get_source_schema(cls) -> dict:

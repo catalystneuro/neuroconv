@@ -8,12 +8,12 @@ from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
-    keywords = BaseRecordingExtractorInterface.keywords + [
+    keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",
         "LFP",
         "local field potential",
         "LF",
-    ]
+    )
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeriesLFP", **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)

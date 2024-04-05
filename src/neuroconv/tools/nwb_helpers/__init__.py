@@ -6,7 +6,7 @@ from pynwb import NWBHDF5IO as _NWBHDF5IO
 
 from ._backend_configuration import get_default_backend_configuration
 from ._configuration_models._base_backend import BackendConfiguration
-from ._configuration_models._base_dataset_io import DatasetInfo, DatasetIOConfiguration
+from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._hdf5_dataset_io import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
@@ -37,11 +37,15 @@ __all__ = [
     "BACKEND_CONFIGURATIONS",
     "DATASET_IO_CONFIGURATIONS",
     "BACKEND_NWB_IO",
+    "BackendConfiguration",
+    "HDF5BackendConfiguration",
+    "ZarrBackendConfiguration",
+    "DatasetIOConfiguration",
+    "HDF5DatasetIOConfiguration",
+    "ZarrDatasetIOConfiguration",
     "get_default_backend_configuration",
     "get_default_dataset_io_configurations",
     "configure_backend",
-    "BackendConfiguration",
-    "DatasetIOConfiguration",
     "get_default_dataset_io_configurations",
     "get_default_backend_configuration",
     "add_device_from_metadata",
@@ -49,9 +53,4 @@ __all__ = [
     "get_module",
     "make_nwbfile_from_metadata",
     "make_or_load_nwbfile",
-    "DatasetInfo",
-    "HDF5BackendConfiguration",
-    "HDF5DatasetIOConfiguration",
-    "ZarrBackendConfiguration",
-    "ZarrDatasetIOConfiguration",
 ]

@@ -97,8 +97,9 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
     :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
-    help = "Interface for converting NeuroScope (.dat) recording data."
     display_name = "NeuroScope Recording"
+    associated_suffixes = (".dat", ".xml")
+    info = "Interface for converting NeuroScope recording data."
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
@@ -181,6 +182,10 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
+    display_name = "NeuroScope LFP"
+    associated_suffixes = (".lfp", ".eeg", ".xml")
+    info = "Interface for converting NeuroScope LFP data."
+
     ExtractorName = "NeuroScopeRecordingExtractor"
 
     def __init__(
@@ -230,6 +235,10 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 
 class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
+
+    display_name = "NeuroScope Sorting"
+    associated_suffixes = (".res", ".clu", ".res.*", ".clu.*", ".xml")
+    info = "Interface for converting NeuroScope recording data."
 
     def __init__(
         self,

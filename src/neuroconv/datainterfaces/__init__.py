@@ -61,10 +61,7 @@ from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import (
     SpikeGadgetsRecordingInterface,
 )
-from .ecephys.spikeglx.spikeglxdatainterface import (
-    SpikeGLXLFPInterface,
-    SpikeGLXRecordingInterface,
-)
+from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
@@ -103,7 +100,6 @@ interface_list = [
     NeuroScopeLFPInterface,
     Spike2RecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,

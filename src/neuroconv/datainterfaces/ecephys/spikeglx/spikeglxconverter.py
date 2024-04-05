@@ -16,6 +16,11 @@ class SpikeGLXConverterPipe(ConverterPipe):
     Primary conversion class for handling multiple SpikeGLX data streams.
     """
 
+    display_name = "SpikeGLX Converter"
+    keywords = SpikeGLXRecordingInterface.keywords + SpikeGLXNIDQInterface.keywords
+    associated_suffixes = SpikeGLXRecordingInterface.associated_suffixes + SpikeGLXNIDQInterface.associated_suffixes
+    info = "Converter for multi-stream SpikeGLX recording data."
+
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["streams"])

@@ -14,8 +14,9 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
     Using the :py:class:`~spikeinterface.extractors.MaxwellRecordingExtractor`.
     """
 
-    help = "Interface for MaxOne recording data."
     display_name = "MaxOne Recording"
+    associated_suffixes = (".raw", ".h5")
+    info = "Interface for MaxOne recording data."
 
     ExtractorName = "MaxwellRecordingExtractor"
 
