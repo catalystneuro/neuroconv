@@ -85,7 +85,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         nwbfile : NWBFile
             NWBFile to add motion SVD components data to.
         """
-        from ndx_facemap_motionsvd import MotionSVDSeries, MotionSVDMasks
+        from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
         from pynwb.core import DynamicTableRegion
 
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
