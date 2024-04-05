@@ -8,7 +8,7 @@ from pynwb.file import NWBFile
 
 from ..video.video_utils import get_video_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_module
+from ....tools import get_module, get_package
 from ....utils import FilePathType
 
 
@@ -76,6 +76,60 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
             behavior_module.add(pupil_tracking)
 
+    def add_motion_SVD(self, nwbfile: NWBFile):
+        """
+        Add data motion SVD and motion mask for each ROI.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            NWBFile to add motion SVD components data to.
+        """
+        from ndx_facemap_motionsvd import MotionSVDSeries, MotionSVDMasks
+        from pynwb.core import DynamicTableRegion
+
+        with h5py.File(self.source_data["mat_file_path"], "r") as file:
+
+            behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
+
+            timestamps = self.get_timestamps()
+            n = 0
+            for series_ref, mask_ref in zip(file["proc"]["motSVD"][:], file["proc"]["uMotMask"][:]):
+                mask_ref = mask_ref[0]
+                series_ref = series_ref[0]
+
+                motion_masks_table = MotionSVDMasks(
+                    name=f"MotionSVDMasksROI{n}",
+                    description=f"motion mask for ROI{n}",
+                )
+
+                for component in file[mask_ref]:
+                    motion_masks_table.add_row(image_mask=component)
+
+                motion_masks = DynamicTableRegion(
+                    name="motion_masks",
+                    data=list(range(len(file["proc"]["motSVD"][:]))),
+                    description="all the mask",
+                    table=motion_masks_table,
+                )
+
+                data = np.array(file[series_ref])
+
+                motionsvd_series = MotionSVDSeries(
+                    name=f"MotionSVDSeriesROI{n}",
+                    description=f"SVD components for ROI{n}",
+                    data=data.T,
+                    motion_masks=motion_masks,
+                    unit="unknown",
+                    timestamps=timestamps,
+                )
+                n = +1
+
+                behavior_module.add(motion_masks_table)
+                behavior_module.add(motionsvd_series)
+
+        return
+
     def get_original_timestamps(self) -> np.ndarray:
         if self.original_timestamps is None:
             self.original_timestamps = get_video_timestamps(self.source_data["video_file_path"])
@@ -113,3 +167,4 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         """
 
         self.add_pupil_data(nwbfile=nwbfile)
+        self.add_motion_SVD(nwbfile=nwbfile)
