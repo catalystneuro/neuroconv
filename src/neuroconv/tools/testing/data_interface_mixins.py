@@ -796,3 +796,35 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             imaging_extractor = self.interface.imaging_extractor
             times_from_extractor = imaging_extractor._times
             assert_array_equal(one_photon_series.timestamps, times_from_extractor)
+
+
+class ScanImageTiffSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            imaging_plane_name = self.imaging_plane_names[self.case]
+            assert imaging_plane_name in nwbfile.imaging_planes
+
+            photon_series_name = self.photon_series_names[self.case]
+            assert photon_series_name in nwbfile.acquisition
+            two_photon_series = nwbfile.acquisition[photon_series_name]
+            assert two_photon_series.data.shape == (30, 512, 512)
+            assert two_photon_series.unit == "n.a."
+            assert two_photon_series.data.dtype == np.int16
+            assert two_photon_series.rate is None
+            assert two_photon_series.starting_time is None
+
+            imaging_extractor = self.interface.imaging_extractor
+            times_from_extractor = imaging_extractor._times
+            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
+
+            data_from_extractor = imaging_extractor.get_video()
+            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
+
+            assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
+
+            optical_channels = nwbfile.imaging_planes[imaging_plane_name].optical_channel
+            optical_channel_names = [channel.name for channel in optical_channels]
+            assert self.interface_kwargs[self.case]["channel_name"] in optical_channel_names
+            assert len(optical_channels) == 1
