@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
-from natsort import natsorted
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType, FolderPathType
@@ -145,6 +144,7 @@ class ScanImageTiffSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInte
             If True, extract metadata from every file in the folder. If False, only extract metadata from the first
             file in the folder. The default is False.
         """
+        from natsort import natsorted
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
             parse_metadata,
