@@ -54,7 +54,7 @@ jobs:
       - name: Dev gallery - ProbeInterface
         run: pip install --no-cache-dir git+https://github.com/spikeinterface/probeinterface@main
       - name: Dev gallery - SpikeInterface
-        run: pip install --no-cache-dir git+https://github.com/spikeinterface/spikeinterface@main[test_core]
+        run: pip install --no-cache-dir "spikeinterface[test_core] @ git+https://github.com/spikeinterface/spikeinterface@main"
       - name: Dev gallery - NEO
         run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
