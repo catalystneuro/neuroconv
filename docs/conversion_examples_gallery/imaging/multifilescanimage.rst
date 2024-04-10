@@ -20,12 +20,7 @@ Convert multi-file ScanImage imaging data to NWB using
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
     >>> file_pattern = "scanimage_20240320_multifile*.tif"
     >>> channel_name = "Channel 1"
-    >>> interface = ScanImageSinglePlaneMultiFileImagingInterface(
-    >>>     folder_path=folder_path,
-    >>>     file_pattern=file_pattern,
-    >>>     channel_name=channel_name,
-    >>>     verbose=False,
-    >>> )
+    >>> interface = ScanImageSinglePlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -49,12 +44,7 @@ Convert multi-file ScanImage imaging data to NWB using
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
     >>> file_pattern = "scanimage_20220923_roi.tif"
     >>> channel_name = "Channel 1"
-    >>> interface = ScanImageMultiPlaneMultiFileImagingInterface(
-    >>>     folder_path=folder_path,
-    >>>     file_pattern=file_pattern,
-    >>>     channel_name=channel_name,
-    >>>     verbose=False,
-    >>> )
+    >>> interface = ScanImageMultiPlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
