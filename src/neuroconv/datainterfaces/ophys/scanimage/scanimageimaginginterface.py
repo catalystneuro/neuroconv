@@ -89,34 +89,14 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
 
-class ScanImageTiffSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
+class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
     """Interface for reading multi-file (buffered) TIFF files produced via ScanImage."""
 
     display_name = "ScanImage Single Plane Multi-File Imaging"
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage multi-file (buffered) TIFF files."
 
-    @classmethod
-    def get_scanimage_version(self, scanimage_metadata: dict) -> str:
-        """
-        Determine the version of ScanImage that produced the TIFF file.
-
-        Parameters
-        ----------
-        scanimage_metadata : dict
-            Dictionary of metadata extracted from a TIFF file produced via ScanImage.
-
-        Returns
-        -------
-        version : str
-            The version of ScanImage that produced the TIFF file.
-        """
-        if "SI.VERSION_MAJOR" in scanimage_metadata:
-            return scanimage_metadata["SI.VERSION_MAJOR"]
-        elif "state.software.version" in scanimage_metadata:
-            return scanimage_metadata["state.software.version"]
-
-        raise ValueError("ScanImage version could not be determined from metadata.")
+    ExtractorName = "ScanImageTiffSinglePlaneMultiFileImagingExtractor"
 
     def __init__(
         self,
@@ -156,7 +136,7 @@ class ScanImageTiffSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInte
         image_metadata = extract_extra_metadata(file_path=first_file_path)
         self.image_metadata = image_metadata
 
-        version = self.get_scanimage_version(scanimage_metadata=image_metadata)
+        version = get_scanimage_version(scanimage_metadata=image_metadata)
         if version == "3.8":
             raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
 
