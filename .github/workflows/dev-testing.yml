@@ -51,6 +51,8 @@ jobs:
         run: pip install --no-cache-dir git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
         run: pip install --no-cache-dir git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+      - name: Dev gallery - ProbeInterface
+        run: pip install --no-cache-dir git+https://github.com/spikeinterface/probeinterface@main
       - name: Dev gallery - SpikeInterface
         run: pip install --no-cache-dir git+https://github.com/spikeinterface/spikeinterface@main
       - name: Dev gallery - NEO
