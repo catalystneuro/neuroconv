@@ -17,13 +17,15 @@ from neuroconv.datainterfaces import (
     MiniscopeImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
-    ScanImageTiffSinglePlaneMultiFileImagingInterface,
+    ScanImageMultiPlaneMultiFileImagingInterface,
+    ScanImageSinglePlaneMultiFileImagingInterface,
     TiffImagingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     ImagingExtractorInterfaceTestMixin,
     MiniscopeImagingInterfaceMixin,
-    ScanImageTiffSinglePlaneMultiFileImagingInterfaceMixin,
+    ScanImageMultiPlaneMultiFileImagingInterfaceMixin,
+    ScanImageSinglePlaneMultiFileImagingInterfaceMixin,
 )
 
 try:
@@ -73,10 +75,8 @@ class TestScanImageImagingInterfaceRecent(ImagingExtractorInterfaceTestMixin, Te
         )
 
 
-class TestScanImageTiffSinglePlaneMultiFileImagingInterface(
-    ScanImageTiffSinglePlaneMultiFileImagingInterfaceMixin, TestCase
-):
-    data_interface_cls = ScanImageTiffSinglePlaneMultiFileImagingInterface
+class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMultiFileImagingInterfaceMixin, TestCase):
+    data_interface_cls = ScanImageSinglePlaneMultiFileImagingInterface
     interface_kwargs = [
         dict(
             folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
@@ -136,6 +136,69 @@ class TestScanImageTiffSinglePlaneMultiFileImagingInterface(
         folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
         file_pattern = "scanimage_20220801_volume.tif"
         with self.assertRaisesRegex(ValueError, "More than one plane is detected!"):
+            self.data_interface_cls(
+                folder_path=folder_path,
+                file_pattern=file_pattern,
+            )
+
+
+class TestScanImageVolumetricMultiFileImagingInterface(ScanImageMultiPlaneMultiFileImagingInterfaceMixin, TestCase):
+    data_interface_cls = ScanImageMultiPlaneMultiFileImagingInterface
+    interface_kwargs = [
+        dict(
+            folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+            file_pattern="scanimage_20220923_roi.tif",
+            channel_name="Channel 1",
+        ),
+        dict(
+            folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+            file_pattern="scanimage_20220923_roi.tif",
+            channel_name="Channel 4",
+        ),
+    ]
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_names = ["TwoPhotonSeriesChannel1", "TwoPhotonSeriesChannel4"]
+        cls.imaging_plane_names = ["ImagingPlaneChannel1", "ImagingPlaneChannel4"]
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def test_not_supported_scanimage_version(self):
+        """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
+        file_pattern = "sample_scanimage.tiff"
+        with self.assertRaisesRegex(
+            ValueError, "ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead."
+        ):
+            self.data_interface_cls(
+                folder_path=folder_path,
+                file_pattern=file_pattern,
+            )
+
+    def test_non_volumetric_data(self):
+        """Test that ValueError is raised for non-volumetric imaging data."""
+
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
+        file_pattern = "scanimage_20240320_multifile*.tif"
+        channel_name = "Channel 1"
+        with self.assertRaisesRegex(
+            ValueError,
+            "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneMultiFileImagingInterface instead.",
+        ):
+            self.data_interface_cls(
+                folder_path=folder_path,
+                file_pattern=file_pattern,
+                channel_name=channel_name,
+            )
+
+    def test_channel_name_not_specified(self):
+        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
+        file_pattern = "scanimage_20220923_roi.tif"
+        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
             self.data_interface_cls(
                 folder_path=folder_path,
                 file_pattern=file_pattern,
