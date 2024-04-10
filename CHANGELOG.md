@@ -6,6 +6,7 @@
 
 ### Features
 * Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
+* Added `ScanImageSinglePlaneMultiFileImagingInterface` and `ScanImageMultiPlaneMultiFileImagingInterface` reading multi-file (buffered) TIFF files produced via ScanImage. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
 
 ### Bug fixes
 * Fixed writing waveforms directly to file [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
