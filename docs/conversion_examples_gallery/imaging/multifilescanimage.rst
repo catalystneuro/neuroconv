@@ -52,5 +52,5 @@ Convert multi-file ScanImage imaging data to NWB using
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = f"{output_folder}/test2.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
