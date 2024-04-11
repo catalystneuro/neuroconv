@@ -123,6 +123,17 @@ class DataInterfaceTestMixin:
                 # Any extra custom checks to run
                 self.run_custom_checks()
 
+    def test_add_to_nwb(self):
+        from copy import deepcopy
+
+        metadata = self.interface.get_metadata()
+        metadata_in = deepcopy(metadata)
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwb(metadata=metadata)
+
+        # Test that no modification took place
+        assert metadata == metadata_in
+
 
 class TemporalAlignmentMixin:
     """
