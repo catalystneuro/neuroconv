@@ -136,7 +136,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         image_metadata = extract_extra_metadata(file_path=first_file_path)
         self.image_metadata = image_metadata
 
-        version = get_scanimage_version(scanimage_metadata=image_metadata)
+        version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
             raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
 
@@ -253,7 +253,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         image_metadata = extract_extra_metadata(file_path=first_file_path)
         self.image_metadata = image_metadata
 
-        version = get_scanimage_version(scanimage_metadata=image_metadata)
+        version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
             raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
 
@@ -320,7 +320,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         return metadata
 
 
-def get_scanimage_version(scanimage_metadata: dict) -> str:
+def get_scanimage_major_version(scanimage_metadata: dict) -> str:
     """
     Determine the version of ScanImage that produced the TIFF file.
 
