@@ -123,7 +123,7 @@ class DataInterfaceTestMixin:
                 # Any extra custom checks to run
                 self.run_custom_checks()
 
-    def test_metadata_immutability(self):
+    def test_no_metadata_mutation_by_interface(self):
         from copy import deepcopy
 
         interface_kwargs = self.interface_kwargs
