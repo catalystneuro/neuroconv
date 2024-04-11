@@ -333,7 +333,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
 
     save_directory = OUTPUT_PATH
 
-    def run_conversion(self, nwbfile_path: str):
+    def check_run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
