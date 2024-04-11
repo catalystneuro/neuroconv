@@ -4,9 +4,11 @@ from pathlib import Path
 from unittest import TestCase, skipIf
 
 import numpy as np
+import pytest
 from dateutil.tz import tzoffset
 from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
+from parameterized import parameterized_class
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
@@ -75,20 +77,26 @@ class TestScanImageImagingInterfaceRecent(ImagingExtractorInterfaceTestMixin, Te
         )
 
 
+@parameterized_class(
+    [
+        {
+            "interface_kwargs": {
+                "folder_path": str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+                "file_pattern": "scanimage_20240320_multifile*.tif",
+                "channel_name": "Channel 1",
+            }
+        },
+        {
+            "interface_kwargs": {
+                "folder_path": str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+                "file_pattern": "scanimage_20240320_multifile*.tif",
+                "channel_name": "Channel 2",
+            }
+        },
+    ]
+)
 class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMultiFileImagingInterfaceMixin, TestCase):
     data_interface_cls = ScanImageSinglePlaneMultiFileImagingInterface
-    interface_kwargs = [
-        dict(
-            folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-            file_pattern="scanimage_20240320_multifile*.tif",
-            channel_name="Channel 1",
-        ),
-        dict(
-            folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-            file_pattern="scanimage_20240320_multifile*.tif",
-            channel_name="Channel 2",
-        ),
-    ]
     save_directory = OUTPUT_PATH
 
     @classmethod
