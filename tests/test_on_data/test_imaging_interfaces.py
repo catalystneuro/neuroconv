@@ -142,7 +142,7 @@ class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMult
             )
 
 
-class TestScanImageVolumetricMultiFileImagingInterface(ScanImageMultiPlaneMultiFileImagingInterfaceMixin, TestCase):
+class TestScanImageMultiPlaneMultiFileImagingInterface(ScanImageMultiPlaneMultiFileImagingInterfaceMixin, TestCase):
     data_interface_cls = ScanImageMultiPlaneMultiFileImagingInterface
     interface_kwargs = [
         dict(
