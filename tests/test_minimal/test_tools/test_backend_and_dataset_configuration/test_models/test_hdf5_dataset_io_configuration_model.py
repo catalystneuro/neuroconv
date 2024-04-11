@@ -3,7 +3,10 @@
 from io import StringIO
 from unittest.mock import patch
 
-from neuroconv.tools.nwb_helpers import AVAILABLE_HDF5_COMPRESSION_METHODS
+from neuroconv.tools.nwb_helpers import (
+    AVAILABLE_HDF5_COMPRESSION_METHODS,
+    HDF5DatasetIOConfiguration,
+)
 from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration
 
 
@@ -112,3 +115,7 @@ def test_get_data_io_kwargs():
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(
         chunks=(78125, 64), compression="gzip", compression_opts=None
     )
+
+
+def test_hdf5_dataset_io_configuration_schema():
+    assert HDF5DatasetIOConfiguration.schema() is not None

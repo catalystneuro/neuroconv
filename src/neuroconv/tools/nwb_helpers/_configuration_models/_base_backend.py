@@ -1,6 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
-from typing import ClassVar, Dict, Literal, Type
+from typing import Any, ClassVar, Dict, Literal, Type
 
 from hdmf.container import DataIO
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +8,7 @@ from pynwb import NWBFile
 from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
+from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from .._dataset_configuration import get_default_dataset_io_configurations
 
 
@@ -38,6 +39,19 @@ class BackendConfiguration(BaseModel):
             string += f"\n{dataset_configuration}"
 
         return string
+
+    # Pydantic models have several API calls for retrieving the schema - override all of them to work
+    @classmethod
+    def schema(cls) -> Dict[str, Any]:
+        return cls.model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator)
+
+    @classmethod
+    def schema_json(cls) -> Dict[str, Any]:
+        return cls.model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator)
+
+    @classmethod
+    def model_json_schema(cls) -> Dict[str, Any]:
+        return cls.model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator)
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile) -> Self:

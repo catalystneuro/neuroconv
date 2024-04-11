@@ -3,6 +3,7 @@
 from io import StringIO
 from unittest.mock import patch
 
+from neuroconv.tools.nwb_helpers import ZarrBackendConfiguration
 from neuroconv.tools.testing import mock_ZarrBackendConfiguration
 
 
@@ -52,3 +53,7 @@ acquisition/TestElectricalSeriesLF/data
 
 """
     assert out.getvalue() == expected_print
+
+
+def test_zarr_backend_configuration_schema():
+    assert ZarrBackendConfiguration.schema() is not None
