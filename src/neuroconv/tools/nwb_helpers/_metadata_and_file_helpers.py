@@ -5,11 +5,11 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 from warnings import warn
 
 from pydantic import FilePath
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from pynwb.file import Subject
 
 from ...utils.dict import DeepDict, load_dict_from_file
@@ -133,6 +133,7 @@ def make_or_load_nwbfile(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
+    backend: Literal["hdf5", "zarr"] = "hdf5",
     verbose: bool = True,
 ):
     """
@@ -150,11 +151,17 @@ def make_or_load_nwbfile(
     overwrite: bool, optional
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
+    backend : "hdf5" or "zarr", default: "hdf5"
+        The type of backend used to create the file.
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
     """
+    from . import BACKEND_NWB_IO
+
     nwbfile_path_in = Path(nwbfile_path) if nwbfile_path else None
+    backend_io_class = BACKEND_NWB_IO[backend]
+
     assert not (nwbfile_path is None and nwbfile is None and metadata is None), (
         "You must specify either an 'nwbfile_path', or an in-memory 'nwbfile' object, "
         "or provide the metadata for creating one."
@@ -163,17 +170,36 @@ def make_or_load_nwbfile(
         "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
         "passed! Cannot reconcile which nwbfile object to write."
     )
-
+    if overwrite is False and backend == "zarr":
+        # TODO: remove when https://github.com/hdmf-dev/hdmf-zarr/issues/182 is resolved
+        raise NotImplementedError("Appending a Zarr file is not yet supported!")
     load_kwargs = dict()
     success = True
-    file_initially_exists = nwbfile_path_in.is_file() if nwbfile_path_in is not None else None
+    file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
     if nwbfile_path_in:
-        load_kwargs.update(path=nwbfile_path_in)
+        load_kwargs.update(path=str(nwbfile_path_in))
         if file_initially_exists and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
             load_kwargs.update(mode="w")
-        io = NWBHDF5IO(**load_kwargs)
+
+        backends_that_can_read = [
+            backend_name
+            for backend_name, backend_io_class in BACKEND_NWB_IO.items()
+            if backend_io_class.can_read(path=str(nwbfile_path_in))
+        ]
+        # Future-proofing: raise an error if more than one backend can read the file
+        assert (
+            len(backends_that_can_read) <= 1
+        ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
+        if load_kwargs["mode"] == "r+" and backend not in backends_that_can_read:
+            raise IOError(
+                f"The chosen backend ('{backend}') is unable to read the file! "
+                f"Please select '{backends_that_can_read[0]}' instead."
+            )
+
+        io = backend_io_class(**load_kwargs)
+
     try:
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
