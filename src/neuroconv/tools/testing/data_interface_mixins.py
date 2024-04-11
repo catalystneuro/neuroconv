@@ -137,11 +137,11 @@ class DataInterfaceTestMixin:
                 self.interface = self.data_interface_cls(**self.test_kwargs)
 
                 metadata = self.interface.get_metadata()
-                metadata_in = deepcopy(metadata)
                 metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+                metadata_in = deepcopy(metadata)
                 nwbfile = self.interface.create_nwbfile(metadata=metadata)
 
-                # Test that no modification took place
                 assert metadata == metadata_in
 
 
