@@ -84,12 +84,18 @@ class DataInterfaceTestMixin:
         validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
-    def run_conversion(self, nwbfile_path: str):
+    def check_run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        metadata_in = deepcopy(metadata)
+
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
         )
+
+        # Test the the metadata was not altered by run conversin which calls add_to_nwbfile
+        assert metadata == metadata_in
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -118,32 +124,11 @@ class DataInterfaceTestMixin:
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path)
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
-
-    def test_no_metadata_mutation_by_interface(self):
-
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                del self.interface
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-
-                metadata = self.interface.get_metadata()
-                metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-                metadata_in = deepcopy(metadata)
-                nwbfile = self.interface.create_nwbfile(metadata=metadata)
-
-                assert metadata == metadata_in
 
 
 class TemporalAlignmentMixin:
