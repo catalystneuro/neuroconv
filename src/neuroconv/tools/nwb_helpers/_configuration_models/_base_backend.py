@@ -42,16 +42,18 @@ class BackendConfiguration(BaseModel):
 
     # Pydantic models have several API calls for retrieving the schema - override all of them to work
     @classmethod
-    def schema(cls) -> Dict[str, Any]:
-        return cls.model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator)
+    def schema(cls, **kwargs) -> Dict[str, Any]:
+        return cls.model_json_schema(**kwargs)
 
     @classmethod
-    def schema_json(cls) -> Dict[str, Any]:
-        return cls.model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator)
+    def schema_json(cls, **kwargs) -> Dict[str, Any]:
+        return cls.model_json_schema(**kwargs)
 
     @classmethod
-    def model_json_schema(cls) -> Dict[str, Any]:
-        return cls.model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator)
+    def model_json_schema(cls, **kwargs) -> Dict[str, Any]:
+        assert "mode" not in kwargs, "The 'mode' of this method is fixed to be 'validation' and cannot be changed."
+        assert "schema_generator" not in kwargs, "The 'schema_generator' of this method cannot be changed."
+        return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile) -> Self:

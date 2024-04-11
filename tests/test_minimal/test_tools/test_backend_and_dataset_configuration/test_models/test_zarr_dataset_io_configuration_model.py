@@ -213,3 +213,5 @@ def test_get_data_io_kwargs():
 
 def test_zarr_dataset_io_configuration_schema():
     assert ZarrDatasetIOConfiguration.schema() is not None
+    assert ZarrDatasetIOConfiguration.schema_json() is not None
+    assert ZarrDatasetIOConfiguration.model_json_schema() is not None

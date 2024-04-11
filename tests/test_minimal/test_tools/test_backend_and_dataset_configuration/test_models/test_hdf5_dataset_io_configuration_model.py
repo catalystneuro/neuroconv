@@ -119,3 +119,5 @@ def test_get_data_io_kwargs():
 
 def test_hdf5_dataset_io_configuration_schema():
     assert HDF5DatasetIOConfiguration.schema() is not None
+    assert HDF5DatasetIOConfiguration.schema_json() is not None
+    assert HDF5DatasetIOConfiguration.model_json_schema() is not None
