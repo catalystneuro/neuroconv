@@ -184,13 +184,14 @@ def make_or_load_nwbfile(
             load_kwargs.update(mode="w")
 
         backends_that_can_read = [
-            backend_name for backend_name, backend_io_class in BACKEND_NWB_IO.items()
+            backend_name
+            for backend_name, backend_io_class in BACKEND_NWB_IO.items()
             if backend_io_class.can_read(path=str(nwbfile_path_in))
         ]
         # Future-proofing: raise an error if more than one backend can read the file
-        assert len(backends_that_can_read) == 1, (
-            "More than one backend is capable of reading the file! Please raise an issue describing your file."
-        )
+        assert (
+            len(backends_that_can_read) == 1
+        ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
         if load_kwargs["mode"] == "r+" and backend not in backends_that_can_read:
             raise IOError(
                 f"The chosen backend ('{backend}') is unable to read the file! "
