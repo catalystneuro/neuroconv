@@ -134,6 +134,7 @@ class DataInterfaceTestMixin:
             with self.subTest(str(num)):
                 self.case = num
                 self.test_kwargs = kwargs
+                del self.interface
                 self.interface = self.data_interface_cls(**self.test_kwargs)
 
                 metadata = self.interface.get_metadata()
