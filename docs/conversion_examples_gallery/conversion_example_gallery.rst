@@ -70,7 +70,6 @@ Imaging
     Miniscope <imaging/miniscope>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
-    ScanImage Multi-File <imaging/multifilescanimage>
     Tiff <imaging/tiff>
 
 Segmentation
