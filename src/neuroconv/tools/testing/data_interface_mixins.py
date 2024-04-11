@@ -2,6 +2,7 @@ import inspect
 import json
 import tempfile
 from abc import abstractmethod
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Type, Union
@@ -124,7 +125,6 @@ class DataInterfaceTestMixin:
                 self.run_custom_checks()
 
     def test_no_metadata_mutation_by_interface(self):
-        from copy import deepcopy
 
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
