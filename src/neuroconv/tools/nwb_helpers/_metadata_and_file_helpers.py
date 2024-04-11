@@ -191,7 +191,7 @@ def make_or_load_nwbfile(
         ]
         # Future-proofing: raise an error if more than one backend can read the file
         assert (
-            len(backends_that_can_read) == 1
+            len(backends_that_can_read) <= 1
         ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
         if load_kwargs["mode"] == "r+" and backend not in backends_that_can_read:
             raise IOError(

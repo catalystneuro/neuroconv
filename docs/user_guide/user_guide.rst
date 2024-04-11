@@ -2,7 +2,7 @@ User Guide
 ==========
 
 NeuroConv allows you to easily build programs to convert data from neurophysiology experiments
-to NWB. The building-blocks of these conversions are ``DataInterface`` classes. Each
+to NWB. The building blocks of these conversions are ``DataInterface`` classes. Each
 ``DataInterface`` is responsible for a specific format of data, and contains methods to
 read data and metadata from that format and write it to NWB. We have pre-built ``DataInterface``
 classes for many common data formats available in our :ref:`Conversion Gallery <conversion_gallery>`.
@@ -18,8 +18,9 @@ and synchronize data across multiple sources.
 
   datainterfaces
   nwbconverter
-  yaml
-  temporal_alignment
   schemas
+  temporal_alignment
   csvs
   expand_path
+  yaml
+  docker_demo
