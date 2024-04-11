@@ -158,25 +158,39 @@ We can confirm these values are saved by re-printing that particular dataset con
       compression options : {'clevel': 3}
 
 
-
-Configure & write (tools)
+Interfaces and Converters
 -------------------------
 
-Putting everything together and implementing our configuration by calling ``configure_backend`` on the in-memory ``NWBFile`` object, the following code writes our NWB file to disk...
+The normal workflow when writing a file using a ``DataInterface`` or ``NWBConverter`` is simple to configure.
+
+The following example uses the example data available from the testing repo... # TODO add cross-ref with dev docs link
 
 .. code-block::
 
     from datetime import datetime
 
     from dateutil import tz
+    from neuroconv import ConverterPipe
+    from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
     from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
-    from pynwb import TimeSeries
 
     nwbfile_path = "./my_nwbfile.nwb"
 
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
-    metadata = dict(NWBFile=dict(session_start_time=session_start_time))
+    # Instantiate interfaces and converter
+    ap_interface = SpikeGLXRecordingInterface(file_path=".../spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin")
+    phy_interface = PhySortingInterface(folder_path=".../phy/phy_example_0")
 
+    data_interfaces = [ap_interface, phy_interface]
+    converter = ConverterPipe(data_interfaces=data_interfaces)
+
+    # Fetch available metadata
+    metadata = converter.get_metadata()
+
+    # Be sure to include the session_start_time, if it is not already in the metadata
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = session_start_time
+
+    # Configure and write the NWB file
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path,
         metadata=metadata,
@@ -184,15 +198,7 @@ Putting everything together and implementing our configuration by calling ``conf
         backend="hdf5",
         verbose=True,
     ) as nwbfile:
-
-        time_series = TimeSeries(
-            name="MyTimeSeries",
-            description="A time series from my experiment.",
-            unit="cm/s",
-            data=[1., 2., 3.],
-            timestamps=[0.0, 0.2, 0.4],
-        )
-        nwbfile.add_acquisition(time_series)
+        converter.add_to_nwbfile(nwbfile=nwbfile)
 
         default_backend_configuration = get_default_backend_configuration(
             nwbfile=nwbfile, backend="hdf5"
@@ -203,8 +209,52 @@ Putting everything together and implementing our configuration by calling ``conf
         )
 
 
+Generic tools
+-------------
 
-Configure & write (pipelines)
------------------------------
+A more generic approach that can apply to any customized in-memory ``pynwb.NWBFile`` object...
 
-Coming soon...
+.. code-block::
+
+    from uuid import uuid4
+    from datetime import datetime
+
+    from dateutil import tz
+    from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
+    from pynwb import TimeSeries
+
+    nwbfile_path = "./my_nwbfile.nwb"
+
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    nwbfile = pynwb.NWBFile(
+        session_start_time=session_start_time,
+        session_description="My description...",
+        identifier=str(uuid4()),
+    )
+
+    # Add neurodata objects to the NWBFile, for example...
+    time_series = TimeSeries(
+        name="MyTimeSeries",
+        description="A time series from my experiment.",
+        unit="cm/s",
+        data=[1., 2., 3.],
+        timestamps=[0.0, 0.2, 0.4],
+    )
+    nwbfile.add_acquisition(time_series)
+
+    with make_or_load_nwbfile(
+        nwbfile_path=nwbfile_path,
+        nwbfile=nwbfile,
+        overwrite=True,
+        backend="hdf5",
+        verbose=True,
+    ):
+        default_backend_configuration = get_default_backend_configuration(
+            nwbfile=nwbfile, backend="hdf5"
+        )
+
+        # Make any modifications to the configuration in this step
+
+        configure_backend(
+            nwbfile=nwbfile, backend_configuration=default_backend_configuration
+        )
