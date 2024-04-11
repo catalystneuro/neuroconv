@@ -9,8 +9,11 @@
 
 ### Bug fixes
 * Fixed writing waveforms directly to file [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
-* Avoid in-place modification of the metadata in the `VideoInterface` and on neo tools. [PR #814](https://github.com/catalystneuro/neuroconv/pull/814)
+* Avoid in-place modification of the metadata in the `VideoInterface` and on neo tools. [PR #815](https://github.com/catalystneuro/neuroconv/pull/815)
 
+
+### Testing
+* Adding a general test to avoid in-place modification of metadata
 
 # v0.4.8 (March 20, 2024)
 

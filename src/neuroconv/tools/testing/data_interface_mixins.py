@@ -126,13 +126,23 @@ class DataInterfaceTestMixin:
     def test_add_to_nwb(self):
         from copy import deepcopy
 
-        metadata = self.interface.get_metadata()
-        metadata_in = deepcopy(metadata)
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        nwbfile = self.interface.create_nwb(metadata=metadata)
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
 
-        # Test that no modification took place
-        assert metadata == metadata_in
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                metadata = self.interface.get_metadata()
+                metadata_in = deepcopy(metadata)
+                metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+                nwbfile = self.interface.create_nwbfile(metadata=metadata)
+
+                # Test that no modification took place
+                assert metadata == metadata_in
 
 
 class TemporalAlignmentMixin:
