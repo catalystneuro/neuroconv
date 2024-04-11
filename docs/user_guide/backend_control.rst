@@ -200,12 +200,15 @@ The following example uses the example data available from the testing repo... #
     ) as nwbfile:
         converter.add_to_nwbfile(nwbfile=nwbfile)
 
-        default_backend_configuration = get_default_backend_configuration(
+        backend_configuration = get_default_backend_configuration(
             nwbfile=nwbfile, backend="hdf5"
         )
 
+        # Make any modifications to the configuration in this step, for example...
+        backend_configuration["acquisition/ElectricalSeriesAP/data"].compression_method = "Blosc"
+
         configure_backend(
-            nwbfile=nwbfile, backend_configuration=default_backend_configuration
+            nwbfile=nwbfile, backend_configuration=backend_configuration
         )
 
 
@@ -249,12 +252,13 @@ A more generic approach that can apply to any customized in-memory ``pynwb.NWBFi
         backend="hdf5",
         verbose=True,
     ):
-        default_backend_configuration = get_default_backend_configuration(
+        backend_configuration = get_default_backend_configuration(
             nwbfile=nwbfile, backend="hdf5"
         )
 
-        # Make any modifications to the configuration in this step
+        # Make any modifications to the configuration in this step, for example...
+        backend_configuration["acquisition/MyTimeSeries/data"].compression_options = dict(level=7)
 
         configure_backend(
-            nwbfile=nwbfile, backend_configuration=default_backend_configuration
+            nwbfile=nwbfile, backend_configuration=backend_configuration
         )
