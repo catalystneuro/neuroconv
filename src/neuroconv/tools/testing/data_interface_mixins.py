@@ -158,7 +158,7 @@ class DataInterfaceTestMixin:
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
