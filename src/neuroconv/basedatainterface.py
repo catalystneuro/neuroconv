@@ -95,7 +95,7 @@ class BaseDataInterface(ABC):
         """
         Define a protocol for mapping the data from this interface to NWB neurodata objects.
 
-        These neurodata objects should also be added to the in-memory pynwb.NWBFile object as well.
+        These neurodata objects should also be added to the in-memory pynwb.NWBFile object in this step.
 
         Parameters
         ----------
@@ -137,7 +137,7 @@ class BaseDataInterface(ABC):
         backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
             The type of backend to use when writing the file.
         backend_configuration : HDF5BackendConfiguration, optional
-            The backend configuration to use when writing the file.
+            The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
