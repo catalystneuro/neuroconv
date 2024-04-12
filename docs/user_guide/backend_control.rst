@@ -172,11 +172,19 @@ The following example uses the example data available from the testing repo... #
     from dateutil import tz
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
-    from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
+    from neuroconv.tools.nwb_helpers import (
+        make_or_load_nwbfile,
+        get_default_backend_configuration,
+        configure_backend,
+    )
 
     # Instantiate interfaces and converter
-    ap_interface = SpikeGLXRecordingInterface(file_path=".../spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin")
-    phy_interface = PhySortingInterface(folder_path=".../phy/phy_example_0")
+    ap_interface = SpikeGLXRecordingInterface(
+        file_path=".../spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
+    )
+    phy_interface = PhySortingInterface(
+        folder_path=".../phy/phy_example_0"
+    )
 
     data_interfaces = [ap_interface, phy_interface]
     converter = ConverterPipe(data_interfaces=data_interfaces)
@@ -188,7 +196,10 @@ The following example uses the example data available from the testing repo... #
     backend="hdf5"
 
     nwbfile = converter.create_nwbfile(metadata=metadata)
-    backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+    backend_configuration = converter.get_default_backend_configuration(
+        nwbfile=nwbfile,
+        backend=backend,
+    )
 
     # Make any modifications to the configuration in this step, for example...
     backend_configuration["acquisition/ElectricalSeriesAP/data"].compression_method = "Blosc"
@@ -196,7 +207,10 @@ The following example uses the example data available from the testing repo... #
     # Configure and write the NWB file
     nwbfile_path = "./my_nwbfile_name.nwb"
     converter.run_conversion(
-        nwbfile_path=nwbfile_path, nwbfile=nwbfile, backend=backend, backend_configuration=backend_configuration
+        nwbfile_path=nwbfile_path,
+        nwbfile=nwbfile,
+        backend=backend,
+        backend_configuration=backend_configuration,
     )
 
 
