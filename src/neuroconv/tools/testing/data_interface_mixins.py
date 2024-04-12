@@ -2,15 +2,18 @@ import inspect
 import json
 import tempfile
 from abc import abstractmethod
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Type, Union
+from typing import List, Literal, Optional, Type, Union
 
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
+from hdmf_zarr import NWBZarrIO
 from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
 from neuroconv.basedatainterface import BaseDataInterface
@@ -83,17 +86,52 @@ class DataInterfaceTestMixin:
         validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
-    def run_conversion(self, nwbfile_path: str):
+    def check_no_metadata_mutation(self):
+        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        metadata_in = deepcopy(metadata)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+
+        assert metadata == metadata_in
+
+    def check_run_conversion_default_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
         self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, backend=backend, **self.conversion_options
+        )
+
+    def check_run_conversion_custom_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            backend=backend,
+            backend_configuration=backend_configuration**self.conversion_options,
         )
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
         """Read the produced NWB file and compare it to the interface."""
         pass
+
+    def check_basic_zarr_read(self, nwbfile_path: str):
+        """Ensure NWBZarrIO can read the file."""
+        with NWBZarrIO(path=nwbfile_path, mode="r") as io:
+            io.read()
 
     def check_extracted_metadata(self, metadata: dict):
         """Override this method to make assertions about specific extracted metadata values."""
@@ -117,8 +155,19 @@ class DataInterfaceTestMixin:
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
+
+                self.check_no_metadata_mutation()
+
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # TODO: enable when all H5DataIO prewraps are gone
+                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
@@ -516,7 +565,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path)
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run

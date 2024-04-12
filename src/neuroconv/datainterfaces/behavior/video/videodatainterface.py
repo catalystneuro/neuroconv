@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 from typing import List, Literal, Optional
 from warnings import warn
@@ -303,9 +304,10 @@ class VideoInterface(BaseDataInterface):
 
         file_paths = self.source_data["file_paths"]
 
-        videos_metadata = metadata.get("Behavior", dict()).get("Videos", None)
+        # Be sure to copy metadata at this step to avoid mutating in-place
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("Videos", None)
         if videos_metadata is None:
-            videos_metadata = self.get_metadata()["Behavior"]["Videos"]
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["Videos"])
 
         assert len(videos_metadata) == self._number_of_files, (
             "Incomplete metadata "

@@ -1,13 +1,20 @@
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from jsonschema import validate
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
-from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
+from .tools.nwb_helpers import (
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+    get_default_nwbfile_metadata,
+    make_or_load_nwbfile,
+)
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -113,6 +120,32 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
+    def get_default_backend_configuration(
+        self,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+        metadata: Optional[dict] = None,
+        conversion_options: Optional[dict] = None,
+    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+        """
+        Fill and return a default backend configuration to serve as a starting point for further customization.
+
+        Parameters
+        ----------
+        backend : "hdf5" or "zarr", default: "hdf5"
+            The type of backend used to create the file.
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile.
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        with make_or_load_nwbfile(metadata=metadata, verbose=self.verbose) as nwbfile:
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+            return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
         conversion_options = conversion_options or dict()
         for interface_name, data_interface in self.data_interface_objects.items():
@@ -126,6 +159,9 @@ class NWBConverter:
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
+        # backend: Union[Literal["hdf5", "zarr"], HDF5BackendConfiguration, ZarrBackendConfiguration] = "hdf5",
+        backend: Union[Literal["hdf5"], HDF5BackendConfiguration] = "hdf5",
         conversion_options: Optional[dict] = None,
     ) -> None:
         """
@@ -142,6 +178,11 @@ class NWBConverter:
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
+        backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
+            If "hdf5", this type of backend will be used to create the file,
+            with all datasets using the default values.
+            To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
+            BackendConfiguration object, and pass that instead.
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
@@ -160,9 +201,10 @@ class NWBConverter:
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
+            backend=backend,
             verbose=self.verbose,
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
+            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
     def temporally_align_data_interfaces(self):
         """Override this method to implement custom alignment"""
