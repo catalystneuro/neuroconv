@@ -120,7 +120,8 @@ class DataInterfaceTestMixin:
             nwbfile=nwbfile,
             metadata=metadata,
             backend=backend,
-            backend_configuration=backend_configuration**self.conversion_options,
+            backend_configuration=backend_configuration,
+            **self.conversion_options,
         )
 
     def check_run_conversion_default_backend_in_nwbconverter(

@@ -181,10 +181,12 @@ class NWBConverter:
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
-            If "hdf5", this type of backend will be used to create the file,
-            with all datasets using the default values.
+            The type of backend to use when writing the file.
+        backend_configuration : HDF5BackendConfiguration, optional
+            The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
+            Otherwise, all datasets will use default configuration settings.
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
@@ -205,12 +207,13 @@ class NWBConverter:
             backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            if backend_configuration is None:  # Otherwise Assume the data has already been added to the NWBFile
-                backend_configuration = self.get_default_backend_configuration(
-                    backend=backend, metadata=metadata, conversion_options=conversion_options
-                )
+            if backend_configuration is None:
                 # Otherwise assume the data has already been added to the NWBFile
-                self.add_to_nwbfile(nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+                self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+
+                backend_configuration = self.get_default_backend_configuration(
+                    nwbfile=nwbfile_out, backend=backend, **conversion_options
+                )
 
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
