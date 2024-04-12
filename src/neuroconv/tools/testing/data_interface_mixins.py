@@ -123,6 +123,28 @@ class DataInterfaceTestMixin:
             backend_configuration=backend_configuration**self.conversion_options,
         )
 
+    def check_run_conversion_default_backend_in_nwbconverter(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interfaces = dict(Test=type(self.interface))
+
+        source_data = dict(Test=self.test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        metadata = converter.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
         """Read the produced NWB file and compare it to the interface."""
@@ -160,6 +182,9 @@ class DataInterfaceTestMixin:
 
                 self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_default_backend_in_nwbconverter(
+                    nwbfile_path=self.nwbfile_path, backend="hdf5"
+                )
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
