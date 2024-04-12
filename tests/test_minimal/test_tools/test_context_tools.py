@@ -182,7 +182,7 @@ class TestMakeOrLoadNWBFile(TestCase):
             nwbfile.add_acquisition(self.time_series_1)
         with self.assertRaisesWith(
             exc_type=IOError,
-            exc_msg="The chosen backend (hdf5) is unable to read the file! Please select a different backend.",
+            exc_msg="The chosen backend ('hdf5') is unable to read the file! Please select 'zarr' instead.",
         ):
             with make_or_load_nwbfile(nwbfile_path=nwbfile_path, overwrite=False, backend="hdf5") as nwbfile:
                 nwbfile.add_acquisition(self.time_series_2)
