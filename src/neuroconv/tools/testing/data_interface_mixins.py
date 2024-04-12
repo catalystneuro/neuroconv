@@ -180,7 +180,7 @@ class DataInterfaceTestMixin:
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_default_backend_in_nwbconverter(
                     nwbfile_path=self.nwbfile_path, backend="hdf5"
@@ -590,7 +590,12 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-                self.check_run_conversion(nwbfile_path=self.nwbfile_path)
+
+                self.check_no_metadata_mutation()
+
+                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
