@@ -61,6 +61,7 @@ These can be run in isolation using ``pip install -e neuroconv[test,<modality>]`
 ``pytest tests/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``ecephys``, ``text``, or ``behavior``.
 
 
+.. _example_data:
 
 Testing On Example Data
 -----------------------

@@ -2,6 +2,7 @@ import inspect
 import json
 import tempfile
 from abc import abstractmethod
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Optional, Type, Union
@@ -84,12 +85,18 @@ class DataInterfaceTestMixin:
         validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
-    def run_conversion(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+    def check_run_conversion(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        metadata_in = deepcopy(metadata)
+
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, backend=backend, **self.conversion_options
         )
+
+        # Test the the metadata was not altered by `run_conversion` which calls `add_to_nwbfile`
+        assert metadata == metadata_in
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -124,7 +131,8 @@ class DataInterfaceTestMixin:
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
 
-                self.run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="hdf5")
+
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
@@ -549,7 +557,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path)
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
