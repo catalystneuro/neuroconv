@@ -6,7 +6,10 @@ from unittest.mock import patch
 import pytest
 from numcodecs import GZip
 
-from neuroconv.tools.nwb_helpers import AVAILABLE_ZARR_COMPRESSION_METHODS
+from neuroconv.tools.nwb_helpers import (
+    AVAILABLE_ZARR_COMPRESSION_METHODS,
+    ZarrDatasetIOConfiguration,
+)
 from neuroconv.tools.testing import mock_ZarrDatasetIOConfiguration
 
 
@@ -206,3 +209,9 @@ def test_get_data_io_kwargs():
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
         chunks=(78125, 64), compressor=GZip(level=1), filters=None
     )
+
+
+def test_zarr_dataset_io_configuration_schema():
+    assert ZarrDatasetIOConfiguration.schema() is not None
+    assert ZarrDatasetIOConfiguration.schema_json() is not None
+    assert ZarrDatasetIOConfiguration.model_json_schema() is not None
