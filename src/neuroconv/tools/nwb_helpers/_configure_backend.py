@@ -26,7 +26,7 @@ def configure_backend(
         neurodata_object = nwbfile_objects[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
         # Table columns
-        if isinstance(nwbfile_object, Data):
+        if isinstance(neurodata_object, Data):
             neurodata_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
