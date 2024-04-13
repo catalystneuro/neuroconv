@@ -39,17 +39,14 @@ def configure_backend(
         # Table columns
         if isinstance(neurodata_object, Data):
             neurodata_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
-
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
             neurodata_object.set_data_io(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
-
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue
-
         # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
         else:
             raise NotImplementedError(
