@@ -209,11 +209,9 @@ class NWBConverter:
         ) as nwbfile_out:
             if backend_configuration is None:
                 # Otherwise assume the data has already been added to the NWBFile
-                self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+                self.add_to_nwbfile(nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
-                backend_configuration = self.get_default_backend_configuration(
-                    nwbfile=nwbfile_out, backend=backend, **conversion_options
-                )
+                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
@@ -225,7 +223,6 @@ class NWBConverter:
     def get_default_backend_configuration(
         nwbfile: NWBFile,
         backend: Literal["hdf5", "zarr"] = "hdf5",
-        conversion_options: Optional[dict] = None,
     ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
@@ -236,9 +233,6 @@ class NWBConverter:
             The in-memory object with this interface's data already added to it.
         backend : "hdf5" or "zarr", default: "hdf5"
             The type of backend to use when creating the file.
-        conversion_options : dict, optional
-            Similar to source_data, a dictionary containing keywords for each interface for which non-default
-            conversion specification is requested.
 
         Returns
         -------
