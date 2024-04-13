@@ -7,18 +7,14 @@ Find out more about possible file types in the `main NWB documentation <https://
 
 Find out more about chunking and compression in the `advanced NWB tutorials for dataset I/O settings <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/h5dataio.html#sphx-glr-tutorials-advanced-io-h5dataio-py>`_.
 
-Find out more about chunking and compression in the `advanced NWB tutorials for iterative data write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_.
+Find out more about memory buffering of large source files in the `advanced NWB tutorials for iterative data write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_.
 
 
 
 Default configuration
 ---------------------
 
-By default, NeuroConv will create NWB files using the HDF5 backend.
-
-By default, all datasets will be chunked into ~10 MB pieces, each piece compressed using GZIP (level 4), and large amounts of data will be buffered ~500 MB at a time.
-
-To retrieve a default configuration for an in-memory ``NWBFile`` object, simply call the ``get_default_backend_configuration`` function...
+To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the ``get_default_backend_configuration`` function...
 
 .. code-block:: python
 
@@ -93,7 +89,7 @@ From which a printout of the contents looks like...
 Customization
 -------------
 
-To modify the chunking or buffering patterns and compression method or options, simply change those values in the ``.dataset_configurations`` object using the location of each dataset as a specifier.
+To modify the chunking or buffering patterns and compression method or options, change those values in the ``.dataset_configurations`` object using the location of each dataset as a specifier.
 
 Let's demonstrate this by modifying everything we can for the ``data`` field of the ``TimeSeries`` object generated above...
 
@@ -110,7 +106,7 @@ Some details to note about what can be changed...
 
 .. note::
 
-    Core fields such as the maximum shape and dtype of the source data cannot be altered using this method.
+    Core fields such as the maximum shape and data type of the source data cannot be altered using this method.
 
 .. note::
 
@@ -161,9 +157,9 @@ We can confirm these values are saved by re-printing that particular dataset con
 Interfaces and Converters
 -------------------------
 
-The normal workflow when writing a file using a ``DataInterface`` or ``NWBConverter`` is simple to configure.
+The normal workflow when writing an NWB file using a ``DataInterface`` or ``NWBConverter`` is simple to configure.
 
-The following example uses the example data available from the testing repo... # TODO add cross-ref with dev docs link
+The following example uses the :ref:`example data <example_data>` available from the testing repo...
 
 .. code-block::
 
@@ -212,6 +208,30 @@ The following example uses the example data available from the testing repo... #
         backend=backend,
         backend_configuration=backend_configuration,
     )
+
+.. note::
+
+    If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow the classic workflow...
+
+    .. code-block::python
+
+        converter = ConverterPipe(data_interfaces=data_interfaces)
+
+        # Fetch available metadata
+        metadata = converter.get_metadata()
+
+        # Create the in-memory NWBFile object and retrieve a default configuration
+        backend="hdf5"
+
+        # Configure and write the NWB file
+        nwbfile_path = "./my_nwbfile_name.nwb"
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            backend=backend,
+        )
+
+    and all datasets in the NWB file will automatically use the default configuration!
 
 
 Generic tools
