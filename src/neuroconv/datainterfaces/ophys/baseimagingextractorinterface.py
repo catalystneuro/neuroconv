@@ -50,9 +50,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
-            ImagingPlane=dict(
-                type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}
-            ),
+            ImagingPlane=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}),
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             {
