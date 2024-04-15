@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import List, Literal, Optional, Union
 
 import numpy as np
@@ -307,8 +308,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """
         from ...tools.spikeinterface import add_sorting
 
+        metadata_copy = deepcopy(metadata)
         if write_ecephys_metadata:
-            self.add_channel_metadata_to_nwb(nwbfile=nwbfile, metadata=metadata)
+            self.add_channel_metadata_to_nwb(nwbfile=nwbfile, metadata=metadata_copy)
 
         if stub_test:
             sorting_extractor = self.subset_sorting()
@@ -316,7 +318,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             sorting_extractor = self.sorting_extractor
 
         property_descriptions = dict()
-        for metadata_column in metadata["Ecephys"].get("UnitProperties", []):
+        for metadata_column in metadata_copy["Ecephys"].get("UnitProperties", []):
             property_descriptions.update({metadata_column["name"]: metadata_column["description"]})
             for unit_id in sorting_extractor.get_unit_ids():
                 # Special condition for wrapping electrode group pointers to actual object ids rather than string names

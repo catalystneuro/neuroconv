@@ -333,17 +333,36 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
 
     save_directory = OUTPUT_PATH
 
-    def run_conversion(self, nwbfile_path: str):
+    def run_custom_checks(self):
+        self.check_custom_timestamps(nwbfile_path=self.nwbfile_path)
+
+    def check_custom_timestamps(self, nwbfile_path: str):
+        # TODO: Peel out into separate test class and replace this part with check_read_nwb
+        if self.case != 1:  # set custom timestamps
+            return
+
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
-        if self.case == 1:  # set custom timestamps
-            self.interface.set_aligned_timestamps(self._custom_timestamps_case_1)
-            assert len(self.interface._timestamps) == 2330
+        self.interface.set_aligned_timestamps(self._custom_timestamps_case_1)
+        assert len(self.interface._timestamps) == 2330
 
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimation" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+
+            for pose_estimation in pose_estimation_series_in_nwb.values():
+                pose_timestamps = pose_estimation.timestamps
+                np.testing.assert_array_equal(pose_timestamps, self._custom_timestamps_case_1)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        # TODO: move this to the upstream mixin
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
@@ -358,11 +377,6 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
             ]
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
-
-            if self.case == 1:  # custom timestamps
-                for pose_estimation in pose_estimation_series_in_nwb.values():
-                    pose_timestamps = pose_estimation.timestamps
-                    np.testing.assert_array_equal(pose_timestamps, self._custom_timestamps_case_1)
 
 
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
