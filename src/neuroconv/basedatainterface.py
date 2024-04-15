@@ -173,7 +173,9 @@ class BaseDataInterface(ABC):
     @staticmethod
     def get_default_backend_configuration(
         nwbfile: NWBFile,
-        backend: Literal["hdf5", "zarr"] = "hdf5",
+        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
+        # backend: Union[Literal["hdf5", "zarr"]],
+        backend: Literal["hdf5"] = "hdf5",
     ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
