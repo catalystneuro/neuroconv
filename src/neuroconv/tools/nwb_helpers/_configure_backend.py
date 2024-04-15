@@ -12,9 +12,19 @@ from ._configuration_models._zarr_backend import ZarrBackendConfiguration
 def configure_backend(
     nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
 ) -> None:
-    """Configure all datasets specified in the `backend_configuration` with their appropriate DataIO and options."""
+    """
+    Configure all datasets specified in the `backend_configuration` with their appropriate DataIO and options.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        The in-memory pynwb.NWBFile object to configure.
+    backend_configuration : "hdf5" or "zarr", default: "hdf5"
+        The configuration model to use when configuring the datasets for this backend.
+    """
     nwbfile_objects = nwbfile.objects
 
+    # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
     for dataset_configuration in backend_configuration.dataset_configurations.values():
         object_id = dataset_configuration.object_id
@@ -25,6 +35,7 @@ def configure_backend(
 
         neurodata_object = nwbfile_objects[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
+
         # Table columns
         if isinstance(neurodata_object, Data):
             neurodata_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)

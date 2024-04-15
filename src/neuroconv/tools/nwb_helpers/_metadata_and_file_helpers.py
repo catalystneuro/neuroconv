@@ -76,7 +76,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     return NWBFile(**nwbfile_kwargs)
 
 
-def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict = None):
+def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: Optional[dict] = None):
     """
     Add device information from metadata to NWBFile object.
 
@@ -105,6 +105,8 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             ]
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
+    metadata_copy = deepcopy(metadata) if metadata is not None else dict()
+
     assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     assert modality in [
         "Ecephys",
@@ -115,16 +117,14 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
 
     defaults = dict(name=f"Device{modality}", description=f"{modality} device. Automatically generated.")
 
-    if metadata is None:
-        metadata = dict()
-    if modality not in metadata:
-        metadata[modality] = dict()
-    if "Device" not in metadata[modality]:
-        metadata[modality]["Device"] = [defaults]
+    if modality not in metadata_copy:
+        metadata_copy[modality] = dict()
+    if "Device" not in metadata_copy[modality]:
+        metadata_copy[modality]["Device"] = [defaults]
 
-    for dev in metadata[modality]["Device"]:
-        if dev.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **dev))
+    for device_metadata in metadata_copy[modality]["Device"]:
+        if device_metadata.get("name", defaults["name"]) not in nwbfile.devices:
+            nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
 @contextmanager
@@ -173,6 +173,7 @@ def make_or_load_nwbfile(
     if overwrite is False and backend == "zarr":
         # TODO: remove when https://github.com/hdmf-dev/hdmf-zarr/issues/182 is resolved
         raise NotImplementedError("Appending a Zarr file is not yet supported!")
+
     load_kwargs = dict()
     success = True
     file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
