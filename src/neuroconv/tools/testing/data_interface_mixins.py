@@ -124,6 +124,7 @@ class DataInterfaceTestMixin:
             **self.conversion_options,
         )
 
+
     def check_run_conversion_default_backend_in_nwbconverter(
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
@@ -145,6 +146,7 @@ class DataInterfaceTestMixin:
             backend=backend,
             conversion_options=conversion_options,
         )
+
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -183,6 +185,7 @@ class DataInterfaceTestMixin:
 
                 self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+
                 self.check_run_conversion_default_backend_in_nwbconverter(
                     nwbfile_path=self.nwbfile_path, backend="hdf5"
                 )
