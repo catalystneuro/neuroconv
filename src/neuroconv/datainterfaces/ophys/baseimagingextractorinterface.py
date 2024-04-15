@@ -49,9 +49,9 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/Device"}),
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
             ImagingPlane=dict(
-                type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/ImagingPlane"}
+                type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}
             ),
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
@@ -59,7 +59,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 photon_series_type: dict(
                     type="array",
                     minItems=1,
-                    items={"$ref": f"#/properties/Ophys/properties/definitions/{photon_series_type}"},
+                    items={"$ref": f"#/properties/Ophys/definitions/{photon_series_type}"},
                 ),
             }
         )
@@ -68,7 +68,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
         imaging_plane_schema["properties"]["optical_channel"].pop("maxItems")
-        metadata_schema["properties"]["Ophys"]["properties"]["definitions"] = dict(
+        metadata_schema["properties"]["Ophys"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=imaging_plane_schema,
         )
@@ -76,7 +76,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             OnePhotonSeries=OnePhotonSeries,
             TwoPhotonSeries=TwoPhotonSeries,
         )[photon_series_type]
-        metadata_schema["properties"]["Ophys"]["properties"]["definitions"].update(
+        metadata_schema["properties"]["Ophys"]["definitions"].update(
             {
                 photon_series_type: get_schema_from_hdmf_class(photon_series),
             }
