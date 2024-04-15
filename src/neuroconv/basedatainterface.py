@@ -162,21 +162,20 @@ class BaseDataInterface(ABC):
             backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            if backend_configuration is None:  # Otherwise Assume the data has already been added to the NWBFile
-                # Otherwise assume the data has already been added to the NWBFile
+            if backend_configuration is None:
+                # In this case, assume the relevant data has already been added to the NWBFile
                 self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
 
-                backend_configuration = self.get_default_backend_configuration(
-                    nwbfile=nwbfile_out, backend=backend, **conversion_options
-                )
+                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
     @staticmethod
     def get_default_backend_configuration(
         nwbfile: NWBFile,
-        backend: Literal["hdf5", "zarr"] = "hdf5",
-        **conversion_options,
+        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
+        # backend: Union[Literal["hdf5", "zarr"]],
+        backend: Literal["hdf5"] = "hdf5",
     ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
