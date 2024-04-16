@@ -131,11 +131,12 @@ def get_default_dataset_io_configurations(
                 yield dataset_io_configuration
         else:
             # Primarily for TimeSeries, but also any extended class that has 'data' or 'timestamps'
-            # The most common example of this is ndx-events Events/LabeledEvents types
+            # The most common example of this is ndx-events v0.2.0 Events or LabeledEvents types
             time_series = neurodata_object  # For readability
 
-            for dataset_name in ("data", "timestamps"):
-                if dataset_name not in time_series.fields:  # The 'timestamps' field is optional
+            for dataset_name in ("data", "timestamps", "labels"):
+                # Skip optional fields that aren't present
+                if dataset_name not in time_series.fields:
                     continue
 
                 candidate_dataset = getattr(time_series, dataset_name)

@@ -98,7 +98,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
         ),
         frozen=True,
     )
-    dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.", frozen=True)
+    dataset_name: Literal["data", "timestamps", "labels"] = Field(
+        description="The reference name of the dataset.", frozen=True
+    )
     dtype: InstanceOf[np.dtype] = Field(description="The data type of elements of this dataset.", frozen=True)
     full_shape: Tuple[int, ...] = Field(description="The maximum shape of the entire dataset.", frozen=True)
 

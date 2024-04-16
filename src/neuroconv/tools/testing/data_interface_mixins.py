@@ -16,7 +16,7 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
-from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
