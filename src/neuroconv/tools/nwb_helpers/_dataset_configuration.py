@@ -5,10 +5,11 @@ from typing import Generator, Literal, Union
 import h5py
 import numpy as np
 import zarr
+from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.base import DynamicTable
+from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
 
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
@@ -52,7 +53,7 @@ def get_default_dataset_io_configurations(
     """
     Generate DatasetIOConfiguration objects for wrapping NWB file objects with a specific backend.
 
-    This method automatically detects all objects in an NWB file that can be wrapped in a DataIO.
+    This method automatically detects all objects in an NWB file that can be wrapped in a hdmf.DataIO.
     If the NWB file is in append mode, it supports auto-detection of the backend.
     Otherwise, it requires a backend specification.
 
@@ -66,9 +67,11 @@ def get_default_dataset_io_configurations(
     Yields
     ------
     DatasetIOConfiguration
-        A summary of each detected object that can be wrapped in a DataIO.
+        A summary of each detected object that can be wrapped in a hdmf.DataIO.
     """
-    from ..nwb_helpers import DATASET_IO_CONFIGURATIONS
+    from ..nwb_helpers import (
+        DATASET_IO_CONFIGURATIONS,  # Locally scoped to avoid circular import
+    )
 
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
@@ -100,17 +103,25 @@ def get_default_dataset_io_configurations(
 
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
-            dynamic_table = neurodata_object  # for readability
+            dynamic_table = neurodata_object  # For readability
 
             for column in dynamic_table.columns:
                 candidate_dataset = column.data  # VectorData object
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
-                    continue  # skip
+                    continue  # Skip
 
                 # Skip over columns that are already wrapped in DataIO
                 if isinstance(candidate_dataset, DataIO):
+                    continue  # Skip
+
+                # Skip over columns whose values are links, such as the 'group' of an ElectrodesTable
+                if any(isinstance(value, Container) for value in candidate_dataset):
+                    continue  # Skip
+
+                # Skip when columns whose values are a reference type
+                if isinstance(column, TimeSeriesReferenceVectorData):
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
@@ -121,25 +132,27 @@ def get_default_dataset_io_configurations(
         else:
             # Primarily for TimeSeries, but also any extended class that has 'data' or 'timestamps'
             # The most common example of this is ndx-events Events/LabeledEvents types
-            time_series = neurodata_object  # for readability
+            time_series = neurodata_object  # For readability
 
             for dataset_name in ("data", "timestamps"):
-                if dataset_name not in time_series.fields:  # timestamps is optional
+                if dataset_name not in time_series.fields:  # The 'timestamps' field is optional
                     continue
 
                 candidate_dataset = getattr(time_series, dataset_name)
+
+                # Skip if already written to file
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
-                    continue  # skip
+                    continue
 
                 # Skip over datasets that are already wrapped in DataIO
                 if isinstance(candidate_dataset, DataIO):
                     continue
 
-                # Edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
+                # Skip edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
                 if isinstance(candidate_dataset, np.ndarray) and candidate_dataset.size == 0:
-                    continue  # skip
+                    continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
                     neurodata_object=time_series, dataset_name=dataset_name
