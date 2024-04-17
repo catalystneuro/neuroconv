@@ -98,13 +98,6 @@ class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMult
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
         file_pattern="scanimage_20240320_multifile*.tif",
     )
-    channel_name = "Channel 1"
-    photon_series_name = "TwoPhotonSeriesChannel1"
-    imaging_plane_name = "ImagingPlaneChannel1"
-
-    def __init__(self, *args, **kwargs) -> None:
-        self.interface_kwargs["channel_name"] = self.channel_name
-        super().__init__(*args, **kwargs)
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 3, 26, 15, 7, 53, 110000)
@@ -140,26 +133,27 @@ class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMult
             self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
 
+@parameterized_class(
+    [
+        {
+            "channel_name": "Channel 1",
+            "photon_series_name": "TwoPhotonSeriesChannel1",
+            "imaging_plane_name": "ImagingPlaneChannel1",
+        },
+        {
+            "channel_name": "Channel 4",
+            "photon_series_name": "TwoPhotonSeriesChannel4",
+            "imaging_plane_name": "ImagingPlaneChannel4",
+        },
+    ],
+)
 class TestScanImageMultiPlaneMultiFileImagingInterface(ScanImageMultiPlaneMultiFileImagingInterfaceMixin, TestCase):
     data_interface_cls = ScanImageMultiPlaneMultiFileImagingInterface
-    interface_kwargs = [
-        dict(
-            folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-            file_pattern="scanimage_20220923_roi.tif",
-            channel_name="Channel 1",
-        ),
-        dict(
-            folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-            file_pattern="scanimage_20220923_roi.tif",
-            channel_name="Channel 4",
-        ),
-    ]
     save_directory = OUTPUT_PATH
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.photon_series_names = ["TwoPhotonSeriesChannel1", "TwoPhotonSeriesChannel4"]
-        cls.imaging_plane_names = ["ImagingPlaneChannel1", "ImagingPlaneChannel4"]
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+        file_pattern="scanimage_20220923_roi.tif",
+    )
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -171,10 +165,7 @@ class TestScanImageMultiPlaneMultiFileImagingInterface(ScanImageMultiPlaneMultiF
         with self.assertRaisesRegex(
             ValueError, "ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead."
         ):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
     def test_non_volumetric_data(self):
         """Test that ValueError is raised for non-volumetric imaging data."""
@@ -186,21 +177,14 @@ class TestScanImageMultiPlaneMultiFileImagingInterface(ScanImageMultiPlaneMultiF
             ValueError,
             "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneMultiFileImagingInterface instead.",
         ):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-                channel_name=channel_name,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name)
 
     def test_channel_name_not_specified(self):
         """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
         folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
         file_pattern = "scanimage_20220923_roi.tif"
         with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
 
 class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):

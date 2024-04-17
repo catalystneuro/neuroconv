@@ -854,16 +854,21 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
 
 
 class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        super().__init__(*args, **kwargs)
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
 
-            imaging_plane_name = self.imaging_plane_name
-            assert imaging_plane_name in nwbfile.imaging_planes
-
-            photon_series_name = self.photon_series_name
-            assert photon_series_name in nwbfile.acquisition
-            two_photon_series = nwbfile.acquisition[photon_series_name]
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == (30, 512, 512)
             assert two_photon_series.unit == "n.a."
             assert two_photon_series.data.dtype == np.int16
@@ -879,23 +884,28 @@ class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin,
 
             assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
 
-            optical_channels = nwbfile.imaging_planes[imaging_plane_name].optical_channel
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
             assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
 
 
 class ScanImageMultiPlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        super().__init__(*args, **kwargs)
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
 
-            imaging_plane_name = self.imaging_plane_names[self.case]
-            assert imaging_plane_name in nwbfile.imaging_planes
-
-            photon_series_name = self.photon_series_names[self.case]
-            assert photon_series_name in nwbfile.acquisition
-            two_photon_series = nwbfile.acquisition[photon_series_name]
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == (6, 256, 528, 2)
             assert two_photon_series.unit == "n.a."
             assert two_photon_series.data.dtype == np.int16
@@ -909,7 +919,7 @@ class ScanImageMultiPlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, 
 
             assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
 
-            optical_channels = nwbfile.imaging_planes[imaging_plane_name].optical_channel
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs[self.case]["channel_name"] in optical_channel_names
+            assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
