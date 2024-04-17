@@ -24,6 +24,7 @@ def configure_backend(
     backend_configuration : "hdf5" or "zarr", default: "hdf5"
         The configuration model to use when configuring the datasets for this backend.
     """
+    is_ndx_events_installed = is_package_installed("ndx-events")
     ndx_events = sys.modules.get("ndx_events", None)
 
     nwbfile_objects = nwbfile.objects
@@ -49,7 +50,7 @@ def configure_backend(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
         # Special ndx-events v0.2.0 types
-        elif ndx_events is not None and isinstance(neurodata_object, ndx_events.Events):
+        elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.Events):
             neurodata_object.set_data_io(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )

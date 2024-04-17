@@ -128,9 +128,10 @@ class DataInterfaceTestMixin:
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
-            data_interfaces = dict(Test=type(self.interface))
+            data_interface_classes = dict(Test=type(self.interface))
 
-        source_data = dict(Test=self.test_kwargs)
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
         converter = TestNWBConverter(source_data=source_data)
 
         metadata = converter.get_metadata()
@@ -748,8 +749,8 @@ class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         pass
 
     # Currently asserted in the downstream testing suite
-    def check_run_conversion_default_backend_in_nwbconverter(self, nwbfile_path: str, backend=Literal["hdf5", "zarr"]):
-        pass
+    # def check_run_conversion_default_backend_in_nwbconverter(self, nwbfile_path: str, backend=Literal["hdf5", "zarr"]):
+    #     pass
 
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
