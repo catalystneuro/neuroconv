@@ -182,12 +182,12 @@ class DataInterfaceTestMixin:
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-
                 self.check_run_conversion_default_backend_in_nwbconverter(
                     nwbfile_path=self.nwbfile_path, backend="hdf5"
                 )
+
+                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
@@ -596,12 +596,12 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-
                 self.check_run_conversion_default_backend_in_nwbconverter(
                     nwbfile_path=self.nwbfile_path, backend="hdf5"
                 )
+
+                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
@@ -747,10 +747,6 @@ class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     # Currently asserted in the downstream testing suite
     def test_interface_alignment(self):
         pass
-
-    # Currently asserted in the downstream testing suite
-    # def check_run_conversion_default_backend_in_nwbconverter(self, nwbfile_path: str, backend=Literal["hdf5", "zarr"]):
-    #     pass
 
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
