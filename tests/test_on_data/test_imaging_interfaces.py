@@ -79,25 +79,22 @@ class TestScanImageImagingInterfaceRecent(ImagingExtractorInterfaceTestMixin, Te
 
 @parameterized_class(
     [
-        {
-            "interface_kwargs": {
-                "folder_path": str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-                "file_pattern": "scanimage_20240320_multifile*.tif",
-                "channel_name": "Channel 1",
-            }
-        },
-        {
-            "interface_kwargs": {
-                "folder_path": str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-                "file_pattern": "scanimage_20240320_multifile*.tif",
-                "channel_name": "Channel 2",
-            }
-        },
-    ]
+        {"channel_name": "Channel 1"},
+        {"channel_name": "Channel 2"},
+    ],
 )
 class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMultiFileImagingInterfaceMixin, TestCase):
     data_interface_cls = ScanImageSinglePlaneMultiFileImagingInterface
     save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+        file_pattern="scanimage_20240320_multifile*.tif",
+    )
+    channel_name = "Channel 1"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        super().__init__(*args, **kwargs)
 
     @classmethod
     def setUpClass(cls) -> None:

@@ -855,6 +855,8 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
 
 class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
+        if isinstance(self.interface_kwargs, dict):
+            self.interface_kwargs = [self.interface_kwargs]
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
 
