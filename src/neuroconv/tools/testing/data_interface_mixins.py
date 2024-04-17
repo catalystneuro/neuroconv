@@ -855,15 +855,13 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
 
 class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
-        if isinstance(self.interface_kwargs, dict):
-            self.interface_kwargs = [self.interface_kwargs]
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
 
-            imaging_plane_name = self.imaging_plane_names[self.case]
+            imaging_plane_name = self.imaging_plane_name
             assert imaging_plane_name in nwbfile.imaging_planes
 
-            photon_series_name = self.photon_series_names[self.case]
+            photon_series_name = self.photon_series_name
             assert photon_series_name in nwbfile.acquisition
             two_photon_series = nwbfile.acquisition[photon_series_name]
             assert two_photon_series.data.shape == (30, 512, 512)
@@ -883,7 +881,7 @@ class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin,
 
             optical_channels = nwbfile.imaging_planes[imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs[self.case]["channel_name"] in optical_channel_names
+            assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
 
 

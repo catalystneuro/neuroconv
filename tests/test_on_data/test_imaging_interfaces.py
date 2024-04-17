@@ -79,8 +79,16 @@ class TestScanImageImagingInterfaceRecent(ImagingExtractorInterfaceTestMixin, Te
 
 @parameterized_class(
     [
-        {"channel_name": "Channel 1"},
-        {"channel_name": "Channel 2"},
+        {
+            "channel_name": "Channel 1",
+            "photon_series_name": "TwoPhotonSeriesChannel1",
+            "imaging_plane_name": "ImagingPlaneChannel1",
+        },
+        {
+            "channel_name": "Channel 2",
+            "photon_series_name": "TwoPhotonSeriesChannel2",
+            "imaging_plane_name": "ImagingPlaneChannel2",
+        },
     ],
 )
 class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMultiFileImagingInterfaceMixin, TestCase):
@@ -91,15 +99,12 @@ class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMult
         file_pattern="scanimage_20240320_multifile*.tif",
     )
     channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
 
     def __init__(self, *args, **kwargs) -> None:
         self.interface_kwargs["channel_name"] = self.channel_name
         super().__init__(*args, **kwargs)
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.photon_series_names = ["TwoPhotonSeriesChannel1", "TwoPhotonSeriesChannel2"]
-        cls.imaging_plane_names = ["ImagingPlaneChannel1", "ImagingPlaneChannel2"]
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 3, 26, 15, 7, 53, 110000)
@@ -109,10 +114,7 @@ class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMult
         folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
         file_pattern = "*.tif"
         with self.assertRaisesRegex(ValueError, "ScanImage version could not be determined from metadata."):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
     def test_not_supported_scanimage_version(self):
         """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
@@ -121,30 +123,21 @@ class TestScanImageSinglePlaneMultiFileImagingInterface(ScanImageSinglePlaneMult
         with self.assertRaisesRegex(
             ValueError, "ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead."
         ):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
     def test_channel_name_not_specified(self):
         """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
         folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
         file_pattern = "scanimage_20240320_multifile*.tif"
         with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
     def test_plane_name_not_specified(self):
         """Test that ValueError is raised when plane_name is not specified for data with multiple planes."""
         folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
         file_pattern = "scanimage_20220801_volume.tif"
         with self.assertRaisesRegex(ValueError, "More than one plane is detected!"):
-            self.data_interface_cls(
-                folder_path=folder_path,
-                file_pattern=file_pattern,
-            )
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
 
 
 class TestScanImageMultiPlaneMultiFileImagingInterface(ScanImageMultiPlaneMultiFileImagingInterfaceMixin, TestCase):
