@@ -63,7 +63,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema(photon_series_type="OnePhotonSeries")
-        metadata_schema["properties"]["Ophys"]["properties"]["definitions"]["Device"]["additionalProperties"] = True
+        metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
