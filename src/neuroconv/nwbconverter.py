@@ -120,39 +120,6 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
-    def get_default_backend_configuration(
-        self,
-        backend: Literal["hdf5", "zarr"] = "hdf5",
-        metadata: Optional[dict] = None,
-        conversion_options: Optional[dict] = None,
-    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
-        """
-        Fill and return a default backend configuration to serve as a starting point for further customization.
-
-        Parameters
-        ----------
-        backend : "hdf5" or "zarr", default: "hdf5"
-            The type of backend used to create the file.
-        metadata : dict, optional
-            Metadata dictionary with information used to create the NWBFile.
-        conversion_options : dict, optional
-            Similar to source_data, a dictionary containing keywords for each interface for which non-default
-            conversion specification is requested.
-        """
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        with make_or_load_nwbfile(metadata=metadata, verbose=self.verbose) as nwbfile:
-            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
-            return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
-        conversion_options = conversion_options or dict()
-        for interface_name, data_interface in self.data_interface_objects.items():
-            data_interface.add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
-            )
-
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
