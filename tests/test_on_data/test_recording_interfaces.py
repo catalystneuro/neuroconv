@@ -1,6 +1,7 @@
 from datetime import datetime
 from platform import python_version
 from sys import platform
+from typing import Literal
 from unittest import skip, skipIf
 
 import numpy as np
