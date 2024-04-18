@@ -515,8 +515,9 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         fallback_sampling_frequency: Optional[float] = None,
         verbose: bool = True,
     ):
-        warnings.warn(
-            "ScanImageImagingInterface will be deprecated. Use ScanImageSinglePlaneImagingInterface instead.",
-            DeprecationWarning,
-        )
+        deprecation_message = """
+        ScanImageImagingInterface is being deprecated on or after October 2024 in favor of
+        ScanImageSinglePlaneImagingInterface.  Please use ScanImageSinglePlaneImagingInterface instead.
+        """
+        warn(deprecation_message, category=FutureWarning)
         super().__init__(file_path=file_path, verbose=verbose)
