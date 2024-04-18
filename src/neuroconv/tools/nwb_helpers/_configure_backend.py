@@ -54,6 +54,9 @@ def configure_backend(
             neurodata_object.set_data_io(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
+        # But temporarily skipping LabeledEvents
+        elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.LabeledEvents):
+            continue
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue
