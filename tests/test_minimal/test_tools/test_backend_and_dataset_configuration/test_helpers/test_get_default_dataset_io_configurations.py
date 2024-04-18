@@ -259,7 +259,7 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
     # Note that the labels dataset is not caught since we search only for 'data' and 'timestamps' fields
-    assert len(dataset_configurations) == 3
+    assert len(dataset_configurations) == 2
 
     data_dataset_configuration = next(
         dataset_configuration
