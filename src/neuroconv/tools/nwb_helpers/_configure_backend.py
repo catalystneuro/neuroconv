@@ -1,5 +1,6 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
+import sys
 from typing import Union
 
 from hdmf.common import Data
@@ -7,6 +8,7 @@ from pynwb import NWBFile, TimeSeries
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
+from ..importing import is_package_installed
 
 
 def configure_backend(
@@ -22,6 +24,9 @@ def configure_backend(
     backend_configuration : "hdf5" or "zarr", default: "hdf5"
         The configuration model to use when configuring the datasets for this backend.
     """
+    is_ndx_events_installed = is_package_installed(package_name="ndx_events")
+    ndx_events = sys.modules.get("ndx_events", None)
+
     nwbfile_objects = nwbfile.objects
 
     # Set all DataIO based on the configuration
@@ -44,11 +49,21 @@ def configure_backend(
             neurodata_object.set_data_io(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
+        # Special ndx-events v0.2.0 types
+        elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.Events):
+            neurodata_object.set_data_io(
+                dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+            )
+        # But temporarily skipping LabeledEvents
+        elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.LabeledEvents):
+            continue
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue
-        # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
+        # Strictly speaking, it would be odd if a `backend_configuration` got to this line, but might as well be safe
         else:
+            print(is_ndx_events_installed)
+            print(isinstance(neurodata_object, ndx_events.LabeledEvents))
             raise NotImplementedError(
                 f"Unsupported object type {type(neurodata_object)} for backend configuration "
                 f"of {neurodata_object.name}!"

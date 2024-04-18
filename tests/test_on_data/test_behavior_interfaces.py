@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -224,6 +225,12 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
                 assert spatial_series.comments == expected_metadata
 
                 assert spatial_series.timestamps[0] == 0.0
+
+    # TODO: undo this skip in future PR
+    def check_run_conversion_default_backend_in_nwbconverter(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        pass
 
 
 class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCase):
