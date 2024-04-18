@@ -24,7 +24,7 @@ def configure_backend(
     backend_configuration : "hdf5" or "zarr", default: "hdf5"
         The configuration model to use when configuring the datasets for this backend.
     """
-    is_ndx_events_installed = is_package_installed("ndx-events")
+    is_ndx_events_installed = is_package_installed(package_name="ndx_events")
     ndx_events = sys.modules.get("ndx_events", None)
 
     nwbfile_objects = nwbfile.objects
@@ -62,6 +62,8 @@ def configure_backend(
             continue
         # Strictly speaking, it would be odd if a `backend_configuration` got to this line, but might as well be safe
         else:
+            print(is_ndx_events_installed)
+            print(isinstance(neurodata_object, ndx_events.LabeledEvents))
             raise NotImplementedError(
                 f"Unsupported object type {type(neurodata_object)} for backend configuration "
                 f"of {neurodata_object.name}!"
