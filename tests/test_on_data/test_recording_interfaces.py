@@ -174,6 +174,12 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
 
                 self.check_nwbfile_temporal_alignment()
 
+    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
+    def check_run_conversion_default_backend_in_nwbconverter(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        pass
+
 
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = IntanRecordingInterface
