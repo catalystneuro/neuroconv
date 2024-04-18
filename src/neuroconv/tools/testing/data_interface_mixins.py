@@ -128,9 +128,10 @@ class DataInterfaceTestMixin:
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
-            data_interfaces = dict(Test=type(self.interface))
+            data_interface_classes = dict(Test=type(self.interface))
 
-        source_data = dict(Test=self.test_kwargs)
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
         converter = TestNWBConverter(source_data=source_data)
 
         metadata = converter.get_metadata()
@@ -164,7 +165,7 @@ class DataInterfaceTestMixin:
         """Override this in child classes to inject additional custom checks."""
         pass
 
-    def test_conversion_as_lone_interface(self):
+    def test_all_conversion_checks(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
             interface_kwargs = [interface_kwargs]
@@ -181,12 +182,12 @@ class DataInterfaceTestMixin:
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-
                 self.check_run_conversion_default_backend_in_nwbconverter(
                     nwbfile_path=self.nwbfile_path, backend="hdf5"
                 )
+
+                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
@@ -572,7 +573,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 self.check_nwbfile_temporal_alignment()
 
-    def test_conversion_as_lone_interface(self):
+    def test_all_conversion_checks(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
             interface_kwargs = [interface_kwargs]
@@ -594,6 +595,10 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
 
                 self.check_no_metadata_mutation()
+
+                self.check_run_conversion_default_backend_in_nwbconverter(
+                    nwbfile_path=self.nwbfile_path, backend="hdf5"
+                )
 
                 self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
@@ -735,11 +740,13 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    # Currently asserted in the downstream testing suite; could be refactored in future PR
     def check_read_nwb(self, nwbfile_path: str):
-        pass  # asserted in the testing suite; could be refactored in future PR
+        pass
 
+    # Currently asserted in the downstream testing suite
     def test_interface_alignment(self):
-        pass  # Currently asserted in the testing suite
+        pass
 
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

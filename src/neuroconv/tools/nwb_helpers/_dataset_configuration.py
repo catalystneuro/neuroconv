@@ -134,7 +134,7 @@ def get_default_dataset_io_configurations(
             # The most common example of this is ndx-events v0.2.0 Events or LabeledEvents types
             time_series = neurodata_object  # For readability
 
-            for dataset_name in ("data", "timestamps", "labels"):
+            for dataset_name in ("data", "timestamps"):
                 # Skip optional fields that aren't present
                 if dataset_name not in time_series.fields:
                     continue
