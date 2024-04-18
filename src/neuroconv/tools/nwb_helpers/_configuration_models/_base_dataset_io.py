@@ -260,9 +260,10 @@ class DatasetIOConfiguration(BaseModel, ABC):
             )
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
-            chunk_shape = None
-            buffer_shape = None
-            compression_method = None
+            raise NotImplementedError(
+                f"Unable to create a `DatasetIOConfiguration` for the dataset at '{location_in_file}'"
+                f"for neurodata object '{neurodata_object}' of type '{type(neurodata_object)}'!"
+            )
 
         return cls(
             object_id=neurodata_object.object_id,
