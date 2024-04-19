@@ -81,7 +81,7 @@ from .ophys.micromanagertiff.micromanagertiffdatainterface import (
 )
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
-from .ophys.scanimage.scanimageimaginginterface import (
+from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
     ScanImageMultiFileImagingInterface,
 )
