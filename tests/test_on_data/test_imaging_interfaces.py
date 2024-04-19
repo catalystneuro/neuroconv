@@ -32,7 +32,6 @@ from neuroconv.tools.testing.data_interface_mixins import (
     MiniscopeImagingInterfaceMixin,
     ScanImageMultiPlaneImagingInterfaceMixin,
     ScanImageSinglePlaneImagingInterfaceMixin,
-    ScanImageSinglePlaneMultiFileImagingInterfaceMixin,
 )
 
 try:
@@ -70,6 +69,20 @@ class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInte
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
     )
     save_directory = OUTPUT_PATH
+
+    channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.expected_two_photon_series_data_shape = (6, 256, 528, 2)
+        cls.expected_rate = 29.1248
+        cls.expected_starting_time = 0.0
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -109,6 +122,20 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
     )
+
+    plane_name = "0"
+    channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1Plane0"
+    imaging_plane_name = "ImagingPlaneChannel1Plane0"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        self.interface_kwargs["plane_name"] = self.plane_name
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.expected_two_photon_series_data_shape = (6, 256, 528)
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -196,6 +223,20 @@ class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneIm
     )
     save_directory = OUTPUT_PATH
 
+    channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.expected_two_photon_series_data_shape = (6, 256, 528, 2)
+        cls.expected_rate = 29.1248
+        cls.expected_starting_time = 0.0
+
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
@@ -214,15 +255,25 @@ class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneIm
         },
     ],
 )
-class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(
-    ScanImageSinglePlaneMultiFileImagingInterfaceMixin, TestCase
-):
+class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin, TestCase):
     data_interface_cls = ScanImageMultiFileImagingInterface
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
         file_pattern="scanimage_20240320_multifile*.tif",
     )
     save_directory = OUTPUT_PATH
+
+    channel_name = "Channel 1"
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.interface_kwargs["channel_name"] = self.channel_name
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.expected_two_photon_series_data_shape = (30, 512, 512)
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 3, 26, 15, 7, 53, 110000)

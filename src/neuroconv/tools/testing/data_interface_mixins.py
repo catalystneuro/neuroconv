@@ -337,7 +337,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         electrical_series_name = self.interface.get_metadata()["Ecephys"][self.interface.es_key]["name"]
 
         if recording.get_num_segments() == 1:
-
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             self.nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
@@ -854,16 +853,6 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
 
 
 class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    plane_name = "0"
-    channel_name = "Channel 1"
-    photon_series_name = "TwoPhotonSeriesChannel1Plane0"
-    imaging_plane_name = "ImagingPlaneChannel1Plane0"
-
-    def __init__(self, *args, **kwargs) -> None:
-        self.interface_kwargs["channel_name"] = self.channel_name
-        self.interface_kwargs["plane_name"] = self.plane_name
-        super().__init__(*args, **kwargs)
-
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
@@ -871,7 +860,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == (6, 256, 528)
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
             assert two_photon_series.data.dtype == np.int16
             assert two_photon_series.rate is None
@@ -884,44 +873,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             data_from_extractor = imaging_extractor.get_video()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
-            assert two_photon_series.description == json.dumps(imaging_extractor.metadata)
-
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs["channel_name"] in optical_channel_names
-            assert len(optical_channels) == 1
-
-
-class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    channel_name = "Channel 1"
-    photon_series_name = "TwoPhotonSeriesChannel1"
-    imaging_plane_name = "ImagingPlaneChannel1"
-
-    def __init__(self, *args, **kwargs) -> None:
-        self.interface_kwargs["channel_name"] = self.channel_name
-        super().__init__(*args, **kwargs)
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == (30, 512, 512)
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
-            assert two_photon_series.rate is None
-            assert two_photon_series.starting_time is None
-
-            imaging_extractor = self.interface.imaging_extractor
-            times_from_extractor = imaging_extractor._times
-            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
-
-            data_from_extractor = imaging_extractor.get_video()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
-
-            assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
+            assert two_photon_series.description == json.dumps(self.interface.image_metadata)
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
@@ -930,14 +882,6 @@ class ScanImageSinglePlaneMultiFileImagingInterfaceMixin(DataInterfaceTestMixin,
 
 
 class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    channel_name = "Channel 1"
-    photon_series_name = "TwoPhotonSeriesChannel1"
-    imaging_plane_name = "ImagingPlaneChannel1"
-
-    def __init__(self, *args, **kwargs) -> None:
-        self.interface_kwargs["channel_name"] = self.channel_name
-        super().__init__(*args, **kwargs)
-
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
@@ -945,11 +889,12 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == (6, 256, 528, 2)
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
             assert two_photon_series.data.dtype == np.int16
-            assert two_photon_series.rate == 29.1248
-            assert two_photon_series.starting_time == 0.0
+
+            assert two_photon_series.rate == self.expected_rate
+            assert two_photon_series.starting_time == self.expected_starting_time
             assert two_photon_series.timestamps is None
 
             imaging_extractor = self.interface.imaging_extractor
