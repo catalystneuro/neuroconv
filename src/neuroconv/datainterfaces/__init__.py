@@ -82,10 +82,8 @@ from .ophys.micromanagertiff.micromanagertiffdatainterface import (
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import (
-    ScanImageMultiPlaneImagingInterface,
-    ScanImageMultiPlaneMultiFileImagingInterface,
-    ScanImageSinglePlaneImagingInterface,
-    ScanImageSinglePlaneMultiFileImagingInterface,
+    ScanImageImagingInterface,
+    ScanImageMultiFileImagingInterface,
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
@@ -142,10 +140,8 @@ interface_list = [
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
-    ScanImageMultiPlaneImagingInterface,
-    ScanImageSinglePlaneImagingInterface,
-    ScanImageMultiPlaneMultiFileImagingInterface,
-    ScanImageSinglePlaneMultiFileImagingInterface,
+    ScanImageImagingInterface,
+    ScanImageMultiFileImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
