@@ -203,24 +203,21 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
         )
 
 
-class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading multi-file (buffered) TIFF files produced via ScanImage."""
+class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
+    """Interface for reading multi plane (volumetric) TIFF files produced via ScanImage."""
 
-    display_name = "ScanImage Single Plane Multi-File Imaging"
+    display_name = "ScanImage Volumetric Imaging"
     associated_suffixes = (".tif",)
-    info = "Interface for ScanImage multi-file (buffered) TIFF files."
+    info = "Interface for ScanImage multi plane (volumetric) TIFF files."
 
-    ExtractorName = "ScanImageTiffSinglePlaneMultiFileImagingExtractor"
+    ExtractorName = "ScanImageTiffMultiPlaneImagingExtractor"
 
     def __init__(
         self,
-        folder_path: FolderPathType,
-        file_pattern: str,
+        file_path: FilePathType,
         channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
         image_metadata: Optional[dict] = None,
         parsed_metadata: Optional[dict] = None,
-        extract_all_metadata: bool = False,
         verbose: bool = True,
     ):
         """
@@ -228,35 +225,25 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
 
         Parameters
         ----------
-        folder_path : PathType
-            Path to the folder containing the TIFF files.
-        file_pattern : str
-            Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
+        file_path : PathType
+            Path to the TIFF file.
         channel_name : str
             Name of the channel for this extractor.
-        plane_name : str
-            Name of the plane for this extractor.
-        extract_all_metadata : bool
-            If True, extract metadata from every file in the folder. If False, only extract metadata from the first
-            file in the folder. The default is False.
         """
-        from natsort import natsorted
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
             parse_metadata,
         )
 
-        file_paths = natsorted(Path(folder_path).glob(file_pattern))
-        first_file_path = file_paths[0]
-
-        image_metadata = image_metadata or extract_extra_metadata(file_path=first_file_path)
+        image_metadata = image_metadata or extract_extra_metadata(file_path=file_path)
         self.image_metadata = image_metadata
+        parsed_metadata = parsed_metadata or parse_metadata(metadata=self.image_metadata)
 
-        version = get_scanimage_major_version(scanimage_metadata=image_metadata)
-        if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+        if parsed_metadata["num_planes"] == 1:
+            raise ValueError(
+                "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead."
+            )
 
-        parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
         avaliable_channels = parsed_metadata["channel_names"]
         if channel_name is None:
             if len(avaliable_channels) > 1:
@@ -268,30 +255,16 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
             channel_name = avaliable_channels[0]
         assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
 
-        available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
-        if plane_name is None:
-            if len(available_planes) > 1:
-                raise ValueError(
-                    "More than one plane is detected! Please specify which plane you wish to load "
-                    "with the `plane_name` argument. To see which planes are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
-                )
-            plane_name = available_planes[0]
-        assert plane_name in available_planes, f"Plane '{plane_name}' not found in the tiff file."
-
         two_photon_series_name_suffix = None
         if len(avaliable_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
-        if len(available_planes) > 1:
-            two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
         super().__init__(
-            folder_path=folder_path,
-            file_pattern=file_pattern,
+            file_path=file_path,
             channel_name=channel_name,
-            plane_name=plane_name,
-            extract_all_metadata=extract_all_metadata,
+            metadata=image_metadata,
+            parsed_metadata=parsed_metadata,
             verbose=verbose,
         )
 
@@ -564,21 +537,24 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
 
-class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading multi plane (volumetric) TIFF files produced via ScanImage."""
+class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
+    """Interface for reading multi-file (buffered) TIFF files produced via ScanImage."""
 
-    display_name = "ScanImage Volumetric Imaging"
+    display_name = "ScanImage Single Plane Multi-File Imaging"
     associated_suffixes = (".tif",)
-    info = "Interface for ScanImage multi plane (volumetric) TIFF files."
+    info = "Interface for ScanImage multi-file (buffered) TIFF files."
 
-    ExtractorName = "ScanImageTiffMultiPlaneImagingExtractor"
+    ExtractorName = "ScanImageTiffSinglePlaneMultiFileImagingExtractor"
 
     def __init__(
         self,
-        file_path: FilePathType,
+        folder_path: FolderPathType,
+        file_pattern: str,
         channel_name: Optional[str] = None,
+        plane_name: Optional[str] = None,
         image_metadata: Optional[dict] = None,
         parsed_metadata: Optional[dict] = None,
+        extract_all_metadata: bool = False,
         verbose: bool = True,
     ):
         """
@@ -586,25 +562,35 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : PathType
-            Path to the TIFF file.
+        folder_path : PathType
+            Path to the folder containing the TIFF files.
+        file_pattern : str
+            Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
         channel_name : str
             Name of the channel for this extractor.
+        plane_name : str
+            Name of the plane for this extractor.
+        extract_all_metadata : bool
+            If True, extract metadata from every file in the folder. If False, only extract metadata from the first
+            file in the folder. The default is False.
         """
+        from natsort import natsorted
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
             parse_metadata,
         )
 
-        image_metadata = image_metadata or extract_extra_metadata(file_path=file_path)
+        file_paths = natsorted(Path(folder_path).glob(file_pattern))
+        first_file_path = file_paths[0]
+
+        image_metadata = image_metadata or extract_extra_metadata(file_path=first_file_path)
         self.image_metadata = image_metadata
-        parsed_metadata = parsed_metadata or parse_metadata(metadata=self.image_metadata)
 
-        if parsed_metadata["num_planes"] == 1:
-            raise ValueError(
-                "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead."
-            )
+        version = get_scanimage_major_version(scanimage_metadata=image_metadata)
+        if version == "3.8":
+            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
 
+        parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
         avaliable_channels = parsed_metadata["channel_names"]
         if channel_name is None:
             if len(avaliable_channels) > 1:
@@ -616,16 +602,30 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             channel_name = avaliable_channels[0]
         assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
 
+        available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
+        if plane_name is None:
+            if len(available_planes) > 1:
+                raise ValueError(
+                    "More than one plane is detected! Please specify which plane you wish to load "
+                    "with the `plane_name` argument. To see which planes are available, use "
+                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
+                )
+            plane_name = available_planes[0]
+        assert plane_name in available_planes, f"Plane '{plane_name}' not found in the tiff file."
+
         two_photon_series_name_suffix = None
         if len(avaliable_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
+        if len(available_planes) > 1:
+            two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
         super().__init__(
-            file_path=file_path,
+            folder_path=folder_path,
+            file_pattern=file_pattern,
             channel_name=channel_name,
-            metadata=image_metadata,
-            parsed_metadata=parsed_metadata,
+            plane_name=plane_name,
+            extract_all_metadata=extract_all_metadata,
             verbose=verbose,
         )
 
