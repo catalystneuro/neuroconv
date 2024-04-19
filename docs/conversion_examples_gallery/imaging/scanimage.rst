@@ -11,17 +11,17 @@ Convert single plane single file imaging data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert ScanImage imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageSinglePlaneImagingInterface`.
+:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageImagingInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import ScanImageSinglePlaneImagingInterface
+    >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"
-    >>> interface = ScanImageSinglePlaneImagingInterface(file_path=file_path, channel_name="Channel 1", plane_name="0", verbose=False)
+    >>> interface = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1", plane_name="0", verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -37,17 +37,17 @@ Convert multi-plane (volumetric) single file imaging data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert ScanImage volumetric imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageMultiPlaneImagingInterface`.
+:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageImagingInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import ScanImageMultiPlaneImagingInterface
+    >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"
-    >>> interface = ScanImageMultiPlaneImagingInterface(file_path=file_path, channel_name="Channel 1", verbose=False)
+    >>> interface = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1", verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -63,17 +63,17 @@ Convert single plane multi-file (buffered) imaging data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert multi-file ScanImage imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageSinglePlaneMultiFileImagingInterface`.
+:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageMultiFileImagingInterface`.
 
 .. code-block:: python
 
     >>> from dateutil import tz
-    >>> from neuroconv.datainterfaces import ScanImageSinglePlaneMultiFileImagingInterface
+    >>> from neuroconv.datainterfaces import ScanImageMultiFileImagingInterface
     >>>
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
     >>> file_pattern = "scanimage_20240320_multifile*.tif"
     >>> channel_name = "Channel 1"
-    >>> interface = ScanImageSinglePlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
+    >>> interface = ScanImageMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -89,17 +89,17 @@ Convert multi-plane (volumetric) multi-file (buffered) imaging data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert volumetric multi-file ScanImage imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageMultiPlaneMultiFileImagingInterface`.
+:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageMultiPlaneMultiFileImagingInterface`.
 
 .. code-block:: python
 
     >>> from dateutil import tz
-    >>> from neuroconv.datainterfaces import ScanImageMultiPlaneMultiFileImagingInterface
+    >>> from neuroconv.datainterfaces import ScanImageMultiFileImagingInterface
     >>>
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
     >>> file_pattern = "scanimage_20220923_roi.tif"
     >>> channel_name = "Channel 1"
-    >>> interface = ScanImageMultiPlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
+    >>> interface = ScanImageMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
