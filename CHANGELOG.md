@@ -13,7 +13,7 @@
 * Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #800](https://github.com/catalystneuro/neuroconv/pull/800)
 * Added `get_default_backend_configuration` method to all `DataInterface` classes. Also added HDF5 `backend` control to all standalone `.run_conversion(...)` methods for those interfaces. [PR #801](https://github.com/catalystneuro/neuroconv/pull/801)
 * Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
-* Added multi-channel and multi-plane support for ScanImage. Added `ScanImageSinglePlaneImagingInterface`, `ScanImageMultiPlaneImagingInterface` for reading single and `ScanImageSinglePlaneMultiFileImagingInterface` and `ScanImageMultiPlaneMultiFileImagingInterface` for reading multi-file (buffered) TIFF files produced via ScanImage. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
+* Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
 
 ### Testing
 * Add general test for metadata in-place modification by interfaces. [PR #815](https://github.com/catalystneuro/neuroconv/pull/815)
