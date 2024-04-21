@@ -29,22 +29,22 @@ Below is an overview of the key sections to help you navigate our documentation 
 
 * **Getting Started: Conversion Examples Gallery**
 
-  If you're new to NeuroConv or NWB, start with the `Conversion Examples Gallery <conversion_examples_gallery/conversion_example_gallery>`_.
+  If you're new to NeuroConv or NWB, start with the `Conversion Examples Gallery <conversion_examples_gallery/conversion_example_gallery.rst>`_.
   This section provides concise scripts for converting data from common formats (e.g., Blackrock, Plexon, Neuralynx) to NWB. It's designed to get you up and running quickly.
 
 * **User Guide**
 
-  The `User Guide <user_guide/user_guide>`_ offers a comprehensive overview of NeuroConv's data model and functionalities.
+  The `User Guide <user_guide/user_guide.rst>`_ offers a comprehensive overview of NeuroConv's data model and functionalities.
   It is recommended for users who wish to understand the underlying concepts and extend their scripts beyond basic conversions.
 
 * **Catalogue of Projects**
 
-  `The Catalogue of Neuroconv Projects <catalogue/catalogue>`_ section showcases a collection of successful conversion projects utilizing NeuroConv.
+  `The Catalogue of Neuroconv Projects <catalogue/catalogue.rst>`_ section showcases a collection of successful conversion projects utilizing NeuroConv.
   It serves as both inspiration and a practical reference for what can be achieved with our library.
 
 * **Developer Guide**
 
-  For developers interested in contributing to NeuroConv, the `Developer Guide <developer_guide>`_ provides essential information such as
+  For developers interested in contributing to NeuroConv, the `Developer Guide <developer_guide.rst>`_ provides essential information such as
   instructions for building your own classes,  our coding style, instructions on how to build the documentation,
   run the testing suite, etc.
 
