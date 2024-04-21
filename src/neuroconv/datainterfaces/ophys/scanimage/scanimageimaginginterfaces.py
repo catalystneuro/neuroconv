@@ -10,7 +10,15 @@ from ....utils import FilePathType, FolderPathType
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
-    """Interface for ScanImage TIFF files."""
+    """
+    Interface for reading TIFF files produced via ScanImage.
+
+    It extracts metadata from the provided TIFF file and determines the ScanImage version.
+    For the legacy version 3.8, it creates an instance of ScanImageLegacyImagingInterface.
+    For newer versions, it parses the metadata and determines the number of planes.
+    If there is more than one plane and no specific plane is provided, it creates an instance of ScanImageMultiPlaneImagingInterface.
+    If there is only one plane or a specific plane is provided, it creates an instance of ScanImageSinglePlaneImagingInterface.
+    """
 
     display_name = "ScanImage Imaging"
     associated_suffixes = (".tif",)
@@ -140,7 +148,13 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading multi-file (buffered) TIFF files produced via ScanImage."""
+    """
+    Interface for reading multi-file (buffered) TIFF files produced via ScanImage.
+
+    It extracts metadata from the first TIFF file in the provided folder and determines the number of available planes.
+    If there is more than one plane and no specific plane is provided, it creates an instance of ScanImageMultiPlaneMultiFileImagingInterface.
+    If there is only one plane or a specific plane is provided, it creates an instance of ScanImageSinglePlaneMultiFileImagingInterface.
+    """
 
     display_name = "ScanImage Multi-File Imaging"
     associated_suffixes = (".tif",)
@@ -333,7 +347,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         file_pattern : str
             Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
         channel_name : str
-            Name of the channel for this extractor.
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
         extract_all_metadata : bool
             If True, extract metadata from every file in the folder. If False, only extract metadata from the first
             file in the folder. The default is False.
@@ -446,9 +460,9 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         file_path : PathType
             Path to the TIFF file.
         channel_name : str
-            Name of the channel for this extractor.
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
         plane_name : str
-            Name of the plane for this extractor.
+            The name of the plane to load, to determine what planes are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...).
         """
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
@@ -567,9 +581,9 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         file_pattern : str
             Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
         channel_name : str
-            Name of the channel for this extractor.
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
         plane_name : str
-            Name of the plane for this extractor.
+            The name of the plane to load, to determine what planes are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...).
         extract_all_metadata : bool
             If True, extract metadata from every file in the folder. If False, only extract metadata from the first
             file in the folder. The default is False.

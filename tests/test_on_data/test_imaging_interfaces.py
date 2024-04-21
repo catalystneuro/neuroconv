@@ -73,16 +73,13 @@ class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInte
     channel_name = "Channel 1"
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
+    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_rate = 29.1248
+    expected_starting_time = 0.0
 
     def __init__(self, *args, **kwargs) -> None:
         self.interface_kwargs["channel_name"] = self.channel_name
         super().__init__(*args, **kwargs)
-
-    @classmethod
-    def setUpClass(cls):
-        cls.expected_two_photon_series_data_shape = (6, 256, 528, 2)
-        cls.expected_rate = 29.1248
-        cls.expected_starting_time = 0.0
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -127,15 +124,12 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
     channel_name = "Channel 1"
     photon_series_name = "TwoPhotonSeriesChannel1Plane0"
     imaging_plane_name = "ImagingPlaneChannel1Plane0"
+    expected_two_photon_series_data_shape = (6, 256, 528)
 
     def __init__(self, *args, **kwargs) -> None:
         self.interface_kwargs["channel_name"] = self.channel_name
         self.interface_kwargs["plane_name"] = self.plane_name
         super().__init__(*args, **kwargs)
-
-    @classmethod
-    def setUpClass(cls):
-        cls.expected_two_photon_series_data_shape = (6, 256, 528)
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -226,16 +220,13 @@ class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneIm
     channel_name = "Channel 1"
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
+    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_rate = 29.1248
+    expected_starting_time = 0.0
 
     def __init__(self, *args, **kwargs) -> None:
         self.interface_kwargs["channel_name"] = self.channel_name
         super().__init__(*args, **kwargs)
-
-    @classmethod
-    def setUpClass(cls):
-        cls.expected_two_photon_series_data_shape = (6, 256, 528, 2)
-        cls.expected_rate = 29.1248
-        cls.expected_starting_time = 0.0
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -266,14 +257,11 @@ class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(ScanImageSinglePlane
     channel_name = "Channel 1"
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
+    expected_two_photon_series_data_shape = (30, 512, 512)
 
     def __init__(self, *args, **kwargs) -> None:
         self.interface_kwargs["channel_name"] = self.channel_name
         super().__init__(*args, **kwargs)
-
-    @classmethod
-    def setUpClass(cls):
-        cls.expected_two_photon_series_data_shape = (30, 512, 512)
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 3, 26, 15, 7, 53, 110000)
