@@ -131,7 +131,9 @@ def get_default_dataset_io_configurations(
                 )
 
                 yield dataset_io_configuration
-        elif isinstance(neurodata_object, NWBContainer) and any(known_dataset_field in neurodata_object.fields for known_dataset_field in known_dataset_fields):
+        elif isinstance(neurodata_object, NWBContainer) and any(
+            known_dataset_field in neurodata_object.fields for known_dataset_field in known_dataset_fields
+        ):
             for known_dataset_field in known_dataset_fields:
                 # Skip optional fields that aren't present
                 if known_dataset_field not in neurodata_object.fields:
