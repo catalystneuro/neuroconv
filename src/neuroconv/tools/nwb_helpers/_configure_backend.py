@@ -19,7 +19,7 @@ def configure_backend(
     ----------
     nwbfile : pynwb.NWBFile
         The in-memory pynwb.NWBFile object to configure.
-    backend_configuration : "hdf5" or "zarr", default: "hdf5"
+    backend_configuration : HDF5BackendConfiguration, optional
         The configuration model to use when configuring the datasets for this backend.
     """
     nwbfile_objects = nwbfile.objects
