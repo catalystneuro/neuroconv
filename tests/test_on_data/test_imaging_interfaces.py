@@ -146,11 +146,23 @@ class TestScanImageImagingInterfacesAssertions(hdmf_TestCase):
         with self.assertRaisesRegex(ValueError, "ScanImage version could not be determined from metadata."):
             self.data_interface_cls(file_path=file_path)
 
+    def test_not_supported_scanimage_version(self):
+        """Test that ValueError is raised for ScanImage version 3.8 when ScanImageSinglePlaneImagingInterface is used."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff")
+        with self.assertRaisesRegex(ValueError, "ScanImage version 3.8 is not supported."):
+            ScanImageSinglePlaneImagingInterface(file_path=file_path)
+
     def test_channel_name_not_specified(self):
         """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
         with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
             self.data_interface_cls(file_path=file_path)
+
+    def test_channel_name_not_specified_for_multi_plane_data(self):
+        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
+        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
+            ScanImageMultiPlaneImagingInterface(file_path=file_path)
 
     def test_plane_name_not_specified(self):
         """Test that ValueError is raised when plane_name is not specified for data with multiple planes."""
@@ -278,6 +290,15 @@ class TestScanImageMultiFileImagingInterfacesAssertions(hdmf_TestCase):
         file_pattern = "sample_scanimage.tiff"
         with self.assertRaisesRegex(ValueError, "ScanImage version 3.8 is not supported."):
             self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
+
+    def test_not_supported_scanimage_version_multiplane(self):
+        """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
+        file_pattern = "sample_scanimage.tiff"
+        with self.assertRaisesRegex(
+            ValueError, "ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead."
+        ):
+            ScanImageMultiPlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
 
     def test_non_volumetric_data(self):
         """Test that ValueError is raised for non-volumetric imaging data."""

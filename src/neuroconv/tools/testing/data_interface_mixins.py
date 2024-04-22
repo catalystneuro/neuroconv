@@ -859,6 +859,8 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
 
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
+            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
+            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
@@ -888,6 +890,8 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
+            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
+            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
