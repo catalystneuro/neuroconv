@@ -10,5 +10,5 @@ from .spikeinterface import (
     get_nwb_metadata,
     write_recording,
     write_sorting,
-    write_waveforms,
+    write_sorting_analyzer,
 )

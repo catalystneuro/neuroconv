@@ -9,7 +9,7 @@ import psutil
 import pynwb
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
-from spikeinterface import BaseRecording, BaseSorting
+from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -1244,8 +1244,8 @@ def write_sorting(
         )
 
 
-def add_waveforms(
-    waveform_extractor: "WaveformExtractor",
+def add_sorting_analyzer(
+    sorting_analyzer: SortingAnalyzer,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     recording: Optional[BaseRecording] = None,
@@ -1261,7 +1261,8 @@ def add_waveforms(
 
     Parameters
     ----------
-    waveform_extractor
+    sorting_analyzer : spikeinterface.SortingAnalyzer
+        The sorting analyzer object to be written to the NWBFile.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling
@@ -1273,7 +1274,7 @@ def add_waveforms(
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         The "Ecephys" section of metadata is also used to create electrodes and electrical series fields.
     recording : BaseRecording, optional
-        If the waveform_extractor is 'recordingless', this argument needs to be passed to save electrode info.
+        If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
         Otherwise, electrodes info is not added to the nwb file.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
@@ -1302,9 +1303,12 @@ def add_waveforms(
     write_in_processing_module = False if write_as == "units" else True
 
     # retrieve templates and stds
-    template_means = waveform_extractor.get_all_templates()
-    template_stds = waveform_extractor.get_all_templates(mode="std")
-    sorting = waveform_extractor.sorting
+    template_extension = sorting_analyzer.get_extension("templates")
+    if template_extension is None:
+        raise ValueError("No templates found in the sorting analyzer.")
+    template_means = template_extension.get_templates()
+    template_stds = template_extension.get_templates(operator="std")
+    sorting = sorting_analyzer.sorting
     if unit_ids is not None:
         unit_indices = sorting.ids_to_indices(unit_ids)
         template_means = template_means[unit_indices]
@@ -1312,13 +1316,13 @@ def add_waveforms(
 
     # metrics properties (quality, template) are added as properties to the sorting copy
     sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
-    if waveform_extractor.has_extension("quality_metrics"):
-        qm = waveform_extractor.load_extension("quality_metrics").get_data()
+    if sorting_analyzer.has_extension("quality_metrics"):
+        qm = sorting_analyzer.get_extension("quality_metrics").get_data()
         for prop in qm.columns:
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, qm[prop])
-    if waveform_extractor.has_extension("template_metrics"):
-        tm = waveform_extractor.load_extension("template_metrics").get_data()
+    if sorting_analyzer.has_extension("template_metrics"):
+        tm = sorting_analyzer.get_extension("template_metrics").get_data()
         for prop in tm.columns:
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, tm[prop])
@@ -1342,8 +1346,8 @@ def add_waveforms(
     )
 
 
-def write_waveforms(
-    waveform_extractor: "WaveformExtractor",
+def write_sorting_analyzer(
+    sorting_analyzer: SortingAnalyzer,
     nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
@@ -1364,7 +1368,8 @@ def write_waveforms(
 
     Parameters
     ----------
-    waveform_extractor
+    sorting_analyzer : spikeinterface.SortingAnalyzer
+        The sorting analyzer object to be written to the NWBFile.
     nwbfile_path : FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
@@ -1381,7 +1386,7 @@ def write_waveforms(
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     recording : BaseRecording, optional
-        If the waveform_extractor is 'recordingless', this argument needs to be passed to save electrode info.
+        If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
         Otherwise, electrodes info is not added to the nwb file.
     verbose : bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
@@ -1412,10 +1417,10 @@ def write_waveforms(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        if waveform_extractor_has_recording(waveform_extractor):
-            recording = waveform_extractor.recording
+        if sorting_analyzer.has_recording():
+            recording = sorting_analyzer.recording
         assert recording is not None, (
-            "recording not found. To add the electrode table, the waveform_extractor "
+            "recording not found. To add the electrode table, the sorting_analyzer "
             "needs to have a recording attached or the 'recording' argument needs to be used."
         )
 
@@ -1425,8 +1430,8 @@ def write_waveforms(
                 recording=recording, nwbfile=nwbfile_out, metadata=metadata, **add_electrical_series_kwargs
             )
 
-        add_waveforms(
-            waveform_extractor=waveform_extractor,
+        add_sorting_analyzer(
+            sorting_analyzer=sorting_analyzer,
             nwbfile=nwbfile_out,
             metadata=metadata,
             recording=recording,
@@ -1451,20 +1456,3 @@ def get_electrode_group_indices(recording, nwbfile):
     else:
         electrode_group_indices = nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
     return electrode_group_indices
-
-
-def waveform_extractor_has_recording(waveform_extractor) -> bool:  # TODO - this can probably be replaced now
-    """
-    Temporary helper function to substitute unreleased built-in waveform_extractor.has_recording().
-
-    Parameters
-    ----------
-    waveform_extractor :
-        The waveform extractor
-
-    Returns
-    -------
-    bool
-        True if the waveform_extractor has an attached recording, False otherwise
-    """
-    return waveform_extractor._recording is not None

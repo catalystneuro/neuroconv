@@ -1,1 +1,1 @@
-spikeinterface>=0.100.0
+spikeinterface>=0.101.0

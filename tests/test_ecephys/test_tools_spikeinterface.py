@@ -12,7 +12,11 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO, NWBFile
-from spikeinterface.core.generate import generate_recording, generate_sorting
+from spikeinterface.core.generate import (
+    generate_ground_truth_recording,
+    generate_recording,
+    generate_sorting,
+)
 from spikeinterface.extractors import NumpyRecording
 
 from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata, get_module
@@ -22,7 +26,7 @@ from neuroconv.tools.spikeinterface import (
     add_units_table,
     check_if_recording_traces_fit_into_memory,
     write_recording,
-    write_waveforms,
+    write_sorting_analyzer,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -1146,50 +1150,54 @@ spike_interface_version = get_package_version("spikeinterface")
 @unittest.skipIf(
     spike_interface_version >= Version("0.101"), reason="WaveformExtractor not available in spikeinterface"
 )
-class TestWriteWaveforms(TestCase):
+class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):
-        from spikeinterface import WaveformExtractor, extract_waveforms
-
-        """Use common recording objects and values."""
-        from spikeinterface.postprocessing import compute_template_metrics
-        from spikeinterface.qualitymetrics import compute_quality_metrics
+        # import submodules to unlock extensions
+        import spikeinterface.postprocessing
+        import spikeinterface.qualitymetrics
+        from spikeinterface import create_sorting_analyzer
 
         cls.num_units = 4
         cls.num_channels = 4
         duration_1 = 6
         duration_2 = 7
-        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1])
-        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1])
-        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1, duration_2])
-        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1, duration_2])
+        single_segment_rec, single_segment_sort = generate_ground_truth_recording(
+            num_channels=cls.num_channels, durations=[duration_1]
+        )
+        multi_segment_rec, multi_segment_sort = generate_ground_truth_recording(
+            num_channels=cls.num_channels, durations=[duration_1, duration_2]
+        )
         single_segment_rec.annotate(is_filtered=True)
         multi_segment_rec.annotate(is_filtered=True)
-        single_segment_rec = single_segment_rec.save()
-        multi_segment_rec = multi_segment_rec.save()
-        single_segment_sort = single_segment_sort.save()
-        multi_segment_sort = multi_segment_sort.save()
+        single_segment_sort.delete_property("gt_unit_locations")
+        multi_segment_sort.delete_property("gt_unit_locations")
 
-        cls.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
-        cls.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
+        cls.single_segment_analyzer = create_sorting_analyzer(single_segment_sort, single_segment_rec, sparse=False)
+        cls.single_segment_analyzer_sparse = create_sorting_analyzer(
+            single_segment_sort, single_segment_rec, sparse=True
+        )
+        cls.multi_segment_analyzer = create_sorting_analyzer(multi_segment_sort, multi_segment_rec, sparse=False)
+        cls.multi_segment_analyzer_sparse = create_sorting_analyzer(multi_segment_sort, multi_segment_rec, sparse=True)
 
         # add quality/template metrics to test property propagation
-        compute_template_metrics(cls.single_segment_we)
-        compute_template_metrics(cls.multi_segment_we)
-        compute_quality_metrics(cls.single_segment_we)
-        compute_quality_metrics(cls.multi_segment_we)
+        extension_list = ["random_spikes", "noise_levels", "templates", "template_metrics", "quality_metrics"]
+        cls.single_segment_analyzer.compute(extension_list)
+        cls.single_segment_analyzer_sparse.compute(extension_list)
+        cls.multi_segment_analyzer.compute(extension_list)
+        cls.multi_segment_analyzer_sparse.compute(extension_list)
 
         # slice sorting
-        slice_sorting = single_segment_sort.select_units(single_segment_sort.unit_ids[::2])
-        cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
+        cls.analyzer_slice = cls.single_segment_analyzer.select_units(
+            unit_ids=cls.single_segment_analyzer.unit_ids[::2]
+        )
 
         # recordingless
         cls.tmpdir = Path(mkdtemp())
-        cls.waveform_recordingless_path = cls.tmpdir / "waveforms_recordingless"
-        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.waveform_recordingless_path)
-        # reload without recording
-        cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
-        cls.we_recless_recording = single_segment_rec
+        # create analyzer without recording
+        cls.analyzer_recless = cls.single_segment_analyzer.copy()
+        cls.analyzer_recless._recording = None
+        cls.analyzer_recless_recording = single_segment_rec
 
         cls.nwbfile_path = cls.tmpdir / "test.nwb"
         if cls.nwbfile_path.exists():
@@ -1205,7 +1213,7 @@ class TestWriteWaveforms(TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
 
-    def _test_waveform_write(self, we, nwbfile, test_properties=True):
+    def _test_analyzer_write(self, analyzer, nwbfile, test_properties=True):
         # test unit columns
         self.assertIn("waveform_mean", nwbfile.units.colnames)
         self.assertIn("waveform_sd", nwbfile.units.colnames)
@@ -1215,111 +1223,133 @@ class TestWriteWaveforms(TestCase):
 
         # test that electrode table has been saved
         assert nwbfile.electrodes is not None
-        assert len(we.unit_ids) == len(nwbfile.units)
+        assert len(analyzer.unit_ids) == len(nwbfile.units)
         # test that waveforms and stds are the same
-        unit_ids = we.unit_ids
+        unit_ids = analyzer.unit_ids
+        template_extension = analyzer.get_extension("templates")
         for unit_index, _ in enumerate(nwbfile.units.id):
-            wf_mean_si = we.get_template(unit_ids[unit_index])
+            wf_mean_si = template_extension.get_templates(unit_ids=[unit_ids[unit_index]])[0]
             wf_mean_nwb = nwbfile.units[unit_index]["waveform_mean"].values[0]
             np.testing.assert_array_almost_equal(wf_mean_si, wf_mean_nwb)
-            wf_sd_si = we.get_template(unit_ids[unit_index], mode="std")
+            wf_sd_si = template_extension.get_templates(unit_ids=[unit_ids[unit_index]], operator="std")[0]
             wf_sd_nwb = nwbfile.units[unit_index]["waveform_sd"].values[0]
             np.testing.assert_array_almost_equal(wf_sd_si, wf_sd_nwb)
 
-    def test_write_single_segment(self):
-        """This tests that the waveforms are written appropriately for the single segment case"""
-        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile, write_electrical_series=True)
-        self._test_waveform_write(self.single_segment_we, self.nwbfile)
+    def test_analyzer_single_segment(self):
+        """This tests that the analyzer is written appropriately for the single segment case"""
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=True
+        )
+        self._test_analyzer_write(self.single_segment_analyzer, self.nwbfile)
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
-    def test_write_multiple_segments(self):
-        """This tests that the waveforms are written appropriately for the multi segment case"""
-        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile, write_electrical_series=False)
-        self._test_waveform_write(self.multi_segment_we, self.nwbfile)
+    def test_analyzer_single_segment_sparse(self):
+        """This tests that the analyzer is written appropriately for the single segment case"""
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=True
+        )
+        self._test_analyzer_write(self.single_segment_analyzer_sparse, self.nwbfile)
+        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
+
+    def test_analyzer_multiple_segments(self):
+        """This tests that the analyzer is written appropriately for the multi segment case"""
+        write_sorting_analyzer(
+            sorting_analyzer=self.multi_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=False
+        )
+        self._test_analyzer_write(self.multi_segment_analyzer, self.nwbfile)
+
+    def test_analyzer_multiple_segments_sparse(self):
+        """This tests that the analyzer is written appropriately for the multi segment case"""
+        write_sorting_analyzer(
+            sorting_analyzer=self.multi_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=False
+        )
+        self._test_analyzer_write(self.multi_segment_analyzer_sparse, self.nwbfile)
 
     def test_write_subset_units(self):
-        """This tests that the waveforms are sliced properly based on unit_ids"""
-        subset_unit_ids = self.single_segment_we.unit_ids[::2]
-        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile, unit_ids=subset_unit_ids)
-        self._test_waveform_write(self.we_slice, self.nwbfile, test_properties=False)
+        """This tests that the analyzer is sliced properly based on unit_ids"""
+        subset_unit_ids = self.single_segment_analyzer.unit_ids[::2]
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, unit_ids=subset_unit_ids
+        )
+        self._test_analyzer_write(self.analyzer_slice, self.nwbfile, test_properties=False)
 
         self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
         self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
 
     def test_write_recordingless(self):
-        """This tests that the waveforms are sliced properly based on unit_ids"""
-        write_waveforms(
-            waveform_extractor=self.we_recless,
+        """This tests that the analyzer is written properly in recordingless mode"""
+        write_sorting_analyzer(
+            sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
-            recording=self.we_recless_recording,
+            recording=self.analyzer_recless_recording,
             write_electrical_series=True,
         )
-        self._test_waveform_write(self.we_recless, self.nwbfile, test_properties=False)
+        self._test_analyzer_write(self.analyzer_recless, self.nwbfile, test_properties=False)
 
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
-            write_waveforms(
-                waveform_extractor=self.we_recless,
+            write_sorting_analyzer(
+                sorting_analyzer=self.analyzer_recless,
                 nwbfile=self.nwbfile,
-                recording=self.we_recless_recording,
+                recording=self.analyzer_recless_recording,
                 write_electrical_series=True,
             )
 
-    def test_write_waveforms_to_file(self):
-        """This tests that the waveforms are written to file"""
+    def test_write_sorting_analyzer_to_file(self):
+        """This tests that the analyzer is written to file"""
         metadata = get_default_nwbfile_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now()
-        write_waveforms(
-            waveform_extractor=self.single_segment_we,
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer,
             nwbfile_path=self.nwbfile_path,
             write_electrical_series=True,
             metadata=metadata,
         )
         with NWBHDF5IO(self.nwbfile_path, "r") as io:
             nwbfile = io.read()
-            self._test_waveform_write(self.single_segment_we, nwbfile)
+            self._test_analyzer_write(self.single_segment_analyzer, nwbfile)
             self.assertIn("ElectricalSeriesRaw", nwbfile.acquisition)
 
     def test_write_multiple_probes_without_electrical_series(self):
-        """This test that the waveforms are written to different electrode groups"""
+        """This test that the analyzer is written to different electrode groups"""
         # we write the first set of waveforms as belonging to group 0
-        original_channel_groups = self.we_recless_recording.get_channel_groups()
-        self.we_recless_recording.set_channel_groups([0] * len(self.we_recless_recording.channel_ids))
-        write_waveforms(
-            waveform_extractor=self.we_recless,
+        original_channel_groups = self.analyzer_recless_recording.get_channel_groups()
+        self.analyzer_recless_recording.set_channel_groups([0] * len(self.analyzer_recless_recording.channel_ids))
+        write_sorting_analyzer(
+            sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             write_electrical_series=False,
-            recording=self.we_recless_recording,
+            recording=self.analyzer_recless_recording,
         )
         # now we set new channel groups to mimic a different probe and call the function again
-        self.we_recless_recording.set_channel_groups([1] * len(self.we_recless_recording.channel_ids))
-        write_waveforms(
-            waveform_extractor=self.we_recless,
+        self.analyzer_recless_recording.set_channel_groups([1] * len(self.analyzer_recless_recording.channel_ids))
+        write_sorting_analyzer(
+            sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             write_electrical_series=False,
-            recording=self.we_recless_recording,
+            recording=self.analyzer_recless_recording,
         )
         # check that we have 2 groups
         self.assertEqual(len(self.nwbfile.electrode_groups), 2)
         self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
         # check that we have correct number of units
-        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.analyzer_recless.unit_ids))
         # check electrode regions of units
         for row in self.nwbfile.units.id:
-            if row < len(self.we_recless.unit_ids):
+            if row < len(self.analyzer_recless.unit_ids):
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
 
         # reset original channel groups
-        self.we_recless_recording.set_channel_groups(original_channel_groups)
+        self.analyzer_recless_recording.set_channel_groups(original_channel_groups)
 
     def test_write_multiple_probes_with_electrical_series(self):
-        """This test that the waveforms are written to different electrode groups"""
+        """This test that the analyzer is written to different electrode groups"""
         # we write the first set of waveforms as belonging to group 0
-        recording = self.single_segment_we.recording
+        recording = self.single_segment_analyzer.recording
         original_channel_groups = recording.get_channel_groups()
-        self.single_segment_we.recording.set_channel_groups([0] * len(recording.channel_ids))
+        self.single_segment_analyzer.recording.set_channel_groups([0] * len(recording.channel_ids))
         metadata = dict(
             Ecephys=dict(
                 ElectricalSeriesRaw1=dict(name="ElectricalSeriesRaw1", description="raw series"),
@@ -1327,8 +1357,8 @@ class TestWriteWaveforms(TestCase):
             )
         )
         add_electrical_series_kwargs1 = dict(es_key="ElectricalSeriesRaw1")
-        write_waveforms(
-            waveform_extractor=self.single_segment_we,
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
             write_electrical_series=True,
             metadata=metadata,
@@ -1338,10 +1368,10 @@ class TestWriteWaveforms(TestCase):
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
 
         # now we set new channel groups to mimic a different probe and call the function again
-        self.single_segment_we.recording.set_channel_groups([1] * len(recording.channel_ids))
+        self.single_segment_analyzer.recording.set_channel_groups([1] * len(recording.channel_ids))
         add_electrical_series_kwargs2 = dict(es_key="ElectricalSeriesRaw2")
-        write_waveforms(
-            waveform_extractor=self.single_segment_we,
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
             write_electrical_series=True,
             metadata=metadata,
@@ -1355,44 +1385,44 @@ class TestWriteWaveforms(TestCase):
         self.assertEqual(len(self.nwbfile.electrodes), 2 * len(recording.channel_ids))
 
         # check that we have correct number of units
-        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.analyzer_recless.unit_ids))
         # check electrode regions of units
         for row in self.nwbfile.units.id:
-            if row < len(self.we_recless.unit_ids):
+            if row < len(self.analyzer_recless.unit_ids):
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
 
         # reset original channel groups
-        self.single_segment_we.recording.set_channel_groups(original_channel_groups)
+        self.single_segment_analyzer.recording.set_channel_groups(original_channel_groups)
 
     def test_missing_electrode_group(self):
-        """This tests that waveforms are correctly written even if the 'group' property is not available"""
-        groups = self.single_segment_we.recording.get_channel_groups()
-        self.single_segment_we.recording.delete_property("group")
-        write_waveforms(
-            waveform_extractor=self.single_segment_we,
+        """This tests that analyzer is correctly written even if the 'group' property is not available"""
+        groups = self.single_segment_analyzer.recording.get_channel_groups()
+        self.single_segment_analyzer.recording.delete_property("group")
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
-        self.single_segment_we.recording.set_channel_groups(groups)
+        self.single_segment_analyzer.recording.set_channel_groups(groups)
 
     def test_group_name_property(self):
         """This tests that the 'group_name' property is correctly used to instantiate electrode groups"""
-        num_channels = len(self.single_segment_we.recording.channel_ids)
-        self.single_segment_we.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
-        write_waveforms(
-            waveform_extractor=self.single_segment_we,
+        num_channels = len(self.single_segment_analyzer.recording.channel_ids)
+        self.single_segment_analyzer.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
+        write_sorting_analyzer(
+            sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
         self.assertIn("my-fancy-group", self.nwbfile.electrode_groups)
         self.assertEqual(len(self.nwbfile.electrode_groups), 1)
-        self.single_segment_we.recording.delete_property("group_name")
+        self.single_segment_analyzer.recording.delete_property("group_name")
 
     def test_units_table_name(self):
         """This tests the units naming exception"""
         with self.assertRaises(Exception) as context:
-            write_waveforms(
-                waveform_extractor=self.single_segment_we,
+            write_sorting_analyzer(
+                sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
                 write_as="units",
                 units_name="units1",
