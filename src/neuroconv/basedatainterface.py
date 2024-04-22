@@ -134,8 +134,9 @@ class BaseDataInterface(ABC):
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
+        backend : "hdf5", default: "hdf5"
             The type of backend to use when writing the file.
+            Additional backend types will be added soon.
         backend_configuration : HDF5BackendConfiguration, optional
             The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
@@ -184,8 +185,9 @@ class BaseDataInterface(ABC):
         ----------
         nwbfile : pynwb.NWBFile
             The in-memory object with this interface's data already added to it.
-        backend : "hdf5" or "zarr", default: "hdf5"
+        backend : "hdf5", default: "hdf5"
             The type of backend to use when creating the file.
+            Additional backend types will be added soon.
 
         Returns
         -------
