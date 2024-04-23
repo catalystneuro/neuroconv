@@ -139,7 +139,7 @@ def get_default_dataset_io_configurations(
                 if known_dataset_field not in neurodata_object.fields:
                     continue
 
-                candidate_dataset = getattr(neurodata_object, dataset_name)
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
 
                 # Skip if already written to file
                 if _is_dataset_written_to_file(
@@ -156,7 +156,7 @@ def get_default_dataset_io_configurations(
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=neurodata_object, dataset_name=dataset_name
+                    neurodata_object=neurodata_object, dataset_name=known_dataset_field
                 )
 
                 yield dataset_io_configuration
