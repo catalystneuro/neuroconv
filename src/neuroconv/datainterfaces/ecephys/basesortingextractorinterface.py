@@ -177,7 +177,10 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 )
         else:
             for sorting_segment in self.sorting_extractor._sorting_segments:
-                sorting_segment._t_start += aligned_starting_time
+                if sorting_segment._t_start is None:
+                    sorting_segment._t_start = aligned_starting_time
+                else:
+                    sorting_segment._t_start += aligned_starting_time
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
         """

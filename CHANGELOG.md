@@ -1,13 +1,14 @@
 # Upcoming
 
 ### Deprecations
-* Removed `stream_id` as an argument from `IntanRecordingInterface` [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
+* Removed `stream_id` as an argument from `IntanRecordingInterface`. [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
 
 ### Bug fixes
 * Remove JSON Schema `definitions` from the `properties` field. [PR #818](https://github.com/catalystneuro/neuroconv/pull/818)
-* Fixed writing waveforms directly to file [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+* Fixed writing waveforms directly to file. [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
 * Avoid in-place modification of the metadata in the `VideoInterface` and on neo tools. [PR #814](https://github.com/catalystneuro/neuroconv/pull/814)
-* Replaced `waveform_extractor.is_extension` with `waveform_extractor.has_extension`[PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+* Replaced `waveform_extractor.is_extension` with `waveform_extractor.has_extension`. [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+* Fixed an issue with `set_aligned_starting_time` for all `SortingInterface`'s that did not have an initial segment start set (and no recording attached). [PR #823](https://github.com/catalystneuro/neuroconv/pull/823)
 
 ### Features
 * Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #800](https://github.com/catalystneuro/neuroconv/pull/800)
