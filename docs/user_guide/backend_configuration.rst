@@ -161,7 +161,7 @@ The normal workflow when writing an NWB file using a ``DataInterface`` or ``NWBC
 
 The following example uses the :ref:`example data <example_data>` available from the testing repo...
 
-.. code-block::
+.. code-block:: python
 
     from datetime import datetime
 
@@ -213,7 +213,7 @@ The following example uses the :ref:`example data <example_data>` available from
 
     If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow the classic workflow...
 
-    .. code-block::python
+    .. code-block::
 
         converter = ConverterPipe(data_interfaces=data_interfaces)
 
