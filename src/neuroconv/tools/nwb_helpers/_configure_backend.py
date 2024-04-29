@@ -62,8 +62,6 @@ def configure_backend(
             continue
         # Strictly speaking, it would be odd if a `backend_configuration` got to this line, but might as well be safe
         else:
-            print(is_ndx_events_installed)
-            print(isinstance(neurodata_object, ndx_events.LabeledEvents))
             raise NotImplementedError(
                 f"Unsupported object type {type(neurodata_object)} for backend configuration "
                 f"of {neurodata_object.name}!"
