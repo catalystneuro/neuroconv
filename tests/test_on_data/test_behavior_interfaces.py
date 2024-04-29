@@ -226,12 +226,6 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
 
                 assert spatial_series.timestamps[0] == 0.0
 
-    # TODO: undo this skip in future PR
-    def check_run_conversion_default_backend_in_nwbconverter(
-        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        pass
-
 
 class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = FicTracDataInterface
