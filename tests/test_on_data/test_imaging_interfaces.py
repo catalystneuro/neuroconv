@@ -52,12 +52,18 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
 @parameterized_class(
     [
         {
-            "channel_name": "Channel 1",
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 1",
+            ),
             "photon_series_name": "TwoPhotonSeriesChannel1",
             "imaging_plane_name": "ImagingPlaneChannel1",
         },
         {
-            "channel_name": "Channel 4",
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 4",
+            ),
             "photon_series_name": "TwoPhotonSeriesChannel4",
             "imaging_plane_name": "ImagingPlaneChannel4",
         },
@@ -67,19 +73,15 @@ class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInte
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+        channel_name="Channel 1",
     )
     save_directory = OUTPUT_PATH
 
-    channel_name = "Channel 1"
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
     expected_rate = 29.1248
     expected_starting_time = 0.0
-
-    def __init__(self, *args, **kwargs) -> None:
-        self.interface_kwargs["channel_name"] = self.channel_name
-        super().__init__(*args, **kwargs)
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
