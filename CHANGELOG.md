@@ -9,6 +9,7 @@
 * Avoid in-place modification of the metadata in the `VideoInterface` and on neo tools. [PR #814](https://github.com/catalystneuro/neuroconv/pull/814)
 * Replaced `waveform_extractor.is_extension` with `waveform_extractor.has_extension`. [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
 * Fixed an issue with `set_aligned_starting_time` for all `SortingInterface`'s that did not have an initial segment start set (and no recording attached). [PR #823](https://github.com/catalystneuro/neuroconv/pull/823)
+* Fixed a bug with `parameterized` and `pytest-xdist==3.6.1` in the `ScanImageImagingInterface` tests: [PR #829](https://github.com/catalystneuro/neuroconv/pull/829)
 
 ### Features
 * Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #800](https://github.com/catalystneuro/neuroconv/pull/800)
