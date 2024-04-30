@@ -34,7 +34,7 @@ Below is an overview of the key sections to help you navigate our documentation 
 
 * **User Guide**
 
-  The `User Guide <user_guide/user_guide.rst>`_ offers a comprehensive overview of NeuroConv's data model and functionalities.
+  The `User Guide <user_guide/index.rst>`_ offers a comprehensive overview of NeuroConv's data model and functionalities.
   It is recommended for users who wish to understand the underlying concepts and extend their scripts beyond basic conversions.
 
 * **Catalogue of Projects**
