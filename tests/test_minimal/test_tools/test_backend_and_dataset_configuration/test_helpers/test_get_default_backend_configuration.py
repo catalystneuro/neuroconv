@@ -103,13 +103,13 @@ epochs/start_time/data
 ----------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40.00 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40.00 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40.00 B
 
   compression method : gzip
 
@@ -118,13 +118,13 @@ epochs/stop_time/data
 ---------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40.00 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40.00 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40.00 B
 
   compression method : gzip
 
@@ -133,13 +133,13 @@ acquisition/NewRawTimeSeries/data
 ---------------------------------
   dtype : int32
   full shape of source array : (2, 3)
-  full size of source array : 0.00 GB
+  full size of source array : 24.00 B
 
   buffer shape : (2, 3)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 24.00 B
 
   chunk shape : (2, 3)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 24.00 B
 
   compression method : gzip
 
@@ -148,13 +148,13 @@ processing/ecephys/NewProcessedTimeSeries/data
 ----------------------------------------------
   dtype : float64
   full shape of source array : (4, 2)
-  full size of source array : 0.00 GB
+  full size of source array : 64.00 B
 
   buffer shape : (4, 2)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 64.00 B
 
   chunk shape : (4, 2)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 64.00 B
 
   compression method : gzip
 
@@ -205,13 +205,13 @@ epochs/start_time/data
 ----------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40.00 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40.00 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40.00 B
 
   compression method : gzip
 
@@ -220,13 +220,13 @@ epochs/stop_time/data
 ---------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40.00 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40.00 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40.00 B
 
   compression method : gzip
 
@@ -235,13 +235,13 @@ acquisition/NewRawTimeSeries/data
 ---------------------------------
   dtype : int32
   full shape of source array : (2, 3)
-  full size of source array : 0.00 GB
+  full size of source array : 24.00 B
 
   buffer shape : (2, 3)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 24.00 B
 
   chunk shape : (2, 3)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 24.00 B
 
   compression method : gzip
 
@@ -250,13 +250,13 @@ processing/ecephys/NewProcessedTimeSeries/data
 ----------------------------------------------
   dtype : float64
   full shape of source array : (4, 2)
-  full size of source array : 0.00 GB
+  full size of source array : 64.00 B
 
   buffer shape : (4, 2)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 64.00 B
 
   chunk shape : (4, 2)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 64.00 B
 
   compression method : gzip
 
