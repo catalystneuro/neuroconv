@@ -33,7 +33,7 @@ def human_readable_size(size_bytes: int) -> str:
 
     # Find the appropriate unit
     while double_size >= 1024 and i < len(suffixes) - 1:
-        double_size /= 1024.
+        double_size /= 1024.0
         i += 1
 
     # Format the size with 2 decimal places and the appropriate suffix

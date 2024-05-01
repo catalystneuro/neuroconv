@@ -23,6 +23,7 @@ from pynwb import NWBFile
 from typing_extensions import Self
 
 from neuroconv.utils.str_utils import human_readable_size
+
 from ...hdmf import SliceableDataChunkIterator
 
 
