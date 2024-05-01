@@ -21,13 +21,13 @@ acquisition/TestElectricalSeriesAP/data
 ---------------------------------------
   dtype : int16
   full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
+  full size of source array : 1.29 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 915.53 MB
 
   chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
+  disk space usage per chunk : 9.54 MB
 
   compression method : gzip
 
@@ -36,13 +36,13 @@ acquisition/TestElectricalSeriesLF/data
 ---------------------------------------
   dtype : int16
   full shape of source array : (75000, 384)
-  full size of source array : 0.06 GB
+  full size of source array : 54.93 MB
 
   buffer shape : (75000, 384)
-  expected RAM usage : 0.06 GB
+  expected RAM usage : 54.93 MB
 
   chunk shape : (37500, 128)
-  disk space usage per chunk : 9.60 MB
+  disk space usage per chunk : 9.16 MB
 
   compression method : gzip
 
