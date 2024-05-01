@@ -19,13 +19,13 @@ acquisition/TestElectricalSeries/data
 -------------------------------------
   dtype : int16
   full shape of source array : (1800000, 384)
-  full size of source array : 1.29 GB
+  full size of source array : 1.29 GiB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 915.53 MB
+  expected RAM usage : 915.53 MiB
 
   chunk shape : (78125, 64)
-  disk space usage per chunk : 9.54 MB
+  disk space usage per chunk : 9.54 MiB
 
   compression method : gzip
 
@@ -72,13 +72,13 @@ acquisition/TestElectricalSeries/data
 -------------------------------------
   dtype : int16
   full shape of source array : (1800000, 384)
-  full size of source array : 1.29 GB
+  full size of source array : 1.29 GiB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 915.53 MB
+  expected RAM usage : 915.53 MiB
 
   chunk shape : (78125, 64)
-  disk space usage per chunk : 9.54 MB
+  disk space usage per chunk : 9.54 MiB
 
 """
     assert out.getvalue() == expected_print

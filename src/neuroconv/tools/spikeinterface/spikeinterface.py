@@ -21,6 +21,7 @@ from ...utils import (
     calculate_regular_series_rate,
     dict_deep_update,
 )
+from ...utils.str_utils import human_readable_size
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
@@ -437,8 +438,8 @@ def check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_
 
     if traces_size_in_bytes > available_memory_in_bytes:
         message = (
-            f"Memory error, full electrical series is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
-            f"({round(available_memory_in_bytes/1e9, 2)} GB are available. Use iterator_type='V2'"
+            f"Memory error, full electrical series is {human_readable_size(traces_size_in_bytes)} but only "
+            f"{human_readable_size(available_memory_in_bytes)} are available. Use iterator_type='V2'"
         )
         raise MemoryError(message)
 
