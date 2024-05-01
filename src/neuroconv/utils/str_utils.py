@@ -1,4 +1,4 @@
-def human_readable_size(size_bytes: int) -> str:
+def human_readable_size(size_bytes: int, binary=True) -> str:
     """
     Convert a file size given in bytes to a human-readable format.
 
@@ -6,6 +6,8 @@ def human_readable_size(size_bytes: int) -> str:
     ----------
     size_bytes : int
         The size in bytes.
+    binary : bool, optional
+        If True, use binary prefixes (KiB, MiB, etc.). If False, use SI prefixes
 
     Returns
     -------
@@ -26,15 +28,20 @@ def human_readable_size(size_bytes: int) -> str:
         raise ValueError("Size must be non-negative")
 
     # Define the suffixes for each size unit
-    suffixes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    suffixes = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"]
     i = 0
     # Convert bytes to a float for division
-    double_size = float(size_bytes)
+    size_float = float(size_bytes)
+
+    base = 1000 if not binary else 1024
 
     # Find the appropriate unit
-    while double_size >= 1024 and i < len(suffixes) - 1:
-        double_size /= 1024.0
+    while size_float >= base and i < len(suffixes) - 1:
+        size_float /= base
         i += 1
 
+    if not i:
+        return f"{size_bytes} B"
+
     # Format the size with 2 decimal places and the appropriate suffix
-    return f"{double_size:.2f} {suffixes[i]}"
+    return f"{size_float:.2f} {suffixes[i]}{'i' if binary else ''}B"

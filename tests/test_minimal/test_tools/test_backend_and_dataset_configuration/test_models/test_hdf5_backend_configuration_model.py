@@ -36,13 +36,13 @@ acquisition/TestElectricalSeriesLF/data
 ---------------------------------------
   dtype : int16
   full shape of source array : (75000, 384)
-  full size of source array : 54.93 MB
+  full size of source array : 54.93 MiB
 
   buffer shape : (75000, 384)
-  expected RAM usage : 54.93 MB
+  expected RAM usage : 54.93 MiB
 
   chunk shape : (37500, 128)
-  disk space usage per chunk : 9.16 MB
+  disk space usage per chunk : 9.16 MiB
 
   compression method : gzip
 
