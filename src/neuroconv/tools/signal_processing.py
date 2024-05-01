@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -70,7 +70,7 @@ def create_ogen_stimulation_timeseries(
     frequency: float,
     pulse_width: float,
     power: float,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """Create a continuous stimulation time series from stimulation onset times and parameters.
 
     In the resulting data array, the offset time of each pulse is represented by a 0 power value.
