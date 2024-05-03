@@ -45,7 +45,7 @@ def human_readable_size(size_bytes: int, binary: bool = True) -> str:
         return f"{size_bytes} B"
 
     # Calculate the human-readable size
-    human_readable_value = size_bytes / (base ** exponent)
+    human_readable_value = size_bytes / (base**exponent)
 
     # Return formatted size with suffix
     return f"{human_readable_value:.2f} {suffixes[exponent]}{'i' if binary else ''}B"
