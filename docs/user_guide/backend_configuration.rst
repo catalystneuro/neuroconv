@@ -234,7 +234,7 @@ The following example uses the :ref:`example data <example_data>` available from
 Generic tools
 -------------
 
-A more generic approach that can apply to any customized in-memory ``pynwb.NWBFile`` object, not just those
+If you are not using data interfaces or converters you can still use the general tools to configure the backend of any in-memory ``pynwb.NWBFile``....
 created from data interfaces and converters, would have the following structure...
 
 .. code-block:: python
