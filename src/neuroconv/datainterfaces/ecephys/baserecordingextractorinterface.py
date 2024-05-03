@@ -285,7 +285,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        compression: Optional[str] = "gzip",
+        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
@@ -311,11 +311,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        compression : {'gzip', 'lzf', None}
-            Type of compression to use.
-            Set to None to disable all compression.
-        compression_opts : int, default: 4
-            Only applies to compression="gzip". Controls the level of the GZIP.
         iterator_type : {'v2', 'v1'}
             The type of DataChunkIterator to use.
             'v1' is the original DataChunkIterator of the hdmf data_utils.
