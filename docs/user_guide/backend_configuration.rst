@@ -217,7 +217,7 @@ The following example uses the :ref:`example data <example_data>` available from
         # Fetch available metadata
         metadata = converter.get_metadata()
 
-        # Create the in-memory NWBFile object and retrieve a default configuration
+        # Create the in-memory NWBFile object and apply the default configuration for HDF5
         backend="hdf5"
 
         # Configure and write the NWB file
