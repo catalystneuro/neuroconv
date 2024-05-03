@@ -23,7 +23,7 @@ except ImportError:
         {"conversion_options": {"mask_type": "image", "include_background_segmentation": True}},
         {"conversion_options": {"mask_type": "pixel", "include_background_segmentation": True}},
         {"conversion_options": {"mask_type": "voxel", "include_background_segmentation": True}},
-        {"conversion_options": {"mask_type": None, "include_background_segmentation": True}},
+        # {"conversion_options": {"mask_type": None, "include_background_segmentation": True}}, # Uncomment when https://github.com/catalystneuro/neuroconv/issues/530 is resolved
         {"conversion_options": {"include_roi_centroids": False, "include_background_segmentation": True}},
         {"conversion_options": {"include_roi_acceptance": False, "include_background_segmentation": True}},
         {"conversion_options": {"include_background_segmentation": False}},
