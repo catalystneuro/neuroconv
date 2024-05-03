@@ -500,7 +500,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder.get_num_channels.return_value = num_channels
         mock_recorder.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
+        reg_expression = f"Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
