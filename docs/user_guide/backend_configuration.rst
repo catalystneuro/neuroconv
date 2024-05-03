@@ -3,7 +3,7 @@ Backend Configuration
 
 NeuroConv offers highly convenient control over the type of file backend and the way its datasets are configured.
 
-Find out more about possible file types in the `main NWB documentation <https://nwb-overview.readthedocs.io/en/latest/faq_details/why_hdf5.html#why-use-hdf5-as-the-primary-backend-for-nwb>`_.
+Find out more about possible backend formats in the `main NWB documentation <https://nwb-overview.readthedocs.io/en/latest/faq_details/why_hdf5.html#why-use-hdf5-as-the-primary-backend-for-nwb>`_.
 
 Find out more about chunking and compression in the `advanced NWB tutorials for dataset I/O settings <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/h5dataio.html#sphx-glr-tutorials-advanced-io-h5dataio-py>`_.
 
@@ -25,7 +25,7 @@ To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, u
     from neuroconv.tools.nwb_helpers import get_default_backend_configuration
     from pynwb import NWBFile, TimeSeries
 
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0)
     nwbfile = NWBFile(
         identifier=str(uuid.uuid4()),
         session_start_time=session_start_time,
