@@ -170,7 +170,7 @@ class TestMiniscopeConverter(TestCase):
 
             self.assertEqual(
                 nwbfile.session_start_time,
-                datetime(2021, 10, 7, 15, 3, 28, 635).astimezone(),
+                datetime(2021, 10, 7, 15, 3, 28, 635),
             )
 
             self.assertIn(self.device_name, nwbfile.devices)
