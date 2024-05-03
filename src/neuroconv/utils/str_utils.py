@@ -19,9 +19,9 @@ def human_readable_size(size_bytes: int, binary=True) -> str:
     >>> human_readable_size(123)
     '123 B'
     >>> human_readable_size(1234)
-    '1.21 KB'
-    >>> human_readable_size(123456789)
-    '117.74 MB'
+    '1.21 KiB'
+    >>> human_readable_size(123456789, binary=False)
+    '123.46 MB'
     """
     # Check if size is negative
     if size_bytes < 0:
