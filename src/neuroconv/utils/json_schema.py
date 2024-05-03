@@ -274,20 +274,20 @@ def get_metadata_schema_for_icephys():
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(
-        Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
+        Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/definitions/Device"}),
         Electrodes=dict(
             type="array",
             minItems=1,
-            items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
+            items={"$ref": "#/properties/Icephys/definitions/Electrode"},
         ),
         Sessions=dict(
             type="array",
             minItems=1,
-            items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
+            items={"$ref": "#/properties/Icephys/definitions/Sessions"},
         ),
     )
 
-    schema["properties"]["definitions"] = dict(
+    schema["definitions"] = dict(
         Device=get_schema_from_hdmf_class(Device),
         Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
         Sessions=dict(
@@ -307,7 +307,7 @@ def get_metadata_schema_for_icephys():
             recordings=dict(
                 type="array",
                 minItems=1,
-                items={"$ref": "#/properties/Icephys/properties/definitions/SessionsRecordings"},
+                items={"$ref": "#/properties/Icephys/definitions/SessionsRecordings"},
             ),
         ),
         SessionsRecordings=dict(

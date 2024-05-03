@@ -40,6 +40,7 @@ from ...utils import (
     calculate_regular_series_rate,
     dict_deep_update,
 )
+from ...utils.str_utils import human_readable_size
 
 
 def get_default_ophys_metadata() -> DeepDict:
@@ -487,8 +488,9 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
     if traces_size_in_bytes > available_memory_in_bytes:
         message = (
-            f"Memory error, full TwoPhotonSeries data is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
-            f"({round(available_memory_in_bytes/1e9, 2)} GB are available! Please use iterator_type='v2'."
+            f"Memory error, full TwoPhotonSeries data is {human_readable_size(traces_size_in_bytes, binary=True)} but "
+            f"only {human_readable_size(available_memory_in_bytes, binary=True)} are available! "
+            "Please use iterator_type='v2'."
         )
         raise MemoryError(message)
 
