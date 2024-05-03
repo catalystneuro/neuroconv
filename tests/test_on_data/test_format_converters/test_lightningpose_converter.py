@@ -137,7 +137,7 @@ class TestLightningPoseConverter(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            self.assertEqual(nwbfile.session_start_time, datetime(2023, 11, 9, 10, 14, 37).astimezone())
+            self.assertEqual(nwbfile.session_start_time, datetime(2023, 11, 9, 10, 14, 37))
 
             # Check original video added to acquisition
             self.assertIn(self.original_video_name, nwbfile.acquisition)
