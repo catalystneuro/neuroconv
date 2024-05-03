@@ -21,13 +21,12 @@ To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, u
     from datetime import datetime
     from uuid import uuid4
 
-    from dateutil import tz
     from neuroconv.tools.nwb_helpers import get_default_backend_configuration
     from pynwb import NWBFile, TimeSeries
 
     session_start_time = datetime(2020, 1, 1, 12, 30, 0)
     nwbfile = NWBFile(
-        identifier=str(uuid.uuid4()),
+        identifier=str(uuid4()),
         session_start_time=session_start_time,
         session_description="A session of my experiment.",
     )
@@ -60,31 +59,29 @@ From which a printout of the contents looks like...
     -----------------------------
       dtype : float64
       full shape of source array : (3,)
-      full size of source array : 0.00 GB
+      full size of source array : 24 B
 
       buffer shape : (3,)
-      expected RAM usage : 0.00 GB
+      expected RAM usage : 24 B
 
       chunk shape : (3,)
-      disk space usage per chunk : 0.00 MB
+      disk space usage per chunk : 24 B
 
       compression method : gzip
-
 
     acquisition/MyTimeSeries/timestamps
     -----------------------------------
       dtype : float64
       full shape of source array : (3,)
-      full size of source array : 0.00 GB
+      full size of source array : 24 B
 
       buffer shape : (3,)
-      expected RAM usage : 0.00 GB
+      expected RAM usage : 24 B
 
       chunk shape : (3,)
-      disk space usage per chunk : 0.00 MB
+      disk space usage per chunk : 24 B
 
       compression method : gzip
-
 
 Customization
 -------------
@@ -142,13 +139,13 @@ We can confirm these values are saved by re-printing that particular dataset con
     -----------------------------
       dtype : float64
       full shape of source array : (3,)
-      full size of source array : 0.00 GB
+      full size of source array : 24 B
 
       buffer shape : (2,)
-      expected RAM usage : 0.00 GB
+      expected RAM usage : 16 B
 
       chunk shape : (1,)
-      disk space usage per chunk : 0.00 MB
+      disk space usage per chunk : 8 B
 
       compression method : Zstd
       compression options : {'clevel': 3}
@@ -213,7 +210,7 @@ The following example uses the :ref:`example data <example_data>` available from
 
     If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow the classic workflow...
 
-    .. code-block::
+    .. code-block:: python
 
         converter = ConverterPipe(data_interfaces=data_interfaces)
 
@@ -237,9 +234,10 @@ The following example uses the :ref:`example data <example_data>` available from
 Generic tools
 -------------
 
-A more generic approach that can apply to any customized in-memory ``pynwb.NWBFile`` object...
+A more generic approach that can apply to any customized in-memory ``pynwb.NWBFile`` object, not just those
+created from data interfaces and converters, would have the following structure...
 
-.. code-block::
+.. code-block:: python
 
     from uuid import uuid4
     from datetime import datetime
