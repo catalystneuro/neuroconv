@@ -1,7 +1,7 @@
 import math
 
 
-def human_readable_size(size_bytes: int, binary: bool = True) -> str:
+def human_readable_size(size_bytes: int, binary: bool = False) -> str:
     """
     Convert a file size given in bytes to a human-readable format using division
     and remainder instead of iteration.
@@ -10,7 +10,7 @@ def human_readable_size(size_bytes: int, binary: bool = True) -> str:
     ----------
     size_bytes : int
         The size in bytes.
-    binary : bool, optional
+    binary : bool, default=False
         If True, use binary prefixes (KiB, MiB, etc.). If False, use SI prefixes (KB, MB, etc.).
 
     Returns
@@ -22,9 +22,9 @@ def human_readable_size(size_bytes: int, binary: bool = True) -> str:
     --------
     >>> human_readable_size(123)
     '123 B'
-    >>> human_readable_size(1234)
+    >>> human_readable_size(1234, binary=True)
     '1.21 KiB'
-    >>> human_readable_size(123456789, binary=False)
+    >>> human_readable_size(123456789)
     '123.46 MB'
     """
     # Check if size is negative

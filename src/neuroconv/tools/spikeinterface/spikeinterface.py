@@ -438,8 +438,8 @@ def check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_
 
     if traces_size_in_bytes > available_memory_in_bytes:
         message = (
-            f"Memory error, full electrical series is {human_readable_size(traces_size_in_bytes)} but only "
-            f"{human_readable_size(available_memory_in_bytes)} are available. Use iterator_type='V2'"
+            f"Memory error, full electrical series is {human_readable_size(traces_size_in_bytes, binary=True)} but only"
+            f" {human_readable_size(available_memory_in_bytes, binary=True)} are available. Use iterator_type='V2'"
         )
         raise MemoryError(message)
 

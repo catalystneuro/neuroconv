@@ -480,8 +480,9 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
     if traces_size_in_bytes > available_memory_in_bytes:
         message = (
-            f"Memory error, full TwoPhotonSeries data is {human_readable_size(traces_size_in_bytes)} but only"
-            f"{human_readable_size(available_memory_in_bytes)} are available! Please use iterator_type='v2'."
+            f"Memory error, full TwoPhotonSeries data is {human_readable_size(traces_size_in_bytes, binary=True)} but "
+            f"only {human_readable_size(available_memory_in_bytes, binary=True)} are available! "
+            "Please use iterator_type='v2'."
         )
         raise MemoryError(message)
 
