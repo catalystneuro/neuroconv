@@ -1523,9 +1523,7 @@ class TestAddPhotonSeries(TestCase):
         mock_imaging.get_image_size.return_value = image_size
         mock_imaging.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = (
-            "Memory error, full TwoPhotonSeries data is (.*?) GB are available! Please use iterator_type='v2'"
-        )
+        reg_expression = "Memory error, full TwoPhotonSeries data is (.*?) are available! Please use iterator_type='v2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_imaging_fits_into_memory(imaging=mock_imaging)
