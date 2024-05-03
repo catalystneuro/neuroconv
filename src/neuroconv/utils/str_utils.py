@@ -1,13 +1,17 @@
-def human_readable_size(size_bytes: int, binary=True) -> str:
+import math
+
+
+def human_readable_size(size_bytes: int, binary: bool = True) -> str:
     """
-    Convert a file size given in bytes to a human-readable format.
+    Convert a file size given in bytes to a human-readable format using division
+    and remainder instead of iteration.
 
     Parameters
     ----------
     size_bytes : int
         The size in bytes.
     binary : bool, optional
-        If True, use binary prefixes (KiB, MiB, etc.). If False, use SI prefixes
+        If True, use binary prefixes (KiB, MiB, etc.). If False, use SI prefixes (KB, MB, etc.).
 
     Returns
     -------
@@ -19,29 +23,29 @@ def human_readable_size(size_bytes: int, binary=True) -> str:
     >>> human_readable_size(123)
     '123 B'
     >>> human_readable_size(1234)
-    '1.21 KB'
-    >>> human_readable_size(123456789)
-    '117.74 MB'
+    '1.21 KiB'
+    >>> human_readable_size(123456789, binary=False)
+    '123.46 MB'
     """
     # Check if size is negative
     if size_bytes < 0:
         raise ValueError("Size must be non-negative")
 
+    if size_bytes == 0:
+        return "0 B"
+
     # Define the suffixes for each size unit
     suffixes = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"]
-    i = 0
-    # Convert bytes to a float for division
-    size_float = float(size_bytes)
 
-    base = 1000 if not binary else 1024
+    # Calculate base and the exponent
+    base = 1024 if binary else 1000
+    exponent = int(math.log(size_bytes, base))
 
-    # Find the appropriate unit
-    while size_float >= base and i < len(suffixes) - 1:
-        size_float /= base
-        i += 1
-
-    if not i:
+    if exponent == 0:
         return f"{size_bytes} B"
 
-    # Format the size with 2 decimal places and the appropriate suffix
-    return f"{size_float:.2f} {suffixes[i]}{'i' if binary else ''}B"
+    # Calculate the human-readable size
+    human_readable_value = size_bytes / (base ** exponent)
+
+    # Return formatted size with suffix
+    return f"{human_readable_value:.2f} {suffixes[exponent]}{'i' if binary else ''}B"
