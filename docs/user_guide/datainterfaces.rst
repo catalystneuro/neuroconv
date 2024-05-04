@@ -104,13 +104,13 @@ NWB Best Practices also recommends several other fields that are rarely present 
 .. code-block:: python
 
     metadata["NWBFile"].update(
+        session_id="session_1",
+        session_description="Observation of finches on the Galapagos Islands",
+        experiment_description="Observation of finches on the Galapagos Islands",
         experimenter="Darwin, Charles",
         lab="Evolutionary Biology",
         institution="University of Cambridge",
-        experiment_description="Observation of finches on the Galapagos Islands",
-        session_id="session_1",
         identifier="unique_identifier",  # will be automatically assigned if not provided
-        session_description="Observation of finches on the Galapagos Islands",
         keywords=["finches", "evolution", "Galapagos"],
     )
 
