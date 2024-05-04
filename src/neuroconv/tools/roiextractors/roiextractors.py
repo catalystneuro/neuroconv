@@ -1428,8 +1428,10 @@ def write_segmentation(
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -1445,21 +1447,21 @@ def write_segmentation(
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
-        Defaults to True.
+        faster write speeds.
     include_roi_acceptance : bool, default: True
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
-            faster write speeds.
-        Defaults to True.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+        faster write speeds.
     mask_type : str, optional
-        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
+        There are three types of ROI masks in NWB, Image and Pixel, and Voxel.
+
+        * Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+          by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        * Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+          of pixels in each ROI.
+        * Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+          of voxels in each ROI.
+
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
         Defaults to 'image'.
