@@ -309,12 +309,14 @@ def add_imaging_plane(
 def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     Adds the image segmentation specified by the metadata to the nwb file.
+
     Parameters
     ----------
     nwbfile : NWBFile
         The nwbfile to add the image segmentation to.
     metadata: dict
         The metadata to create the image segmentation from.
+
     Returns
     -------
     NWBFile
@@ -591,8 +593,10 @@ def write_imaging(
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
