@@ -718,7 +718,8 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
         NWB file to which the recording information is to be added
     metadata : dict, optional
         metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -726,15 +727,16 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
                 },
                 ...
             ]
-        Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
-        properties in the RecordingExtractor object.
-        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
+
+        Note that data intended to be added to the electrodes table of the ``NWBFile`` should be set as channel
+        properties in the ``RecordingExtractor`` object.
+        Missing keys in an element of ``metadata['Ecephys']['ElectrodeGroup']`` will be auto-populated with defaults
         whenever possible.
-        If 'my_name' is set to one of the required fields for nwbfile
+        If ``'my_name'`` is set to one of the required fields for nwbfile
         electrodes (id, x, y, z, imp, location, filtering, group_name),
         then the metadata will override their default values.
-        Setting 'my_name' to metadata field 'group' is not supported as the linking to
-        nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
+        Setting ``'my_name'`` to metadata field ``'group'`` is not supported as the linking to
+        ``nwbfile.electrode_groups`` is handled automatically; please specify the string ``'group_name'`` in this case.
         If no group information is passed via metadata, automatic linking to existing electrode groups,
         possibly including the default, will occur.
     """
