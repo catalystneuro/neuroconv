@@ -137,6 +137,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
     ):
         """
         Initializes the data interfaces for Bruker imaging data stream.
+
         Parameters
         ----------
         folder_path : PathType
