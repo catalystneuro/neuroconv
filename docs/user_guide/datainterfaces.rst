@@ -110,7 +110,6 @@ NWB Best Practices also recommends several other fields that are rarely present 
         experimenter="Darwin, Charles",
         lab="Evolutionary Biology",
         institution="University of Cambridge",
-        identifier="unique_identifier",  # will be automatically assigned if not provided
         keywords=["finches", "evolution", "Galapagos"],
     )
 
