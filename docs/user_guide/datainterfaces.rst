@@ -80,6 +80,8 @@ The DANDI Archive requires subject ID, sex, age, and species, which are rarely p
 ``species`` is the scientific Latin binomial name of the species. For example, ``Mus musculus``
 for a mouse.
 
+See :ref:`Subject Best Practices <best_practice_subject_exists>` for details
+
 The ``session_start_time`` is also required. This is sometimes found in the source data. If it is not found, you must add it.
 
 .. code-block:: python
@@ -140,7 +142,7 @@ Here we can see that ``metadata["Ecephys"]["ElectrodeGroup"][0]["location"]`` is
     metadata["Ecephys"]["ElectrodeGroup"]["location"] = "V1"
 
 
-Use ``.get_metadata_schema()`` to get the schema of the metadata dictionary. This schema is a JSON-schema-like dictionary that specifies required and optional fields in the metadata dictionary.
+Use ``.get_metadata_schema()`` to get the schema of the metadata dictionary. This schema is a JSON-schema-like dictionary that specifies required and optional fields in the metadata dictionary. See :ref:`metadata schema <metadata_schema>` for more information.
 
 4. Run conversion
 ~~~~~~~~~~~~~~~~~
