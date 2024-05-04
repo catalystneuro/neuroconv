@@ -142,6 +142,7 @@ class NWBConverter:
     ) -> None:
         """
         Run the NWB conversion over all the instantiated data interfaces.
+
         Parameters
         ----------
         nwbfile_path : FilePathType

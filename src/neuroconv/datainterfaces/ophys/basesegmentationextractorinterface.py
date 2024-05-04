@@ -142,17 +142,18 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Whether to include if the detected ROI was 'accepted' or 'rejected'.
             If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
-        mask_type : {'image', 'pixel', 'voxel'}, optional
-            There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-            Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-                by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-            Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-                of pixels in each ROI.
-            Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-                of voxels in each ROI.
-            Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
+        mask_type : str, default: 'image'
+            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+              by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+              of pixels in each ROI.
+            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+              of voxels in each ROI.
+
+            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
             If None, the mask information is not written to the NWB file.
-            Defaults to 'image'.
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional

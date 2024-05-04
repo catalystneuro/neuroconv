@@ -309,12 +309,14 @@ def add_imaging_plane(
 def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     Adds the image segmentation specified by the metadata to the nwb file.
+
     Parameters
     ----------
     nwbfile : NWBFile
         The nwbfile to add the image segmentation to.
     metadata: dict
         The metadata to create the image segmentation from.
+
     Returns
     -------
     NWBFile
@@ -591,8 +593,10 @@ def write_imaging(
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -720,17 +724,18 @@ def add_plane_segmentation(
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
         faster write speeds.
-    mask_type : {'image', 'pixel', 'voxel'}, optional
-        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
-        Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
+    mask_type : str, default: 'image'
+        There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+        * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+          by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+          of pixels in each ROI.
+        * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+          of voxels in each ROI.
+
+        Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
-        Defaults to 'image'.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
     compression_options : dict, optional
@@ -1428,8 +1433,10 @@ def write_segmentation(
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -1445,24 +1452,23 @@ def write_segmentation(
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
-        Defaults to True.
+        faster write speeds.
     include_roi_acceptance : bool, default: True
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
-            faster write speeds.
-        Defaults to True.
-    mask_type : str, optional
-        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+        faster write speeds.
+    mask_type : str, default: 'image'
+        There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+        * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+          by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+          of pixels in each ROI.
+        * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+          of voxels in each ROI.
+
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
-        Defaults to 'image'.
     iterator_options: dict, optional
         A dictionary with options for the internal iterators that process the data.
     compression_options: dict, optional
