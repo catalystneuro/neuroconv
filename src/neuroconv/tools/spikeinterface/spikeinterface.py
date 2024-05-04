@@ -1266,8 +1266,10 @@ def add_waveforms(
     waveform_extractor
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
