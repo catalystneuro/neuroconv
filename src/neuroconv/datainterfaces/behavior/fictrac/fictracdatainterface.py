@@ -17,13 +17,16 @@ from ....utils import FilePathType, calculate_regular_series_rate
 class FicTracDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for FicTrac datasets."""
 
-    keywords = [
+    display_name = "FicTrac"
+    keywords = (
         "fictrack",
         "visual tracking",
         "fictive path",
         "spherical treadmill",
         "visual fixation",
-    ]
+    )
+    associated_suffixes = (".dat",)
+    info = "Interface for FicTrac .dat files."
 
     timestamps_column = 21
     # Columns in the .dat binary file with the data. The full description of the header can be found in:
@@ -207,8 +210,12 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         ----------
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        metadata: dict, optional
+            metadata info for constructing the nwb file.
+        compression: str, default: 'gzip'
+            The type of compression to use. Should be one of 'gzip', 'lzf'. If None, no compression is used.
+        compression_opts: int, optional
+
         """
 
         import pandas as pd
@@ -274,19 +281,18 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         This function addresses two specific issues with timestamps in FicTrac data:
 
-        1. Resetting Initial Timestamp:
-        In some instances, FicTrac replaces the initial timestamp (0) with the system time. This commonly occurs
-        when the data source is a video file, and OpenCV reports the first timestamp as 0. Since OpenCV also
-        uses 0 as a marker for invalid values, FicTrac defaults to system time in that case. This leads to
-        inconsistent timestamps like [system_time, t1, t2, t3, ...]. The function corrects this by resetting the
-        first timestamp back to 0 when a negative difference is detected between the first two timestamps.
-
-        2. Re-centering Unix Epoch Time:
-        If timestamps are in Unix epoch time format (time since 1970-01-01 00:00:00 UTC), this function re-centers
-        the time series by subtracting the first timestamp. This adjustment ensures that timestamps represent the
-        elapsed time since the start of the experiment rather than the Unix epoch. This case appears when one of the
-        sources of data in FicTrac (such as PGR or Basler) lacks a timestamp extraction method. FicTrac
-        then falls back to using the system time, which is in Unix epoch format.
+        1. Resetting Initial Timestamp
+           In some instances, FicTrac replaces the initial timestamp (0) with the system time. This commonly occurs
+           when the data source is a video file, and OpenCV reports the first timestamp as 0. Since OpenCV also
+           uses 0 as a marker for invalid values, FicTrac defaults to system time in that case. This leads to
+           inconsistent timestamps like [system_time, t1, t2, t3, ...]. The function corrects this by resetting the
+           first timestamp back to 0 when a negative difference is detected between the first two timestamps.
+        2. Re-centering Unix Epoch Time
+           If timestamps are in Unix epoch time format (time since 1970-01-01 00:00:00 UTC), this function re-centers
+           the time series by subtracting the first timestamp. This adjustment ensures that timestamps represent the
+           elapsed time since the start of the experiment rather than the Unix epoch. This case appears when one of the
+           sources of data in FicTrac (such as PGR or Basler) lacks a timestamp extraction method. FicTrac
+           then falls back to using the system time, which is in Unix epoch format.
 
         Returns
         -------

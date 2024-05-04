@@ -4,10 +4,14 @@ from ....utils.types import FolderPathType
 
 class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary data interface class for converting AlphaOmega data.
+    Primary data interface class for converting AlphaOmega recording data.
 
     Uses the :py:class:`~spikeinterface.extractors.AlphaOmegaRecordingExtractor`.
     """
+
+    display_name = "AlphaOmega Recording"
+    associated_suffixes = (".mpx",)
+    info = "Interface class for converting AlphaOmega recording data."
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -16,7 +20,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         folder_path: string or Path
-            Path to the folder of .mrx files.
+            Path to the folder of .mpx files.
         verbose: boolean
             Allows verbose.
             Default is True.

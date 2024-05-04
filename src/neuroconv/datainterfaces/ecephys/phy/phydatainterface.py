@@ -5,8 +5,20 @@ from ....utils import FolderPathType
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):
-    """Primary data interface class for converting Phy data. Uses
-    :py:class:`~spikeinterface.extractors.PhySortingExtractor`."""
+    """
+    Primary data interface class for converting Phy data. Uses
+    :py:class:`~spikeinterface.extractors.PhySortingExtractor`.
+    """
+
+    display_name = "Phy Sorting"
+    associated_suffixes = (".npy",)
+    info = "Interface for Phy sorting data."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        schema = super().get_source_schema()
+        schema["properties"]["exclude_cluster_groups"]["items"] = dict(type="string")
+        return schema
 
     def __init__(
         self,

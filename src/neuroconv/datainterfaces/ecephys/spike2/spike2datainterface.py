@@ -1,5 +1,4 @@
 from pathlib import Path
-from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
@@ -10,7 +9,7 @@ def _test_sonpy_installation() -> None:
     get_package(
         package_name="sonpy",
         excluded_python_versions=["3.10", "3.11"],
-        excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.8", "3.9", "3.10", "3.11"])),
+        excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.8", "3.9", "3.10", "3.11", "3.12"])),
     )
 
 
@@ -19,7 +18,10 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     Data interface class for converting Spike2 data from CED (Cambridge Electronic
     Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
 
-    keywords = BaseRecordingExtractorInterface.keywords + ["CED"]
+    display_name = "Spike2 Recording"
+    keywords = BaseRecordingExtractorInterface.keywords + ("CED",)
+    associated_suffixes = (".smr", ".smrx")
+    info = "Interface for Spike2 recording data from CED (Cambridge Electronic Design)."
 
     ExtractorName = "CedRecordingExtractor"
 
@@ -38,8 +40,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
-        Initialize reading of Spike2 file. CEDRecordingInterface will soon be deprecated. Please use
-        Spike2RecordingInterface instead.
+        Initialize reading of Spike2 file.
 
         Parameters
         ----------

@@ -140,13 +140,15 @@
             "M",
             "F",
             "U",
-            "O"
+            "O",
+            "XX",
+            "XO"
           ]
         },
         "species": {
           "type": "string",
           "description": "Species of subject. Use latin name.",
-          "pattern": "^[A-Z][a-z]+ [a-z]+"
+          "pattern": "^[A-Z][a-z]+ [a-z]+|http://purl.obolibrary.org/obo/NCBITaxon_[0-9]+"
         },
         "subject_id": {
           "type": "string",

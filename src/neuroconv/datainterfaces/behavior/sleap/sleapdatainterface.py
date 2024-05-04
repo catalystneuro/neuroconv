@@ -13,6 +13,11 @@ from ....utils import FilePathType
 class SLEAPInterface(BaseTemporalAlignmentInterface):
     """Data interface for SLEAP datasets."""
 
+    display_name = "SLEAP"
+    keywords = ("pose estimation", "tracking", "video")
+    associated_suffixes = (".slp", ".mp4")
+    info = "Interface for SLEAP pose estimation datasets."
+
     def __init__(
         self,
         file_path: FilePathType,

@@ -1,4 +1,5 @@
 """Unit tests for the HDF5DatasetIOConfiguration Pydantic model."""
+
 from io import StringIO
 from unittest.mock import patch
 
@@ -21,7 +22,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -47,7 +48,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -74,7 +75,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -89,9 +90,9 @@ def test_hdf5_dataset_configuration_repr():
 
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
-        "HDF5DatasetIOConfiguration(dataset_info=DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
-        "full_shape=(1800000, 384)), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
+        "HDF5DatasetIOConfiguration(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
+        "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
+        "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
         "compression_options=None)"
     )
     assert repr(hdf5_dataset_configuration) == expected_repr

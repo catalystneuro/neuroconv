@@ -11,12 +11,11 @@ import pynwb.ecephys
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
-from pynwb import NWBFile
-from spikeinterface import WaveformExtractor, extract_waveforms
+from pynwb import NWBHDF5IO, NWBFile
 from spikeinterface.core.generate import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 
-from neuroconv.tools.nwb_helpers import get_module
+from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata, get_module
 from neuroconv.tools.spikeinterface import (
     add_electrical_series,
     add_electrodes,
@@ -107,7 +106,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_write_multiple_electrical_series_from_same_group(self):
+    def test_write_multiple_electrical_series_from_same_electrode_group(self):
         metadata = dict(
             Ecephys=dict(
                 ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="raw series"),
@@ -135,7 +134,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         self.assertIn("ElectricalSeriesLFP", self.nwbfile.acquisition)
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
 
-    def test_write_multiple_electrical_series_from_different_groups(self):
+    def test_write_multiple_electrical_series_with_different_electrode_groups(self):
         metadata = dict(
             Ecephys=dict(
                 ElectricalSeriesRaw1=dict(name="ElectricalSeriesRaw1", description="raw series"),
@@ -153,6 +152,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
+        # check channel names and group names
+        electrodes = self.nwbfile.acquisition["ElectricalSeriesRaw1"].electrodes[:]
+        np.testing.assert_equal(electrodes["channel_name"], self.test_recording_extractor.channel_ids.astype("str"))
+        np.testing.assert_equal(
+            electrodes["group_name"], self.test_recording_extractor.get_channel_groups().astype("str")
+        )
         # set new channel groups to create a new  electrode_group
         self.test_recording_extractor.set_channel_groups(["group1"] * len(self.test_recording_extractor.channel_ids))
         add_electrical_series(
@@ -165,6 +170,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
         self.assertIn("ElectricalSeriesRaw2", self.nwbfile.acquisition)
         self.assertEqual(len(self.nwbfile.electrodes), 2 * len(self.test_recording_extractor.channel_ids))
+        # check channel names and group names
+        electrodes = self.nwbfile.acquisition["ElectricalSeriesRaw2"].electrodes[:]
+        np.testing.assert_equal(electrodes["channel_name"], self.test_recording_extractor.channel_ids.astype("str"))
+        np.testing.assert_equal(
+            electrodes["group_name"], self.test_recording_extractor.get_channel_groups().astype("str")
+        )
 
         self.test_recording_extractor.set_channel_groups(original_groups)
 
@@ -489,7 +500,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder.get_num_channels.return_value = num_channels
         mock_recorder.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
+        reg_expression = f"Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
@@ -1125,9 +1136,21 @@ class TestAddUnitsTable(TestCase):
         assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
 
 
+from packaging.version import Version
+
+from neuroconv.tools import get_package_version
+
+spike_interface_version = get_package_version("spikeinterface")
+
+
+@unittest.skipIf(
+    spike_interface_version >= Version("0.101"), reason="WaveformExtractor not available in spikeinterface"
+)
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
+        from spikeinterface import WaveformExtractor, extract_waveforms
+
         """Use common recording objects and values."""
         from spikeinterface.postprocessing import compute_template_metrics
         from spikeinterface.qualitymetrics import compute_quality_metrics
@@ -1167,6 +1190,10 @@ class TestWriteWaveforms(TestCase):
         # reload without recording
         cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
+
+        cls.nwbfile_path = cls.tmpdir / "test.nwb"
+        if cls.nwbfile_path.exists():
+            cls.nwbfile_path.unlink()
 
     @classmethod
     def tearDownClass(cls):
@@ -1237,6 +1264,21 @@ class TestWriteWaveforms(TestCase):
                 recording=self.we_recless_recording,
                 write_electrical_series=True,
             )
+
+    def test_write_waveforms_to_file(self):
+        """This tests that the waveforms are written to file"""
+        metadata = get_default_nwbfile_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now()
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile_path=self.nwbfile_path,
+            write_electrical_series=True,
+            metadata=metadata,
+        )
+        with NWBHDF5IO(self.nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            self._test_waveform_write(self.single_segment_we, nwbfile)
+            self.assertIn("ElectricalSeriesRaw", nwbfile.acquisition)
 
     def test_write_multiple_probes_without_electrical_series(self):
         """This test that the waveforms are written to different electrode groups"""

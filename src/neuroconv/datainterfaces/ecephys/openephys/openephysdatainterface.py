@@ -10,6 +10,10 @@ from ....utils import FolderPathType
 class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     """Abstract class that defines which interface class to use for a given Open Ephys recording."""
 
+    display_name = "OpenEphys Recording"
+    associated_suffixes = (".dat", ".oebin", ".npy")
+    info = "Interface for converting any OpenEphys recording data."
+
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     def __new__(

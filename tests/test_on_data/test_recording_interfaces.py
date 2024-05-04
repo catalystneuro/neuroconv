@@ -1,9 +1,9 @@
 from datetime import datetime
 from platform import python_version
 from sys import platform
+from typing import Literal
 from unittest import skip, skipIf
 
-import jsonschema
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
@@ -174,6 +174,12 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
                 # self.check_interface_original_timestamps_inmutability()
 
                 self.check_nwbfile_temporal_alignment()
+
+    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
+    def check_run_conversion_default_backend_in_nwbconverter(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        pass
 
 
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -490,48 +496,33 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
             manufacturer="Imec",
         )
 
-    def check_electrode_property_helper(self):
-        """Check that the helper function returns in the way the NWB GUIDE table component expects."""
-        electrode_table_json = self.interface.get_electrode_table_json()
 
-        spikeglx_electrode_table_schema = {
-            "type": "array",
-            "minItems": 0,
-            "items": {"$ref": "#/definitions/SpikeGLXElectrodeColumnEntry"},
-            "definitions": {
-                "SpikeGLXElectrodeColumnEntry": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": [
-                        "channel_name",
-                        "contact_shapes",
-                        "gain_to_uV",
-                        "offset_to_uV",
-                        "group",
-                        "group_name",
-                        "inter_sample_shift",
-                        # "location",
-                        "shank_electrode_number",
-                    ],
-                    "properties": {
-                        "channel_name": {"type": "string"},
-                        "contact_shapes": {"type": "string"},
-                        "gain_to_uV": {"type": "number"},
-                        "offset_to_uV": {"type": "number"},
-                        "group": {"type": "number"},
-                        "group_name": {"type": "string"},
-                        "inter_sample_shift": {"type": "number"},
-                        "location": {"type": "array"},
-                        "shank_electrode_number": {"type": "number"},
-                    },
-                }
-            },
-        }
-        print(f"{[electrode_table_json[0]]=}")
-        jsonschema.validate(instance=[electrode_table_json[0]], schema=spikeglx_electrode_table_schema)
+class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = SpikeGLXRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            DATA_PATH
+            / "spikeglx"
+            / "long_nhp_stubbed"
+            / "snippet_g0"
+            / "snippet_g0_imec0"
+            / "snippet_g0_t0.imec0.ap.bin"
+        )
+    )
+    save_directory = OUTPUT_PATH
 
-    def run_custom_checks(self):
-        self.check_electrode_property_helper()
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
+        assert metadata["Ecephys"]["Device"][-1] == dict(
+            name="Neuropixel-Imec",
+            description="{"
+            '"probe_type": "1030", '
+            '"probe_type_description": "NP1.0 NHP", '
+            '"flex_part_number": "NPNH_AFLEX_00", '
+            '"connected_base_station_part_number": "NP2_QBSC_00"'
+            "}",
+            manufacturer="Imec",
+        )
 
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -566,3 +557,6 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCas
         file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
     )
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2010, 2, 22, 20, 0, 57)

@@ -1,4 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
+
 from typing import Literal, Union
 
 from pynwb import NWBFile
@@ -11,7 +12,9 @@ def get_default_backend_configuration(
     nwbfile: NWBFile, backend: Literal["hdf5", "zarr"]
 ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
     """Fill a default backend configuration to serve as a starting point for further customization."""
-    from ..nwb_helpers import BACKEND_CONFIGURATIONS
+    from ..nwb_helpers import (
+        BACKEND_CONFIGURATIONS,  # Locally scoped to avoid circular import
+    )
 
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
 

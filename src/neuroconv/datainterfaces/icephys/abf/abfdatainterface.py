@@ -23,6 +23,12 @@ def get_start_datetime(neo_reader):
 
 
 class AbfInterface(BaseIcephysInterface):
+    """Interface for ABF intracellular electrophysiology data."""
+
+    display_name = "ABF Icephys"
+    associated_suffixes = (".abf",)
+    info = "Interface for ABF intracellular electrophysiology data."
+
     ExtractorName = "AxonIO"
 
     @classmethod
@@ -164,6 +170,7 @@ class AbfInterface(BaseIcephysInterface):
             The relative starting times of each video.
             Outer list is over file paths (readers).
             Inner list is over segments of each recording.
+        stub_test : bool, default=False
         """
         number_of_files_from_starting_times = len(aligned_segment_starting_times)
         assert number_of_files_from_starting_times == len(self.readers_list), (

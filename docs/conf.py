@@ -23,24 +23,44 @@ extensions = [
 templates_path = ["_templates"]
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'img/favicon.ico'
+html_favicon = "_static/favicon.ico"
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
-html_css_files = [
-    "css/custom.css",
-]
+# html_css_files = [
+#     "css/custom.css",
+# ]
+
+html_context = {
+    # "github_url": "https://github.com", # or your GitHub Enterprise site
+    "github_user": "catalystneuro",
+    "github_repo": "neuroconv",
+    "github_version": "main",
+    "doc_path": "docs",
+}
 
 html_theme_options = {
-    "collapse_navigation": False,
+    "use_edit_page_button": True,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/catalystneuro/neuroconv",
+            "icon": "fa-brands fa-github",
+            "type": "fontawesome",
+        },
+    ],
 }
 
 linkcheck_anchors = False
+linkcheck_ignore = [
+    "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
+    r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
+]
 
 # --------------------------------------------------
 # Extension configuration
@@ -88,11 +108,11 @@ intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
     "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
+    "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
 }
 
 # To shorten external links
 extlinks = {
-    "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/%s", ""),
     "format-request-form": ("https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement"
                             "%2Cdata+interfaces&template=format_request.yml&title=%5BNew+Format%5D%3A+", "")
 }

@@ -1,8 +1,9 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
+
 from typing import Any, Dict, Literal, Union
 
 import h5py
-from pydantic import Field
+from pydantic import Field, InstanceOf
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ...importing import is_package_installed
@@ -31,13 +32,8 @@ if is_package_installed(package_name="hdf5plugin"):
 class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
-    # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
-
     compression_method: Union[
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], InstanceOf[h5py._hl.filters.FilterRefBase], None
     ] = Field(
         default="gzip",
         description=(

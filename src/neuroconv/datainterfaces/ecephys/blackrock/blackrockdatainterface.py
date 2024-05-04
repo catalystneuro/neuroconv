@@ -11,6 +11,10 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Blackrock data using a
     :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
+    display_name = "Blackrock Recording"
+    associated_suffixes = (".ns0", ".ns1", ".ns2", ".ns3", ".ns4", ".ns5")
+    info = "Interface for Blackrock recording data."
+
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
@@ -63,6 +67,10 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
 class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
+
+    display_name = "Blackrock Sorting"
+    associated_suffixes = (".nev",)
+    info = "Interface for Blackrock sorting data."
 
     @classmethod
     def get_source_schema(cls) -> dict:

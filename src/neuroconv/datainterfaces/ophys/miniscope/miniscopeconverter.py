@@ -11,6 +11,11 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 class MiniscopeConverter(NWBConverter):
     """Primary conversion class for handling Miniscope data streams."""
 
+    display_name = "Miniscope Imaging and Video"
+    keywords = MiniscopeImagingInterface.keywords + MiniscopeBehaviorInterface.keywords
+    associated_suffixes = MiniscopeImagingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
+    info = "Converter for handling both imaging and video recordings from Miniscope."
+
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)
@@ -19,24 +24,24 @@ class MiniscopeConverter(NWBConverter):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
 
-        The main Miniscope folder is expected to contain both data streams organized as follows:
+        The main Miniscope folder is expected to contain both data streams organized as follows::
 
-        C6-J588_Disc5/ (main folder)
-        ├── 15_03_28/ (subfolder corresponding to the recording time)
-        │   ├── Miniscope/ (subfolder containing the microscope video stream)
-        │   │   ├── 0.avi (microscope video)
-        │   │   ├── metaData.json (metadata for the microscope device)
-        │   │   └── timeStamps.csv (timing of this video stream)
-        │   ├── BehavCam_2/ (subfolder containing the behavioral video stream)
-        │   │   ├── 0.avi (bevavioral video)
-        │   │   ├── metaData.json (metadata for the behavioral camera)
-        │   │   └── timeStamps.csv (timing of this video stream)
-        │   └── metaData.json (metadata for the recording, such as the start time)
-        ├── 15_06_28/
-        │   ├── Miniscope/
-        │   ├── BehavCam_2/
-        │   └── metaData.json
-        └── 15_12_28/
+            C6-J588_Disc5/ (main folder)
+            ├── 15_03_28/ (subfolder corresponding to the recording time)
+            │   ├── Miniscope/ (subfolder containing the microscope video stream)
+            │   │   ├── 0.avi (microscope video)
+            │   │   ├── metaData.json (metadata for the microscope device)
+            │   │   └── timeStamps.csv (timing of this video stream)
+            │   ├── BehavCam_2/ (subfolder containing the behavioral video stream)
+            │   │   ├── 0.avi (bevavioral video)
+            │   │   ├── metaData.json (metadata for the behavioral camera)
+            │   │   └── timeStamps.csv (timing of this video stream)
+            │   └── metaData.json (metadata for the recording, such as the start time)
+            ├── 15_06_28/
+            │   ├── Miniscope/
+            │   ├── BehavCam_2/
+            │   └── metaData.json
+            └── 15_12_28/
 
         Parameters
         ----------

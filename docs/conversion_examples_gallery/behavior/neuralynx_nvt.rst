@@ -1,3 +1,5 @@
+.. _neuralynx_nvt_conversion:
+
 Neuralynx NVT data conversion
 -----------------------------
 
@@ -9,7 +11,7 @@ so you can install NeuroConv using:
     pip install neuroconv
 
 Convert Neuralynx NVT data to NWB using
-:py:class:`~.neuroconv.datainterfaces.behavior.neuralynx.neuralynxnvtdatainterface.NeuralynxNvtInterface`.
+:py:class:`~.neuroconv.datainterfaces.behavior.neuralynx.neuralynx_nvt_interface.NeuralynxNvtInterface`.
 
 .. code-block:: python
 

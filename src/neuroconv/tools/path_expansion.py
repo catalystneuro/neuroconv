@@ -1,4 +1,5 @@
 """Helpful classes for expanding file or folder paths on a system given an f-string rule for matching patterns."""
+
 import abc
 import os
 from datetime import date, datetime
@@ -131,3 +132,69 @@ class LocalPathExpander(AbstractPathExpander):
         base_directory = Path(base_directory)
         assert base_directory.is_dir(), f"The specified 'base_directory' ({base_directory}) is not a directory!"
         return (str(path.relative_to(base_directory)) for path in base_directory.rglob("*"))
+
+
+def construct_path_template(path: str, *, subject_id: str, session_id: str, **metadata_kwargs) -> str:
+    """
+    Construct a path template by replacing specific parts of a given path with placeholders.
+
+    This function takes a real path example and replaces the occurrences of subject ID, session ID,
+    and any additional metadata values with their respective placeholders.
+
+    Parameters
+    ----------
+    path : str
+        The path string containing actual data that needs to be templated.
+    subject_id : str
+        The subject ID in the path that will be replaced with the '{subject_id}' placeholder.
+    session_id : str
+        The session ID in the path that will be replaced with the '{session_id}' placeholder.
+    **metadata_kwargs : dict
+        Additional key-value pairs where the key is the placeholder name and the value is the actual data
+        in the path that should be replaced by the placeholder.
+
+    Returns
+    -------
+    str
+        The path string with specified parts replaced by placeholders.
+
+    Raises
+    ------
+    ValueError
+        If `subject_id`, `session_id`, or any value in `metadata_kwargs` is an empty string, or if `subject_id`
+        or `session_id` placeholders are not found in the path.
+
+    Examples
+    --------
+    >>> construct_path_template(
+    >>>     "/data/subject456/session123/file.txt",
+    >>>     subject_id="subject456",
+    >>>     session_id="session123"
+    >>> )
+    '/data/{subject_id}/{session_id}/file.txt'
+
+    >>> construct_path_template(
+    >>>     "/data/subject789/session456/image.txt",
+    >>>     subject_id="subject789",
+    >>>     session_id="session456",
+    >>>     file_type="image"
+    >>> )
+    '/data/{subject_id}/{session_id}/{file_type}.txt'
+    """
+
+    if subject_id == "" or session_id == "":
+        raise ValueError("Subject ID and Session ID cannot be empty strings")
+
+    if subject_id not in path or session_id not in path:
+        raise ValueError("Subject ID and Session ID must be present in the path")
+
+    format_string = path.replace(subject_id, "{subject_id}").replace(session_id, "{session_id}")
+
+    for key, val in metadata_kwargs.items():
+        if val == "":
+            raise ValueError(f"Value for '{key}' cannot be an empty string")
+        if val not in format_string:
+            raise ValueError(f"Value for '{key}' not found in the path")
+        format_string = format_string.replace(val, f"{{{key}}}")
+
+    return format_string
