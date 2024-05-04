@@ -135,22 +135,23 @@ def dict_deep_update(
         whether to deepcopy the input dict d
     compare_key: str
         the key that is used to compare dicts (and perform update op) and update d[key] when it is a list if dicts.
-        example:
-            >>> d = {
+        example::
+
+            d = {
                 [
                     {"name": "timeseries1", "desc": "desc1 of d", "starting_time": 0.0},
                     {"name": "timeseries2", "desc": "desc2"},
                 ]
             }
-            >>> u = [{"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."}]
-            >>> # if compare_key='name' output is below
-            >>> output = [
+            u = [{"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."}]
+            # if compare_key='name' output is below
+            output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0, "unit": "n.a."},
                 {"name": "timeseries2", "desc": "desc2"},
             ]
-            >>> # else the output is:
-            >>> # dict with the same key will be updated instead of being appended to the list
-            >>> output = [
+            # else the output is:
+            # dict with the same key will be updated instead of being appended to the list
+            output = [
                 {"name": "timeseries1", "desc": "desc1 of d", "starting_time": 0.0},
                 {"name": "timeseries2", "desc": "desc2"},
                 {"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."},
@@ -158,13 +159,14 @@ def dict_deep_update(
 
     list_dict_deep_update: bool
         for back compatibility, if False, this would work as before:
-        example: if True then for the compare_key example, the output would be:
-            >>> output = [
+        example: if True then for the compare_key example, the output would be::
+
+            output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0, "unit": "n.a."},
                 {"name": "timeseries2", "desc": "desc2"},
             ]
-            >>> # if False:
-            >>> output = [
+            # if False:
+            output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0},
                 {"name": "timeseries2", "desc": "desc2"},
             ]  # unit key is absent since it is a replacement
