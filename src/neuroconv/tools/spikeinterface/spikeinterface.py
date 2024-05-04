@@ -819,7 +819,8 @@ def write_recording(
         and returned by the function.
     metadata : dict, optional
         metadata info for constructing the nwb file (optional). Should be
-        of the format
+        of the format::
+
             metadata['Ecephys'] = {
                 'Device': [
                     {
