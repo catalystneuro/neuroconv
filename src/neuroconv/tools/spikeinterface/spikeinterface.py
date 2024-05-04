@@ -63,7 +63,8 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
         nwb file to which the recording information is to be added
     metadata: DeepDict
         metadata info for constructing the nwb file (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['Device'] = [
                 {
                     'name': my_name,
@@ -71,6 +72,7 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
                 },
                 ...
             ]
+
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     if nwbfile is not None:
@@ -103,7 +105,8 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
         nwb file to which the recording information is to be added
     metadata: dict
         metadata info for constructing the nwb file (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['ElectrodeGroup'] = [
                 {
                     'name': my_name,
@@ -113,7 +116,8 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
                 },
                 ...
             ]
-        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults.
+
+        Missing keys in an element of ``metadata['Ecephys']['ElectrodeGroup']`` will be auto-populated with defaults.
         Group names set by RecordingExtractor channel properties will also be included with passed metadata,
         but will only use default description and location.
     """
@@ -192,7 +196,8 @@ def add_electrodes(
         nwb file to which the recording information is to be added
     metadata: dict
         metadata info for constructing the nwb file (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -200,6 +205,7 @@ def add_electrodes(
                 },
                 ...
             ]
+
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
         Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
@@ -533,11 +539,13 @@ def add_electrical_series(
         nwb file to which the recording information is to be added
     metadata : dict, optional
         metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['ElectricalSeries'] = dict(
                 name=my_name,
                 description=my_description
             )
+
     segment_index : int, default: 0
         The recording segment to add to the NWBFile.
     starting_time : float, optional
@@ -814,8 +822,10 @@ def write_recording(
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
