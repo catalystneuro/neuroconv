@@ -109,7 +109,6 @@ NWB Best Practices also recommends several other fields that are rarely present 
         institution="University of Cambridge",
         experiment_description="Observation of finches on the Galapagos Islands",
         session_id="session_1",
-        identifier="unique_identifier",  # will be automatically assigned if not provided
         session_description="Observation of finches on the Galapagos Islands",
         keywords=["finches", "evolution", "Galapagos"],
     )
