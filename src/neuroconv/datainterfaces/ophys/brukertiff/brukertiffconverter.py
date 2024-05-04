@@ -33,6 +33,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
     ):
         """
         Initializes the data interfaces for Bruker volumetric imaging data stream.
+
         Parameters
         ----------
         folder_path : PathType
