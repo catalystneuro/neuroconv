@@ -269,6 +269,7 @@ class VideoInterface(BaseDataInterface):
                         ]
                     )
                 )
+
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
             The list for the 'Videos' key should correspond one to the video files in the file_paths list.

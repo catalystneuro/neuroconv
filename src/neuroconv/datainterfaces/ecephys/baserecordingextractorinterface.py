@@ -302,6 +302,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
+
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -317,24 +318,25 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
         iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are
-                buffer_gb : float, default: 1.0
-                    In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                    buffer shape.
-                buffer_shape : tuple, optional
-                    Manual specification of buffer shape to return on each iteration.
-                    Must be a multiple of chunk_shape along each axis.
-                    Cannot be set if `buffer_gb` is specified.
-                chunk_mb : float. default: 1.0
-                    Should be below 1 MB. Automatically calculates suitable chunk shape.
-                chunk_shape : tuple, optional
-                    Manual specification of the internal chunk shape for the HDF5 dataset.
-                    Cannot be set if `chunk_mb` is also specified.
-                display_progress : bool, default: False
-                    Display a progress bar with iteration rate and estimated completion time.
-                progress_bar_options : dict, optional
-                    Dictionary of keyword arguments to be passed directly to tqdm.
-                    See https://github.com/tqdm/tqdm#parameters for options.
+            Valid options are:
+
+            * buffer_gb : float, default: 1.0
+                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
+                buffer shape.
+            * buffer_shape : tuple, optional
+                Manual specification of buffer shape to return on each iteration.
+                Must be a multiple of chunk_shape along each axis.
+                Cannot be set if `buffer_gb` is specified.
+            * chunk_mb : float. default: 1.0
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+            * chunk_shape : tuple, optional
+                Manual specification of the internal chunk shape for the HDF5 dataset.
+                Cannot be set if `chunk_mb` is also specified.
+            * display_progress : bool, default: False
+                Display a progress bar with iteration rate and estimated completion time.
+            * progress_bar_options : dict, optional
+                Dictionary of keyword arguments to be passed directly to tqdm.
+                See https://github.com/tqdm/tqdm#parameters for options.
         """
         from ...tools.spikeinterface import add_recording
 

@@ -62,7 +62,8 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
         nwb file to which the recording information is to be added
     metadata: DeepDict
         metadata info for constructing the nwb file (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['Device'] = [
                 {
                     'name': my_name,
@@ -70,6 +71,7 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
                 },
                 ...
             ]
+
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     if nwbfile is not None:
@@ -102,7 +104,8 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
         nwb file to which the recording information is to be added
     metadata: dict
         metadata info for constructing the nwb file (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['ElectrodeGroup'] = [
                 {
                     'name': my_name,
@@ -112,7 +115,8 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
                 },
                 ...
             ]
-        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults.
+
+        Missing keys in an element of ``metadata['Ecephys']['ElectrodeGroup']`` will be auto-populated with defaults.
         Group names set by RecordingExtractor channel properties will also be included with passed metadata,
         but will only use default description and location.
     """
@@ -191,7 +195,8 @@ def add_electrodes(
         nwb file to which the recording information is to be added
     metadata: dict
         metadata info for constructing the nwb file (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -199,6 +204,7 @@ def add_electrodes(
                 },
                 ...
             ]
+
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
         Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
@@ -532,11 +538,13 @@ def add_electrical_series(
         nwb file to which the recording information is to be added
     metadata : dict, optional
         metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['ElectricalSeries'] = dict(
                 name=my_name,
                 description=my_description
             )
+
     segment_index : int, default: 0
         The recording segment to add to the NWBFile.
     starting_time : float, optional
@@ -722,7 +730,8 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
         NWB file to which the recording information is to be added
     metadata : dict, optional
         metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Ecephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -730,15 +739,16 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
                 },
                 ...
             ]
-        Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
-        properties in the RecordingExtractor object.
-        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
+
+        Note that data intended to be added to the electrodes table of the ``NWBFile`` should be set as channel
+        properties in the ``RecordingExtractor`` object.
+        Missing keys in an element of ``metadata['Ecephys']['ElectrodeGroup']`` will be auto-populated with defaults
         whenever possible.
-        If 'my_name' is set to one of the required fields for nwbfile
+        If ``'my_name'`` is set to one of the required fields for nwbfile
         electrodes (id, x, y, z, imp, location, filtering, group_name),
         then the metadata will override their default values.
-        Setting 'my_name' to metadata field 'group' is not supported as the linking to
-        nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
+        Setting ``'my_name'`` to metadata field ``'group'`` is not supported as the linking to
+        ``nwbfile.electrode_groups`` is handled automatically; please specify the string ``'group_name'`` in this case.
         If no group information is passed via metadata, automatic linking to existing electrode groups,
         possibly including the default, will occur.
     """
@@ -816,14 +826,17 @@ def write_recording(
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata : dict, optional
         metadata info for constructing the nwb file (optional). Should be
-        of the format
+        of the format::
+
             metadata['Ecephys'] = {
                 'Device': [
                     {
@@ -885,23 +898,24 @@ def write_recording(
     iterator_opts: dict, optional
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
         Valid options are:
-            buffer_gb : float, default: 1.0
-                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                buffer shape.
-            buffer_shape : tuple, optional
-                Manual specification of buffer shape to return on each iteration.
-                Must be a multiple of chunk_shape along each axis.
-                Cannot be set if `buffer_gb` is specified.
-            chunk_mb : float. default: 1.0
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-            chunk_shape : tuple, optional
-                Manual specification of the internal chunk shape for the HDF5 dataset.
-                Cannot be set if `chunk_mb` is also specified.
-            display_progress : bool, default: False
-                Display a progress bar with iteration rate and estimated completion time.
-            progress_bar_options : dict, optional
-                Dictionary of keyword arguments to be passed directly to tqdm.
-                See https://github.com/tqdm/tqdm#parameters for options.
+
+        * buffer_gb : float, default: 1.0
+            In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
+            buffer shape.
+        * buffer_shape : tuple, optional
+            Manual specification of buffer shape to return on each iteration.
+            Must be a multiple of chunk_shape along each axis.
+            Cannot be set if `buffer_gb` is specified.
+        * chunk_mb : float. default: 1.0
+            Should be below 1 MB. Automatically calculates suitable chunk shape.
+        * chunk_shape : tuple, optional
+            Manual specification of the internal chunk shape for the HDF5 dataset.
+            Cannot be set if `chunk_mb` is also specified.
+        * display_progress : bool, default: False
+            Display a progress bar with iteration rate and estimated completion time.
+        * progress_bar_options : dict, optional
+            Dictionary of keyword arguments to be passed directly to tqdm.
+            See https://github.com/tqdm/tqdm#parameters for options.
     """
 
     with make_or_load_nwbfile(
@@ -1201,8 +1215,10 @@ def write_sorting(
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -1269,8 +1285,10 @@ def add_waveforms(
     waveform_extractor
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -1375,8 +1393,10 @@ def write_waveforms(
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.

@@ -18,7 +18,6 @@ and synchronize data across multiple sources.
 
   datainterfaces
   nwbconverter
-  schemas
   temporal_alignment
   csvs
   expand_path
