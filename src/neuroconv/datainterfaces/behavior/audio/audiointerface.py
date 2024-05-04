@@ -41,9 +41,11 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         ----------
         file_paths : list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
-            We recommend using ``natsort`` to ensure the files are in consecutive order.
-                >>> from natsort import natsorted
-                >>> natsorted(file_paths)
+            We recommend using ``natsort`` to ensure the files are in consecutive order::
+
+                from natsort import natsorted
+                natsorted(file_paths)
+
         verbose : bool, default: False
         """
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]

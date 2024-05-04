@@ -40,6 +40,7 @@
 * Manual construction of a `DatasetIOConfiguration` now requires the field `dataset_name`, and will be validated to match the final path of `location_in_file`. Usage via the automated constructors is unchanged. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
 * Enhance `get_schema_from_method_signature` to extract descriptions from the method docval. [PR #771](https://github.com/catalystneuro/neuroconv/pull/771)
 * Avoid writing `channel_to_uV` and `offset_to_uV` in `add_electrodes`  [PR #803](https://github.com/catalystneuro/neuroconv/pull/803)
+* `BaseSegmentationExtractorInterface` now supports optional background plane segmentations and associated fluorescence traces [PR #783](https://github.com/catalystneuro/neuroconv/pull/783)
 
 
 # v0.4.7 (February 21, 2024)

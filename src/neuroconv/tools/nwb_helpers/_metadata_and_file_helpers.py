@@ -35,10 +35,12 @@ def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
 
-    These standard defaults are
+    These standard defaults are::
+
         metadata["NWBFile"]["session_description"] = "no description"
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
-    Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
+
+    Proper conversions should override these fields prior to calling ``NWBConverter.run_conversion()``
     """
     metadata = DeepDict()
     metadata["NWBFile"].deep_update(
@@ -86,7 +88,7 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
     Parameters
     ----------
     nwbfile: NWBFile
-        nwb file to which the new device information is to be added
+        NWBFile to which the new device information is to be added
     modality: str
         Type of data recorded by device. Options:
         - Ecephys (default)
@@ -95,7 +97,8 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
         - Behavior
     metadata: dict
         Metadata info for constructing the NWBFile (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata[modality]['Device'] = [
                 {
                     'name': my_name,
@@ -103,7 +106,8 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
                 },
                 ...
             ]
-        Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+
+        Missing keys in an element of ``metadata['Ecephys']['Device']`` will be auto-populated with defaults.
     """
     metadata_copy = deepcopy(metadata) if metadata is not None else dict()
 
@@ -148,14 +152,13 @@ def make_or_load_nwbfile(
         An in-memory NWBFile object to write to the location.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, optional
+    overwrite: bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     backend : "hdf5" or "zarr", default: "hdf5"
         The type of backend used to create the file.
-    verbose: bool, optional
+    verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-        The default is True.
     """
     from . import BACKEND_NWB_IO
 

@@ -149,7 +149,8 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
         NWBFile object to add the icephys electrode to.
     metadata : dict, optional
         Metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Icephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -449,9 +450,12 @@ def write_neo_to_nwb(
         Required if a save_path is not specified. If passed, this function
         will fill the relevant fields within the nwbfile.
     metadata: dict
-        metadata info for constructing the nwb file (optional). Should be of the format
+        metadata info for constructing the nwb file (optional). Should be of the format::
+
             metadata['Ecephys'] = {}
-        with keys of the forms
+
+        with keys of the forms::
+
             metadata['Ecephys']['Device'] = [
                 {
                     'name': my_name,
