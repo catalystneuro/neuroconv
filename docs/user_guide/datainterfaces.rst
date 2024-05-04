@@ -105,8 +105,8 @@ NWB Best Practices also recommends several other fields that are rarely present 
 
     metadata["NWBFile"].update(
         session_id="session_1",
-        session_description="Observation of finches on the Galapagos Islands",
-        experiment_description="Observation of finches on the Galapagos Islands",
+        session_description="Observations of desert plants and reptiles on the island of San Cristobal.",
+        experiment_description="Observations of wildlife across the Galapagos Islands.",
         experimenter="Darwin, Charles",
         lab="Evolutionary Biology",
         institution="University of Cambridge",
