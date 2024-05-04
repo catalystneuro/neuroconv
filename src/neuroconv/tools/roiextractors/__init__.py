@@ -1,4 +1,6 @@
 from .roiextractors import (
+    add_background_fluorescence_traces,
+    add_background_plane_segmentation,
     add_devices,
     add_fluorescence_traces,
     add_image_segmentation,
