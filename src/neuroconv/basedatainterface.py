@@ -161,7 +161,7 @@ class BaseDataInterface(ABC):
             else:
                 raise ValueError(
                     f"Both `backend` and `backend_configuration` were specified and are conflicting."
-                    f"backend: {backend}, backend_configuration.backend: {backend_configuration.backend}."
+                    f"{backend=}, {backend_configuration.backend=}."
                     "These values must match. To suppress this error, specify only `backend_configuration`."
                 )
 
