@@ -107,7 +107,24 @@ class DataInterfaceTestMixin:
             nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, backend=backend, **self.conversion_options
         )
 
-    def check_run_conversion_custom_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+    def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+    def check_run_conversion_with_backend_configuration(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
@@ -119,12 +136,11 @@ class DataInterfaceTestMixin:
             overwrite=True,
             nwbfile=nwbfile,
             metadata=metadata,
-            backend=backend,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
 
-    def check_run_conversion_default_backend_in_nwbconverter(
+    def check_run_conversion_in_nwbconverter_with_backend(
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
@@ -144,6 +160,30 @@ class DataInterfaceTestMixin:
             overwrite=True,
             metadata=metadata,
             backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, backend: Union["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        metadata = converter.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        conversion_options = dict(Test=self.conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
             conversion_options=conversion_options,
         )
 
@@ -182,11 +222,25 @@ class DataInterfaceTestMixin:
 
                 self.check_no_metadata_mutation()
 
+                self.check_run_conversion_default_backend_in_nwbconverter(nwbfile_path=self.nwbfile_path)
+
                 self.check_run_conversion_default_backend_in_nwbconverter(
                     nwbfile_path=self.nwbfile_path, backend="hdf5"
                 )
 
-                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                nwbfile = self.interface.create_nwbfile(
+                    metadata=self.interface.get_metadata(), **self.conversion_options
+                )
+                backend_configuration = self.interface.get_default_backend_configuration(
+                    nwbfile=nwbfile, backend="hdf5"
+                )
+                self.check_run_conversion_default_backend_in_nwbconverter(
+                    nwbfile_path=self.nwbfile_path, backend_configuration=backend_configuration
+                )
+
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, backend="hdf5"
+                )
                 self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
