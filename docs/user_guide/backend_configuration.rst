@@ -202,7 +202,6 @@ The following example uses the :ref:`example data <example_data>` available from
     converter.run_conversion(
         nwbfile_path=nwbfile_path,
         nwbfile=nwbfile,
-        backend=backend,
         backend_configuration=backend_configuration,
     )
 
@@ -247,6 +246,7 @@ created from data interfaces and converters, would have the following structure.
     from pynwb import TimeSeries
 
     nwbfile_path = "./my_nwbfile.nwb"
+    backend="hdf5"
 
     session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     nwbfile = pynwb.NWBFile(
@@ -269,11 +269,11 @@ created from data interfaces and converters, would have the following structure.
         nwbfile_path=nwbfile_path,
         nwbfile=nwbfile,
         overwrite=True,
-        backend="hdf5",
+        backend=backend,
         verbose=True,
     ):
         backend_configuration = get_default_backend_configuration(
-            nwbfile=nwbfile, backend="hdf5"
+            nwbfile=nwbfile, backend=backend
         )
 
         # Make any modifications to the configuration in this step, for example...
