@@ -1,8 +1,8 @@
 import json
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
-import warnings
 
 from jsonschema import validate
 from pynwb import NWBFile
