@@ -86,8 +86,8 @@ class BaseDataInterface(ABC):
         if metadata is None:
             metadata = self.get_metadata()
 
-        nwbfile = make_nwbfile_from_metadata(metadata)
-        self.add_to_nwbfile(nwbfile, metadata=metadata, **conversion_options)
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
         return nwbfile
 
     @abstractmethod

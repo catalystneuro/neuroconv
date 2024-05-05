@@ -13,6 +13,7 @@ from .tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
     get_default_nwbfile_metadata,
+    make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
 from .utils import (
@@ -119,6 +120,30 @@ class NWBConverter:
         validate(instance=source_data, schema=self.get_source_schema())
         if verbose:
             print("Source data is valid!")
+
+    def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
+        """
+        Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
+
+        Parameters
+        ----------
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile.
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+
+        Returns
+        -------
+        nwbfile : pynwb.NWBFile
+            The in-memory object with this interface's data added to it.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+        return nwbfile
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
         conversion_options = conversion_options or dict()
