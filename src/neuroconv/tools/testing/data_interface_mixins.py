@@ -173,6 +173,7 @@ class DataInterfaceTestMixin:
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             conversion_options=conversion_options,
         )
