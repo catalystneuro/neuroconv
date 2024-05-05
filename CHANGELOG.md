@@ -22,6 +22,9 @@
 
 ### Improvements
 * Fixed docstrings related to backend configurations for various methods. [PR #822](https://github.com/catalystneuro/neuroconv/pull/822)
+* Added automatic `backend` detection when a `backend_configuration` is passed to an interface or converter. [PR #840]
+  (https://github.
+  com/catalystneuro/neuroconv/pull/840)
 
 ### Testing
 * Add general test for metadata in-place modification by interfaces. [PR #815](https://github.com/catalystneuro/neuroconv/pull/815)
