@@ -153,15 +153,23 @@ class BaseDataInterface(ABC):
         if backend_configuration is not None and nwbfile is None:
             raise ValueError("When specifying a custom `backend_configuration`, you must also provide an `nwbfile`.")
         if backend is not None and backend_configuration is not None:
-            raise ValueError("Please specify only one of `backend` or `backend_configuration`.")
+            if backend == backend_configuration.backend:
+                warnings.warn(
+                    f"Both `backend` and `backend_configuration` were specified as type '{backend}'. "
+                    "To suppress this warning, specify only `backend_configuration`."
+                )
+            else:
+                raise ValueError(
+                    f"Both `backend` and `backend_configuration` were specified and are conflicting."
+                    f"backend: {backend}, backend_configuration.backend: {backend_configuration.backend}."
+                    "These values must match. To suppress this error, specify only `backend_configuration`."
+                )
+
+        if backend is None:
+            backend = backend_configuration.backend if backend_configuration is not None else "hdf5"
 
         if metadata is None:
             metadata = self.get_metadata()
-
-        if backend is None and backend_configuration is None:
-            backend = "hdf5"
-        if backend is None and backend_configuration is not None:
-            backend = backend_configuration.backend
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
