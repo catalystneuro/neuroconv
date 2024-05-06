@@ -194,14 +194,14 @@ initialized before calling this method.
               "type": "array",
               "minItems": 1,
               "items": {
-                "$ref": "#/properties/Ecephys/properties/definitions/Device"
+                "$ref": "#/properties/Ecephys/definitions/Device"
               }
             },
             "ElectrodeGroup": {
               "type": "array",
               "minItems": 1,
               "items": {
-                "$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"
+                "$ref": "#/properties/Ecephys/definitions/ElectrodeGroup"
               }
             },
             "Electrodes": {
@@ -209,77 +209,7 @@ initialized before calling this method.
               "minItems": 0,
               "renderForm": false,
               "items": {
-                "$ref": "#/properties/Ecephys/properties/definitions/Electrodes"
-              }
-            },
-            "definitions": {
-              "Device": {
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "description": "the name of this device",
-                    "type": "string"
-                  },
-                  "description": {
-                    "description": "Description of the device (e.g., model, firmware version, processing software version, etc.)",
-                    "type": "string"
-                  },
-                  "manufacturer": {
-                    "description": "the name of the manufacturer of this device",
-                    "type": "string"
-                  }
-                },
-                "type": "object",
-                "additionalProperties": false
-              },
-              "ElectrodeGroup": {
-                "required": [
-                  "name",
-                  "description",
-                  "location",
-                  "device"
-                ],
-                "properties": {
-                  "name": {
-                    "description": "the name of this electrode group",
-                    "type": "string"
-                  },
-                  "description": {
-                    "description": "description of this electrode group",
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "description of location of this electrode group",
-                    "type": "string"
-                  },
-                  "device": {
-                    "description": "the device that was used to record from this electrode group",
-                    "type": "string",
-                    "target": "pynwb.device.Device"
-                  }
-                },
-                "type": "object",
-                "additionalProperties": false,
-                "tag": "pynwb.ecephys.ElectrodeGroup"
-              },
-              "Electrodes": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "description": "name of this electrodes column"
-                  },
-                  "description": {
-                    "type": "string",
-                    "description": "description of this electrodes column"
-                  }
-                }
+                "$ref": "#/properties/Ecephys/definitions/Electrodes"
               }
             },
             "ElectricalSeriesRaw": {
@@ -345,6 +275,76 @@ initialized before calling this method.
           "type": "object",
           "additionalProperties": false,
           "tag": "Ecephys"
+          },
+          "definitions": {
+            "Device": {
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "description": "the name of this device",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Description of the device (e.g., model, firmware version, processing software version, etc.)",
+                  "type": "string"
+                },
+                "manufacturer": {
+                  "description": "the name of the manufacturer of this device",
+                  "type": "string"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "ElectrodeGroup": {
+              "required": [
+                "name",
+                "description",
+                "location",
+                "device"
+              ],
+              "properties": {
+                "name": {
+                  "description": "the name of this electrode group",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "description of this electrode group",
+                  "type": "string"
+                },
+                "location": {
+                  "description": "description of location of this electrode group",
+                  "type": "string"
+                },
+                "device": {
+                  "description": "the device that was used to record from this electrode group",
+                  "type": "string",
+                  "target": "pynwb.device.Device"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false,
+              "tag": "pynwb.ecephys.ElectrodeGroup"
+            },
+            "Electrodes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "name of this electrodes column"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "description of this electrodes column"
+                }
+              }
+          }
         }
       },
       "type": "object",

@@ -55,11 +55,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         assert "ElectricalSeriesRaw" in acquisition_module
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
-        assert isinstance(electrical_series.data, H5DataIO)
-
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
-
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -188,35 +183,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             add_electrical_series(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
             )
-
-    def test_write_with_higher_gzip_level(self):
-        compression = "gzip"
-        compression_opts = 8
-        add_electrical_series(
-            recording=self.test_recording_extractor,
-            nwbfile=self.nwbfile,
-            iterator_type=None,
-            compression=compression,
-            compression_opts=compression_opts,
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert compression_parameters["compression_opts"] == compression_opts
-
-    def test_write_with_lzf_compression(self):
-        compression = "lzf"
-        add_electrical_series(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert "compression_opts" not in compression_parameters
 
 
 class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
@@ -440,8 +406,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert isinstance(electrical_series_data_iterator, SpikeInterfaceRecordingDataChunkIterator)
 
@@ -457,18 +422,16 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
-    def test_hdfm_iterator(self):
+    def test_hdmf_iterator(self):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert isinstance(electrical_series_data_iterator, DataChunkIterator)
 
@@ -500,7 +463,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder.get_num_channels.return_value = num_channels
         mock_recorder.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
+        reg_expression = f"Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
@@ -552,11 +515,6 @@ class TestWriteRecording(unittest.TestCase):
         acquisition_module = self.nwbfile.acquisition
         assert "ElectricalSeriesRaw" in acquisition_module
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-
-        assert isinstance(electrical_series.data, H5DataIO)
-
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
 
         extracted_data = electrical_series.data[:]
         expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
