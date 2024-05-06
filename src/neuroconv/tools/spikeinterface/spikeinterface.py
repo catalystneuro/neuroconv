@@ -7,7 +7,6 @@ from typing import List, Literal, Optional, Union
 import numpy as np
 import psutil
 import pynwb
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from spikeinterface import BaseRecording, BaseSorting
 
@@ -523,7 +522,7 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
+    compression: Optional[str] = None,
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
@@ -578,6 +577,17 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    # TODO: remove completely after 10/1/2024
+    if compression is not None or compression_opts is not None:
+        warnings.warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
     assert write_as in [
         "raw",
         "processed",
@@ -669,13 +679,7 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    if compression is not None:
-        # in this case we assume HDF5 backend and compression
-        eseries_kwargs.update(
-            data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
-        )
-    else:
-        eseries_kwargs.update(data=ephys_data_iterator)
+    eseries_kwargs.update(data=ephys_data_iterator)
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
     if recording.has_time_vector(segment_index=segment_index):
