@@ -122,7 +122,6 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
-
     def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
         """
         Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.

@@ -22,8 +22,9 @@ from pydantic import (
 from pynwb import NWBFile
 from typing_extensions import Self
 
-from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from neuroconv.utils.str_utils import human_readable_size
+
+from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from ...hdmf import SliceableDataChunkIterator
 
 
