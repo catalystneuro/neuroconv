@@ -139,7 +139,7 @@ Then we can use this configuration to write the NWB file:
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
     with IO("my_nwbfile.nwb", mode="w") as io:
-        io.write(nwbfile, backend_configuration=backend_configuration)
+        io.write(nwbfile)
 
 
 Interfaces and Converters
