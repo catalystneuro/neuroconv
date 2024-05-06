@@ -135,7 +135,7 @@ Then we can use this configuration to write the NWB file:
 
     dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
 
-    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+    configure_backend(nwbfile=nwbfile, backend_configurations=backend_configurations)
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
     with IO("my_nwbfile.nwb", mode="w") as io:
