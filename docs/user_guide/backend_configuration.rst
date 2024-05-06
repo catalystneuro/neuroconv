@@ -285,6 +285,7 @@ You can see what compression methods are available on your installation by print
 
     And likewise for ``AVAILABLE_ZARR_COMPRESSION_METHODS``.
 
+
 **Can I modify the maximum shape or data type through the NeuroConv backend configuration?**
 
 Core fields such as the maximum shape and data type of the source data cannot be altered using the NeuroConv backend configuration.
@@ -298,11 +299,13 @@ The ``buffer_shape`` must be a multiple of the ``chunk_shape`` along each axis.
 
 This was found to give significant performance increases compared to previous data iterators that caused repeated I/O operations through partial chunk writes.
 
+
 **How do I disable chunking and compression completely?**
 
 To completely disable chunking for HDF5 backends (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``. Zarr requires all datasets to be chunked.
 
-While you could also delete the entry from the NeuroConv backend configuration, what would happen would depend on the way the initial dataset field of that neurodata object was configured, and may fall back to a default that still utilized chunking or compression.
+You could also delete the entry from the NeuroConv backend configuration, which would cause the neurodata object to fallback to whatever default method wrapped the dataset field when it was added to the in-memory ``pynwb.NWBFile``.
+
 
 **How do I confirm that the backend configuration has been applied?**
 
@@ -331,5 +334,7 @@ Which prints out:
     compression='zstd'
     compression_options=7
 
-You may have noticed that the name of the key for that compression option got lost in translation; this is because
+.. note::
+
+    You may have noticed that the name of the key for that compression option got lost in translation; this is because
 HDF5 implicitly forces the order of each option in the tuple (or in this case, a scalar).
