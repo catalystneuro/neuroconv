@@ -1,7 +1,7 @@
 Backend Configuration
 =====================
 
-NeuroConv offers highly convenient control over the type of file backend and the way its datasets are configured.
+NeuroConv offers convenient control over the type of file backend and the way each dataset is configured.
 
 Find out more about possible backend formats in the `main NWB documentation <https://nwb-overview.readthedocs.io/en/latest/faq_details/why_hdf5.html#why-use-hdf5-as-the-primary-backend-for-nwb>`_.
 
@@ -14,7 +14,7 @@ Find out more about memory buffering of large source files in the `advanced NWB 
 Default configuration
 ---------------------
 
-To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the ``get_default_backend_configuration`` function...
+To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the ``get_default_backend_configuration`` function:
 
 .. code-block:: python
 
@@ -44,7 +44,7 @@ To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, u
         nwbfile=nwbfile, backend="hdf5"
     )
 
-From which a printout of the contents looks like...
+From which a printout of the contents looks like:
 
 .. code-block:: python
 
@@ -99,19 +99,9 @@ Let's demonstrate this by modifying everything we can for the ``data`` field of 
     dataset_configuration.compression_method = "Zstd"
     dataset_configuration.compression_options = dict(clevel=3)
 
-Some details to note about what can be changed...
+Core fields such as the maximum shape and data type of the source data cannot be altered using this method. The ``buffer_shape`` must be a multiple of the ``chunk_shape`` along each axis. To completely disable chunking (i.e., 'contiguous' layout), set ``chunk_shape=None``.
 
-.. note::
-
-    Core fields such as the maximum shape and data type of the source data cannot be altered using this method.
-
-.. note::
-
-    The ``buffer_shape`` must be a multiple of the ``chunk_shape`` along each axis.
-
-.. note::
-
-    You can see what compression methods are available on your installation by examining the following...
+You can see what compression methods are available on your installation by examining the following:
 
     .. code-block:: python
 
@@ -127,7 +117,7 @@ Some details to note about what can be changed...
 
     And likewise for ``AVAILABLE_ZARR_COMPRESSION_METHODS``.
 
-We can confirm these values are saved by re-printing that particular dataset configuration...
+We can confirm these values are saved by re-printing that particular dataset configuration:
 
 .. code-block:: python
 
@@ -156,7 +146,7 @@ Interfaces and Converters
 
 The normal workflow when writing an NWB file using a ``DataInterface`` or ``NWBConverter`` is simple to configure.
 
-The following example uses the :ref:`example data <example_data>` available from the testing repo...
+The following example uses the :ref:`example data <example_data>` available from the testing repo:
 
 .. code-block:: python
 
