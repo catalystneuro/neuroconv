@@ -181,7 +181,7 @@ class BaseDataInterface(ABC):
             backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            if backend_configuration is None and nwbfile is None:
+            if backend_configuration is None:
                 # In this case, assume the relevant data has not been added to the NWBFile
                 self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
 
