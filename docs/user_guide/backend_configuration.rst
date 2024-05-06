@@ -58,7 +58,7 @@ returns:
     -------------------------------------------------------
 
     acquisition/MyTimeSeries/data
-    =============================
+    -----------------------------
       dtype : float64
       full shape of source array : (3,)
       full size of source array : 24 B
