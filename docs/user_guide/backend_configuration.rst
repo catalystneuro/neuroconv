@@ -44,11 +44,13 @@ To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, u
         nwbfile=nwbfile, backend="hdf5"
     )
 
-From which a printout of the contents looks like:
+From which a printout of the contents:
 
 .. code-block:: python
 
     print(default_backend_configuration)
+
+returns:
 
 .. code-block:: bash
 
@@ -56,7 +58,7 @@ From which a printout of the contents looks like:
     -------------------------------------------------------
 
     acquisition/MyTimeSeries/data
-    -----------------------------
+    =============================
       dtype : float64
       full shape of source array : (3,)
       full size of source array : 24 B
@@ -83,6 +85,8 @@ From which a printout of the contents looks like:
 
       compression method : gzip
 
+
+
 Customization
 -------------
 
@@ -94,28 +98,11 @@ Let's demonstrate this by modifying everything we can for the ``data`` field of 
 
     dataset_configurations = default_backend_configuration.dataset_configurations
     dataset_configuration = dataset_configurations["acquisition/MyTimeSeries/data"]
+
     dataset_configuration.chunk_shape = (1,)
     dataset_configuration.buffer_shape = (2,)
     dataset_configuration.compression_method = "Zstd"
     dataset_configuration.compression_options = dict(clevel=3)
-
-Core fields such as the maximum shape and data type of the source data cannot be altered using this method. The ``buffer_shape`` must be a multiple of the ``chunk_shape`` along each axis. To completely disable chunking (i.e., 'contiguous' layout), set ``chunk_shape=None``.
-
-You can see what compression methods are available on your installation by examining the following:
-
-    .. code-block:: python
-
-      from neuroconv.tools.nwb_helpers import AVAILABLE_HDF5_COMPRESSION_METHODS
-
-      AVAILABLE_HDF5_COMPRESSION_METHODS
-
-    .. code-block:: bash
-
-      {'gzip': 'gzip',
-       ...
-       'Zstd': hdf5plugin._filters.Zstd}
-
-    And likewise for ``AVAILABLE_ZARR_COMPRESSION_METHODS``.
 
 We can confirm these values are saved by re-printing that particular dataset configuration:
 
@@ -139,6 +126,7 @@ We can confirm these values are saved by re-printing that particular dataset con
 
       compression method : Zstd
       compression options : {'clevel': 3}
+
 
 
 Interfaces and Converters
@@ -272,3 +260,45 @@ created from data interfaces and converters, would have the following structure.
         configure_backend(
             nwbfile=nwbfile, backend_configuration=backend_configuration
         )
+
+
+
+FAQ
+---
+
+**How do I see what compression methods are available on my system?**
+
+You can see what compression methods are available on your installation by printing out the following variable:
+
+    .. code-block:: python
+
+      from neuroconv.tools.nwb_helpers import AVAILABLE_HDF5_COMPRESSION_METHODS
+
+      AVAILABLE_HDF5_COMPRESSION_METHODS
+
+    .. code-block:: bash
+
+      {'gzip': 'gzip',
+       ...
+       'Zstd': hdf5plugin._filters.Zstd}
+
+    And likewise for ``AVAILABLE_ZARR_COMPRESSION_METHODS``.
+
+**Can I modify the maximum shape or data type through the NeuroConv backend configuration?**
+
+Core fields such as the maximum shape and data type of the source data cannot be altered using the NeuroConv backend configuration.
+
+Instead, they would have to be changed at the level of the read operation; these are sometimes exposed to the initialization inputs or source data options.
+
+
+**Can I specify a buffer shape that incompletely spans the chunks?**
+
+The ``buffer_shape`` must be a multiple of the ``chunk_shape`` along each axis.
+
+This was found to give significant performance increases compared to previous data iterators that caused repeated I/O operations through partial chunk writes.
+
+**How do I disable chunking and compression completely?**
+
+To completely disable chunking (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``.
+
+While you could also delete the entry from the NeuroConv backend configuration, what would happen would depend on the way the initial dataset field of that neurodata object was configured, and may fall back to a default that still utilized chunking or compression.
