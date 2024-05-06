@@ -23,6 +23,7 @@ from pynwb import NWBFile
 from typing_extensions import Self
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
+from neuroconv.utils.str_utils import human_readable_size
 from ...hdmf import SliceableDataChunkIterator
 
 
@@ -143,23 +144,22 @@ class DatasetIOConfiguration(BaseModel, ABC):
         `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
-        source_size_in_gb = math.prod(self.full_shape) * self.dtype.itemsize / 1e9
-        maximum_ram_usage_per_iteration_in_gb = math.prod(self.buffer_shape) * self.dtype.itemsize / 1e9
-        disk_space_usage_per_chunk_in_mb = math.prod(self.chunk_shape) * self.dtype.itemsize / 1e6
+        size_in_bytes = math.prod(self.full_shape) * self.dtype.itemsize
+        maximum_ram_usage_per_iteration_in_bytes = math.prod(self.buffer_shape) * self.dtype.itemsize
+        disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
 
         string = (
             f"\n{self.location_in_file}"
             f"\n{'-' * len(self.location_in_file)}"
             f"\n  dtype : {self.dtype}"
             f"\n  full shape of source array : {self.full_shape}"
-            f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
-            # TODO: add nicer auto-selection/rendering of units and amount for source data size
+            f"\n  full size of source array : {human_readable_size(size_in_bytes)}"
             "\n"
             f"\n  buffer shape : {self.buffer_shape}"
-            f"\n  expected RAM usage : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
+            f"\n  expected RAM usage : {human_readable_size(maximum_ram_usage_per_iteration_in_bytes)}"
             "\n"
             f"\n  chunk shape : {self.chunk_shape}"
-            f"\n  disk space usage per chunk : {disk_space_usage_per_chunk_in_mb:0.2f} MB"
+            f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
             "\n"
         )
         if self.compression_method is not None:

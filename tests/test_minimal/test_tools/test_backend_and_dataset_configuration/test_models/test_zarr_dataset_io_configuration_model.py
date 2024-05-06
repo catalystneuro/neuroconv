@@ -28,7 +28,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -54,7 +54,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -81,7 +81,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -105,7 +105,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -135,7 +135,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  expected RAM usage : 0.96 GB
+  expected RAM usage : 960.00 MB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
