@@ -54,8 +54,8 @@ returns:
 
 .. code-block:: bash
 
-    Configurable datasets identified using the hdf5 backend
-    -------------------------------------------------------
+    HDF5 dataset configurations
+    ---------------------------
 
     acquisition/MyTimeSeries/data
     -----------------------------
@@ -128,7 +128,6 @@ We can confirm these values are saved by re-printing that particular dataset con
       compression options : {'clevel': 3}
 
 
-
 Interfaces and Converters
 -------------------------
 
@@ -185,7 +184,8 @@ The following example uses the :ref:`example data <example_data>` available from
 
 .. note::
 
-    If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow the classic workflow...
+    If you do not intend to make any alterations to the default configuration for the given backend type, then you
+can follow the classic workflow:
 
     .. code-block:: python
 
@@ -221,13 +221,13 @@ created from data interfaces and converters, would have the following structure.
 
     from dateutil import tz
     from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
-    from pynwb import TimeSeries
+    from pynwb import NWBFile, TimeSeries
 
     nwbfile_path = "./my_nwbfile.nwb"
     backend="hdf5"
 
     session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
-    nwbfile = pynwb.NWBFile(
+    nwbfile = NWBFile(
         session_start_time=session_start_time,
         session_description="My description...",
         identifier=str(uuid4()),
@@ -255,7 +255,8 @@ created from data interfaces and converters, would have the following structure.
         )
 
         # Make any modifications to the configuration in this step, for example...
-        backend_configuration["acquisition/MyTimeSeries/data"].compression_options = dict(level=7)
+        dataset_configurations = backend_configuration.dataset_configurations
+        dataset_configurations["acquisition/MyTimeSeries/data"].compression_options = dict(level=7)
 
         configure_backend(
             nwbfile=nwbfile, backend_configuration=backend_configuration
@@ -302,3 +303,35 @@ This was found to give significant performance increases compared to previous da
 To completely disable chunking (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``.
 
 While you could also delete the entry from the NeuroConv backend configuration, what would happen would depend on the way the initial dataset field of that neurodata object was configured, and may fall back to a default that still utilized chunking or compression.
+
+**How do I confirm that the backend configuration has been applied?**
+
+The easiest way to check this information is to open the resulting file in ``h5py`` or ``zarr`` and print out the dataset properties.
+
+For example, using the ``h5py`` library:
+
+You can then confirm that the dataset was written that way to disk through ``h5py``:
+
+.. code-block:: python
+
+    import h5py
+
+    with h5py.File("my_nwbfile.nwb", "r") as file:
+        chunks = file["acquisition/MyTimeSeries/data"].chunks
+        compression = file["acquisition/MyTimeSeries/data"].compression
+        compression_options = file["acquisition/MyTimeSeries/data"].compression_opts
+
+        print(f"{chunks=}")
+        print(f"{compression=}")
+        print(f"{compression_options=}")
+
+Should look like:
+
+.. code-block:: bash
+
+    chunks=(1,)
+    compression='zstd'
+    compression_options=7
+
+You may have noticed that the name of the key for that compression option got lost in translation; this is because
+HDF5 implicitly forces the order of each option in the tuple (or in this case, a scalar).
