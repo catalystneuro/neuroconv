@@ -21,5 +21,6 @@ and synchronize data across multiple sources.
   temporal_alignment
   csvs
   expand_path
+  backend_configuration
   yaml
   docker_demo
