@@ -54,8 +54,8 @@ returns:
 
 .. code-block:: bash
 
-    HDF5 backend configuration
-    --------------------------
+    HDF5 dataset configurations
+    ---------------------------
 
     acquisition/MyTimeSeries/data
     -----------------------------
