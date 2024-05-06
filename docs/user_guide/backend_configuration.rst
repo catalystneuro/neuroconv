@@ -131,13 +131,12 @@ Then we can use this configuration to write the NWB file:
 
 .. code-block:: python
 
-    from neuroconv.configure_backend import configure_backend, BACKEND_NWB_IO
+    from neuroconv.tools.nwb_helpers import configure_backend, BACKEND_NWB_IO
 
     dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
 
-    configure_backend(nwbfile=nwbfile, backend_configurations=backend_configurations)
-    IO = BACKEND_NWB_IO[backend_configuration.backend]
-
+    configure_backend(nwbfile=nwbfile, backend_configuration=default_backend_configuration)
+    IO = BACKEND_NWB_IO[default_backend_configuration.backend]
     with IO("my_nwbfile.nwb", mode="w") as io:
         io.write(nwbfile)
 
@@ -186,7 +185,9 @@ The following example uses the :ref:`example data <example_data>` available from
     )
 
     # Make any modifications to the configuration in this step, for example...
-    backend_configuration["acquisition/ElectricalSeriesAP/data"].compression_method = "Blosc"
+    dataset_configurations = backend_configuration.dataset_configurations
+    dataset_configuration = dataset_configurations["acquisition/ElectricalSeriesAP/data"]
+    dataset_configuration.compression_method = "Blosc"
 
     # Configure and write the NWB file
     nwbfile_path = "./my_nwbfile_name.nwb"
@@ -196,10 +197,7 @@ The following example uses the :ref:`example data <example_data>` available from
         backend_configuration=backend_configuration,
     )
 
-.. note::
-
-    If you do not intend to make any alterations to the default configuration for the given backend type, then you
-can follow the classic workflow:
+If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow the classic workflow:
 
     .. code-block:: python
 
@@ -219,7 +217,7 @@ can follow the classic workflow:
             backend=backend,
         )
 
-    and all datasets in the NWB file will automatically use the default configuration!
+and all datasets in the NWB file will automatically use the default configurations!
 
 
 Generic tools
