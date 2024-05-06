@@ -323,7 +323,7 @@ For example, we can confirm that the dataset was written to disk according to ou
         print(f"{compression=}")
         print(f"{compression_options=}")
 
-Should look like:
+Which prints out:
 
 .. code-block:: bash
 
