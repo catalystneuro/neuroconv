@@ -1,4 +1,5 @@
 import json
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
@@ -13,6 +14,7 @@ from .tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
     get_default_nwbfile_metadata,
+    make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
 from .utils import (
@@ -120,6 +122,30 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
+    def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
+        """
+        Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
+
+        Parameters
+        ----------
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile.
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+
+        Returns
+        -------
+        nwbfile : pynwb.NWBFile
+            The in-memory object with this interface's data added to it.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+        return nwbfile
+
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
         conversion_options = conversion_options or dict()
         for interface_name, data_interface in self.data_interface_objects.items():
@@ -136,7 +162,7 @@ class NWBConverter:
         # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
         # backend: Union[Literal["hdf5", "zarr"]],
         # backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
-        backend: Literal["hdf5"] = "hdf5",
+        backend: Optional[Literal["hdf5"]] = None,
         backend_configuration: Optional[HDF5BackendConfiguration] = None,
         conversion_options: Optional[dict] = None,
     ) -> None:
@@ -155,8 +181,10 @@ class NWBConverter:
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
+        backend : "hdf5", optional
             The type of backend to use when writing the file.
+            If a `backend_configuration` is not specified, the default type will be "hdf5".
+            If a `backend_configuration` is specified, then the type will be auto-detected.
         backend_configuration : HDF5BackendConfiguration, optional
             The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
@@ -166,6 +194,22 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
+        if backend is not None and backend_configuration is not None:
+            if backend == backend_configuration.backend:
+                warnings.warn(
+                    f"Both `backend` and `backend_configuration` were specified as type '{backend}'. "
+                    "To suppress this warning, specify only `backend_configuration`."
+                )
+            else:
+                raise ValueError(
+                    f"Both `backend` and `backend_configuration` were specified and are conflicting."
+                    f"{backend=}, {backend_configuration.backend=}."
+                    "These values must match. To suppress this error, specify only `backend_configuration`."
+                )
+
+        if backend is None:
+            backend = backend_configuration.backend if backend_configuration is not None else "hdf5"
+
         if metadata is None:
             metadata = self.get_metadata()
 
