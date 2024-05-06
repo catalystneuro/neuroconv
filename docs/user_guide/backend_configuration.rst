@@ -300,7 +300,7 @@ This was found to give significant performance increases compared to previous da
 
 **How do I disable chunking and compression completely?**
 
-To completely disable chunking (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``.
+To completely disable chunking for HDF5 backends (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``. Zarr requires all datasets to be chunked.
 
 While you could also delete the entry from the NeuroConv backend configuration, what would happen would depend on the way the initial dataset field of that neurodata object was configured, and may fall back to a default that still utilized chunking or compression.
 
