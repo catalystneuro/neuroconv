@@ -308,9 +308,7 @@ While you could also delete the entry from the NeuroConv backend configuration, 
 
 The easiest way to check this information is to open the resulting file in ``h5py`` or ``zarr`` and print out the dataset properties.
 
-For example, using the ``h5py`` library:
-
-You can then confirm that the dataset was written that way to disk through ``h5py``:
+For example, we can confirm that the dataset was written to disk according to our instructions by using ``h5py`` library to read the file we created in the previous section:
 
 .. code-block:: python
 
