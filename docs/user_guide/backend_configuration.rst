@@ -92,7 +92,7 @@ Customization
 
 To modify the chunking or buffering patterns and compression method or options, change those values in the ``.dataset_configurations`` object using the location of each dataset as a specifier.
 
-Let's demonstrate this by modifying everything we can for the ``data`` field of the ``TimeSeries`` object generated above...
+Let's demonstrate this by modifying everything we can for the ``data`` field of the ``TimeSeries`` object generated above:
 
 .. code-block:: python
 
@@ -126,6 +126,20 @@ We can confirm these values are saved by re-printing that particular dataset con
 
       compression method : Zstd
       compression options : {'clevel': 3}
+
+Then we can use this configuration to write the NWB file:
+
+.. code-block:: python
+
+    from neuroconv.configure_backend import configure_backend, BACKEND_NWB_IO
+
+    dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
+
+    configure_backend(nwbfile=nwbfile, backend_configurations=backend_configurations)
+    IO = BACKEND_NWB_IO[backend_configuration.backend]
+
+    with IO("my_nwbfile.nwb", mode="w") as io:
+        io.write(nwbfile)
 
 
 Interfaces and Converters
