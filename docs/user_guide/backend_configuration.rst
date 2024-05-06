@@ -211,8 +211,7 @@ can follow the classic workflow:
 Generic tools
 -------------
 
-If you are not using data interfaces or converters you can still use the general tools to configure the backend of any in-memory ``pynwb.NWBFile``....
-created from data interfaces and converters, would have the following structure...
+If you are not using data interfaces or converters you can still use the general tools to configure the backend of any in-memory ``pynwb.NWBFile``:
 
 .. code-block:: python
 
