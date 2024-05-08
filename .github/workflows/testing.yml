@@ -40,7 +40,7 @@ jobs:
 
 
       - name: Install neuroconv with minimal requirements
-        run: pip install .
+        run: pip install .[test]
       - name: Run import tests
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
