@@ -1,7 +1,11 @@
-from roiextractors.extractors.thorextractors.thorimagingextractor import ThorTiffImagingExtractor
+from roiextractors.extractors.thorextractors.thorimagingextractor import (
+    ThorTiffImagingExtractor,
+)
 
-from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
-from neuroconv.utils import FilePathType, DeepDict
+from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
+    BaseImagingExtractorInterface,
+)
+from neuroconv.utils import DeepDict, FilePathType
 
 
 class ThorTiffImagingInterface(BaseImagingExtractorInterface):
