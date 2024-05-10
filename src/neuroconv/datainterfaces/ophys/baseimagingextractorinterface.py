@@ -33,31 +33,35 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, verbose: bool = True, **source_data):
+    def __init__(
+        self,
+        verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        **source_data,
+    ):
         super().__init__(**source_data)
         self.imaging_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
+        self.photon_series_type = photon_series_type
 
-    def get_metadata_schema(
-        self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries"
-    ) -> dict:
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
 
         # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", photon_series_type]
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", self.photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
             ImagingPlane=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}),
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             {
-                photon_series_type: dict(
+                self.photon_series_type: dict(
                     type="array",
                     minItems=1,
-                    items={"$ref": f"#/properties/Ophys/definitions/{photon_series_type}"},
+                    items={"$ref": f"#/properties/Ophys/definitions/{self.photon_series_type}"},
                 ),
             }
         )
@@ -73,23 +77,21 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         photon_series = dict(
             OnePhotonSeries=OnePhotonSeries,
             TwoPhotonSeries=TwoPhotonSeries,
-        )[photon_series_type]
+        )[self.photon_series_type]
         metadata_schema["properties"]["Ophys"]["definitions"].update(
             {
-                photon_series_type: get_schema_from_hdmf_class(photon_series),
+                self.photon_series_type: get_schema_from_hdmf_class(photon_series),
             }
         )
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(
-        self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries"
-    ) -> DeepDict:
+    def get_metadata(self) -> DeepDict:
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=photon_series_type)
+        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
         metadata = dict_deep_update(default_metadata, metadata)
 
         # fix troublesome data types
