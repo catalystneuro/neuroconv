@@ -2042,5 +2042,6 @@ class TestAddToNwbfile(TestCase):
         interface = MockImagingInterface()
         interface.add_to_nwbfile(nwbfile)
 
+
 if __name__ == "__main__":
     unittest.main()
