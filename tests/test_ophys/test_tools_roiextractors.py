@@ -11,7 +11,6 @@ from unittest.mock import Mock
 
 import numpy as np
 import psutil
-import pynwb.testing.mock.file
 import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
@@ -21,6 +20,7 @@ from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.device import Device
 from pynwb.ophys import OnePhotonSeries
+from pynwb.testing.mock.file import mock_NWBFile
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
     generate_dummy_segmentation_extractor,
@@ -43,6 +43,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 from neuroconv.tools.roiextractors.roiextractors import (
     get_default_segmentation_metadata,
 )
+from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
 from neuroconv.utils import dict_deep_update
 
 
@@ -2031,6 +2032,15 @@ class TestAddSummaryImages(TestCase):
             image_name_from_metadata = images_metadata[image_name]["name"]
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
+
+class TestAddToNwbfile(TestCase):
+
+    def test_add_to_nwbfile(self):
+
+        nwbfile = mock_NWBFile()
+
+        interface = MockImagingInterface()
+        interface.add_to_nwbfile(nwbfile)
 
 if __name__ == "__main__":
     unittest.main()
