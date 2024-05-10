@@ -109,6 +109,11 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        if len(aligned_timestamps) != self.imaging_extractor.get_num_frames():
+            raise ValueError(
+                f"Length of aligned_timestamps ({len(aligned_timestamps)}) must match number of frames "
+                f"({self.imaging_extractor.get_num_frames()})"
+            )
         self.imaging_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(
