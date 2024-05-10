@@ -9,14 +9,13 @@ from pathlib import Path
 from typing import Literal, Optional
 from warnings import warn
 
+from hdmf_zarr import NWBZarrIO as _NWBZarrIO
 from pydantic import FilePath
+from pynwb import NWBHDF5IO as _NWBHDF5IO
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from hdmf_zarr import NWBZarrIO as _NWBZarrIO
-from pynwb import NWBHDF5IO as _NWBHDF5IO
-
-from . import get_default_backend_configuration, configure_backend, BackendConfiguration
+from . import BackendConfiguration, configure_backend, get_default_backend_configuration
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
 

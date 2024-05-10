@@ -3,7 +3,11 @@
 # Mark these imports as private to avoid polluting the namespace; only used in global BACKEND_NWB_IO mapping
 
 
-from ._backend_configuration import get_default_backend_configuration, BACKEND_CONFIGURATIONS
+from ._backend_configuration import (
+    BACKEND_CONFIGURATIONS,
+    get_default_backend_configuration,
+)
+from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_backend import BackendConfiguration
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
@@ -19,16 +23,14 @@ from ._configuration_models._zarr_dataset_io import (
 from ._configure_backend import configure_backend
 from ._dataset_configuration import get_default_dataset_io_configurations
 from ._metadata_and_file_helpers import (
+    BACKEND_NWB_IO,
     add_device_from_metadata,
     configure_and_write_nwbfile,
     get_default_nwbfile_metadata,
     get_module,
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
-    BACKEND_NWB_IO,
 )
-from ._configuration_models import DATASET_IO_CONFIGURATIONS
-from ._metadata_and_file_helpers import BACKEND_NWB_IO
 
 __all__ = [
     "AVAILABLE_HDF5_COMPRESSION_METHODS",
