@@ -1,4 +1,5 @@
 from typing import Literal
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
 from ....utils.dict import DeepDict
@@ -17,7 +18,13 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, sampling_frequency: float, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries", verbose: bool = True):
+    def __init__(
+        self,
+        file_path: FilePathType,
+        sampling_frequency: float,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        verbose: bool = True,
+    ):
         """
         Initialize reading of TIFF file.
 
@@ -27,13 +34,13 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         sampling_frequency : float
         verbose : bool, default: True
         """
-        self.photon_series_type=photon_series_type
+        self.photon_series_type = photon_series_type
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata_schema(self):
-        metadata_schema=super().get_metadata_schema(photon_series_type=self.photon_series_type)
+        metadata_schema = super().get_metadata_schema(photon_series_type=self.photon_series_type)
         return metadata_schema
-    
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata(photon_series_type=self.photon_series_type)
 
