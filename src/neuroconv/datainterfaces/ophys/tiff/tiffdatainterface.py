@@ -1,8 +1,5 @@
-from typing import Literal
-
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
-from ....utils.dict import DeepDict
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
