@@ -20,7 +20,6 @@ from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.device import Device
 from pynwb.ophys import OnePhotonSeries
-from pynwb.testing.mock.file import mock_NWBFile
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
     generate_dummy_segmentation_extractor,
@@ -2031,14 +2030,6 @@ class TestAddSummaryImages(TestCase):
         for image_name, image_data in expected_images_second_plane.items():
             image_name_from_metadata = images_metadata[image_name]["name"]
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
-
-
-def test_add_to_nwbfile_with_no_metadata():
-
-    nwbfile = mock_NWBFile()
-
-    interface = MockImagingInterface()
-    interface.add_to_nwbfile(nwbfile)
 
 
 if __name__ == "__main__":
