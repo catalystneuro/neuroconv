@@ -11,8 +11,7 @@ from warnings import warn
 
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBHDF5IO
-from pynwb import NWBFile
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from . import BackendConfiguration, configure_backend, get_default_backend_configuration
