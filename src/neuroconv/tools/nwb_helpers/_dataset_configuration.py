@@ -12,6 +12,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
 
+from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
 
@@ -70,9 +71,6 @@ def get_default_dataset_io_configurations(
     DatasetIOConfiguration
         A summary of each detected object that can be wrapped in a hdmf.DataIO.
     """
-    from ..nwb_helpers import (
-        DATASET_IO_CONFIGURATIONS,  # Locally scoped to avoid circular import
-    )
 
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
