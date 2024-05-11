@@ -234,7 +234,7 @@ def make_or_load_nwbfile(
                     nwbfile_path_in.unlink()
 
 
-def resolve_backend(
+def _resolve_backend(
     backend: Optional[Literal["hdf5"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
 ) -> Literal["hdf5"]:
@@ -292,7 +292,7 @@ def configure_and_write_nwbfile(
 
     """
 
-    backend = resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
 
     if backend is not None and backend_configuration is None:
         backend_configuration = get_default_backend_configuration(nwbfile, backend=backend)

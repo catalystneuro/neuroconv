@@ -17,7 +17,7 @@ from .tools.nwb_helpers import (
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
-from .tools.nwb_helpers._metadata_and_file_helpers import resolve_backend
+from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -195,7 +195,7 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
-        backend = resolve_backend(backend, backend_configuration)
+        backend = _resolve_backend(backend, backend_configuration)
 
         if metadata is None:
             metadata = self.get_metadata()
