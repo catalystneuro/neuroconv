@@ -2033,14 +2033,12 @@ class TestAddSummaryImages(TestCase):
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
 
-class TestAddToNwbfile(TestCase):
+def test_add_to_nwbfile_with_no_metadata():
 
-    def test_add_to_nwbfile(self):
+    nwbfile = mock_NWBFile()
 
-        nwbfile = mock_NWBFile()
-
-        interface = MockImagingInterface()
-        interface.add_to_nwbfile(nwbfile)
+    interface = MockImagingInterface()
+    interface.add_to_nwbfile(nwbfile)
 
 
 if __name__ == "__main__":
