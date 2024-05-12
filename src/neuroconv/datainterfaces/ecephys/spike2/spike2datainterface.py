@@ -9,7 +9,7 @@ def _test_sonpy_installation() -> None:
     get_package(
         package_name="sonpy",
         excluded_python_versions=["3.10", "3.11"],
-        excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.8", "3.9", "3.10", "3.11", "3.12"])),
+        excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9", "3.10", "3.11", "3.12"])),
     )
 
 
