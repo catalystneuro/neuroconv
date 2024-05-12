@@ -16,6 +16,7 @@ from .tools.nwb_helpers import (
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
+from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
     NWBMetaDataEncoder,
     get_schema_from_method_signature,
@@ -150,23 +151,8 @@ class BaseDataInterface(ABC):
                 "NWBFile object in memory, use DataInterface.create_nwbfile. To append to an existing NWBFile object,"
                 " use DataInterface.add_to_nwbfile."
             )
-        if backend_configuration is not None and nwbfile is None:
-            raise ValueError("When specifying a custom `backend_configuration`, you must also provide an `nwbfile`.")
-        if backend is not None and backend_configuration is not None:
-            if backend == backend_configuration.backend:
-                warnings.warn(
-                    f"Both `backend` and `backend_configuration` were specified as type '{backend}'. "
-                    "To suppress this warning, specify only `backend_configuration`."
-                )
-            else:
-                raise ValueError(
-                    f"Both `backend` and `backend_configuration` were specified and are conflicting."
-                    f"{backend=}, {backend_configuration.backend=}."
-                    "These values must match. To suppress this error, specify only `backend_configuration`."
-                )
 
-        if backend is None:
-            backend = backend_configuration.backend if backend_configuration is not None else "hdf5"
+        backend = _resolve_backend(backend, backend_configuration)
 
         if metadata is None:
             metadata = self.get_metadata()
