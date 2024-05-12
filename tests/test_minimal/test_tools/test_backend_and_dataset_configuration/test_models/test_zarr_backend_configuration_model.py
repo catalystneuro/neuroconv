@@ -15,8 +15,8 @@ def test_zarr_backend_configuration_print():
         print(zarr_backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the zarr backend
--------------------------------------------------------
+Zarr dataset configurations
+---------------------------
 
 acquisition/TestElectricalSeriesAP/data
 ---------------------------------------
