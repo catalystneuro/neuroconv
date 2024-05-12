@@ -96,8 +96,8 @@ def test_complex_hdf5(hdf5_nwbfile_path):
         print(backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the hdf5 backend
--------------------------------------------------------
+HDF5 dataset configurations
+---------------------------
 
 epochs/start_time/data
 ----------------------
@@ -198,8 +198,8 @@ def test_complex_zarr(zarr_nwbfile_path):
         print(backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the zarr backend
--------------------------------------------------------
+Zarr dataset configurations
+---------------------------
 
 epochs/start_time/data
 ----------------------
