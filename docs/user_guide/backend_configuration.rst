@@ -40,7 +40,7 @@ To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, u
     )
     nwbfile.add_acquisition(time_series)
 
-    default_backend_configuration = get_default_backend_configuration(
+    backend_configuration = get_default_backend_configuration(
         nwbfile=nwbfile, backend="hdf5"
     )
 
@@ -48,7 +48,7 @@ From which a printout of the contents:
 
 .. code-block:: python
 
-    print(default_backend_configuration)
+    print(backend_configuration)
 
 returns:
 
@@ -96,7 +96,8 @@ Let's demonstrate this by modifying everything we can for the ``data`` field of 
 
 .. code-block:: python
 
-    dataset_configurations = default_backend_configuration.dataset_configurations
+
+    dataset_configurations = backend_configuration.dataset_configurations
     dataset_configuration = dataset_configurations["acquisition/MyTimeSeries/data"]
 
     dataset_configuration.chunk_shape = (1,)
@@ -131,14 +132,11 @@ Then we can use this configuration to write the NWB file:
 
 .. code-block:: python
 
-    from neuroconv.tools.nwb_helpers import configure_backend, BACKEND_NWB_IO
+    from neuroconv.tools.nwb_helpers import configure_backend, BACKEND_NWB_IO, configure_and_write_nwbfile
 
     dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
 
-    configure_backend(nwbfile=nwbfile, backend_configuration=default_backend_configuration)
-    IO = BACKEND_NWB_IO[default_backend_configuration.backend]
-    with IO("my_nwbfile.nwb", mode="w") as io:
-        io.write(nwbfile)
+    configure_and_write_nwbfile(nwbfile=nwbfile, dataset_configurations=dataset_configurations)
 
 
 Interfaces and Converters
