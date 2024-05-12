@@ -2,6 +2,7 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Callable, Dict, List, Literal, Optional
 
 import docstring_parser
@@ -30,6 +31,17 @@ class NWBMetaDataEncoder(json.JSONEncoder):
             return obj.tolist()
 
         # The base-class handles it
+        return super().default(obj)
+
+
+class NWBSourceDataEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+
+        # Over-write behaviors for Paths
+        if isinstance(obj, Path):
+            return str(obj)
+
         return super().default(obj)
 
 
