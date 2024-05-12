@@ -1,2 +1,2 @@
-spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@main
-neo @ git+https://github.com/NeuralEnsemble/python-neo.git
+spikeinterface>=0.100.0
+neo>=0.13.1
