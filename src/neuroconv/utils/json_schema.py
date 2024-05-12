@@ -42,6 +42,16 @@ class NWBSourceDataEncoder(json.JSONEncoder):
         if isinstance(obj, Path):
             return str(obj)
 
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+
+        # Transform numpy generic integers and floats to python ints floats
+        if isinstance(obj, np.generic):
+            return obj.item()
+
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+
         return super().default(obj)
 
 
