@@ -14,8 +14,8 @@ def test_hdf5_backend_configuration_print():
         print(hdf5_backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the hdf5 backend
--------------------------------------------------------
+HDF5 dataset configurations
+---------------------------
 
 acquisition/TestElectricalSeriesAP/data
 ---------------------------------------

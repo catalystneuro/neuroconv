@@ -14,6 +14,7 @@ class ZarrBackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
 
     backend: ClassVar[Literal["zarr"]] = "zarr"
+    pretty_backend_name: ClassVar[Literal["Zarr"]] = "Zarr"
     data_io_class: ClassVar[Type[ZarrDataIO]] = ZarrDataIO
 
     dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = Field(
