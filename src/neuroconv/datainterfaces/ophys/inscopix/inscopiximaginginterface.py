@@ -2,7 +2,7 @@ from datetime import datetime
 from imaplib import Literal
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, DeepDict
+from ....utils import DeepDict, FilePathType
 
 
 class InscopixImagingInterface(BaseImagingExtractorInterface):
@@ -28,12 +28,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
     ) -> DeepDict:
         metadata = super().get_metadata(photon_series_type=photon_series_type)
 
-        extra_props = self.imaging_extractor.movie.footer['extraProperties']
+        extra_props = self.imaging_extractor.movie.footer["extraProperties"]
 
-        if extra_props['animal']['id']:
-            metadata["Subject"]["subject_id"] = extra_props['animal']['id']
-        if extra_props['animal']['species']:
-            metadata["Subject"]["species"] = extra_props['animal']['species']
+        if extra_props["animal"]["id"]:
+            metadata["Subject"]["subject_id"] = extra_props["animal"]["id"]
+        if extra_props["animal"]["species"]:
+            metadata["Subject"]["species"] = extra_props["animal"]["species"]
         if extra_props["animal"]["sex"]:
             metadata["Subject"]["sex"] = extra_props["animal"]["sex"].upper()
         if extra_props["animal"]["dob"]:
@@ -42,6 +42,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             metadata["Subject"]["weight"] = str(extra_props["animal"]["weight"])
 
         if extra_props["date"]:
-            metadata["NWBFile"]["session_start_time"] = datetime.strptime(extra_props["date"], '%Y-%m-%dT%H:%M:%S.%fZ')
+            metadata["NWBFile"]["session_start_time"] = datetime.strptime(extra_props["date"], "%Y-%m-%dT%H:%M:%S.%fZ")
 
         return metadata
