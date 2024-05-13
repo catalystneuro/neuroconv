@@ -189,14 +189,14 @@ def get_nwb_imaging_metadata(
     return metadata
 
 
-def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+def add_devices(nwbfile: NWBFile, metadata: Optional[dict] = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
     The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
     This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
     """
-    metadata_copy = deepcopy(metadata)
+    metadata_copy = {} if metadata is None else deepcopy(metadata)
     default_metadata = get_default_ophys_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
     device_metadata = metadata_copy["Ophys"]["Device"]
@@ -342,7 +342,7 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 def add_photon_series(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
-    metadata: dict,
+    metadata: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -391,7 +391,7 @@ def add_photon_series(
 
     iterator_options = iterator_options or dict()
 
-    metadata_copy = deepcopy(metadata)
+    metadata_copy = {} if metadata is None else deepcopy(metadata)
     assert photon_series_type in [
         "OnePhotonSeries",
         "TwoPhotonSeries",

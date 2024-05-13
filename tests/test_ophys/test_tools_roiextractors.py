@@ -11,7 +11,6 @@ from unittest.mock import Mock
 
 import numpy as np
 import psutil
-import pynwb.testing.mock.file
 import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
@@ -43,6 +42,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 from neuroconv.tools.roiextractors.roiextractors import (
     get_default_segmentation_metadata,
 )
+from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
 from neuroconv.utils import dict_deep_update
 
 

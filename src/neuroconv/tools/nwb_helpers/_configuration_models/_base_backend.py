@@ -16,6 +16,7 @@ class BackendConfiguration(BaseModel):
     """A model for matching collections of DatasetConfigurations to a specific backend."""
 
     backend: ClassVar[Literal["hdf5", "zarr"]]
+    pretty_backend_name: ClassVar[Literal["HDF5", "Zarr"]]
     data_io_class: ClassVar[Type[DataIO]]
 
     model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
@@ -31,8 +32,7 @@ class BackendConfiguration(BaseModel):
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
         string = (
-            f"\nConfigurable datasets identified using the {self.backend} backend"
-            f"\n{'-' * (43 + len(self.backend) + 8)}"
+            f"\n{self.pretty_backend_name} dataset configurations" f"\n{'-' * (len(self.pretty_backend_name) + 23)}"
         )
 
         for dataset_configuration in self.dataset_configurations.values():
