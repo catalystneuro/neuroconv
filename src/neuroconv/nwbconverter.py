@@ -1,6 +1,6 @@
 import json
-import warnings
 from collections import Counter
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
@@ -26,7 +26,7 @@ from .utils import (
     unroot_schema,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import NWBMetaDataEncoder
+from .utils.json_schema import NWBMetaDataEncoder, NWBSourceDataEncoder
 
 
 class NWBConverter:
@@ -119,7 +119,14 @@ class NWBConverter:
             print("conversion_options is valid!")
 
     def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
-        validate(instance=source_data, schema=self.get_source_schema())
+
+        encoder = NWBSourceDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(serialized_source_data)
+
+        validate(instance=decoded_source_data, schema=self.get_source_schema())
         if verbose:
             print("Source data is valid!")
 
