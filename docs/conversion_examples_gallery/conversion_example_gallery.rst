@@ -66,6 +66,7 @@ Imaging
 
     Bruker <imaging/brukertiff>
     HDF5 <imaging/hdf5imaging>
+    Inscopix <imaging/inscopix>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
     Scanbox <imaging/scanbox>
