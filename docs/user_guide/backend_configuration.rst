@@ -150,7 +150,7 @@ The following example uses the :ref:`example data <example_data>` available from
 
     from datetime import datetime
 
-    from dateutil import tz
+    from zoneinfo import ZoneInfo
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
     from neuroconv.tools.nwb_helpers import (
@@ -228,14 +228,14 @@ If you are not using data interfaces or converters you can still use the general
     from uuid import uuid4
     from datetime import datetime
 
-    from dateutil import tz
+    from zoneinfo import ZoneInfo
     from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
     from pynwb import NWBFile, TimeSeries
 
     nwbfile_path = "./my_nwbfile.nwb"
     backend="hdf5"
 
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     nwbfile = NWBFile(
         session_start_time=session_start_time,
         session_description="My description...",
