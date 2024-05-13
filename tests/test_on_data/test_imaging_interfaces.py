@@ -14,13 +14,13 @@ from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     Hdf5ImagingInterface,
+    InscopixImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
     ScanImageMultiFileImagingInterface,
     TiffImagingInterface,
-    InscopixImagingInterface,
 )
 from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageMultiPlaneImagingInterface,
@@ -810,5 +810,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, hdmf_TestCas
 
 class TestInscopixImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = InscopixImagingInterface
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+    )
     save_directory = OUTPUT_PATH
