@@ -91,6 +91,8 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         width = self._maxshape[1]
         height = self._maxshape[2]
 
+        print(f"{self._dtype=}")
+
         frame_size_bytes = width * height * self._dtype.itemsize
         chunk_size_bytes = chunk_mb * 1e6
         num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)

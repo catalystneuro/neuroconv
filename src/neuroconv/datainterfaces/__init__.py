@@ -76,6 +76,7 @@ from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.inscopix.inscopiximaginginterface import InscopixImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -146,6 +147,7 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    InscopixImagingInterface,
     # Behavior
     VideoInterface,
     AudioInterface,
