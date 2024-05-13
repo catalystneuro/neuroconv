@@ -17,6 +17,7 @@
 * Improve printing of bytes [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
 * Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
 * Support for pathlib in source data schema validation [PR #854](https://github.com/catalystneuro/neuroconv/pull/854)
+* Use ZoneInfo instead of dateutil.tz [PR #858](https://github.com/catalystneuro/neuroconv/pull/858)
 
 ### Bug fixes
 * Remove JSON Schema `definitions` from the `properties` field. [PR #818](https://github.com/catalystneuro/neuroconv/pull/818)
