@@ -21,7 +21,7 @@ def configure_backend(
     ----------
     nwbfile : pynwb.NWBFile
         The in-memory pynwb.NWBFile object to configure.
-    backend_configuration : HDF5BackendConfiguration, optional
+    backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration
         The configuration model to use when configuring the datasets for this backend.
     """
     is_ndx_events_installed = is_package_installed(package_name="ndx_events")
