@@ -45,19 +45,19 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
     parameterized_lfp_list = [
         param(
             data_interface=AxonaLFPDataInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
+            interface_kwargs=dict(file_path=DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg"),
         ),
         param(
             data_interface=NeuroScopeLFPInterface,
             interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
-                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+                file_path=(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+                xml_file_path=(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
             ),
         ),
         param(
             data_interface=SpikeGLXRecordingInterface,
             interface_kwargs=dict(
-                file_path=str(
+                file_path=(
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
                 )
             ),
