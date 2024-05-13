@@ -5,9 +5,9 @@ from ....utils import FilePathType
 class InscopixImagingInterface(BaseImagingExtractorInterface):
     """Interface for Inscopix imaging data."""
 
-    display_name = "HDF5 Imaging"
+    display_name = "Inscopix Imaging"
     associated_suffixes = (".isxd",)
-    info = "Interface for HDF5 imaging data."
+    info = "Interface for Inscopix imaging data."
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
