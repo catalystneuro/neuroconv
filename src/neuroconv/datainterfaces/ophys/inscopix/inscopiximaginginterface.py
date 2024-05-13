@@ -18,7 +18,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         Parameters
         ----------
         file_path : FilePathType
-            Path to .h5 or .hdf5 file.
+            Path to .isxd file.
         verbose : bool, default: True
         """
         super().__init__(file_path=file_path, verbose=verbose)
