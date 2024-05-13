@@ -1,8 +1,22 @@
 # Upcoming
 
+
 ### Deprecations
 * Removed `stream_id` as an argument from `IntanRecordingInterface` [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
 * The usage of `compression` and `compression_opts` directly through the `neuroconv.tools.spikeinterface` submodule are now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #805](https://github.com/catalystneuro/neuroconv/pull/805)
+ * Dropped the testing of Python 3.8 on the CI. Dropped support for Python 3.8 in setup. [PR #853](https://github.com/catalystneuro/neuroconv/pull/853)
+
+### Features
+* Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #800](https://github.com/catalystneuro/neuroconv/pull/800)
+* Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
+* Support "one-file-per-signal" and "one-file-per-channel" mode with `IntanRecordingInterface` [PR #791](https://github.com/catalystneuro/neuroconv/pull/791)
+* Added `get_default_backend_configuration` method to all `DataInterface` classes. Also added HDF5 `backend` control to all standalone `.run_conversion(...)` methods for those interfaces. [PR #801](https://github.com/catalystneuro/neuroconv/pull/801)
+* Added `get_default_backend_configuration` method to all `NWBConverter` classes. Also added HDF5 `backend` control to `.run_conversion(...)`. [PR #804](https://github.com/catalystneuro/neuroconv/pull/804)
+* Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
+* Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
+* Improve printing of bytes [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
+* Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
+* Support for pathlib in source data schema validation [PR #854](https://github.com/catalystneuro/neuroconv/pull/854)
 
 ### Bug fixes
 * Remove JSON Schema `definitions` from the `properties` field. [PR #818](https://github.com/catalystneuro/neuroconv/pull/818)
@@ -14,24 +28,13 @@
 * Added `XX` and `XO` to the base metadata schema. [PR #833](https://github.com/catalystneuro/neuroconv/pull/833)
 * `BaseImagingExtractor.add_to_nwbfile()` is fixed in the case where metadata is not supplied [PR #849](https://github.com/catalystneuro/neuroconv/pull/849)
 
-### Features
-* Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #800](https://github.com/catalystneuro/neuroconv/pull/800)
-* Added `get_default_backend_configuration` method to all `DataInterface` classes. Also added HDF5 `backend` control to all standalone `.run_conversion(...)` methods for those interfaces. [PR #801](https://github.com/catalystneuro/neuroconv/pull/801)
-* Added `get_default_backend_configuration` method to all `NWBConverter` classes. Also added HDF5 `backend` control to `.run_conversion(...)`. [PR #804](https://github.com/catalystneuro/neuroconv/pull/804)
-* Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
-* Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
-* Improve printing of bytes [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
-* Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
-
 ### Improvements
 * Fixed docstrings related to backend configurations for various methods. [PR #822](https://github.com/catalystneuro/neuroconv/pull/822)
-* Added automatic `backend` detection when a `backend_configuration` is passed to an interface or converter. [PR #840]
-  (https://github.
-  com/catalystneuro/neuroconv/pull/840)
+* Added automatic `backend` detection when a `backend_configuration` is passed to an interface or converter. [PR #840](https://github.com/catalystneuro/neuroconv/pull/840)
+
 
 ### Testing
 * Add general test for metadata in-place modification by interfaces. [PR #815](https://github.com/catalystneuro/neuroconv/pull/815)
-
 
 
 # v0.4.8 (March 20, 2024)

@@ -3,6 +3,7 @@
 from io import StringIO
 from unittest.mock import patch
 
+from neuroconv.tools.nwb_helpers import ZarrBackendConfiguration
 from neuroconv.tools.testing import mock_ZarrBackendConfiguration
 
 
@@ -14,8 +15,8 @@ def test_zarr_backend_configuration_print():
         print(zarr_backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the zarr backend
--------------------------------------------------------
+Zarr dataset configurations
+---------------------------
 
 acquisition/TestElectricalSeriesAP/data
 ---------------------------------------
@@ -52,3 +53,9 @@ acquisition/TestElectricalSeriesLF/data
 
 """
     assert out.getvalue() == expected_print
+
+
+def test_zarr_backend_configuration_schema():
+    assert ZarrBackendConfiguration.schema() is not None
+    assert ZarrBackendConfiguration.schema_json() is not None
+    assert ZarrBackendConfiguration.model_json_schema() is not None
