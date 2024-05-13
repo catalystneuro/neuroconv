@@ -16,7 +16,7 @@
 * Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
 * Improve printing of bytes [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
 * Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
-
+* Support for pathlib in source data schema validation [PR #854](https://github.com/catalystneuro/neuroconv/pull/854)
 
 ### Bug fixes
 * Remove JSON Schema `definitions` from the `properties` field. [PR #818](https://github.com/catalystneuro/neuroconv/pull/818)
@@ -27,7 +27,6 @@
 * Fixed a bug with `parameterized` and `pytest-xdist==3.6.1` in the `ScanImageImagingInterface` tests: [PR #829](https://github.com/catalystneuro/neuroconv/pull/829)
 * Added `XX` and `XO` to the base metadata schema. [PR #833](https://github.com/catalystneuro/neuroconv/pull/833)
 * `BaseImagingExtractor.add_to_nwbfile()` is fixed in the case where metadata is not supplied [PR #849](https://github.com/catalystneuro/neuroconv/pull/849)
-
 
 ### Improvements
 * Fixed docstrings related to backend configurations for various methods. [PR #822](https://github.com/catalystneuro/neuroconv/pull/822)
