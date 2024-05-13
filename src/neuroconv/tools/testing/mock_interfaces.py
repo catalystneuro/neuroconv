@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
