@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -159,6 +159,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         sampling_frequency: float = 30,
         dtype: str = "uint16",
         verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         from roiextractors.testing import generate_dummy_imaging_extractor
 
@@ -171,6 +172,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         )
 
         self.verbose = verbose
+        self.photon_series_type = photon_series_type
 
     def get_metadata(self) -> dict:
         session_start_time = datetime.now().astimezone()
