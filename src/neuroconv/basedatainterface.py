@@ -89,6 +89,7 @@ class BaseDataInterface(ABC):
 
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+
         return nwbfile
 
     @abstractmethod
@@ -166,8 +167,8 @@ class BaseDataInterface(ABC):
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
             if backend_configuration is None:
-                # In this case, assume the relevant data has already been added to the NWBFile
-                self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+                # In this case, assume the relevant data has not been added to the NWBFile
+                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
 
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 

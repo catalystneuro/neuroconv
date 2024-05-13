@@ -3,6 +3,7 @@
 from io import StringIO
 from unittest.mock import patch
 
+from neuroconv.tools.nwb_helpers import HDF5BackendConfiguration
 from neuroconv.tools.testing import mock_HDF5BackendConfiguration
 
 
@@ -48,3 +49,9 @@ acquisition/TestElectricalSeriesLF/data
 
 """
     assert out.getvalue() == expected_print
+
+
+def test_hdf5_backend_configuration_schema():
+    assert HDF5BackendConfiguration.schema() is not None
+    assert HDF5BackendConfiguration.schema_json() is not None
+    assert HDF5BackendConfiguration.model_json_schema() is not None
