@@ -12,7 +12,7 @@ Convert MCSRaw data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.mc
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import MCSRawRecordingInterface
     >>>
@@ -23,7 +23,7 @@ Convert MCSRaw data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.mc
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion

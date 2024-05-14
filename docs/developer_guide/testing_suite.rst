@@ -89,15 +89,9 @@ For behavioral data
     datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
 
-Update existing test data
-"""""""""""""""""""""""""
-If you have downloaded these data repositories previously and want to update them, ``cd`` into the directory you want
-to update and run
 
-.. code:: bash
-
-    datalad update --how=ff-only --reobtain-data
-
+Running the data tests
+""""""""""""""""""""""
 
 Once the data is downloaded to your system, you must manually modify the testing config file
 (`example <https://github.com/catalystneuro/neuroconv/blob/main/base_gin_test_config.json>`_). This file should be
@@ -115,5 +109,16 @@ Sub-folders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tre
 These can be run in total using ``pip install -e neuroconv[test,full]`` and calling ``pytest tests/test_on_data`` or
 in isolation by installing the required ``<modality>`` as in the previous section and calling
 ``pytest tests/test_on_data/test_gin_<modality>``.
+
+
+
+Update existing test data
+"""""""""""""""""""""""""
+If you have downloaded these data repositories previously and want to update them, ``cd`` into the directory you want
+to update and run
+
+.. code:: bash
+
+    datalad update --how=ff-only --reobtain-data
 
 To update GIN data, run ``datalad update --how=ff-only --reobtain-data`` within the repository you would like to update.
