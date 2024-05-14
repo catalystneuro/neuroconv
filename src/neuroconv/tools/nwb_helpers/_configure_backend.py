@@ -88,6 +88,8 @@ def _resolve_nwbfile_object_ids(
             for dataset_configuration in backend_configuration.dataset_configurations.values()
         }
 
+    return dataset_configuration_to_nwbfile_object_ids
+
 
 def configure_backend(
     nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
