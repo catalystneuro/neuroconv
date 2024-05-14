@@ -23,7 +23,7 @@ When multiple planes and/or channels are present, the name should be unique for 
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import Suite2pSegmentationInterface
     >>>
@@ -32,7 +32,7 @@ When multiple planes and/or channels are present, the name should be unique for 
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
@@ -46,7 +46,7 @@ This example shows how to convert multiple planes from the same dataset.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import Suite2pSegmentationInterface
@@ -58,7 +58,7 @@ This example shows how to convert multiple planes from the same dataset.
     >>> converter = ConverterPipe(data_interfaces=[interface_first_plane, interface_second_plane], verbose=False)
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
