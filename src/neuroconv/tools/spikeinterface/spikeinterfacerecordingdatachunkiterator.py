@@ -2,8 +2,8 @@ from typing import Iterable, Optional, Tuple
 
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
-
 from tqdm import tqdm
+
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
     """DataChunkIterator specifically for use on RecordingExtractor objects."""
