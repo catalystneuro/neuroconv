@@ -3,6 +3,7 @@ from typing import Iterable, Optional, Tuple
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
 
+from tqdm import tqdm
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
     """DataChunkIterator specifically for use on RecordingExtractor objects."""
@@ -17,6 +18,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         chunk_mb: Optional[float] = None,
         chunk_shape: Optional[tuple] = None,
         display_progress: bool = False,
+        progress_bar_class: Optional[tqdm] = None,
         progress_bar_options: Optional[dict] = None,
     ):
         """
@@ -68,6 +70,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             chunk_mb=chunk_mb,
             chunk_shape=chunk_shape,
             display_progress=display_progress,
+            progress_bar_class=progress_bar_class,
             progress_bar_options=progress_bar_options,
         )
 
