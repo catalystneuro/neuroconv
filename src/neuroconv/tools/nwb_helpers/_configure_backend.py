@@ -111,12 +111,10 @@ def configure_backend(
     is_ndx_events_installed = is_package_installed(package_name="ndx_events")
     ndx_events = sys.modules.get("ndx_events", None)
 
-    # A remapping of the object IDs in the backend configuration might necessary if
-    # The backend configuration was created with a different NWBFile instance
-    if nwbfile.identifier != backend_configuration.nwbfile_identifier:
-        backend_configuration = _remap_backend_configuration_to_nwbfile(
-            nwbfile=nwbfile, backend_configuration=backend_configuration
-        )
+    # A remapping of the object IDs in the backend configuration might necessary
+    backend_configuration = _remap_backend_configuration_to_nwbfile(
+        nwbfile=nwbfile, backend_configuration=backend_configuration
+    )
 
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
