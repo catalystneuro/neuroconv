@@ -89,8 +89,11 @@ def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
             buffer_shape=(75_000, 384),
         ),
     }
+    nwbfile_identifier = "ee3e44bf-7e2d-44aa-b5a7-13fb6d53cf3e"
 
-    return HDF5BackendConfiguration(dataset_configurations=dataset_configurations)
+    return HDF5BackendConfiguration(
+        dataset_configurations=dataset_configurations, nwbfile_identifier=nwbfile_identifier
+    )
 
 
 def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
@@ -111,5 +114,8 @@ def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
             filter_methods=["delta"],
         ),
     }
+    nwbfile_identifier = "ee3e44bf-7e2d-44aa-b5a7-13fb6d53cf3e"
 
-    return ZarrBackendConfiguration(dataset_configurations=dataset_configurations)
+    return ZarrBackendConfiguration(
+        dataset_configurations=dataset_configurations, nwbfile_identifier=nwbfile_identifier
+    )
