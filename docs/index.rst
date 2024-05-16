@@ -63,8 +63,8 @@ We are happy to help and appreciate your feedback.
   user_guide/index
   conversion_examples_gallery/conversion_example_gallery
   catalogue/catalogue
-  developer_guide
-  api
+  developer_guide/index
+  api/index
 
 
 Related links
