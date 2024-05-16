@@ -6,7 +6,7 @@ from typing import Union
 from hdmf.common import Data
 from pynwb import NWBFile, TimeSeries
 
-from ._configuration_models._base import BackendConfiguration
+from ._configuration_models._base_backend import BackendConfiguration
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
 from ..importing import is_package_installed
