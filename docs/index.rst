@@ -61,8 +61,8 @@ We are happy to help and appreciate your feedback.
   :hidden:
 
   user_guide/index
-  conversion_examples_gallery/conversion_example_gallery
-  catalogue/catalogue
+  conversion_examples_gallery/index
+  catalogue/index
   developer_guide/index
   api/index
 
