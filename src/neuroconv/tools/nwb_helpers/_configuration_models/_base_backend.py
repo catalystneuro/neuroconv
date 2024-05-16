@@ -28,6 +28,7 @@ class BackendConfiguration(BaseModel):
             "for writing the datasets to disk using the specific backend."
         )
     )
+    nwbfile_identifier: str = Field(description="The unique identifier of a particular NWBFile object.")
 
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
@@ -63,4 +64,4 @@ class BackendConfiguration(BaseModel):
             for default_dataset_configuration in default_dataset_configurations
         }
 
-        return cls(dataset_configurations=dataset_configurations)
+        return cls(dataset_configurations=dataset_configurations, nwbfile_identifier=nwbfile.identifier)

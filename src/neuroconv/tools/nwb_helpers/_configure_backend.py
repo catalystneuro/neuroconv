@@ -34,9 +34,7 @@ def _resolve_nwbfile_object_ids(
     dataset_configuration_to_nwbfile_object_ids: Dict[str, str]
         A mapping of dataset configuration object IDs to their equivalent NWBFile object IDs.
     """
-    nwbfile_objects = nwbfile.objects
-
-    nwbfile_object_ids = [nwbfile_object_id for nwbfile_object_id in nwbfile_objects.keys()]
+    nwbfile_object_ids = [nwbfile_object_id for nwbfile_object_id in nwbfile.objects.keys()]
     dataset_configuration_object_ids = [
         dataset_configuration.object_id in nwbfile_object_ids
         for dataset_configuration in backend_configuration.dataset_configurations.values()
@@ -47,46 +45,28 @@ def _resolve_nwbfile_object_ids(
         dataset_configuration_object_id: dataset_configuration_object_id
         for dataset_configuration_object_id in dataset_configuration_object_ids
     }
-    if not all(
+
+    is_same_nwbfile = nwbfile.identifier == backend_configuration.nwbfile_identifier
+    all_ids_in_dataset_configuration_are_in_nwbfile = all(
         dataset_configuration_object_id in nwbfile_object_ids
         for dataset_configuration_object_id in dataset_configuration_object_ids
-    ):
-        backend_configuration_class = type(backend_configuration)
-        new_default_backend_configuration = backend_configuration_class.from_nwbfile(nwbfile=nwbfile)
-        locations_in_file_to_new_object_ids = {
-            dataset_configuration.location_in_file: dataset_configuration.object_id
-            for dataset_configuration in new_default_backend_configuration.dataset_configurations.values()
-        }
+    )
+    return_identity = is_same_nwbfile and all_ids_in_dataset_configuration_are_in_nwbfile
+    if return_identity:
+        return dataset_configuration_to_nwbfile_object_ids
 
-        dataset_configuration_to_nwbfile_object_ids = {
-            dataset_configuration.object_id: locations_in_file_to_new_object_ids[dataset_configuration.location_in_file]
-            for dataset_configuration in backend_configuration.dataset_configurations.values()
-        }
-
-    nwbfile_object_ids = [nwbfile_object_id for nwbfile_object_id in nwbfile_objects.keys()]
-    dataset_configuration_object_ids = [
-        dataset_configuration.object_id in nwbfile_object_ids
-        for dataset_configuration in backend_configuration.dataset_configurations.values()
-    ]
-    dataset_configuration_to_nwbfile_object_ids = {  # Default to identity
-        dataset_configuration_object_id: dataset_configuration_object_id
-        for dataset_configuration_object_id in dataset_configuration_object_ids
+    # If the NWBFile is not the same, then we need to find the equivalent object IDs
+    backend_configuration_class = type(backend_configuration)
+    new_default_backend_configuration = backend_configuration_class.from_nwbfile(nwbfile=nwbfile)
+    locations_in_file_to_new_object_ids = {
+        dataset_configuration.location_in_file: dataset_configuration.object_id
+        for dataset_configuration in new_default_backend_configuration.dataset_configurations.values()
     }
-    if not all(
-        dataset_configuration_object_id in nwbfile_object_ids
-        for dataset_configuration_object_id in dataset_configuration_object_ids
-    ):
-        backend_configuration_class = type(backend_configuration)
-        new_default_backend_configuration = backend_configuration_class.from_nwbfile(nwbfile=nwbfile)
-        locations_in_file_to_new_object_ids = {
-            dataset_configuration.location_in_file: dataset_configuration.object_id
-            for dataset_configuration in new_default_backend_configuration.dataset_configurations.values()
-        }
 
-        dataset_configuration_to_nwbfile_object_ids = {
-            dataset_configuration.object_id: locations_in_file_to_new_object_ids[dataset_configuration.location_in_file]
-            for dataset_configuration in backend_configuration.dataset_configurations.values()
-        }
+    dataset_configuration_to_nwbfile_object_ids = {
+        dataset_configuration.object_id: locations_in_file_to_new_object_ids[dataset_configuration.location_in_file]
+        for dataset_configuration in backend_configuration.dataset_configurations.values()
+    }
 
     return dataset_configuration_to_nwbfile_object_ids
 
