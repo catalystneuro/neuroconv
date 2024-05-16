@@ -29,7 +29,7 @@ Below is an overview of the key sections to help you navigate our documentation 
 
 * **Getting Started: Conversion Examples Gallery**
 
-  If you're new to NeuroConv or NWB, start with the `Conversion Examples Gallery <conversion_examples_gallery/conversion_example_gallery.rst>`_.
+  If you're new to NeuroConv or NWB, start with the :ref:`Conversion Examples Gallery <conversion_gallery>`.
   This section provides concise scripts for converting data from common formats (e.g., Blackrock, Plexon, Neuralynx) to NWB. It's designed to get you up and running quickly.
 
 * **User Guide**
