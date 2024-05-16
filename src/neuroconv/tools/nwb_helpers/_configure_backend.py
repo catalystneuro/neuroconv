@@ -13,7 +13,7 @@ from ..importing import is_package_installed
 
 
 def _remap_backend_configuration_to_nwbfile(
-    nwbfile: NWBFile, backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration
+    nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
 ) -> BackendConfiguration:
     """
     Remap an existing backend configuration to a new NWBFile.
