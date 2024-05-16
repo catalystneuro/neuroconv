@@ -34,23 +34,23 @@ Below is an overview of the key sections to help you navigate our documentation 
 
 * **User Guide**
 
-  The `User Guide <user_guide/index.html>`_ offers a comprehensive overview of NeuroConv's data model and functionalities.
+  The :ref:`User Guide <user_guide>` offers a comprehensive overview of NeuroConv's data model and functionalities.
   It is recommended for users who wish to understand the underlying concepts and extend their scripts beyond basic conversions.
 
 * **Catalogue of Projects**
 
-  `The Catalogue of Neuroconv Projects <catalogue/catalogue.rst>`_ section showcases a collection of successful conversion projects utilizing NeuroConv.
+  :ref:`The Catalogue of Neuroconv Projects <catalogue>` section showcases a collection of successful conversion projects utilizing NeuroConv.
   It serves as both inspiration and a practical reference for what can be achieved with our library.
 
 * **Developer Guide**
 
-  For developers interested in contributing to NeuroConv, the `Developer Guide <developer_guide.rst>`_ provides essential information such as
+  For developers interested in contributing to NeuroConv, the :ref:`Developer Guide <developer_guide>` provides essential information such as
   instructions for building your own classes,  our coding style, instructions on how to build the documentation,
   run the testing suite, etc.
 
 * **API Reference**
 
-  Detailed documentation of the NeuroConv API can be found in the `API <api>`_ section.
+  Detailed documentation of the NeuroConv API can be found in the :ref:`API <api>` section.
 
 
 Do you find that some information is missing or some section lacking or unclear? Reach out with an issue or pull request on our `GitHub repository <https://github.com/catalystneuro/neuroconv>`_.
