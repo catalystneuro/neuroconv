@@ -83,8 +83,10 @@ def _remap_backend_configuration_to_nwbfile(
     for dataset_configuration in remaped_backend_configuration.dataset_configurations.values():
         location_in_file = dataset_configuration.location_in_file
         if location_in_file in location_to_configuration:
-            corresponding_configuration = location_to_configuration[location_in_file]
-            remaped_backend_configuration.dataset_configurations[location_in_file] = corresponding_configuration
+            corresponding_configuration_kwargs = location_to_configuration[location_in_file].model_dump()
+            corresponding_configuration_kwargs["object_id"] = dataset_configuration.object_id
+            new_configuration = dataset_configuration.__class__(**corresponding_configuration_kwargs)
+            remaped_backend_configuration.dataset_configurations[location_in_file] = new_configuration
         else:
             raise ValueError(
                 f"Could not remap backend configuration created with nwbfile with identifier {backend_configuration.nwbfile_identifier} "
@@ -112,6 +114,7 @@ def configure_backend(
     ndx_events = sys.modules.get("ndx_events", None)
 
     # A remapping of the object IDs in the backend configuration might necessary
+    old_backend_configuration = backend_configuration
     backend_configuration = _remap_backend_configuration_to_nwbfile(
         nwbfile=nwbfile, backend_configuration=backend_configuration
     )
