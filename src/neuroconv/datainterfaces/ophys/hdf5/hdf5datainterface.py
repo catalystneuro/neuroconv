@@ -1,6 +1,8 @@
+from typing import Literal
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType, FilePathType
-from typing import Literal
+
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     """Interface for HDF5 imaging data."""

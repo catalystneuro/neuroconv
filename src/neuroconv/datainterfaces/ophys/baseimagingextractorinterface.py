@@ -1,7 +1,8 @@
 """Author: Ben Dichter."""
 
-from typing import Literal, Optional
 import warnings
+from typing import Literal, Optional
+
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
@@ -106,7 +107,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 stacklevel=2,
             )
             self.photon_series_type = photon_series_type
-            
+
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
