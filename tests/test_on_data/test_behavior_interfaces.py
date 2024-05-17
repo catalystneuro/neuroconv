@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pandas as pd
 import sleap_io
@@ -13,7 +14,7 @@ from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from pynwb.behavior import Position, SpatialSeries
+from pynwb.behavior import Position, SpatialSeries, EyeTracking
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
@@ -736,6 +737,46 @@ class TestVideoConversions(TestCase):
             nwbfile = io.read()
             assert self.image_series_name in nwbfile.acquisition
             assert nwbfile.acquisition[self.image_series_name].data.shape[0] == 10
+
+
+class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+
+    data_interface_cls = FacemapInterface
+    interface_kwargs = dict(
+        mat_file_path=str(BEHAVIOR_DATA_PATH / "Facemap" / "facemap_output_test.mat"),
+        video_file_path=str(BEHAVIOR_DATA_PATH / "Facemap" / "raw_behavioral_video.avi"),
+        first_n_components=3,
+    )
+    conversion_options = dict()
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls):
+        cls.eye_com_name = "eye_center_of_mass"
+        cls.eye_com_expected_metadata = DeepDict(
+            SpatialSeries=dict(
+                name="eye_com_name",
+                description="The position of the eye measured in degrees.",
+                reference_frame="unknown",
+                unit="degrees",
+            )
+        )
+        with h5py.File(cls.interface_kwargs["mat_file_path"], "r") as file:
+            cls.eye_com_test_data = file["proc"]["pupil"]["com"][:].T
+
+        cls.eye_tracking_name = "EyeTracking"
+
+    def check_extracted_metadata(self, metadata: dict):
+
+        self.assertIn(self.eye_tracking_name, metadata["Behavior"])
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            self.assertIn("behavior", nwbfile.processing)
+            self.assertIn(self.eye_tracking_name, nwbfile.processing["behavior"].data_interfaces)
+            eye_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.eye_tracking_name]
+            self.assertIsInstance(eye_tracking_container, EyeTracking)
 
 
 if __name__ == "__main__":

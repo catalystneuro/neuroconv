@@ -2,7 +2,6 @@ from typing import Optional
 
 import h5py
 import numpy as np
-from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
 from pynwb.base import TimeSeries
 from pynwb.behavior import EyeTracking, PupilTracking, SpatialSeries
 from pynwb.core import DynamicTableRegion
@@ -13,6 +12,19 @@ from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....utils import FilePathType
 
+import subprocess
+import sys
+
+
+def install_package(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+try:
+    from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
+except ImportError:
+    # TODO: to be change when ndx-facemap-motionsvd version on pip
+    install_package('git+https://github.com/catalystneuro/ndx-facemap-motionsvd.git@main')
+    from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
 
 class FacemapInterface(BaseTemporalAlignmentInterface):
     display_name = "Facemap"
