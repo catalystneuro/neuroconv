@@ -50,10 +50,12 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         schema = super().get_source_schema()
-        schema["properties"]["folder_path"]["description"] = "Path to the folder containing Suite2p segmentation data. Should contain 'plane#' subfolder(s)."
-        schema["properties"]["plane_name"]["description"] = (
-            "The name of the plane to load. This interface only loads one plane at a time. Use the full name, e.g. 'plane0'. If this values is omitted, the first plane found will be loaded."
-        )
+        schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to the folder containing Suite2p segmentation data. Should contain 'plane#' subfolder(s)."
+        schema["properties"]["plane_name"][
+            "description"
+        ] = "The name of the plane to load. This interface only loads one plane at a time. Use the full name, e.g. 'plane0'. If this values is omitted, the first plane found will be loaded."
 
         return schema
 
