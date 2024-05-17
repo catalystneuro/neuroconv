@@ -14,7 +14,7 @@ from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from pynwb.behavior import Position, SpatialSeries, EyeTracking
+from pynwb.behavior import EyeTracking, Position, SpatialSeries
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
