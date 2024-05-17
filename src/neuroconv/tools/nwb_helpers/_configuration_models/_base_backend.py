@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pynwb import NWBFile
 from typing_extensions import Self
 
-from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
+from ._base_dataset_io import DatasetIOConfiguration
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from .._dataset_configuration import get_default_dataset_io_configurations
 
@@ -91,23 +91,7 @@ class BackendConfiguration(BaseModel):
         ids_in_nwbfile = set(nwbfile.objects.keys())
         return ids_in_nwbfile.issubset(ids_in_backend_configuration)
 
-    def is_incompatible_with_nwbfile(self, nwbfile: NWBFile) -> bool:
-        """
-        Check if the backend configuration is NOT compatible with a given NWBFile.
-
-        Parameters
-        ----------
-        nwbfile : pynwb.NWBFile
-            The NWBFile object to check compatibility against.
-
-        Returns
-        -------
-        bool
-            True if the backend configuration is NOT compatible with `nwbfile`, False otherwise.
-        """
-        return not self.is_compatible_with_nwbfile(nwbfile)
-
-    def remap_to_new_nwbfile(self, nwbfile: NWBFile) -> Self:
+    def build_remapped_backend_to_nwbfile(self, nwbfile: NWBFile) -> Self:
         """
         Create a new backend configuration remapped to a different NWBFile.
 
