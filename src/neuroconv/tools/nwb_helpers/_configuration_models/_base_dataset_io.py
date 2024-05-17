@@ -93,7 +93,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
     model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
     # Immutable fields about the dataset
-    object_id: str = Field(description="The UUID of the neurodata object containing the dataset.", frozen=True)
+    object_id: str = Field(description="The UUID of the neurodata object containing the dataset.")
     location_in_file: str = Field(
         description=(
             "The location of the this dataset within the in-memory NWBFile relative to the top-level root, "

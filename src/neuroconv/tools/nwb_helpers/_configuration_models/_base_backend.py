@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pynwb import NWBFile
 from typing_extensions import Self
 
-from ._base_dataset_io import DatasetIOConfiguration
+from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from .._dataset_configuration import get_default_dataset_io_configurations
 
@@ -28,7 +28,10 @@ class BackendConfiguration(BaseModel):
             "for writing the datasets to disk using the specific backend."
         )
     )
-    nwbfile_identifier: str = Field(description="The unique identifier of a particular NWBFile object.")
+
+    nwbfile_identifier: str = Field(
+        description="The unique identifier of the NWBFile object used to create this configuration."
+    )
 
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
@@ -65,3 +68,88 @@ class BackendConfiguration(BaseModel):
         }
 
         return cls(dataset_configurations=dataset_configurations, nwbfile_identifier=nwbfile.identifier)
+
+    def is_compatible_with_nwbfile(self, nwbfile: NWBFile) -> bool:
+        """
+        Check if the backend configuration is compatible with a given NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to check compatibility against.
+
+        Returns
+        -------
+        bool
+            True if all NWB object IDs in `nwbfile` are present in this backend configuration's
+            dataset configurations, False otherwise.
+        """
+
+        ids_in_backend_configuration = {
+            dataset_configuration.object_id for dataset_configuration in self.dataset_configurations.values()
+        }
+        ids_in_nwbfile = set(nwbfile.objects.keys())
+        return ids_in_nwbfile.issubset(ids_in_backend_configuration)
+
+    def is_incompatible_with_nwbfile(self, nwbfile: NWBFile) -> bool:
+        """
+        Check if the backend configuration is NOT compatible with a given NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to check compatibility against.
+
+        Returns
+        -------
+        bool
+            True if the backend configuration is NOT compatible with `nwbfile`, False otherwise.
+        """
+        return not self.is_compatible_with_nwbfile(nwbfile)
+
+    def remap_to_new_nwbfile(self, nwbfile: NWBFile) -> Self:
+        """
+        Create a new backend configuration remapped to a different NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The new NWBFile to remap the configuration to.
+
+        Returns
+        -------
+            A new instance of the backend configuration class, with dataset configurations
+            remapped to their corresponding locations in the new NWBFile.
+
+        Raises
+        ------
+        ValueError
+            If there is a location in the NWBFile that does not have a corresponding
+            configuration in the original configuration.
+
+        Notes
+        -----
+        This function creates a new configuration object. The original configuration remains unchanged.
+        """
+
+        location_to_former_configuration = {
+            dataset_configuration.location_in_file: dataset_configuration
+            for dataset_configuration in self.dataset_configurations.values()
+        }
+
+        backend_configuration_class = type(self)
+        new_backend_configuration = backend_configuration_class.from_nwbfile(nwbfile=nwbfile)
+
+        for dataset_configuration in new_backend_configuration.dataset_configurations.values():
+            location_in_new_nwbfile = dataset_configuration.location_in_file
+            if location_in_new_nwbfile not in location_to_former_configuration:
+                raise ValueError(f"Configuration for object in the following {location_in_new_nwbfile} not found.")
+
+            # Mapping the configuration through locations in the new NWBFile to the former configuration
+            former_configuration = location_to_former_configuration[location_in_new_nwbfile]
+            former_configuration.object_id = dataset_configuration.object_id
+
+            # Update the new configuration with the former configuration
+            new_backend_configuration.dataset_configurations[location_in_new_nwbfile] = former_configuration
+
+        return new_backend_configuration
