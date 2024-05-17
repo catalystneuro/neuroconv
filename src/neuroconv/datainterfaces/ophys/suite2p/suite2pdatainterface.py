@@ -87,7 +87,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             Path to the folder containing Suite2p segmentation data. Should contain 'plane#' sub-folders.
         channel_name: str, optional
             The name of the channel to load.
-            To determine what channels are available, use ``.get_available_channels(folder_path)``.
+            To determine what channels are available, use ``Suite2pSegmentationInterface.get_available_channels(folder_path)``.
         plane_name: str, optional
             The name of the plane to load. This interface only loads one plane at a time.
             If this value is omitted, the first plane found will be loaded.
