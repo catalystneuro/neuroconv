@@ -1,7 +1,7 @@
 """Author: Ben Dichter."""
 
 from typing import Literal, Optional
-
+import warnings
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
@@ -44,7 +44,16 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata_schema(self) -> dict:
+    def get_metadata_schema(self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = None) -> dict:
+
+        if photon_series_type is not None:
+            warnings.warn(
+                "The 'photon_series_type' argument is deprecated and will be removed in a future version. "
+                "Please set 'photon_series_type' during the initialization of the BaseImagingExtractorInterface instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.photon_series_type = photon_series_type
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
@@ -87,7 +96,17 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = None) -> DeepDict:
+
+        if photon_series_type is not None:
+            warnings.warn(
+                "The 'photon_series_type' argument is deprecated and will be removed in a future version. "
+                "Please set 'photon_series_type' during the initialization of the BaseImagingExtractorInterface instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.photon_series_type = photon_series_type
+            
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
