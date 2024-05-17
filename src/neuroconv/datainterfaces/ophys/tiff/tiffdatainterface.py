@@ -1,5 +1,6 @@
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
+from typing import Literal
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
@@ -15,7 +16,13 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, sampling_frequency: float, verbose: bool = True):
+    def __init__(
+        self,
+        file_path: FilePathType,
+        sampling_frequency: float,
+        verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+    ):
         """
         Initialize reading of TIFF file.
 
@@ -24,5 +31,11 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePathType
         sampling_frequency : float
         verbose : bool, default: True
+        photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, default: "TwoPhotonSeries"
         """
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            file_path=file_path,
+            sampling_frequency=sampling_frequency,
+            verbose=verbose,
+            photon_series_type=photon_series_type,
+        )

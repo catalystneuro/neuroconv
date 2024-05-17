@@ -1,5 +1,6 @@
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
+from typing import Literal
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):
@@ -9,7 +10,13 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".sbx",)
     info = "Interface for Scanbox imaging data."
 
-    def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(
+        self,
+        file_path: FilePathType,
+        sampling_frequency: float = None,
+        verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+    ):
         """
         Parameters
         ----------
@@ -19,7 +26,12 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: True
         """
 
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            file_path=file_path,
+            sampling_frequency=sampling_frequency,
+            verbose=verbose,
+            photon_series_type=photon_series_type,
+        )
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
