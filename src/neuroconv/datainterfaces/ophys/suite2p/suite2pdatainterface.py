@@ -91,7 +91,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_name: str, optional
             The name of the plane to load. This interface only loads one plane at a time.
             If this value is omitted, the first plane found will be loaded.
-            To determine what planes are available, use ``.get_available_planes(folder_path)``.
+            To determine what planes are available, use ``Suite2pSegmentationInterface.get_available_planes(folder_path)``.
         plane_segmentation_name: str, optional
             The name of the plane segmentation to be added.
         """
