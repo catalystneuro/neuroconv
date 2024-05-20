@@ -22,4 +22,3 @@ class HDF5BackendConfiguration(BackendConfiguration):
             "information for writing the datasets to disk using the HDF5 backend."
         )
     )
-    nwbfile_identifier: str = Field(description="The unique identifier of a particular NWBFile object.")

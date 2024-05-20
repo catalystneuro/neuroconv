@@ -29,10 +29,6 @@ class BackendConfiguration(BaseModel):
         )
     )
 
-    nwbfile_identifier: str = Field(
-        description="The unique identifier of the NWBFile object used to create this configuration."
-    )
-
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
         string = (
@@ -67,7 +63,7 @@ class BackendConfiguration(BaseModel):
             for default_dataset_configuration in default_dataset_configurations
         }
 
-        return cls(dataset_configurations=dataset_configurations, nwbfile_identifier=nwbfile.identifier)
+        return cls(dataset_configurations=dataset_configurations)
 
     def is_compatible_with_nwbfile(self, nwbfile: NWBFile) -> bool:
         """

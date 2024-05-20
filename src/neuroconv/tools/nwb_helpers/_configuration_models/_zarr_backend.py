@@ -23,7 +23,6 @@ class ZarrBackendConfiguration(BackendConfiguration):
             "information for writing the datasets to disk using the Zarr backend."
         )
     )
-    nwbfile_identifier: str = Field(description="The unique identifier of a particular NWBFile object.")
     number_of_jobs: int = Field(
         description=(
             "Number of jobs to use in parallel during write. Negative values, starting from -1, "
