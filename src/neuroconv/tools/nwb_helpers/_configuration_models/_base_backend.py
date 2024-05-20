@@ -124,16 +124,15 @@ class BackendConfiguration(BaseModel):
         backend_configuration_class = type(self)
         new_backend_configuration = backend_configuration_class.from_nwbfile(nwbfile=nwbfile)
 
-        for dataset_configuration in new_backend_configuration.dataset_configurations.values():
+        new_dataset_configurations = new_backend_configuration.dataset_configurations
+        for dataset_configuration in new_dataset_configurations.values():
             location_in_new_nwbfile = dataset_configuration.location_in_file
             if location_in_new_nwbfile not in location_to_former_configuration:
                 raise ValueError(f"Configuration for object in the following {location_in_new_nwbfile} not found.")
 
             # Mapping the configuration through locations in the new NWBFile to the former configuration
             former_configuration = location_to_former_configuration[location_in_new_nwbfile]
-            former_configuration.object_id = dataset_configuration.object_id
-
-            # Update the new configuration with the former configuration
-            new_backend_configuration.dataset_configurations[location_in_new_nwbfile] = former_configuration
+            new_configuration = former_configuration.model_copy(update={"object_id": dataset_configuration.object_id})
+            new_dataset_configurations[location_in_new_nwbfile] = new_configuration
 
         return new_backend_configuration
