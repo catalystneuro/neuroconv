@@ -65,70 +65,75 @@ class BackendConfiguration(BaseModel):
 
         return cls(dataset_configurations=dataset_configurations)
 
-    def is_compatible_with_nwbfile(self, nwbfile: NWBFile) -> bool:
+    def find_locations_requiring_remapping(self, nwbfile: NWBFile) -> Dict[str, DatasetIOConfiguration]:
         """
-        Check if the backend configuration is compatible with a given NWBFile.
+        Find locations of objects with mismatched IDs in the file.
+
+        This function identifies neurodata objects in the `nwbfile` that have matching locations
+        with the current configuration but different object IDs. It returns a dictionary of
+        remapped `DatasetIOConfiguration` objects for these mismatched locations.
 
         Parameters
         ----------
         nwbfile : pynwb.NWBFile
-            The NWBFile object to check compatibility against.
+            The NWBFile object to check for mismatched object IDs.
 
         Returns
         -------
-        bool
-            True if all NWB object IDs in `nwbfile` are present in this backend configuration's
-            dataset configurations, False otherwise.
-        """
-
-        ids_in_backend_configuration = {
-            dataset_configuration.object_id for dataset_configuration in self.dataset_configurations.values()
-        }
-        ids_in_nwbfile = set(nwbfile.objects.keys())
-        return ids_in_nwbfile.issubset(ids_in_backend_configuration)
-
-    def build_remapped_backend_to_nwbfile(self, nwbfile: NWBFile) -> Self:
-        """
-        Create a new backend configuration remapped to a different NWBFile.
-
-        Parameters
-        ----------
-        nwbfile : pynwb.NWBFile
-            The new NWBFile to remap the configuration to.
-
-        Returns
-        -------
-            A new instance of the backend configuration class, with dataset configurations
-            remapped to their corresponding locations in the new NWBFile.
-
-        Raises
-        ------
-        ValueError
-            If there is a location in the NWBFile that does not have a corresponding
-            configuration in the original configuration.
+        Dict[str, DatasetIOConfiguration]
+            A dictionary where:
+            * Keys: Locations in the NWB of objects with mismatched IDs.
+            * Values: New `DatasetIOConfiguration` objects corresponding to the updated object IDs.
 
         Notes
         -----
-        This function creates a new configuration object. The original configuration remains unchanged.
+        * This function only checks for objects with the same location but different IDs.
+        * It does not identify objects missing from the current configuration.
+        * The returned `DatasetIOConfiguration` objects are copies of the original configurations
+        with updated `object_id` fields.
         """
 
-        location_to_former_configuration = {
-            dataset_configuration.location_in_file: dataset_configuration
-            for dataset_configuration in self.dataset_configurations.values()
-        }
+        default_configuration_iterator = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=self.backend)
 
-        backend_configuration_class = type(self)
-        new_backend_configuration = backend_configuration_class.from_nwbfile(nwbfile=nwbfile)
+        objects_requiring_remapping = {}
+        for dataset_configuration in default_configuration_iterator:
+            location_in_file = dataset_configuration.location_in_file
+            object_id = dataset_configuration.object_id
 
-        new_dataset_configurations = new_backend_configuration.dataset_configurations
-        for dataset_configuration in new_dataset_configurations.values():
-            location_in_new_nwbfile = dataset_configuration.location_in_file
-            if location_in_new_nwbfile not in location_to_former_configuration:
-                raise ValueError(f"Configuration for object in the following {location_in_new_nwbfile} not found.")
+            location_can_be_remapped = location_in_file in self.dataset_configurations
+            if location_can_be_remapped:
+                former_configuration = self.dataset_configurations[location_in_file]
+                former_object_id = former_configuration.object_id
+                object_id_needs_update = former_object_id != object_id
+                if object_id_needs_update:
+                    remapped_configuration = former_configuration.model_copy(update={"object_id": object_id})
+                    objects_requiring_remapping[location_in_file] = remapped_configuration
 
-            # Mapping the configuration through locations in the new NWBFile to the former configuration
-            former_configuration = location_to_former_configuration[location_in_new_nwbfile]
-            new_configuration = former_configuration.model_copy(update={"object_id": dataset_configuration.object_id})
-            new_dataset_configurations[location_in_new_nwbfile] = new_configuration
+        return objects_requiring_remapping
 
+    def build_remapped_backend(
+        self,
+        locations_to_remap: Dict[str, DatasetIOConfiguration],
+    ) -> Self:
+        """
+        Build a remapped backend configuration by updating mismatched object IDs.
+
+        This function takes a dictionary of new `DatasetIOConfiguration` objects
+        (as returned by `find_locations_requiring_remapping`) and updates a copy of the current configuration
+        with these new configurations.
+
+        Parameters
+        ----------
+        locations_to_remap : dict
+            A dictionary mapping locations in the NWBFile to their corresponding new
+            `DatasetIOConfiguration` objects with updated IDs.
+
+        Returns
+        -------
+        Self
+            A new instance of the backend configuration class with updated object IDs for
+            the specified locations.
+        """
+        new_backend_configuration = self.model_copy(deep=True)
+        new_backend_configuration.dataset_configurations.update(locations_to_remap)
         return new_backend_configuration

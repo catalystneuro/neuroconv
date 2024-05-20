@@ -28,9 +28,11 @@ def configure_backend(
     ndx_events = importlib.import_module("ndx_events") if is_ndx_events_installed else None
 
     # A remapping of the object IDs in the backend configuration might necessary
-    backend_is_incompatible_with_nwbfile = not backend_configuration.is_compatible_with_nwbfile(nwbfile=nwbfile)
-    if backend_is_incompatible_with_nwbfile:
-        backend_configuration = backend_configuration.build_remapped_backend_to_nwbfile(nwbfile=nwbfile)
+    objects_requiring_remapping = backend_configuration.find_locations_requiring_remapping(nwbfile=nwbfile)
+    if objects_requiring_remapping:
+        backend_configuration = backend_configuration.build_remapped_backend(
+            location_to_new_configurations=objects_requiring_remapping,
+        )
 
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
