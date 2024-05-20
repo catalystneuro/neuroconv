@@ -30,9 +30,7 @@ def configure_backend(
     # A remapping of the object IDs in the backend configuration might necessary
     locations_to_remap = backend_configuration.find_locations_requiring_remapping(nwbfile=nwbfile)
     if locations_to_remap:
-        backend_configuration = backend_configuration.build_remapped_backend(
-            locations_to_remap=locations_to_remap,
-        )
+        backend_configuration = backend_configuration.build_remapped_backend(locations_to_remap=locations_to_remap)
 
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
