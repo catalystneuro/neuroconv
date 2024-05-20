@@ -792,7 +792,7 @@ class TestAddElectrodes(TestCase):
         values_appended_to_table = [[], []]
         expected_values = values_appended_to_table + second_ragged_array_values
 
-        # We need a foor loop because this is a non-homogenous ragged array
+        # We need a for loop because this is a non-homogenous ragged array
         for i, value in enumerate(written_values):
             np.testing.assert_array_equal(value, expected_values[i])
 
@@ -1147,7 +1147,7 @@ class TestAddUnitsTable(TestCase):
         valuees_appended_to_table = [[] for _ in range(number_of_rows_added_before)]
         expected_values = valuees_appended_to_table + second_ragged_array_values
 
-        # We need a foor loop because this is a non-homogenous ragged array
+        # We need a for loop because this is a non-homogenous ragged array
         for i, value in enumerate(written_values):
             np.testing.assert_array_equal(value, expected_values[i])
 
