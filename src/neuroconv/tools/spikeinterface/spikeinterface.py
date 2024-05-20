@@ -699,15 +699,7 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_timestamps = starting_time + timestamps
-        if compression is not None:
-            # in this case we assume HDF5 backend and compression
-            timestamps_iterator = H5DataIO(
-                data=shifted_timestamps, compression=compression, compression_opts=compression_opts
-            )
-        else:
-            timestamps_iterator = shifted_timestamps
-
-        eseries_kwargs.update(timestamps=timestamps_iterator)
+        eseries_kwargs.update(timestamps=shifted_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
