@@ -79,8 +79,8 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
 
 
 @skipIf(
-    platform == "darwin" or this_python_version < version.parse("3.8") or this_python_version > version.parse("3.9"),
-    reason="Interface unsupported for OSX. Only runs on Python 3.8 and 3.9",
+    platform == "darwin" or this_python_version > version.parse("3.9"),
+    reason="Interface unsupported for OSX. Interface only runs on python 3.9",
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = Spike2RecordingInterface

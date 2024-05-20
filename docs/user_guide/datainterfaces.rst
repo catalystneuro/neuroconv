@@ -87,9 +87,9 @@ The ``session_start_time`` is also required. This is sometimes found in the sour
 .. code-block:: python
 
     from datetime import datetime
-    from dateutil import tz
+    from zoneinfo import ZoneInfo
 
-    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=tz.gettz("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
 
 You can use ``tz.tzlocal()`` to get the local timezone.
 
@@ -97,7 +97,7 @@ If the ``session_start_time`` is extracted from the source data, it is often mis
 
 .. code-block:: python
 
-    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=tz.gettz("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
 
 NWB Best Practices also recommends several other fields that are rarely present in the extracted metadata. The metadata dictionary is the place to add this information.
 
