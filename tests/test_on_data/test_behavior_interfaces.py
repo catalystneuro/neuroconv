@@ -795,12 +795,19 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
             self.assertIn(self.eye_tracking_module, nwbfile.processing["behavior"].data_interfaces)
             eye_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.eye_tracking_module]
             self.assertIsInstance(eye_tracking_container, EyeTracking)
-            eye_tracking_spatial_series = eye_tracking_container.spatial_series.values()
+            eye_tracking_spatial_series = eye_tracking_container.spatial_series["eye_center_of_mass"]
             self.assertEqual(eye_tracking_spatial_series.data.shape, self.eye_tracking_test_data.shape)
+            assert_array_equal(eye_tracking_spatial_series.data[:], self.eye_tracking_test_data)
 
             self.assertIn(self.pupil_tracking_module, nwbfile.processing["behavior"].data_interfaces)
             pupil_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.pupil_tracking_module]
             self.assertIsInstance(pupil_tracking_container, PupilTracking)
+            pupil_area_time_series = pupil_tracking_container.time_series["pupil_area"]
+            self.assertEqual(pupil_area_time_series.data.shape, self.pupil_area_test_data.shape)
+            assert_array_equal(pupil_area_time_series.data[:], self.pupil_area_test_data)
+            pupil_area_raw_time_series = pupil_tracking_container.time_series["pupil_area_raw"]
+            self.assertEqual(pupil_area_raw_time_series.data.shape, self.pupil_area_raw_test_data.shape)
+            assert_array_equal(pupil_area_raw_time_series.data[:], self.pupil_area_raw_test_data)
 
 
 if __name__ == "__main__":
