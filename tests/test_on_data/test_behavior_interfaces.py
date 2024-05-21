@@ -8,6 +8,7 @@ import pandas as pd
 import sleap_io
 from hdmf.testing import TestCase
 from natsort import natsorted
+from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
 from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
 from ndx_pose import PoseEstimation, PoseEstimationSeries
@@ -767,12 +768,22 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
             description="Area of pupil.",
             unit="unknown",
         )
-        cls.pupil_area_raw__expected_metadata = dict(
+        cls.pupil_area_raw_expected_metadata = dict(
             name="pupil_area_raw",
             description="Raw unprocessed area of pupil.",
             unit="unknown",
         )
 
+        cls.motion_masks_module = "MotionSVDMasks"
+        cls.motion_masks_expected_metadata = dict(
+            name="MotionSVDMasks",
+            description="Motion masks",
+        )
+        cls.motion_series_module = "MotionSVDSeries"
+        cls.motion_series_expected_metadata = dict(
+            name="MotionSVDSeries",
+            description="Motion SVD components",
+        )
         with h5py.File(cls.interface_kwargs["mat_file_path"], "r") as file:
             cls.eye_tracking_test_data = file["proc"]["pupil"]["com"][:].T
             cls.pupil_area_test_data = file["proc"]["pupil"]["area"][:].T
@@ -785,7 +796,13 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
 
         self.assertIn(self.pupil_tracking_module, metadata["Behavior"])
         self.assertEqual(self.pupil_area_expected_metadata, metadata["Behavior"]["PupilTracking"]["area"])
-        self.assertEqual(self.pupil_area_raw__expected_metadata, metadata["Behavior"]["PupilTracking"]["area_raw"])
+        self.assertEqual(self.pupil_area_raw_expected_metadata, metadata["Behavior"]["PupilTracking"]["area_raw"])
+
+        self.assertIn(self.motion_masks_module, metadata["Behavior"])
+        self.assertEqual(self.motion_masks_expected_metadata, metadata["Behavior"]["MotionSVDMasks"])
+
+        self.assertIn(self.motion_series_module, metadata["Behavior"])
+        self.assertEqual(self.motion_series_expected_metadata, metadata["Behavior"]["MotionSVDSeries"])
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
@@ -808,6 +825,29 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
             pupil_area_raw_time_series = pupil_tracking_container.time_series["pupil_area_raw"]
             self.assertEqual(pupil_area_raw_time_series.data.shape, self.pupil_area_raw_test_data.shape)
             assert_array_equal(pupil_area_raw_time_series.data[:], self.pupil_area_raw_test_data)
+
+            self.assertIn("MotionSVDMasksMultivideo", nwbfile.processing["behavior"].data_interfaces)
+            motion_masks_container = nwbfile.processing["behavior"].data_interfaces["MotionSVDMasksMultivideo"]
+            self.assertIsInstance(motion_masks_container, MotionSVDMasks)
+            assert_array_equal(motion_masks_container.processed_frame_dimension[:], [295, 288])
+            assert_array_equal(motion_masks_container.mask_coordinates[:], [49, 0, 294, 287])
+            self.assertEqual(motion_masks_container.downsampling_factor, 4.0)
+            self.assertEqual(motion_masks_container["image_mask"].shape[0], 3)
+            self.assertIn("MotionSVDSeriesMultivideo", nwbfile.processing["behavior"].data_interfaces)
+            motion_seires_container = nwbfile.processing["behavior"].data_interfaces["MotionSVDSeriesMultivideo"]
+            self.assertIsInstance(motion_seires_container, MotionSVDSeries)
+            self.assertEqual(motion_seires_container.data.shape[0], 18078)
+            self.assertIn("MotionSVDMasksROI1", nwbfile.processing["behavior"].data_interfaces)
+            motion_masks_container = nwbfile.processing["behavior"].data_interfaces["MotionSVDMasksROI1"]
+            self.assertIsInstance(motion_masks_container, MotionSVDMasks)
+            assert_array_equal(motion_masks_container.processed_frame_dimension[:], [295, 288])
+            assert_array_equal(motion_masks_container.mask_coordinates[:], [147, 112, 279, 240])
+            self.assertEqual(motion_masks_container.downsampling_factor, 4.0)
+            self.assertEqual(motion_masks_container["image_mask"].shape[0], 3)
+            self.assertIn("MotionSVDSeriesROI1", nwbfile.processing["behavior"].data_interfaces)
+            motion_seires_container = nwbfile.processing["behavior"].data_interfaces["MotionSVDSeriesROI1"]
+            self.assertIsInstance(motion_seires_container, MotionSVDSeries)
+            self.assertEqual(motion_seires_container.data.shape[0], 18078)
 
 
 if __name__ == "__main__":
