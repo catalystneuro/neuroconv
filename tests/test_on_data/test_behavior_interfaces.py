@@ -754,12 +754,12 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
     def setUpClass(cls):
         cls.eye_com_name = "eye_center_of_mass"
         cls.eye_com_expected_metadata = dict(
-                name=cls.eye_com_name,
-                description="The position of the eye measured in degrees.",
-                reference_frame="unknown",
-                unit="degrees",
-            )
-        
+            name=cls.eye_com_name,
+            description="The position of the eye measured in degrees.",
+            reference_frame="unknown",
+            unit="degrees",
+        )
+
         with h5py.File(cls.interface_kwargs["mat_file_path"], "r") as file:
             cls.eye_com_test_data = file["proc"]["pupil"]["com"][:].T
 

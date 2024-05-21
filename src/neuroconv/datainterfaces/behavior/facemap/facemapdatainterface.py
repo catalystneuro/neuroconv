@@ -1,6 +1,6 @@
 import subprocess
 import sys
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 import h5py
 import numpy as np
@@ -68,7 +68,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         metadata["Behavior"]["EyeTracking"] = {
-            "name": "eye_center_of_mass", 
+            "name": "eye_center_of_mass",
             "description": "The position of the eye measured in degrees.",
             "reference_frame": "unknown",
             "unit": "degrees",
@@ -78,7 +78,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
             "description": "Area of pupil.",
             "unit": "unknown",
         }
-        metadata["Behavior"]["PupilTracking"]["area_raw"] = {        
+        metadata["Behavior"]["PupilTracking"]["area_raw"] = {
             "name": "pupil_area_raw",
             "description": "Raw unprocessed area of pupil.",
             "unit": "unknown",
@@ -107,7 +107,9 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
             behavior_module.add(eye_tracking)
 
-    def add_pupil_data(self, nwbfile: NWBFile, metadata: DeepDict, pupil_trace_type: Literal["area_raw", "area"] = "area"):
+    def add_pupil_data(
+        self, nwbfile: NWBFile, metadata: DeepDict, pupil_trace_type: Literal["area_raw", "area"] = "area"
+    ):
 
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
 
@@ -117,10 +119,10 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
             if "EyeTracking" not in behavior_module.data_interfaces:
                 self.add_eye_tracking(nwbfile=nwbfile, metadata=metadata)
-            
+
             eye_tracking_name = metadata["Behavior"]["EyeTracking"]["name"]
             eye_com = behavior_module.data_interfaces["EyeTracking"].spatial_series[eye_tracking_name]
-            
+
             pupil_trace = TimeSeries(
                 name=pupil_area_metadata["name"],
                 description=pupil_area_metadata["description"],
@@ -134,9 +136,8 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 behavior_module.add(pupil_tracking)
             else:
                 pupil_tracking = behavior_module.data_interfaces["PupilTracking"]
-            
-            pupil_tracking.add_timeseries(pupil_trace)
 
+            pupil_tracking.add_timeseries(pupil_trace)
 
     def add_multivideo_motion_SVD(self, nwbfile: NWBFile):
         """
