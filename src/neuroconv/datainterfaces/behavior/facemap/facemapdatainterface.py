@@ -87,7 +87,8 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
     def add_eye_tracking(self, nwbfile: NWBFile, metadata: DeepDict):
 
-        timestamps = self.get_timestamps()
+        if self.timestamps is None:
+            self.timestamps = self.get_timestamps() 
 
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
 
@@ -100,7 +101,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 data=file["proc"]["pupil"]["com"][:].T,
                 reference_frame=eye_tracking_metadata["reference_frame"],
                 unit=eye_tracking_metadata["unit"],
-                timestamps=timestamps,
+                timestamps=self.timestamps,
             )
 
             eye_tracking = EyeTracking(name="EyeTracking", spatial_series=eye_com)
