@@ -17,6 +17,10 @@ LightningPose
 -------------
 .. automodule:: neuroconv.datainterfaces.behavior.lightningpose.lightningposeconverter
 
+Neuralynx NVT
+-------------
+.. automodule:: neuroconv.datainterfaces.behavior.neuralynx.neuralynx_nvt_interface
+
 SLEAP
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface

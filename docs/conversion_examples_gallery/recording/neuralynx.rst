@@ -13,7 +13,7 @@ Convert Neuralynx data to NWB using
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import NeuralynxRecordingInterface
     >>>
@@ -27,9 +27,13 @@ Convert Neuralynx data to NWB using
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+.. note::
+    For Neuralynx NVT files, see :ref:`neuralynx_nvt_conversion`.

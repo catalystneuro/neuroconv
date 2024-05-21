@@ -16,6 +16,7 @@ from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
 from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....utils.str_utils import human_readable_size
 
 
 class VideoInterface(BaseDataInterface):
@@ -268,6 +269,7 @@ class VideoInterface(BaseDataInterface):
                         ]
                     )
                 )
+
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
             The list for the 'Videos' key should correspond one to the video files in the file_paths list.
@@ -360,8 +362,8 @@ class VideoInterface(BaseDataInterface):
                 available_memory = psutil.virtual_memory().available
                 if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
                     warn(
-                        f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load video file as "
-                        f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
+                        f"Not enough memory (estimated {human_readable_size(uncompressed_estimate)}) to load video file"
+                        f"as array ({human_readable_size(available_memory)} available)! Forcing chunk_data to True."
                     )
                     chunk_data = True
                 with VideoCaptureContext(str(file)) as video_capture_ob:
