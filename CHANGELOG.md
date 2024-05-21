@@ -15,7 +15,7 @@
 * Added `get_default_backend_configuration` method to all `NWBConverter` classes. Also added HDF5 `backend` control to `.run_conversion(...)`. [PR #804](https://github.com/catalystneuro/neuroconv/pull/804)
 * Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
 * Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
-* Added a function to generate ogen timestamps and data from onset times and parameters to tools/signal_processing.py: [PR #832](https://github.com/catalystneuro/neuroconv/pull/832)
+* Added a function to generate ogen timestamps and data from onset times and parameters to `tools.optogenetics`. [PR #832](https://github.com/catalystneuro/neuroconv/pull/832)
 * Improve printing of bytes [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
 * Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
 * Support for pathlib in source data schema validation [PR #854](https://github.com/catalystneuro/neuroconv/pull/854)
