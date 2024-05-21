@@ -83,12 +83,20 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
             "description": "Raw unprocessed area of pupil.",
             "unit": "unknown",
         }
+        metadata["Behavior"]["MotionSVDMasks"] = {
+            "name": "MotionSVDMasks",
+            "description": "Motion masks",
+        }
+        metadata["Behavior"]["MotionSVDSeries"] = {
+            "name": "MotionSVDSeries",
+            "description": "Motion SVD components",
+        }
         return metadata
 
     def add_eye_tracking(self, nwbfile: NWBFile, metadata: DeepDict):
 
         if self.timestamps is None:
-            self.timestamps = self.get_timestamps() 
+            self.timestamps = self.get_timestamps()
 
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
 
@@ -140,7 +148,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
             pupil_tracking.add_timeseries(pupil_trace)
 
-    def add_multivideo_motion_SVD(self, nwbfile: NWBFile):
+    def add_multivideo_motion_SVD(self, nwbfile: NWBFile, metadata: DeepDict):
         """
         Add data motion SVD and motion mask for the whole video.
 
@@ -153,13 +161,18 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         # From documentation
         # motSVD: cell array of motion SVDs [time x components] (in order: multivideo, ROI1, ROI2, ROI3)
         # uMotMask: cell array of motion masks [pixels x components]  (in order: multivideo, ROI1, ROI2, ROI3)
-        # motion masks of multivideo are reported as 2D-arrays npixels x components
+        # motion masks of multivideo are reported as 2D-arrays npixels x
+        if self.timestamps is None:
+            self.timestamps = self.get_timestamps()
+
+        motion_mask_name = metadata["Behavior"]["MotionSVDMasks"]["name"]
+        motion_mask_description = metadata["Behavior"]["MotionSVDMasks"]["description"]
+        motion_series_name = metadata["Behavior"]["MotionSVDSeries"]["name"]
+        motion_series_description = metadata["Behavior"]["MotionSVDSeries"]["description"]
 
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
-
-            timestamps = self.get_timestamps()
 
             # Extract mask_coordinates
             mask_coordinates = file[file[file["proc"]["ROI"][0][0]][0][0]]
@@ -171,8 +184,8 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
             # store multivideo motion mask and motion series
             motion_masks_table = MotionSVDMasks(
-                name=f"MotionSVDMasksMultivideo",
-                description=f"motion mask for multivideo",
+                name=f"{motion_mask_name}Multivideo",
+                description=f"{motion_mask_description} for multivideo.",
                 mask_coordinates=mask_coordinates,
                 downsampling_factor=self._get_downsamplig_factor(),
                 processed_frame_dimension=self._get_processed_frame_dimension(),
@@ -197,20 +210,20 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
             data = np.array(file[series_ref])
             data = data[: self.first_n_components, :]
 
-            motionsvd_series = MotionSVDSeries(
-                name=f"MotionSVDSeriesMultivideo",
-                description=f"SVD components for multivideo",
+            motion_series = MotionSVDSeries(
+                name=f"{motion_series_name}Multivideo",
+                description=f"{motion_series_description} for multivideo.",
                 data=data.T,
                 motion_masks=motion_masks,
                 unit="unknown",
-                timestamps=timestamps,
+                timestamps=self.timestamps,
             )
             behavior_module.add(motion_masks_table)
-            behavior_module.add(motionsvd_series)
+            behavior_module.add(motion_series)
 
         return
 
-    def add_motion_SVD(self, nwbfile: NWBFile):
+    def add_motion_SVD(self, nwbfile: NWBFile, metadata: DeepDict):
         """
         Add data motion SVD and motion mask for each ROI.
 
@@ -225,11 +238,18 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         # uMotMask: cell array of motion masks [pixels x components]  (in order: multivideo, ROI1, ROI2, ROI3)
         # ROIs motion masks are reported as 3D-arrays x_pixels x y_pixels x components
 
+        if self.timestamps is None:
+            self.timestamps = self.get_timestamps()
+
+        motion_mask_name = metadata["Behavior"]["MotionSVDMasks"]["name"]
+        motion_mask_description = metadata["Behavior"]["MotionSVDMasks"]["description"]
+        motion_series_name = metadata["Behavior"]["MotionSVDSeries"]["name"]
+        motion_series_description = metadata["Behavior"]["MotionSVDSeries"]["description"]
+
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
 
-            timestamps = self.get_timestamps()
             downsampling_factor = self._get_downsamplig_factor()
             processed_frame_dimension = self._get_processed_frame_dimension()
             # store ROIs motion mask and motion series
@@ -247,8 +267,8 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 mask_coordinates = [x1, y1, x2, y2]
 
                 motion_masks_table = MotionSVDMasks(
-                    name=f"MotionSVDMasksROI{n}",
-                    description=f"motion mask for ROI{n}",
+                    name=f"{motion_mask_name}ROI{n}",
+                    description=f"{motion_mask_description} for ROI{n}",
                     mask_coordinates=mask_coordinates,
                     downsampling_factor=downsampling_factor,
                     processed_frame_dimension=processed_frame_dimension,
@@ -269,18 +289,18 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 data = np.array(file[series_ref])
                 data = data[: self.first_n_components, :]
 
-                motionsvd_series = MotionSVDSeries(
-                    name=f"MotionSVDSeriesROI{n}",
-                    description=f"SVD components for ROI{n}",
+                motion_series = MotionSVDSeries(
+                    name=f"{motion_series_name}ROI{n}",
+                    description=f"{motion_series_description} for ROI{n}",
                     data=data.T,
                     motion_masks=motion_masks,
                     unit="unknown",
-                    timestamps=timestamps,
+                    timestamps=self.timestamps,
                 )
                 n = +1
 
                 behavior_module.add(motion_masks_table)
-                behavior_module.add(motionsvd_series)
+                behavior_module.add(motion_series)
 
         return
 
@@ -333,6 +353,6 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         # self.add_eye_tracking(nwbfile=nwbfile, metadata=metadata)
         self.add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area_raw")
         self.add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area")
-        self.add_motion_SVD(nwbfile=nwbfile)
-        if self.add_multivideo_motion_SVD:
-            self.add_multivideo_motion_SVD(nwbfile=nwbfile)
+        self.add_motion_SVD(nwbfile=nwbfile, metadata=metadata)
+        if self.include_multivideo_SVD:
+            self.add_multivideo_motion_SVD(nwbfile=nwbfile, metadata=metadata)
