@@ -14,7 +14,7 @@ from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from pynwb.behavior import EyeTracking, Position, SpatialSeries, PupilTracking
+from pynwb.behavior import EyeTracking, Position, PupilTracking, SpatialSeries
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
@@ -771,10 +771,12 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
             name="pupil_area_raw",
             description="Raw unprocessed area of pupil.",
             unit="unknown",
-        ) 
+        )
 
         with h5py.File(cls.interface_kwargs["mat_file_path"], "r") as file:
-            cls.eye_com_test_data = file["proc"]["pupil"]["com"][:].T
+            cls.eye_tracking_test_data = file["proc"]["pupil"]["com"][:].T
+            cls.pupil_area_test_data = file["proc"]["pupil"]["area"][:].T
+            cls.pupil_area_raw_test_data = file["proc"]["pupil"]["area_raw"][:].T
 
     def check_extracted_metadata(self, metadata: dict):
 
@@ -789,9 +791,13 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             self.assertIn("behavior", nwbfile.processing)
+
             self.assertIn(self.eye_tracking_module, nwbfile.processing["behavior"].data_interfaces)
             eye_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.eye_tracking_module]
             self.assertIsInstance(eye_tracking_container, EyeTracking)
+            eye_tracking_spatial_series = eye_tracking_container.spatial_series.values()
+            self.assertEqual(eye_tracking_spatial_series.data.shape, self.eye_tracking_test_data.shape)
+
             self.assertIn(self.pupil_tracking_module, nwbfile.processing["behavior"].data_interfaces)
             pupil_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.pupil_tracking_module]
             self.assertIsInstance(pupil_tracking_container, PupilTracking)
