@@ -753,29 +753,29 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
     @classmethod
     def setUpClass(cls):
         cls.eye_com_name = "eye_center_of_mass"
-        cls.eye_com_expected_metadata = DeepDict(
-            SpatialSeries=dict(
-                name="eye_com_name",
+        cls.eye_com_expected_metadata = dict(
+                name=cls.eye_com_name,
                 description="The position of the eye measured in degrees.",
                 reference_frame="unknown",
                 unit="degrees",
             )
-        )
+        
         with h5py.File(cls.interface_kwargs["mat_file_path"], "r") as file:
             cls.eye_com_test_data = file["proc"]["pupil"]["com"][:].T
 
-        cls.eye_tracking_name = "EyeTracking"
+        cls.eye_tracking_module = "EyeTracking"
 
     def check_extracted_metadata(self, metadata: dict):
 
-        self.assertIn(self.eye_tracking_name, metadata["Behavior"])
+        self.assertIn(self.eye_tracking_module, metadata["Behavior"])
+        self.assertEqual(self.eye_com_expected_metadata, metadata["Behavior"]["EyeTracking"])
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             self.assertIn("behavior", nwbfile.processing)
-            self.assertIn(self.eye_tracking_name, nwbfile.processing["behavior"].data_interfaces)
-            eye_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.eye_tracking_name]
+            self.assertIn(self.eye_tracking_module, nwbfile.processing["behavior"].data_interfaces)
+            eye_tracking_container = nwbfile.processing["behavior"].data_interfaces[self.eye_tracking_module]
             self.assertIsInstance(eye_tracking_container, EyeTracking)
 
 
