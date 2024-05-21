@@ -63,7 +63,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = 
     return falling_frames
 
 
-def create_ogen_stimulation_timeseries(
+def create_optogenetic_stimulation_timeseries(
     *,
     stimulation_onset_times: np.ndarray,
     duration: float,
