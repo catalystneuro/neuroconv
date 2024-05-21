@@ -14,7 +14,7 @@ from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from pynwb.behavior import EyeTracking, Position, SpatialSeries, PupilTracking
+from pynwb.behavior import EyeTracking, Position, PupilTracking, SpatialSeries
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
@@ -771,7 +771,7 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
             name="pupil_area_raw",
             description="Raw unprocessed area of pupil.",
             unit="unknown",
-        ) 
+        )
 
         with h5py.File(cls.interface_kwargs["mat_file_path"], "r") as file:
             cls.eye_com_test_data = file["proc"]["pupil"]["com"][:].T
