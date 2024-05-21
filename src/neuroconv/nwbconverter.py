@@ -1,13 +1,23 @@
 import json
 from collections import Counter
+from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from jsonschema import validate
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
-from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
+from .tools.nwb_helpers import (
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+    get_default_nwbfile_metadata,
+    make_nwbfile_from_metadata,
+    make_or_load_nwbfile,
+)
+from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -16,7 +26,7 @@ from .utils import (
     unroot_schema,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import NWBMetaDataEncoder
+from .utils.json_schema import NWBMetaDataEncoder, NWBSourceDataEncoder
 
 
 class NWBConverter:
@@ -109,9 +119,40 @@ class NWBConverter:
             print("conversion_options is valid!")
 
     def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
-        validate(instance=source_data, schema=self.get_source_schema())
+
+        encoder = NWBSourceDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(serialized_source_data)
+
+        validate(instance=decoded_source_data, schema=self.get_source_schema())
         if verbose:
             print("Source data is valid!")
+
+    def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
+        """
+        Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
+
+        Parameters
+        ----------
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile.
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+
+        Returns
+        -------
+        nwbfile : pynwb.NWBFile
+            The in-memory object with this interface's data added to it.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+        return nwbfile
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
         conversion_options = conversion_options or dict()
@@ -126,10 +167,16 @@ class NWBConverter:
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
+        # backend: Union[Literal["hdf5", "zarr"]],
+        # backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
+        backend: Optional[Literal["hdf5"]] = None,
+        backend_configuration: Optional[HDF5BackendConfiguration] = None,
         conversion_options: Optional[dict] = None,
     ) -> None:
         """
         Run the NWB conversion over all the instantiated data interfaces.
+
         Parameters
         ----------
         nwbfile_path : FilePathType
@@ -142,15 +189,25 @@ class NWBConverter:
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
+        backend : "hdf5", optional
+            The type of backend to use when writing the file.
+            If a `backend_configuration` is not specified, the default type will be "hdf5".
+            If a `backend_configuration` is specified, then the type will be auto-detected.
+        backend_configuration : HDF5BackendConfiguration, optional
+            The configuration model to use when configuring the datasets for this backend.
+            To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
+            BackendConfiguration object, and pass that instead.
+            Otherwise, all datasets will use default configuration settings.
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
+        backend = _resolve_backend(backend, backend_configuration)
+
         if metadata is None:
             metadata = self.get_metadata()
 
         self.validate_metadata(metadata=metadata)
-
         self.validate_conversion_options(conversion_options=conversion_options)
 
         self.temporally_align_data_interfaces()
@@ -160,13 +217,42 @@ class NWBConverter:
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-            verbose=self.verbose,
+            backend=backend,
+            verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
+            if backend_configuration is None:
+                # Otherwise assume the data has already been added to the NWBFile
+                self.add_to_nwbfile(nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+
+                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+
+            configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
     def temporally_align_data_interfaces(self):
         """Override this method to implement custom alignment"""
         pass
+
+    @staticmethod
+    def get_default_backend_configuration(
+        nwbfile: NWBFile,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+        """
+        Fill and return a default backend configuration to serve as a starting point for further customization.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The in-memory object with this interface's data already added to it.
+        backend : "hdf5" or "zarr", default: "hdf5"
+            The type of backend to use when creating the file.
+
+        Returns
+        -------
+        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration
+            The default configuration for the specified backend type.
+        """
+        return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
 
 class ConverterPipe(NWBConverter):

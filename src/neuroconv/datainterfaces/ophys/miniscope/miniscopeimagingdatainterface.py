@@ -35,12 +35,13 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_folder_paths[0]))
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
+        self.photon_series_type = "OnePhotonSeries"
 
     def get_metadata(self) -> DeepDict:
         from ....tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type="OnePhotonSeries")
+        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
         metadata = dict_deep_update(metadata, default_metadata)
         metadata["Ophys"].pop("TwoPhotonSeries", None)
 
@@ -62,8 +63,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema(photon_series_type="OnePhotonSeries")
-        metadata_schema["properties"]["Ophys"]["properties"]["definitions"]["Device"]["additionalProperties"] = True
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:

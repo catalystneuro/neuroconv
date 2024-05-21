@@ -47,19 +47,19 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
         metadata_schema["properties"]["Ecephys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}),
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ecephys/definitions/Device"}),
             ElectrodeGroup=dict(
-                type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
+                type="array", minItems=1, items={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroup"}
             ),
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
-                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"},
+                items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
             ),
         )
         # Schema definition for arrays
-        metadata_schema["properties"]["Ecephys"]["properties"]["definitions"] = dict(
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             Electrodes=dict(
@@ -285,7 +285,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        compression: Optional[str] = "gzip",
+        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
@@ -302,6 +302,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
+
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -311,35 +312,31 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        compression : {'gzip', 'lzf', None}
-            Type of compression to use.
-            Set to None to disable all compression.
-        compression_opts : int, default: 4
-            Only applies to compression="gzip". Controls the level of the GZIP.
         iterator_type : {'v2', 'v1'}
             The type of DataChunkIterator to use.
             'v1' is the original DataChunkIterator of the hdmf data_utils.
             'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
         iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are
-                buffer_gb : float, default: 1.0
-                    In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                    buffer shape.
-                buffer_shape : tuple, optional
-                    Manual specification of buffer shape to return on each iteration.
-                    Must be a multiple of chunk_shape along each axis.
-                    Cannot be set if `buffer_gb` is specified.
-                chunk_mb : float. default: 1.0
-                    Should be below 1 MB. Automatically calculates suitable chunk shape.
-                chunk_shape : tuple, optional
-                    Manual specification of the internal chunk shape for the HDF5 dataset.
-                    Cannot be set if `chunk_mb` is also specified.
-                display_progress : bool, default: False
-                    Display a progress bar with iteration rate and estimated completion time.
-                progress_bar_options : dict, optional
-                    Dictionary of keyword arguments to be passed directly to tqdm.
-                    See https://github.com/tqdm/tqdm#parameters for options.
+            Valid options are:
+
+            * buffer_gb : float, default: 1.0
+                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
+                buffer shape.
+            * buffer_shape : tuple, optional
+                Manual specification of buffer shape to return on each iteration.
+                Must be a multiple of chunk_shape along each axis.
+                Cannot be set if `buffer_gb` is specified.
+            * chunk_mb : float. default: 1.0
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+            * chunk_shape : tuple, optional
+                Manual specification of the internal chunk shape for the HDF5 dataset.
+                Cannot be set if `chunk_mb` is also specified.
+            * display_progress : bool, default: False
+                Display a progress bar with iteration rate and estimated completion time.
+            * progress_bar_options : dict, optional
+                Dictionary of keyword arguments to be passed directly to tqdm.
+                See https://github.com/tqdm/tqdm#parameters for options.
         """
         from ...tools.spikeinterface import add_recording
 

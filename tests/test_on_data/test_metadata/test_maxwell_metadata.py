@@ -4,9 +4,9 @@ from pathlib import Path
 from platform import system
 from shutil import rmtree
 from tempfile import mkdtemp
+from zoneinfo import ZoneInfo
 
 import pytest
-from dateutil import tz
 from hdmf.testing import TestCase
 
 from neuroconv.datainterfaces import MaxOneRecordingInterface
@@ -37,7 +37,7 @@ class TestMaxOneMetadata(TestCase):
         cls.nwbfile_path = cls.tmpdir / "maxone_meadata_test.nwb"
         cls.metadata = cls.interface.get_metadata()
         cls.metadata["NWBFile"].update(
-            session_start_time=datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+            session_start_time=datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
         )
         cls.interface.run_conversion(nwbfile_path=cls.nwbfile_path, metadata=cls.metadata)
 

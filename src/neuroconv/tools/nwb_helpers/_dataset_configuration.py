@@ -10,7 +10,9 @@ from hdmf.data_utils import DataIO
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
+from pynwb.file import NWBContainer
 
+from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
 
@@ -69,9 +71,6 @@ def get_default_dataset_io_configurations(
     DatasetIOConfiguration
         A summary of each detected object that can be wrapped in a hdmf.DataIO.
     """
-    from ..nwb_helpers import (
-        DATASET_IO_CONFIGURATIONS,  # Locally scoped to avoid circular import
-    )
 
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
@@ -101,6 +100,7 @@ def get_default_dataset_io_configurations(
             f"({backend}) does not match! Set `backend=None` or remove the keyword argument to allow it to auto-detect."
         )
 
+    known_dataset_fields = ("data", "timestamps")
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
@@ -129,16 +129,13 @@ def get_default_dataset_io_configurations(
                 )
 
                 yield dataset_io_configuration
-        else:
-            # Primarily for TimeSeries, but also any extended class that has 'data' or 'timestamps'
-            # The most common example of this is ndx-events Events/LabeledEvents types
-            time_series = neurodata_object  # For readability
-
-            for dataset_name in ("data", "timestamps"):
-                if dataset_name not in time_series.fields:  # The 'timestamps' field is optional
+        elif isinstance(neurodata_object, NWBContainer):
+            for known_dataset_field in known_dataset_fields:
+                # Skip optional fields that aren't present
+                if known_dataset_field not in neurodata_object.fields:
                     continue
 
-                candidate_dataset = getattr(time_series, dataset_name)
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
 
                 # Skip if already written to file
                 if _is_dataset_written_to_file(
@@ -155,7 +152,7 @@ def get_default_dataset_io_configurations(
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=time_series, dataset_name=dataset_name
+                    neurodata_object=neurodata_object, dataset_name=known_dataset_field
                 )
 
                 yield dataset_io_configuration

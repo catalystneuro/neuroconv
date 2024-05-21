@@ -1,6 +1,7 @@
 """Collection of helper functions related to NWB."""
 
 import uuid
+import warnings
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
@@ -8,12 +9,16 @@ from pathlib import Path
 from typing import Literal, Optional
 from warnings import warn
 
+from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBFile
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
+from . import BackendConfiguration, configure_backend, get_default_backend_configuration
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
+
+BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -35,10 +40,12 @@ def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
 
-    These standard defaults are
+    These standard defaults are::
+
         metadata["NWBFile"]["session_description"] = "no description"
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
-    Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
+
+    Proper conversions should override these fields prior to calling ``NWBConverter.run_conversion()``
     """
     metadata = DeepDict()
     metadata["NWBFile"].deep_update(
@@ -86,7 +93,7 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
     Parameters
     ----------
     nwbfile: NWBFile
-        nwb file to which the new device information is to be added
+        NWBFile to which the new device information is to be added
     modality: str
         Type of data recorded by device. Options:
         - Ecephys (default)
@@ -95,7 +102,8 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
         - Behavior
     metadata: dict
         Metadata info for constructing the NWBFile (optional).
-        Should be of the format
+        Should be of the format::
+
             metadata[modality]['Device'] = [
                 {
                     'name': my_name,
@@ -103,7 +111,8 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
                 },
                 ...
             ]
-        Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+
+        Missing keys in an element of ``metadata['Ecephys']['Device']`` will be auto-populated with defaults.
     """
     metadata_copy = deepcopy(metadata) if metadata is not None else dict()
 
@@ -148,14 +157,13 @@ def make_or_load_nwbfile(
         An in-memory NWBFile object to write to the location.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, optional
+    overwrite: bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     backend : "hdf5" or "zarr", default: "hdf5"
         The type of backend used to create the file.
-    verbose: bool, optional
+    verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-        The default is True.
     """
     from . import BACKEND_NWB_IO
 
@@ -223,3 +231,75 @@ def make_or_load_nwbfile(
 
                 if not success and not file_initially_exists:
                     nwbfile_path_in.unlink()
+
+
+def _resolve_backend(
+    backend: Optional[Literal["hdf5"]] = None,
+    backend_configuration: Optional[BackendConfiguration] = None,
+) -> Literal["hdf5"]:
+    """
+    Resolve the backend to use for writing the NWBFile.
+
+    Parameters
+    ----------
+    backend: {"hdf5"}, optional
+    backend_configuration: BackendConfiguration, optional
+
+    Returns
+    -------
+    backend: {"hdf5"}
+
+    """
+
+    if backend is not None and backend_configuration is not None:
+        if backend == backend_configuration.backend:
+            warnings.warn(
+                f"Both `backend` and `backend_configuration` were specified as type '{backend}'. "
+                "To suppress this warning, specify only `backend_configuration`."
+            )
+        else:
+            raise ValueError(
+                f"Both `backend` and `backend_configuration` were specified and are conflicting."
+                f"{backend=}, {backend_configuration.backend=}."
+                "These values must match. To suppress this error, specify only `backend_configuration`."
+            )
+
+    if backend is None:
+        backend = backend_configuration.backend if backend_configuration is not None else "hdf5"
+    return backend
+
+
+def configure_and_write_nwbfile(
+    nwbfile: NWBFile,
+    output_filepath: str,
+    backend: Optional[Literal["hdf5"]] = None,
+    backend_configuration: Optional[BackendConfiguration] = None,
+) -> None:
+    """
+    Write an NWBFile to a file using a specific backend or backend configuration.
+
+    You must provide either a ``backend`` or a ``backend_configuration``.
+
+    If no ``backend_configuration`` is specified, the default configuration for that backend is used.
+
+    Parameters
+    ----------
+    nwbfile: NWBFile
+    output_filepath: str
+    backend: {"hdf5"}, default= "hdf5"
+    backend_configuration: BackendConfiguration, optional
+
+    """
+
+    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+
+    if backend is not None and backend_configuration is None:
+        backend_configuration = get_default_backend_configuration(nwbfile, backend=backend)
+
+    if backend_configuration is not None:
+        configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    IO = BACKEND_NWB_IO[backend_configuration.backend]
+
+    with IO(output_filepath, mode="w") as io:
+        io.write(nwbfile)

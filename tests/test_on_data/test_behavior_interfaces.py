@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 import h5py
 import numpy as np
@@ -162,7 +163,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
     interface_kwargs = [
         dict(
             file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"),
-            configuration_file_path=BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "config.txt",
+            configuration_file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "config.txt"),
         ),
     ]
 

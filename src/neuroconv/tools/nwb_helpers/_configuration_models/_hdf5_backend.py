@@ -13,6 +13,7 @@ class HDF5BackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
 
     backend: ClassVar[Literal["hdf5"]] = "hdf5"
+    pretty_backend_name: ClassVar[Literal["HDF5"]] = "HDF5"
     data_io_class: ClassVar[Type[H5DataIO]] = H5DataIO
 
     dataset_configurations: Dict[str, HDF5DatasetIOConfiguration] = Field(

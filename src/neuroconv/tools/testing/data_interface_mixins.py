@@ -16,7 +16,7 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
-from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -98,16 +98,22 @@ class DataInterfaceTestMixin:
 
         assert metadata == metadata_in
 
-    def check_run_conversion_default_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+    def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, backend=backend, **self.conversion_options
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
         )
 
-    def check_run_conversion_custom_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+    def check_run_conversion_with_backend_configuration(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
@@ -116,12 +122,60 @@ class DataInterfaceTestMixin:
         backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
-            overwrite=True,
             nwbfile=nwbfile,
-            metadata=metadata,
-            backend=backend,
+            overwrite=True,
             backend_configuration=backend_configuration,
             **self.conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend(
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        metadata = converter.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, backend: Union["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        metadata = converter.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        conversion_options = dict(Test=self.conversion_options)
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
         )
 
     @abstractmethod
@@ -142,7 +196,7 @@ class DataInterfaceTestMixin:
         """Override this in child classes to inject additional custom checks."""
         pass
 
-    def test_conversion_as_lone_interface(self):
+    def test_all_conversion_checks(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
             interface_kwargs = [interface_kwargs]
@@ -159,8 +213,13 @@ class DataInterfaceTestMixin:
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_with_backend_configuration(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
@@ -337,7 +396,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         electrical_series_name = self.interface.get_metadata()["Ecephys"][self.interface.es_key]["name"]
 
         if recording.get_num_segments() == 1:
-
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             self.nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
@@ -546,7 +604,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 self.check_nwbfile_temporal_alignment()
 
-    def test_conversion_as_lone_interface(self):
+    def test_all_conversion_checks(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
             interface_kwargs = [interface_kwargs]
@@ -569,8 +627,13 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
                 self.check_no_metadata_mutation()
 
-                self.check_run_conversion_default_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_with_backend_configuration(nwbfile_path=self.nwbfile_path, backend="hdf5")
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
@@ -709,11 +772,13 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    # Currently asserted in the downstream testing suite; could be refactored in future PR
     def check_read_nwb(self, nwbfile_path: str):
-        pass  # asserted in the testing suite; could be refactored in future PR
+        pass
 
+    # Currently asserted in the downstream testing suite
     def test_interface_alignment(self):
-        pass  # Currently asserted in the testing suite
+        pass
 
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -851,3 +916,64 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             imaging_extractor = self.interface.imaging_extractor
             times_from_extractor = imaging_extractor._times
             assert_array_equal(one_photon_series.timestamps, times_from_extractor)
+
+
+class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
+            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+            assert two_photon_series.unit == "n.a."
+            assert two_photon_series.data.dtype == np.int16
+            assert two_photon_series.rate is None
+            assert two_photon_series.starting_time is None
+
+            imaging_extractor = self.interface.imaging_extractor
+            times_from_extractor = imaging_extractor._times
+            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
+
+            data_from_extractor = imaging_extractor.get_video()
+            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
+
+            assert two_photon_series.description == json.dumps(self.interface.image_metadata)
+
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+            optical_channel_names = [channel.name for channel in optical_channels]
+            assert self.interface_kwargs["channel_name"] in optical_channel_names
+            assert len(optical_channels) == 1
+
+
+class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
+            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+            assert two_photon_series.unit == "n.a."
+            assert two_photon_series.data.dtype == np.int16
+
+            assert two_photon_series.rate == self.expected_rate
+            assert two_photon_series.starting_time == self.expected_starting_time
+            assert two_photon_series.timestamps is None
+
+            imaging_extractor = self.interface.imaging_extractor
+            data_from_extractor = imaging_extractor.get_video()
+            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
+
+            assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
+
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+            optical_channel_names = [channel.name for channel in optical_channels]
+            assert self.interface_kwargs["channel_name"] in optical_channel_names
+            assert len(optical_channels) == 1
