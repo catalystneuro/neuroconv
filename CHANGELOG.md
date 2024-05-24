@@ -15,6 +15,11 @@
 * Added `get_default_backend_configuration` method to all `NWBConverter` classes. Also added HDF5 `backend` control to `.run_conversion(...)`. [PR #804](https://github.com/catalystneuro/neuroconv/pull/804)
 * Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
 * Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
+<<<<<<< split_nwbfile_equivalency
+=======
+* Added a function to generate ogen timestamps and data from onset times and parameters to `tools.optogenetics`. [PR #832](https://github.com/catalystneuro/neuroconv/pull/832)
+* Improve printing of bytes [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
+>>>>>>> main
 * Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
 * `configure_backend` may now apply a `BackendConfiguration` to equivalent in-memory `pynwb.NWBFile` objects that have different address in RAM. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
 
@@ -28,6 +33,7 @@
 * Added `XX` and `XO` to the base metadata schema. [PR #833](https://github.com/catalystneuro/neuroconv/pull/833)
 * `BaseImagingExtractor.add_to_nwbfile()` is fixed in the case where metadata is not supplied. [PR #849](https://github.com/catalystneuro/neuroconv/pull/849)
 * Prevent `SpikeGLXConverterPipe` from setting false properties on the sub-`SpikeGLXNIDQInterface`. [PR #860](https://github.com/catalystneuro/neuroconv/pull/860)
+* Fix bug when adding ragged arrays to the electrode and units table [PR #870](https://github.com/catalystneuro/neuroconv/pull/870)
 
 ### Improvements
 * Fixed docstrings related to backend configurations for various methods. [PR #822](https://github.com/catalystneuro/neuroconv/pull/822)

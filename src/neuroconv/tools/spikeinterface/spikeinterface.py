@@ -411,10 +411,23 @@ def add_electrodes(
             matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
             default_value = type_to_default_value[matching_type]
 
-        extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=data.dtype)
-        extended_data[indexes_for_new_data] = data
+        if "index" in cols_args and cols_args["index"]:
+            dtype = np.ndarray
+            extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
+            for index, value in enumerate(data):
+                index_in_extended_data = indexes_for_new_data[index]
+                extended_data[index_in_extended_data] = value.tolist()
 
-        extended_data[indexes_for_default_values] = default_value
+            for index in indexes_for_default_values:
+                default_value = []
+                extended_data[index] = default_value
+
+        else:
+            dtype = data.dtype
+            extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
+            extended_data[indexes_for_new_data] = data
+            extended_data[indexes_for_default_values] = default_value
+
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
@@ -1141,13 +1154,26 @@ def add_units_table(
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
 
-        extended_data = np.empty(shape=len(units_table.id[:]), dtype=data.dtype)
-        extended_data[indexes_for_new_data] = data
+        if "index" in cols_args and cols_args["index"]:
+            dtype = np.ndarray
+            extended_data = np.empty(shape=len(units_table.id[:]), dtype=dtype)
+            for index, value in enumerate(data):
+                index_in_extended_data = indexes_for_new_data[index]
+                extended_data[index_in_extended_data] = value.tolist()
 
-        extended_data[indexes_for_default_values] = default_value
-        # Always store numpy objects as strings
-        if np.issubdtype(extended_data.dtype, np.object_):
-            extended_data = extended_data.astype("str", copy=False)
+            for index in indexes_for_default_values:
+                default_value = []
+                extended_data[index] = default_value
+
+        else:
+            dtype = data.dtype
+            extended_data = np.empty(shape=len(units_table.id[:]), dtype=dtype)
+            extended_data[indexes_for_new_data] = data
+            extended_data[indexes_for_default_values] = default_value
+
+            if np.issubdtype(extended_data.dtype, np.object_):
+                extended_data = extended_data.astype("str", copy=False)
+
         cols_args["data"] = extended_data
         units_table.add_column(property, **cols_args)
 
