@@ -92,22 +92,36 @@ class BackendConfiguration(BaseModel):
         * The returned `DatasetIOConfiguration` objects are copies of the original configurations
         with updated `object_id` fields.
         """
+        # Use a fresh default configuration to get mapping of object IDs to locations in file
+        default_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=self.backend))
 
-        default_configuration_iterator = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=self.backend)
+        if len(default_configurations) != len(self.dataset_configurations):
+            raise ValueError(
+                f"The number of default configurations ({len(default_configurations)}) does not match the number of "
+                f"specified configurations ({len(self.dataset_configurations)})!"
+            )
 
         objects_requiring_remapping = {}
-        for dataset_configuration in default_configuration_iterator:
+        for dataset_configuration in default_configurations:
             location_in_file = dataset_configuration.location_in_file
             object_id = dataset_configuration.object_id
 
-            location_can_be_remapped = location_in_file in self.dataset_configurations
-            if location_can_be_remapped:
-                former_configuration = self.dataset_configurations[location_in_file]
-                former_object_id = former_configuration.object_id
-                object_id_needs_update = former_object_id != object_id
-                if object_id_needs_update:
-                    remapped_configuration = former_configuration.model_copy(update={"object_id": object_id})
-                    objects_requiring_remapping[location_in_file] = remapped_configuration
+            location_cannot_be_remapped = location_in_file not in self.dataset_configurations
+            if location_cannot_be_remapped:
+                raise KeyError(
+                    "Unable to remap the object IDs for object at location '{location_in_file}'! This "
+                    "usually occurs if you are attempting to configure the backend for two files of "
+                    "non-equivalent structure."
+                )
+
+            former_configuration = self.dataset_configurations[location_in_file]
+            former_object_id = former_configuration.object_id
+
+            if former_object_id == object_id:
+                continue
+
+            remapped_configuration = former_configuration.model_copy(update={"object_id": object_id})
+            objects_requiring_remapping[location_in_file] = remapped_configuration
 
         return objects_requiring_remapping
 
