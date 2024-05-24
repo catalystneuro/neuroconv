@@ -928,7 +928,7 @@ def write_recording(
     ) as nwbfile_out:
         add_recording(
             recording=recording,
-            nwbfile=nwbfile,
+            nwbfile=nwbfile_out,
             starting_time=starting_time,
             metadata=metadata,
             write_as=write_as,
