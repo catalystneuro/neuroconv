@@ -22,7 +22,7 @@ from neuroconv.tools.nwb_helpers import (
 def _generate_integer_array(
     seed: int,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (30_000 * 5, 384),
+    shape: Tuple[int, int] = (12, 5),
 ) -> np.ndarray:
     random_number_generator = np.random.default_rng(seed=seed)
 
@@ -34,14 +34,14 @@ def _generate_integer_array(
 
 
 @pytest.fixture(scope="module")
-def array_1(seed: int = 0) -> NWBFile:
+def array_1(seed: int = 0) -> np.ndarray:
     integer_array = _generate_integer_array(seed=seed)
 
     return integer_array
 
 
 @pytest.fixture(scope="module")
-def array_2(seed: int = 1) -> NWBFile:
+def array_2(seed: int = 1) -> np.ndarray:
     integer_array = _generate_integer_array(seed=seed)
 
     return integer_array
@@ -50,8 +50,8 @@ def array_2(seed: int = 1) -> NWBFile:
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configure_backend_equivalency(
     tmpdir: Path,
-    array_1: NWBFile,
-    array_2: NWBFile,
+    array_1: np.ndarray,
+    array_2: np.ndarray,
     backend: Literal["hdf5", "zarr"],
 ):
     nwbfile_1 = mock_NWBFile()
@@ -91,8 +91,8 @@ def test_configure_backend_equivalency(
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configure_backend_nonequivalency_failure(
-    array_1: NWBFile,
-    array_2: NWBFile,
+    array_1: np.ndarray,
+    array_2: np.ndarray,
     backend: Literal["hdf5", "zarr"],
 ):
     nwbfile_1 = mock_NWBFile()
@@ -110,21 +110,25 @@ def test_configure_backend_nonequivalency_failure(
     with pytest.raises(KeyError) as exception_info:
         configure_backend(nwbfile=nwbfile_1, backend_configuration=backend_configuration_3)
 
-    assert "Unable to remap the object IDs" in str(exception_info.value)
+    expected_message = (
+        "\"Unable to remap the object IDs for object at location 'acquisition/TestTimeSeries/data'! "
+        'This usually occurs if you are attempting to configure the backend for two files of non-equivalent structure."'
+    )
+    assert expected_message == str(exception_info.value)
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_configure_backend_equivalency_empty_to_nonempty_failure(array_1: NWBFile, backend: Literal["hdf5", "zarr"]):
-    nwbfile_1 = mock_NWBFile()
+def test_configure_backend_equivalency_empty_to_nonempty_failure(array_1: np.ndarray, backend: Literal["hdf5", "zarr"]):
+    nwbfile = mock_NWBFile()
     time_series = mock_TimeSeries(name="TestTimeSeries", data=array_1)
-    nwbfile_1.add_acquisition(time_series)
+    nwbfile.add_acquisition(time_series)
 
     empty_nwbfile = mock_NWBFile()
 
     empty_backend_configuration = get_default_backend_configuration(nwbfile=empty_nwbfile, backend=backend)
 
     with pytest.raises(ValueError) as exception_info:
-        configure_backend(nwbfile=nwbfile_1, backend_configuration=empty_backend_configuration)
+        configure_backend(nwbfile=nwbfile, backend_configuration=empty_backend_configuration)
 
     expected_message = (
         "The number of default configurations (1) does not match the number of specified configurations (0)!"
@@ -133,7 +137,7 @@ def test_configure_backend_equivalency_empty_to_nonempty_failure(array_1: NWBFil
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_configure_backend_equivalency_nonempty_to_empty_failure(array_1: NWBFile, backend: Literal["hdf5", "zarr"]):
+def test_configure_backend_equivalency_nonempty_to_empty_failure(array_1: np.ndarray, backend: Literal["hdf5", "zarr"]):
     nwbfile_1 = mock_NWBFile()
     time_series = mock_TimeSeries(name="TestTimeSeries", data=array_1)
     nwbfile_1.add_acquisition(time_series)

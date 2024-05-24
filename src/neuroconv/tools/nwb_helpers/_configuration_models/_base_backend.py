@@ -109,7 +109,7 @@ class BackendConfiguration(BaseModel):
             location_cannot_be_remapped = location_in_file not in self.dataset_configurations
             if location_cannot_be_remapped:
                 raise KeyError(
-                    "Unable to remap the object IDs for object at location '{location_in_file}'! This "
+                    f"Unable to remap the object IDs for object at location '{location_in_file}'! This "
                     "usually occurs if you are attempting to configure the backend for two files of "
                     "non-equivalent structure."
                 )
