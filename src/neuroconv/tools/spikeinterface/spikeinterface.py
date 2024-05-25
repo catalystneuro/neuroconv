@@ -966,6 +966,7 @@ def add_units_table(
     write_in_processing_module: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_stds: Optional[np.ndarray] = None,
+    waveform_sds: Optional[np.ndarray] = None,
     unit_electrode_indices=None,
 ):
     """
@@ -1026,6 +1027,17 @@ def add_units_table(
         if write_table_first_time:
             nwbfile.units = pynwb.misc.Units(name="units", description=unit_table_description)
         units_table = nwbfile.units
+
+    if waveform_sds is not None:
+        waveform_stds = waveform_sds
+        warnings.warn(
+            message=(
+                "The 'waveform_sds' parameter has been deprecated and will be removed after November 2024. "
+                "Please use 'waveform_stds' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
 
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
