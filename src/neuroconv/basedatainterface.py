@@ -152,7 +152,6 @@ class BaseDataInterface(ABC):
                 "NWBFile object in memory, use DataInterface.create_nwbfile. To append to an existing NWBFile object,"
                 " use DataInterface.add_to_nwbfile."
             )
-
         backend = _resolve_backend(backend, backend_configuration)
 
         if metadata is None:

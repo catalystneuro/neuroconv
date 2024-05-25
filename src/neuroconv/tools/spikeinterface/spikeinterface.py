@@ -1553,6 +1553,7 @@ def get_electrode_group_indices(recording, nwbfile):
         group_names = list(np.unique(recording.get_property("group").astype(str)))
     else:
         group_names = None
+
     if group_names is None:
         electrode_group_indices = None
     else:
