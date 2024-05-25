@@ -1144,8 +1144,47 @@ class TestAddUnitsTable(TestCase):
 
         written_values = self.nwbfile.units.to_dataframe()["ragged_property2"].to_list()
         number_of_rows_added_before = sorting1.get_num_units()
-        valuees_appended_to_table = [[] for _ in range(number_of_rows_added_before)]
-        expected_values = valuees_appended_to_table + second_ragged_array_values
+        values_appended_to_table = [[] for _ in range(number_of_rows_added_before)]
+        expected_values = values_appended_to_table + second_ragged_array_values
+
+        # We need a for loop because this is a non-homogenous ragged array
+        for i, value in enumerate(written_values):
+            np.testing.assert_array_equal(value, expected_values[i])
+
+    def test_adding_doubled_ragged_arrays(self):
+
+        sorting1 = generate_sorting(num_units=4)
+        sorting1 = sorting1.rename_units(new_unit_ids=["a", "b", "c", "d"])
+        sorting2 = generate_sorting(num_units=4)
+        sorting2 = sorting2.rename_units(new_unit_ids=["e", "f", "g", "h"])
+
+        doubled_nested_array = [[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]], [[13, 14], [15, 16]]]
+        sorting1.set_property(key="double_ragged_property", values=doubled_nested_array)
+        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.units.to_dataframe()["double_ragged_property"].to_list()
+        np.testing.assert_array_equal(written_values, doubled_nested_array)
+
+        # Add a new recording that contains more properties for the ragged array
+        doubled_nested_array2 = [[[17, 18], [19, 20]], [[21, 22], [23, 24]], [[25, 26], [27, 28]], [[29, 30], [31, 32]]]
+        sorting2.set_property(key="double_ragged_property", values=doubled_nested_array2)
+        second_doubled_nested_array = [
+            [["a", "b", "c"], ["d", "e", "f"]],
+            [["g", "h", "i"], ["j", "k", "l"]],
+            [["m", "n", "o"], ["p", "q", "r"]],
+            [["s", "t", "u"], ["v", "w", "x"]],
+        ]
+        sorting2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
+        add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.units.to_dataframe()["double_ragged_property"].to_list()
+        expected_values = doubled_nested_array + doubled_nested_array2
+        np.testing.assert_array_equal(written_values, expected_values)
+
+        written_values = self.nwbfile.units.to_dataframe()["double_ragged_property2"].to_list()
+        number_of_rows_added_before = sorting1.get_num_units()
+        values_appended_to_table = [[] for _ in range(number_of_rows_added_before)]
+        expected_values = values_appended_to_table + second_doubled_nested_array
 
         # We need a for loop because this is a non-homogenous ragged array
         for i, value in enumerate(written_values):
