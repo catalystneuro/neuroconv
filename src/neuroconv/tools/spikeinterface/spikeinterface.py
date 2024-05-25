@@ -499,6 +499,18 @@ def _recording_traces_to_hdmf_iterator(
     ValueError
         If the iterator_type is not 'v1', 'v2' or None.
     """
+
+    if iterator_type == "v1":
+        # Deprecation warning
+        warnings.warn(
+            message=(
+                "The 'v1' iterator is deprecated and will be removed after November 2024"
+                "Please use the 'v2' iterator instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
     supported_iterator_types = ["v1", "v2", None]
     if iterator_type not in supported_iterator_types:
         message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
