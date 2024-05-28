@@ -45,7 +45,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata_schema(self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = None) -> dict:
+    def get_metadata_schema(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
 
         if photon_series_type is not None:
             warnings.warn(
@@ -97,7 +97,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = None) -> DeepDict:
+    def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> DeepDict:
 
         if photon_series_type is not None:
             warnings.warn(
