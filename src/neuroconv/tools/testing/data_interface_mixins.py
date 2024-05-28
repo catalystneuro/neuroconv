@@ -29,6 +29,10 @@ from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from neuroconv.tools.nwb_helpers import (
+    configure_backend,
+    get_default_backend_configuration,
+)
 from neuroconv.utils import NWBMetaDataEncoder
 
 from .mock_probes import generate_mock_probe
@@ -110,6 +114,17 @@ class DataInterfaceTestMixin:
             backend=backend,
             **self.conversion_options,
         )
+
+    def check_configure_backend_for_equivalent_nwbfiles(self, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
 
     def check_run_conversion_with_backend_configuration(
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
@@ -212,6 +227,8 @@ class DataInterfaceTestMixin:
                 self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
 
                 self.check_no_metadata_mutation()
+
+                self.check_configure_backend_for_equivalent_nwbfiles()
 
                 self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
                 self.check_run_conversion_in_nwbconverter_with_backend_configuration(

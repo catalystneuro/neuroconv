@@ -1,6 +1,6 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
-import sys
+import importlib
 from typing import Union
 
 from hdmf.common import Data
@@ -25,9 +25,12 @@ def configure_backend(
         The configuration model to use when configuring the datasets for this backend.
     """
     is_ndx_events_installed = is_package_installed(package_name="ndx_events")
-    ndx_events = sys.modules.get("ndx_events", None)
+    ndx_events = importlib.import_module("ndx_events") if is_ndx_events_installed else None
 
-    nwbfile_objects = nwbfile.objects
+    # A remapping of the object IDs in the backend configuration might necessary
+    locations_to_remap = backend_configuration.find_locations_requiring_remapping(nwbfile=nwbfile)
+    if any(locations_to_remap):
+        backend_configuration = backend_configuration.build_remapped_backend(locations_to_remap=locations_to_remap)
 
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
@@ -38,7 +41,7 @@ def configure_backend(
 
         # TODO: update buffer shape in iterator, if present
 
-        neurodata_object = nwbfile_objects[object_id]
+        neurodata_object = nwbfile.objects[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
 
         # Table columns

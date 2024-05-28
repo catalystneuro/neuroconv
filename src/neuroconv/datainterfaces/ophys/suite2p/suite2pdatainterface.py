@@ -48,6 +48,18 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     info = "Interface for Suite2p segmentation."
 
     @classmethod
+    def get_source_schema(cls) -> dict:
+        schema = super().get_source_schema()
+        schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to the folder containing Suite2p segmentation data. Should contain 'plane#' subfolder(s)."
+        schema["properties"]["plane_name"][
+            "description"
+        ] = "The name of the plane to load. This interface only loads one plane at a time. Use the full name, e.g. 'plane0'. If this value is omitted, the first plane found will be loaded."
+
+        return schema
+
+    @classmethod
     def get_available_planes(cls, folder_path: FolderPathType) -> dict:
         from roiextractors import Suite2pSegmentationExtractor
 
@@ -66,18 +78,20 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_name: Optional[str] = None,
         plane_segmentation_name: Optional[str] = None,
         verbose: bool = True,
-        combined: Optional[bool] = False,  # TODO: to be removed
-        plane_no: Optional[int] = None,  # TODO: to be removed
     ):
         """
 
         Parameters
         ----------
         folder_path : FolderPathType
+            Path to the folder containing Suite2p segmentation data. Should contain 'plane#' sub-folders.
         channel_name: str, optional
-            The name of the channel to load, to determine what channels are available use Suite2pSegmentationInterface.get_available_channels(folder_path).
+            The name of the channel to load.
+            To determine what channels are available, use ``Suite2pSegmentationInterface.get_available_channels(folder_path)``.
         plane_name: str, optional
-            The name of the plane to load, to determine what planes are available use Suite2pSegmentationInterface.get_available_planes(folder_path).
+            The name of the plane to load. This interface only loads one plane at a time.
+            If this value is omitted, the first plane found will be loaded.
+            To determine what planes are available, use ``Suite2pSegmentationInterface.get_available_planes(folder_path)``.
         plane_segmentation_name: str, optional
             The name of the plane segmentation to be added.
         """
