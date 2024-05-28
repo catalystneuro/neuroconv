@@ -32,3 +32,8 @@ doctest_optionflags = "ELLIPSIS"
 profile = "black"
 reverse_relative = true
 known_first_party = ["neuroconv"]
+
+[tool.codespell]
+skip = '.git*,*.pdf,*.css'
+check-hidden = true
+ignore-words-list = 'assertin'

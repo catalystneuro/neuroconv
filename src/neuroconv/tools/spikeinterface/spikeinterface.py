@@ -411,10 +411,23 @@ def add_electrodes(
             matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
             default_value = type_to_default_value[matching_type]
 
-        extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=data.dtype)
-        extended_data[indexes_for_new_data] = data
+        if "index" in cols_args and cols_args["index"]:
+            dtype = np.ndarray
+            extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
+            for index, value in enumerate(data):
+                index_in_extended_data = indexes_for_new_data[index]
+                extended_data[index_in_extended_data] = value.tolist()
 
-        extended_data[indexes_for_default_values] = default_value
+            for index in indexes_for_default_values:
+                default_value = []
+                extended_data[index] = default_value
+
+        else:
+            dtype = data.dtype
+            extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
+            extended_data[indexes_for_new_data] = data
+            extended_data[indexes_for_default_values] = default_value
+
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
@@ -486,6 +499,18 @@ def _recording_traces_to_hdmf_iterator(
     ValueError
         If the iterator_type is not 'v1', 'v2' or None.
     """
+
+    if iterator_type == "v1":
+        # Deprecation warning
+        warnings.warn(
+            message=(
+                "The 'v1' iterator is deprecated and will be removed after November 2024"
+                "Please use the 'v2' iterator instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
     supported_iterator_types = ["v1", "v2", None]
     if iterator_type not in supported_iterator_types:
         message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
@@ -915,7 +940,7 @@ def write_recording(
     ) as nwbfile_out:
         add_recording(
             recording=recording,
-            nwbfile=nwbfile,
+            nwbfile=nwbfile_out,
             starting_time=starting_time,
             metadata=metadata,
             write_as=write_as,
@@ -944,36 +969,39 @@ def add_units_table(
     unit_electrode_indices=None,
 ):
     """
-    Primary method for writing a SortingExtractor object to an NWBFile.
+    Add sorting data to a NWBFile object as a Units table.
+
+    This function extracts unit properties from a SortingExtractor object and writes them
+    to an NWBFile Units table, either in the primary units interface or the processing
+    module (for intermediate/historical data). It handles unit selection, property customization,
+    waveform data, and electrode mapping.
 
     Parameters
     ----------
     sorting : spikeinterface.BaseSorting
-    nwbfile : NWBFile
-    unit_ids : list of int or list of str, optional
-        Controls the unit_ids that will be written to the nwb file. If None, all
-        units are written.
+        The SortingExtractor object containing unit data.
+    nwbfile : pynwb.NWBFile
+        The NWBFile object to write the unit data into.
+    unit_ids : list of int or str, optional
+        The specific unit IDs to write. If None, all units are written.
     property_descriptions : dict, optional
-        For each key in this dictionary which matches the name of a unit
-        property in sorting, adds the value as a description to that
-        custom unit column.
+        Custom descriptions for unit properties. Keys should match property names in `sorting`,
+        and values will be used as descriptions in the Units table.
     skip_properties : list of str, optional
-        Each string in this list that matches a unit property will not be written to the NWBFile.
-    write_in_processing_module : bool, default: False
-        How to save the units table in the nwb file.
-        - True will save it to the processing module to serve as a historical provenance for the official table.
-        - False will save it to the official NWBFile.Units position; recommended only for the final form of the data.
+        Unit properties to exclude from writing.
     units_table_name : str, default: 'units'
-        The name of the units table. If write_as=='units', then units_table_name must also be 'units'.
+        Name of the Units table. Must be 'units' if `write_in_processing_module` is False.
     unit_table_description : str, optional
-        Text description of the units table; it is recommended to include information such as the sorting method,
-        curation steps, etc.
+        Description for the Units table (e.g., sorting method, curation details).
+    write_in_processing_module : bool, default: False
+        If True, write to the processing module (intermediate data). If False, write to
+        the primary NWBFile.units table.
     waveform_means : np.ndarray, optional
-        Waveform mean (template) for each unit (num_units, num_samples, num_channels)
+        Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
     waveform_sds : np.ndarray, optional
-        Waveform standard deviation for each unit (num_units, num_samples, num_channels)
-    unit_electrode_indices : list of lists or arrays, optional
-        For each unit, the indices of electrodes that each waveform_mean/sd correspond to.
+        Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
+    unit_electrode_indices : list of lists of int, optional
+        For each unit, a list of electrode indices corresponding to waveform data.
     """
     if not write_in_processing_module and units_table_name != "units":
         raise ValueError("When writing to the nwbfile.units table, the name of the table must be 'units'!")
@@ -1036,6 +1064,9 @@ def add_units_table(
         if isinstance(data[0], (bool, np.bool_)):
             data = data.astype(str)
         index = isinstance(data[0], (list, np.ndarray, tuple))
+        if index and isinstance(data[0], np.ndarray):
+            index = data[0].ndim
+
         description = property_descriptions.get(property, "No description.")
         data_to_add[property].update(description=description, data=data, index=index)
         if property in ["max_channel", "max_electrode"] and nwbfile.electrodes is not None:
@@ -1141,13 +1172,26 @@ def add_units_table(
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
 
-        extended_data = np.empty(shape=len(units_table.id[:]), dtype=data.dtype)
-        extended_data[indexes_for_new_data] = data
+        if "index" in cols_args and cols_args["index"]:
+            dtype = np.ndarray
+            extended_data = np.empty(shape=len(units_table.id[:]), dtype=dtype)
+            for index, value in enumerate(data):
+                index_in_extended_data = indexes_for_new_data[index]
+                extended_data[index_in_extended_data] = value.tolist()
 
-        extended_data[indexes_for_default_values] = default_value
-        # Always store numpy objects as strings
-        if np.issubdtype(extended_data.dtype, np.object_):
-            extended_data = extended_data.astype("str", copy=False)
+            for index in indexes_for_default_values:
+                default_value = []
+                extended_data[index] = default_value
+
+        else:
+            dtype = data.dtype
+            extended_data = np.empty(shape=len(units_table.id[:]), dtype=dtype)
+            extended_data[indexes_for_new_data] = data
+            extended_data[indexes_for_default_values] = default_value
+
+            if np.issubdtype(extended_data.dtype, np.object_):
+                extended_data = extended_data.astype("str", copy=False)
+
         cols_args["data"] = extended_data
         units_table.add_column(property, **cols_args)
 
@@ -1162,7 +1206,53 @@ def add_sorting(
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
+    waveform_means: Optional[np.ndarray] = None,
+    waveform_sds: Optional[np.ndarray] = None,
+    unit_electrode_indices=None,
 ):
+    """Add sorting data (units and their properties) to an NWBFile.
+
+    This function serves as a convenient wrapper around `add_units_table` to match
+    Spikeinterface's `SortingExtractor`
+
+    Parameters
+    ----------
+    sorting : BaseSorting
+        The SortingExtractor object containing unit data.
+    nwbfile : pynwb.NWBFile, optional
+        The NWBFile object to write the unit data into.
+    unit_ids : list of int or str, optional
+        The specific unit IDs to write. If None, all units are written.
+    property_descriptions : dict, optional
+        Custom descriptions for unit properties. Keys should match property names in `sorting`,
+        and values will be used as descriptions in the Units table.
+    skip_properties : list of str, optional
+        Unit properties to exclude from writing.
+    skip_features : list of str, optional
+        Deprecated argument (to be removed). Previously used to skip spike features.
+    write_as : {'units', 'processing'}, default: 'units'
+        Where to write the unit data:
+            - 'units': Write to the primary NWBFile.units table.
+            - 'processing': Write to the processing module (intermediate data).
+    units_name : str, default: 'units'
+        Name of the Units table. Must be 'units' if `write_as` is 'units'.
+    units_description : str, optional
+        Description for the Units table (e.g., sorting method, curation details).
+    waveform_means : np.ndarray, optional
+        Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
+    waveform_sds : np.ndarray, optional
+        Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
+    unit_electrode_indices : list of lists of int, optional
+        For each unit, a list of electrode indices corresponding to waveform data.
+    """
+
+    if skip_features is not None:
+        warnings.warn(
+            message=("The 'skip_features' argument has been deprecated and will be removed around 2024-12-01. "),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
     assert write_as in [
         "units",
         "processing",
@@ -1178,6 +1268,9 @@ def add_sorting(
         write_in_processing_module=write_in_processing_module,
         units_table_name=units_name,
         unit_table_description=units_description,
+        waveform_means=waveform_means,
+        waveform_sds=waveform_sds,
+        unit_electrode_indices=unit_electrode_indices,
     )
 
 
@@ -1195,6 +1288,9 @@ def write_sorting(
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
+    waveform_means: Optional[np.ndarray] = None,
+    waveform_sds: Optional[np.ndarray] = None,
+    unit_electrode_indices=None,
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1239,6 +1335,12 @@ def write_sorting(
     units_name : str, default: 'units'
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str, default: 'Autogenerated by neuroconv.'
+    waveform_means : np.ndarray, optional
+        Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
+    waveform_sds : np.ndarray, optional
+        Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
+    unit_electrode_indices : list of lists of int, optional
+        For each unit, a list of electrode indices corresponding to waveform data.
     """
 
     with make_or_load_nwbfile(
@@ -1254,6 +1356,9 @@ def write_sorting(
             write_as=write_as,
             units_name=units_name,
             units_description=units_description,
+            waveform_means=waveform_means,
+            waveform_sds=waveform_sds,
+            unit_electrode_indices=unit_electrode_indices,
         )
 
 
@@ -1463,6 +1568,7 @@ def get_electrode_group_indices(recording, nwbfile):
         group_names = list(np.unique(recording.get_property("group").astype(str)))
     else:
         group_names = None
+
     if group_names is None:
         electrode_group_indices = None
     else:
