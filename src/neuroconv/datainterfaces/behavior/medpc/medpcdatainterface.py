@@ -9,7 +9,7 @@ from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools import nwb_helpers
 from neuroconv.utils import DeepDict
 
-from .medpc_utils import read_medpc_file
+from .medpc_helpers import read_medpc_file
 
 
 class MedPCInterface(BaseDataInterface):
