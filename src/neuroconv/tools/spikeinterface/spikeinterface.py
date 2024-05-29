@@ -254,6 +254,8 @@ def add_electrodes(
     for property in properties_to_extract:
         data = recording.get_property(property)
         index = isinstance(data[0], (list, np.ndarray, tuple))
+        if index and isinstance(data[0], np.ndarray):
+            index = data[0].ndim
         # booleans are parsed as strings
         if isinstance(data[0], (bool, np.bool_)):
             data = data.astype(str)
