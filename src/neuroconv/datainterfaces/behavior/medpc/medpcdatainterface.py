@@ -109,9 +109,6 @@ class MedPCInterface(BaseDataInterface):
             duration_data = session_dict[duration_name]
             if len(onset_data) == 0:
                 continue
-            assert len(onset_data) == len(
-                duration_data
-            ), f"Length mismatch between {onset_name} ({len(onset_data)}) and {duration_name} ({len(duration_data)})."
 
             interval_times, data = [], []
             for onset_time, duration in zip(onset_data, duration_data):
