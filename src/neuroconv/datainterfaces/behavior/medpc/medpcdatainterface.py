@@ -109,6 +109,7 @@ class MedPCInterface(BaseDataInterface):
             duration_data = session_dict[duration_name]
             if len(onset_data) == 0:
                 continue
+            assert not len(duration_data) == 0, f"Duration data for {name} is empty!"
 
             interval_times, data = [], []
             for onset_time, duration in zip(onset_data, duration_data):
