@@ -33,7 +33,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
+            expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone())
             assert nwbfile.session_start_time == expected_session_start_time
 
             assert "ElectricalSeriesAP" in nwbfile.acquisition
