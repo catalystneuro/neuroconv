@@ -119,8 +119,8 @@ class MedPCInterface(BaseDataInterface):
             interval = IntervalSeries(
                 name=name,
                 description=description,
-                timestamps=H5DataIO(onset_data, compression=True),
-                data=duration_data,
+                timestamps=H5DataIO(interval_times, compression=True),
+                data=H5DataIO(data, compression=True),
             )
             behavioral_epochs = BehavioralEpochs(name="behavioral_epochs")
             behavioral_epochs.add_interval_series(interval)

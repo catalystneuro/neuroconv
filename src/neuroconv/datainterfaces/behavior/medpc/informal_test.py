@@ -1,5 +1,8 @@
+import shutil
 from datetime import datetime
 from pathlib import Path
+
+from pytz import timezone
 
 from neuroconv.datainterfaces import MedPCInterface
 
@@ -7,6 +10,9 @@ from neuroconv.datainterfaces import MedPCInterface
 def main():
     data_dir_path = Path("/Volumes/T7/CatalystNeuro/NWB/Lerner/raw_data")
     output_dir_path = Path("/Volumes/T7/CatalystNeuro/NWB/Lerner/conversion_nwb")
+    if output_dir_path.exists():
+        shutil.rmtree(output_dir_path, ignore_errors=True)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
     experiment_type = "FP"
     experimental_group = "RR20"
     subject_id = "95.259"
@@ -42,8 +48,9 @@ def main():
     metadata = interface.get_metadata()
     start_date = datetime.strptime(metadata["MedPC"]["start_date"], "%m/%d/%y").date()
     start_time = datetime.strptime(metadata["MedPC"]["start_time"], "%H:%M:%S").time()
-    start_datetime = datetime.combine(start_date, start_time)
-    metadata["NWBFile"]["session_start_time"] = start_datetime
+    session_start_time = datetime.combine(start_date, start_time)
+    cst = timezone("US/Central")
+    metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=cst)
     metadata["MedPC"]["medpc_name_to_info_dict"] = {
         "A": {"name": "left_nose_poke_times", "is_array": True},
         "B": {"name": "left_reward_times", "is_array": True},
