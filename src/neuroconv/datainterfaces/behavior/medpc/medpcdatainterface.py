@@ -74,121 +74,57 @@ class MedPCInterface(BaseDataInterface):
         return metadata_schema
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        from_csv = self.source_data["from_csv"]
-        if self.source_data["session_dict"] is None and not from_csv:
-            msn = metadata["Behavior"]["msn"]
-            medpc_name_to_dict_name = metadata["Behavior"]["msn_to_medpc_name_to_dict_name"][msn]
-            dict_name_to_type = {dict_name: np.ndarray for dict_name in medpc_name_to_dict_name.values()}
-            session_dict = read_medpc_file(
-                file_path=self.source_data["file_path"],
-                medpc_name_to_dict_name=medpc_name_to_dict_name,
-                dict_name_to_type=dict_name_to_type,
-                session_conditions=self.source_data["session_conditions"],
-                start_variable=self.source_data["start_variable"],
-            )
-        elif self.source_data["session_dict"] is None and from_csv:
-            csv_name_to_dict_name = {
-                "portEntryTs": "port_entry_times",
-                "DurationOfPE": "duration_of_port_entry",
-                "LeftNoseTs": "left_nose_poke_times",
-                "RightNoseTs": "right_nose_poke_times",
-                "RightRewardTs": "right_reward_times",
-                "LeftRewardTs": "left_reward_times",
-            }
-            session_dtypes = {
-                "Start Date": str,
-                "End Date": str,
-                "Start Time": str,
-                "End Time": str,
-                "MSN": str,
-                "Experiment": str,
-                "Subject": str,
-                "Box": str,
-            }
-            session_df = pd.read_csv(self.source_data["file_path"], dtype=session_dtypes)
-            session_dict = {}
-            for csv_name, dict_name in csv_name_to_dict_name.items():
-                session_dict[dict_name] = np.trim_zeros(session_df[csv_name].dropna().values, trim="b")
-        else:
-            session_dict = self.source_data["session_dict"]
+        medpc_name_to_info_dict = metadata["MedPC"]["medpc_name_to_info_dict"]
+        session_dict = read_medpc_file(
+            file_path=self.source_data["file_path"],
+            medpc_name_to_info_dict=medpc_name_to_info_dict,
+            session_conditions=self.source_data["session_conditions"],
+            start_variable=self.source_data["start_variable"],
+        )
 
         # Add behavior data to nwbfile
         behavior_module = nwb_helpers.get_module(
             nwbfile=nwbfile,
             name="behavior",
-            description=(
-                f"Operant behavioral data from MedPC.\n"
-                f"Box = {metadata['Behavior']['box']}\n"
-                f"MSN = {metadata['Behavior']['msn']}"
-            ),
+            description="Operant behavioral data from MedPC.",
         )
 
-        # Port Entry
-        if (
-            len(session_dict["duration_of_port_entry"]) == 0
-        ):  # some sessions are missing port entry durations ex. FP Experiments/Behavior/PR/028.392/07-09-20
-            if self.verbose:
-                print(f"No port entry durations found for {metadata['NWBFile']['session_id']}")
-            reward_port_entry_times = Events(
-                name="reward_port_entry_times",
-                description="Reward port entry times",
-                timestamps=H5DataIO(session_dict["port_entry_times"], compression=True),
-            )
-            behavior_module.add(reward_port_entry_times)
-        else:
-            port_times, data = [], []
-            for port_entry_time, duration in zip(
-                session_dict["port_entry_times"], session_dict["duration_of_port_entry"]
-            ):
-                port_times.append(port_entry_time)
+        for event_dict in metadata["MedPC"]["Events"]:
+            name = event_dict["name"]
+            description = event_dict["description"]
+            event_data = session_dict[name]
+            if len(event_data) > 0:
+                event = Events(
+                    name=name,
+                    description=description,
+                    timestamps=H5DataIO(event_data, compression=True),
+                )
+                behavior_module.add(event)
+        for interval_dict in metadata["MedPC"]["IntervalSeries"]:
+            name = interval_dict["name"]
+            description = interval_dict["description"]
+            onset_name = interval_dict["onset_name"]
+            duration_name = interval_dict["duration_name"]
+            onset_data = session_dict[onset_name]
+            duration_data = session_dict[duration_name]
+            if len(onset_data) == 0:
+                continue
+            assert len(onset_data) == len(
+                duration_data
+            ), f"Length mismatch between {onset_name} ({len(onset_data)}) and {duration_name} ({len(duration_data)})."
+
+            interval_times, data = [], []
+            for onset_time, duration in zip(onset_data, duration_data):
+                interval_times.append(onset_time)
                 data.append(1)
-                port_times.append(port_entry_time + duration)
+                interval_times.append(onset_time + duration)
                 data.append(-1)
-            reward_port_intervals = IntervalSeries(
-                name="reward_port_intervals",
-                description="Interval of time spent in reward port (1 is entry, -1 is exit)",
-                timestamps=H5DataIO(port_times, compression=True),
-                data=data,
+            interval = IntervalSeries(
+                name=name,
+                description=description,
+                timestamps=H5DataIO(onset_data, compression=True),
+                data=duration_data,
             )
             behavioral_epochs = BehavioralEpochs(name="behavioral_epochs")
-            behavioral_epochs.add_interval_series(reward_port_intervals)
+            behavioral_epochs.add_interval_series(interval)
             behavior_module.add(behavioral_epochs)
-
-        # Left/Right Nose pokes
-        left_nose_poke_times = Events(
-            name="left_nose_poke_times",
-            description="Left nose poke times",
-            timestamps=H5DataIO(session_dict["left_nose_poke_times"], compression=True),
-        )
-        right_nose_poke_times = Events(
-            name="right_nose_poke_times",
-            description="Right nose poke times",
-            timestamps=H5DataIO(session_dict["right_nose_poke_times"], compression=True),
-        )
-        behavior_module.add(left_nose_poke_times)
-        behavior_module.add(right_nose_poke_times)
-
-        # Left/Right Rewards -- Interleaved for most sessions
-        if len(session_dict["left_reward_times"]) > 0:
-            left_reward_times = Events(
-                name="left_reward_times",
-                description="Left Reward times",
-                timestamps=H5DataIO(session_dict["left_reward_times"], compression=True),
-            )
-            behavior_module.add(left_reward_times)
-        if len(session_dict["right_reward_times"]) > 0:
-            right_reward_times = Events(
-                name="right_reward_times",
-                description="Right Reward times",
-                timestamps=H5DataIO(session_dict["right_reward_times"], compression=True),
-            )
-            behavior_module.add(right_reward_times)
-
-        # Footshock
-        if "footshock_times" in session_dict:
-            footshock_times = Events(
-                name="footshock_times",
-                description="Footshock times",
-                timestamps=session_dict["footshock_times"],
-            )
-            behavior_module.add(footshock_times)
