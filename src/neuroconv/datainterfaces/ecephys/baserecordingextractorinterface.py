@@ -280,9 +280,22 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             segment.frame_slice(start_frame=0, end_frame=end_frame)
             for segment, end_frame in zip(recording_segments, end_frame_list)
         ]
-        recording_extractor = ConcatenateSegmentRecording(recording_segments_stubbed)
+        recording_extractor_stubbed = ConcatenateSegmentRecording(recording_list=recording_segments_stubbed)
 
-        return recording_extractor
+        if number_of_segments == 1:
+            times_stubbed = recording_extractor.get_times()[:max_frames]
+            recording_extractor_stubbed.set_times(times=times_stubbed)
+        else:
+            times_stubbed = [
+                recording_extractor.get_times(segment_index=segment_index)[:max_frames]
+                for segment_index in range(number_of_segments)
+            ]
+            for segment_index in range(number_of_segments):
+                recording_extractor_stubbed.set_times(
+                    times=times_stubbed[segment_index], segment_index=segment_index
+                )
+        
+        return recording_extractor_stubbed
 
     def add_to_nwbfile(
         self,
