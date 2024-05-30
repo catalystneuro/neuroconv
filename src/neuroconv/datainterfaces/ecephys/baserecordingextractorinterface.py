@@ -291,10 +291,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(number_of_segments)
             ]
             for segment_index in range(number_of_segments):
-                recording_extractor_stubbed.set_times(
-                    times=times_stubbed[segment_index], segment_index=segment_index
-                )
-        
+                recording_extractor_stubbed.set_times(times=times_stubbed[segment_index], segment_index=segment_index)
+
         return recording_extractor_stubbed
 
     def add_to_nwbfile(
