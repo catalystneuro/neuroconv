@@ -21,6 +21,7 @@ from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     FicTracDataInterface,
     LightningPoseDataInterface,
+    MedPCInterface,
     MiniscopeBehaviorInterface,
     NeuralynxNvtInterface,
     SLEAPInterface,
@@ -29,6 +30,7 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
     DeepLabCutInterfaceMixin,
+    MedPCInterfaceMixin,
     TemporalAlignmentMixin,
     VideoInterfaceMixin,
 )
@@ -736,6 +738,29 @@ class TestVideoConversions(TestCase):
             nwbfile = io.read()
             assert self.image_series_name in nwbfile.acquisition
             assert nwbfile.acquisition[self.image_series_name].data.shape[0] == 10
+
+
+class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
+    data_interface_cls = MedPCInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "medpc" / "95.259"),
+        session_conditions={
+            "Start Date": "04/18/19",
+            "Start Time": "10:41:42",
+        },
+        start_variable="Start Date",
+        metadata_medpc_name_to_info_dict={
+            "Start Date": {"name": "start_date", "is_array": False},
+            "Subject": {"name": "subject", "is_array": False},
+            "Box": {"name": "box", "is_array": False},
+            "Start Time": {"name": "start_time", "is_array": False},
+            "MSN": {"name": "MSN", "is_array": False},
+        },
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["MedPC"]["start_date"] == "04/18/19"
 
 
 if __name__ == "__main__":

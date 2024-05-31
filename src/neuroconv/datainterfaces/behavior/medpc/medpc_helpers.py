@@ -127,7 +127,7 @@ def read_medpc_file(
             session_dict[output_name] = data
 
     # Convert the data types
-    for output_name, info in medpc_name_to_info_dict.items():
+    for info in medpc_name_to_info_dict.values():
         output_name = info["name"]
         is_array = info["is_array"]
         if output_name in session_dict:

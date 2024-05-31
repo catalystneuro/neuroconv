@@ -1,3 +1,5 @@
+import copy
+
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from ndx_events import Events
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
@@ -88,7 +90,7 @@ class MedPCInterface(BaseDataInterface):
         return metadata_schema
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        medpc_name_to_info_dict = metadata["MedPC"]["medpc_name_to_info_dict"]
+        medpc_name_to_info_dict = copy.deepcopy(metadata["MedPC"]["medpc_name_to_info_dict"])
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,

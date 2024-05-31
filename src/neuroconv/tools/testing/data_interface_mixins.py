@@ -907,6 +907,13 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
                 self.check_nwbfile_temporal_alignment()
 
 
+class MedPCInterfaceMixin(DataInterfaceTestMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            assert "MedPC" in nwbfile.processing["Behavior"].data_interfaces.keys()
+
+
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
