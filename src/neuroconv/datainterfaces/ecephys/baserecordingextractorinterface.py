@@ -268,7 +268,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
+        from spikeinterface.core.segmentutils import AppendSegmentRecording
 
         max_frames = 100
 
@@ -280,7 +280,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             segment.frame_slice(start_frame=0, end_frame=end_frame)
             for segment, end_frame in zip(recording_segments, end_frame_list)
         ]
-        recording_extractor_stubbed = ConcatenateSegmentRecording(recording_list=recording_segments_stubbed)
+        recording_extractor_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
         times_stubbed = [
             recording_extractor.get_times(segment_index=segment_index)[:end_frame]
