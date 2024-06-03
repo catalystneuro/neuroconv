@@ -35,6 +35,8 @@ class MedPCInterface(BaseDataInterface):
     default_medpc_name_to_info_dict = {}
     default_events = []
     default_interval_series = []
+    default_module_name = "behavior"
+    default_module_description = "Operant behavioral data from MedPC."
 
     def __init__(
         self,
@@ -105,10 +107,12 @@ class MedPCInterface(BaseDataInterface):
         )
 
         # Add behavior data to nwbfile
+        module_name = metadata["MedPC"].get("module_name", self.default_module_name)
+        module_description = metadata["MedPC"].get("module_description", self.default_module_description)
         behavior_module = nwb_helpers.get_module(
             nwbfile=nwbfile,
-            name="behavior",
-            description="Operant behavioral data from MedPC.",
+            name=module_name,
+            description=module_description,
         )
 
         if "Events" in metadata["MedPC"]:
