@@ -765,6 +765,32 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         "box": "1",
         "MSN": "Footshock Degradation Left",
     }
+    expected_events = [
+        {
+            "name": "left_nose_poke_times",
+            "description": "Left nose poke times",
+        },
+        {
+            "name": "right_nose_poke_times",
+            "description": "Right nose poke times",
+        },
+        {
+            "name": "right_reward_times",
+            "description": "Right reward times",
+        },
+        {
+            "name": "footshock_times",
+            "description": "Footshock times",
+        },
+    ]
+    expected_interval_series = [
+        {
+            "name": "reward_port_intervals",
+            "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+            "onset_name": "port_entry_times",
+            "duration_name": "duration_of_port_entry",
+        },
+    ]
 
     def setUpFreshInterface(self):
         super().setUpFreshInterface()
@@ -810,6 +836,23 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["MedPC"] == self.expected_metadata
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            for event_dict in self.expected_events:
+                expected_name = event_dict["name"]
+                expected_description = event_dict["description"]
+                assert expected_name in nwbfile.processing["behavior"].data_interfaces
+                event = nwbfile.processing["behavior"].data_interfaces[expected_name]
+                assert event.description == expected_description
+
+            for interval_dict in self.interface.default_interval_series:
+                expected_name = interval_dict["name"]
+                expected_description = interval_dict["description"]
+                assert expected_name in nwbfile.processing["behavior"]["behavioral_epochs"].interval_series
+                interval_series = nwbfile.processing["behavior"]["behavioral_epochs"].interval_series[expected_name]
+                assert interval_series.description == expected_description
 
 
 if __name__ == "__main__":
