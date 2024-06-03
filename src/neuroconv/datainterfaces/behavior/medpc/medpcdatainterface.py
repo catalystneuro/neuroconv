@@ -95,10 +95,7 @@ class MedPCInterface(BaseDataInterface):
         return metadata_schema
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        if "medpc_name_to_info_dict" in metadata["MedPC"]:
-            medpc_name_to_info_dict = copy.deepcopy(metadata["MedPC"]["medpc_name_to_info_dict"])
-        else:
-            medpc_name_to_info_dict = self.default_medpc_name_to_info_dict
+        medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", self.default_medpc_name_to_info_dict)
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
@@ -115,10 +112,7 @@ class MedPCInterface(BaseDataInterface):
             description=module_description,
         )
 
-        if "Events" in metadata["MedPC"]:
-            event_dicts = metadata["MedPC"]["Events"]
-        else:
-            event_dicts = self.default_events
+        event_dicts = metadata["MedPC"].get("Events", self.default_events)
         for event_dict in event_dicts:
             name = event_dict["name"]
             description = event_dict["description"]
@@ -130,10 +124,7 @@ class MedPCInterface(BaseDataInterface):
                     timestamps=H5DataIO(event_data, compression=True),
                 )
                 behavior_module.add(event)
-        if "IntervalSeries" in metadata["MedPC"]:
-            interval_dicts = metadata["MedPC"]["IntervalSeries"]
-        else:
-            interval_dicts = self.default_interval_series
+        interval_dicts = metadata["MedPC"].get("IntervalSeries", self.default_interval_series)
         for interval_dict in interval_dicts:
             name = interval_dict["name"]
             description = interval_dict["description"]
