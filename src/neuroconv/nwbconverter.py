@@ -220,7 +220,8 @@ class NWBConverter:
             backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+            if nwbfile is not None:
+                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
             if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
