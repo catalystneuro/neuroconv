@@ -751,13 +751,20 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         start_variable="Start Date",
         metadata_medpc_name_to_info_dict={
             "Start Date": {"name": "start_date", "is_array": False},
+            "Start Time": {"name": "start_time", "is_array": False},
             "Subject": {"name": "subject", "is_array": False},
             "Box": {"name": "box", "is_array": False},
-            "Start Time": {"name": "start_time", "is_array": False},
             "MSN": {"name": "MSN", "is_array": False},
         },
     )
     save_directory = OUTPUT_PATH
+    expected_metadata = {
+        "start_date": "04/18/19",
+        "start_time": "10:41:42",
+        "subject": "95.259",
+        "box": "1",
+        "MSN": "Footshock Degradation Left",
+    }
 
     def setUpFreshInterface(self):
         super().setUpFreshInterface()
@@ -802,7 +809,7 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         ]
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["MedPC"]["start_date"] == "04/18/19"
+        assert metadata["MedPC"] == self.expected_metadata
 
 
 if __name__ == "__main__":
