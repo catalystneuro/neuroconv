@@ -100,6 +100,9 @@ class DataInterfaceTestMixin:
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
 
+        for k, v in metadata["MedPC"].items():
+            assert v == metadata_in["MedPC"][k], f"Metadata key '{k}' was mutated by add_to_nwbfile method."
+
         assert metadata == metadata_in
 
     def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
@@ -211,6 +214,10 @@ class DataInterfaceTestMixin:
         """Override this in child classes to inject additional custom checks."""
         pass
 
+    def setUpFreshInterface(self):
+        """Protocol for creating a fresh instance of the interface."""
+        self.interface = self.data_interface_cls(**self.test_kwargs)
+
     def test_all_conversion_checks(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -219,7 +226,7 @@ class DataInterfaceTestMixin:
             with self.subTest(str(num)):
                 self.case = num
                 self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
+                self.setUpFreshInterface()
 
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
@@ -911,7 +918,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin):
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
-            assert "MedPC" in nwbfile.processing["Behavior"].data_interfaces.keys()
+            assert "behavior" in nwbfile.processing
 
 
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

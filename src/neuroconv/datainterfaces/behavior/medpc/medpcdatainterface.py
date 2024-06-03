@@ -32,6 +32,9 @@ class MedPCInterface(BaseDataInterface):
     """
 
     keywords = ["behavior"]
+    default_medpc_name_to_info_dict = {}
+    default_events = []
+    default_interval_series = []
 
     def __init__(
         self,
@@ -90,7 +93,10 @@ class MedPCInterface(BaseDataInterface):
         return metadata_schema
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        medpc_name_to_info_dict = copy.deepcopy(metadata["MedPC"]["medpc_name_to_info_dict"])
+        if "medpc_name_to_info_dict" in metadata["MedPC"]:
+            medpc_name_to_info_dict = copy.deepcopy(metadata["MedPC"]["medpc_name_to_info_dict"])
+        else:
+            medpc_name_to_info_dict = self.default_medpc_name_to_info_dict
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
@@ -105,7 +111,11 @@ class MedPCInterface(BaseDataInterface):
             description="Operant behavioral data from MedPC.",
         )
 
-        for event_dict in metadata["MedPC"]["Events"]:
+        if "Events" in metadata["MedPC"]:
+            event_dicts = metadata["MedPC"]["Events"]
+        else:
+            event_dicts = self.default_events
+        for event_dict in event_dicts:
             name = event_dict["name"]
             description = event_dict["description"]
             event_data = session_dict[name]
@@ -116,7 +126,11 @@ class MedPCInterface(BaseDataInterface):
                     timestamps=H5DataIO(event_data, compression=True),
                 )
                 behavior_module.add(event)
-        for interval_dict in metadata["MedPC"]["IntervalSeries"]:
+        if "IntervalSeries" in metadata["MedPC"]:
+            interval_dicts = metadata["MedPC"]["IntervalSeries"]
+        else:
+            interval_dicts = self.default_interval_series
+        for interval_dict in interval_dicts:
             name = interval_dict["name"]
             description = interval_dict["description"]
             onset_name = interval_dict["onset_name"]

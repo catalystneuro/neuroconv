@@ -759,6 +759,48 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def setUpFreshInterface(self):
+        super().setUpFreshInterface()
+        self.interface.default_medpc_name_to_info_dict = {
+            "A": {"name": "left_nose_poke_times", "is_array": True},
+            "B": {"name": "left_reward_times", "is_array": True},
+            "C": {"name": "right_nose_poke_times", "is_array": True},
+            "D": {"name": "right_reward_times", "is_array": True},
+            "E": {"name": "duration_of_port_entry", "is_array": True},
+            "G": {"name": "port_entry_times", "is_array": True},
+            "H": {"name": "footshock_times", "is_array": True},
+        }
+        self.interface.default_events = [
+            {
+                "name": "left_nose_poke_times",
+                "description": "Left nose poke times",
+            },
+            {
+                "name": "left_reward_times",
+                "description": "Left reward times",
+            },
+            {
+                "name": "right_nose_poke_times",
+                "description": "Right nose poke times",
+            },
+            {
+                "name": "right_reward_times",
+                "description": "Right reward times",
+            },
+            {
+                "name": "footshock_times",
+                "description": "Footshock times",
+            },
+        ]
+        self.interface.default_interval_series = [
+            {
+                "name": "reward_port_intervals",
+                "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+                "onset_name": "port_entry_times",
+                "duration_name": "duration_of_port_entry",
+            },
+        ]
+
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["MedPC"]["start_date"] == "04/18/19"
 
