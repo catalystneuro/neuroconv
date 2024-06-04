@@ -45,7 +45,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     display_name = "Intan Recording"
     associated_suffixes = (".rhd", ".rhs")
     info = "Interface for Intan recording data."
-    stream_id = "0"  # This is the only stream_id of Intan that might have neural data
+    stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
 
     def __init__(
         self,
@@ -53,6 +53,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         stream_id: Optional[str] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
+        ignore_integrity_checks: bool = False,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
@@ -66,7 +67,21 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
             Verbose
         es_key : str, default: "ElectricalSeries"
+        ignore_integrity_checks, bool, default: False.
+            If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
+            check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
         """
+
+        neo_version = get_package_version(name="neo")
+        init_kwargs = dict(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
+        if neo_version >= Version("0.13.1"):
+            init_kwargs["ignore_integrity_checks"] = ignore_integrity_checks
+        else:
+            if ignore_integrity_checks:
+                warnings.warn(
+                    "The 'ignore_integrity_checks' parameter is not supported for neo versions < 0.13.1.",
+                    UserWarning,
+                )
 
         if stream_id is not None:
             warnings.warn(
@@ -75,7 +90,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             )
             self.stream_id = stream_id
 
-        super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
+        super().__init__(**init_kwargs)
         electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]
