@@ -92,5 +92,5 @@ def test_mock_run_conversion(tmpdir: pathlib.Path):
 
         assert "Neuropixel-Imec" in nwbfile.devices
         assert "NIDQChannelGroup" in nwbfile.electrode_groups
-        assert nwbfile.electrodes.id[:] == [0, 1, 2, 3, 4, 5, 6, 7]
+        assert list(nwbfile.electrodes.id[:]) == [0, 1, 2, 3, 4, 5, 6, 7]
         assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
