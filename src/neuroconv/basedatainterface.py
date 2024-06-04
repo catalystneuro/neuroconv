@@ -153,6 +153,7 @@ class BaseDataInterface(ABC):
                 " use DataInterface.add_to_nwbfile."
             )
         backend = _resolve_backend(backend, backend_configuration)
+        no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
 
         if metadata is None:
             metadata = self.get_metadata()
@@ -165,10 +166,10 @@ class BaseDataInterface(ABC):
             backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            if backend_configuration is None:
-                # In this case, assume the relevant data has not been added to the NWBFile
+            if no_nwbfile_provided:
                 self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
 
+            if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
