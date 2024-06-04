@@ -16,6 +16,12 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".edf",)
     info = "Interface for European Data Format (EDF) recording data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
+        return source_schema
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for EDF.
