@@ -8,7 +8,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 
 
-def test_current_default_inferred_ttl_times(self):
+def test_current_default_inferred_ttl_times():
     interface = MockSpikeGLXNIDQInterface()
 
     channel_names = ["nidq#XA0", "nidq#XA1", "nidq#XA2", "nidq#XA3", "nidq#XA4", "nidq#XA5", "nidq#XA6", "nidq#XA7"]
@@ -22,7 +22,7 @@ def test_current_default_inferred_ttl_times(self):
         assert_array_almost_equal(x=inferred_ttl_times, y=expected_ttl_times[channel_index], decimal=4)
 
 
-def test_explicit_original_default_inferred_ttl_times(self):
+def test_explicit_original_default_inferred_ttl_times():
     interface = MockSpikeGLXNIDQInterface(signal_duration=7.0, ttl_times=None, ttl_duration=1.0)
 
     channel_names = ["nidq#XA0", "nidq#XA1", "nidq#XA2", "nidq#XA3", "nidq#XA4", "nidq#XA5", "nidq#XA6", "nidq#XA7"]
@@ -32,7 +32,7 @@ def test_explicit_original_default_inferred_ttl_times(self):
         assert_array_almost_equal(x=inferred_ttl_times, y=expected_ttl_times[channel_index], decimal=4)
 
 
-def test_custom_inferred_ttl_times(self):
+def test_custom_inferred_ttl_times():
     custom_ttl_times = [[1.2], [3.6], [0.7, 4.5], [5.1]]
     interface = MockSpikeGLXNIDQInterface(ttl_times=custom_ttl_times)
 
@@ -42,7 +42,7 @@ def test_custom_inferred_ttl_times(self):
         assert_array_almost_equal(x=inferred_ttl_times, y=custom_ttl_times[channel_index], decimal=4)
 
 
-def test_mock_metadata(self):
+def test_mock_metadata():
     interface = MockSpikeGLXNIDQInterface()
 
     metadata = interface.get_metadata()
@@ -76,7 +76,7 @@ def test_mock_metadata(self):
     assert metadata["NWBFile"]["session_start_time"] == expected_start_time
 
 
-def test_mock_run_conversion(self, tmpdir: pathlib.Path):
+def test_mock_run_conversion(tmpdir: pathlib.Path):
     interface = MockSpikeGLXNIDQInterface()
 
     metadata = interface.get_metadata()
