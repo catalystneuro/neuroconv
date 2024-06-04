@@ -23,6 +23,12 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".bin", ".set")
     info = "Interface for Axona recording data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
+        return source_schema
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 

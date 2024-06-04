@@ -15,6 +15,12 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
     associated_suffixes = (".avi",)
     info = "Interface for Miniscope behavior video data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "The main Miniscope folder. The movie files are expected to be in sub folders within the main folder."
+        return source_schema
+
     def __init__(self, folder_path: FolderPathType):
         """
         Initialize reading recordings from the Miniscope behavioral camera.

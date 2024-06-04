@@ -19,7 +19,9 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls)
+        source_schema = get_schema_from_method_signature(cls)
+        source_schema["properties"]["folder_path"]["description"] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
+        return source_schema
 
     def get_conversion_options_schema(self):
         interface_name = list(self.data_interface_objects.keys())[0]

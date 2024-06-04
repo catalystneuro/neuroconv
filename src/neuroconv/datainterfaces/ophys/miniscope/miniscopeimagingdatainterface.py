@@ -16,6 +16,11 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".avi", ".csv", ".json")
     info = "Interface for Miniscope imaging data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "The main Miniscope folder. The microscope movie files are expected to be in sub folders within the main folder."
+
     def __init__(self, folder_path: FolderPathType):
         """
         Initialize reading the Miniscope imaging data.
@@ -23,8 +28,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         Parameters
         ----------
         folder_path : FolderPathType
-            The path that points to the main Miniscope folder.
-            The miscroscope movie files are expected to be in sub folders within the main folder.
+            The main Miniscope folder.
+            The microscope movie files are expected to be in sub folders within the main folder.
         """
         from ndx_miniscope.utils import get_recording_start_times, read_miniscope_config
 

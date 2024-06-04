@@ -17,7 +17,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
         source_schema["properties"]["folder_path"][
             "description"
-        ] = "The path that points to the folder containing the OME-TIF image files."
+        ] = "The folder containing the OME-TIF image files."
         return source_schema
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):

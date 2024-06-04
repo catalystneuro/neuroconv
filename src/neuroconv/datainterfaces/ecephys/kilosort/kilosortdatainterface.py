@@ -9,6 +9,12 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".npy",)
     info = "Interface for KiloSort sorting data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "Path to the output Phy folder (containing the params.py)"
+        return source_schema
+
     def __init__(
         self,
         folder_path: FolderPathType,
