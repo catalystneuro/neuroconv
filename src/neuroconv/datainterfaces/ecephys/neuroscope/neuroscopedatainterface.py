@@ -254,7 +254,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
-        source_schema = super().get_sourcec_schema()
+        source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
         source_schema["properties"]["keep_mua_units"][
             "description"
