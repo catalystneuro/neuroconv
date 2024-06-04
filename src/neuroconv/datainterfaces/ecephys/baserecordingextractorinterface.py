@@ -36,6 +36,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         super().__init__(**source_data)
         self.recording_extractor = self.get_extractor()(**source_data)
+        property_names = self.recording_extractor.get_property_keys()
+        # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.100.7 is released
+        if "channel_name" not in property_names and "channel_names" in property_names:
+            channel_names = self.recording_extractor.get_property("channel_names")
+            self.recording_extractor.set_property("channel_name", channel_names)
+            self.recording_extractor.delete_property("channel_names")
+
         self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
@@ -261,7 +268,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
+        from spikeinterface.core.segmentutils import AppendSegmentRecording
 
         max_frames = 100
 
@@ -273,9 +280,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             segment.frame_slice(start_frame=0, end_frame=end_frame)
             for segment, end_frame in zip(recording_segments, end_frame_list)
         ]
-        recording_extractor = ConcatenateSegmentRecording(recording_segments_stubbed)
+        recording_extractor_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
-        return recording_extractor
+        times_stubbed = [
+            recording_extractor.get_times(segment_index=segment_index)[:end_frame]
+            for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
+        ]
+        for segment_index in range(number_of_segments):
+            recording_extractor_stubbed.set_times(times=times_stubbed[segment_index], segment_index=segment_index)
+
+        return recording_extractor_stubbed
 
     def add_to_nwbfile(
         self,
@@ -285,7 +299,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        compression: Optional[str] = "gzip",
+        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
@@ -302,6 +316,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
+
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -311,35 +326,31 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        compression : {'gzip', 'lzf', None}
-            Type of compression to use.
-            Set to None to disable all compression.
-        compression_opts : int, default: 4
-            Only applies to compression="gzip". Controls the level of the GZIP.
         iterator_type : {'v2', 'v1'}
             The type of DataChunkIterator to use.
             'v1' is the original DataChunkIterator of the hdmf data_utils.
             'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
         iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are
-                buffer_gb : float, default: 1.0
-                    In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                    buffer shape.
-                buffer_shape : tuple, optional
-                    Manual specification of buffer shape to return on each iteration.
-                    Must be a multiple of chunk_shape along each axis.
-                    Cannot be set if `buffer_gb` is specified.
-                chunk_mb : float. default: 1.0
-                    Should be below 1 MB. Automatically calculates suitable chunk shape.
-                chunk_shape : tuple, optional
-                    Manual specification of the internal chunk shape for the HDF5 dataset.
-                    Cannot be set if `chunk_mb` is also specified.
-                display_progress : bool, default: False
-                    Display a progress bar with iteration rate and estimated completion time.
-                progress_bar_options : dict, optional
-                    Dictionary of keyword arguments to be passed directly to tqdm.
-                    See https://github.com/tqdm/tqdm#parameters for options.
+            Valid options are:
+
+            * buffer_gb : float, default: 1.0
+                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
+                buffer shape.
+            * buffer_shape : tuple, optional
+                Manual specification of buffer shape to return on each iteration.
+                Must be a multiple of chunk_shape along each axis.
+                Cannot be set if `buffer_gb` is specified.
+            * chunk_mb : float. default: 1.0
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+            * chunk_shape : tuple, optional
+                Manual specification of the internal chunk shape for the HDF5 dataset.
+                Cannot be set if `chunk_mb` is also specified.
+            * display_progress : bool, default: False
+                Display a progress bar with iteration rate and estimated completion time.
+            * progress_bar_options : dict, optional
+                Dictionary of keyword arguments to be passed directly to tqdm.
+                See https://github.com/tqdm/tqdm#parameters for options.
         """
         from ...tools.spikeinterface import add_recording
 

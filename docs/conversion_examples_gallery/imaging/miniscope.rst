@@ -14,7 +14,7 @@ into a single conversion.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.converters import MiniscopeConverter
     >>>
@@ -25,7 +25,7 @@ into a single conversion.
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = tz.gettz("US/Pacific")
+    >>> tzinfo = ZoneInfo("US/Pacific")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion

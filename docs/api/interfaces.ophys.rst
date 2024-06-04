@@ -27,7 +27,7 @@ Sbx Imaging
 
 ScanImage Imaging
 -----------------
-.. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface
+.. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces
 
 Tiff Imaging
 ------------

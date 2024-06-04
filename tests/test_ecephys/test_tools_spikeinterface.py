@@ -59,11 +59,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         assert "ElectricalSeriesRaw" in acquisition_module
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
-        assert isinstance(electrical_series.data, H5DataIO)
-
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
-
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -192,35 +187,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             add_electrical_series(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
             )
-
-    def test_write_with_higher_gzip_level(self):
-        compression = "gzip"
-        compression_opts = 8
-        add_electrical_series(
-            recording=self.test_recording_extractor,
-            nwbfile=self.nwbfile,
-            iterator_type=None,
-            compression=compression,
-            compression_opts=compression_opts,
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert compression_parameters["compression_opts"] == compression_opts
-
-    def test_write_with_lzf_compression(self):
-        compression = "lzf"
-        add_electrical_series(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert "compression_opts" not in compression_parameters
 
 
 class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
@@ -439,13 +405,12 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
 
-    def test_default_chunking(self):
+    def test_default_iterative_writer(self):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert isinstance(electrical_series_data_iterator, SpikeInterfaceRecordingDataChunkIterator)
 
@@ -461,18 +426,16 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
-    def test_hdfm_iterator(self):
+    def test_hdmf_iterator(self):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert isinstance(electrical_series_data_iterator, DataChunkIterator)
 
@@ -504,7 +467,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder.get_num_channels.return_value = num_channels
         mock_recorder.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
+        reg_expression = f"Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
@@ -557,11 +520,6 @@ class TestWriteRecording(unittest.TestCase):
         assert "ElectricalSeriesRaw" in acquisition_module
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
-        assert isinstance(electrical_series.data, H5DataIO)
-
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
-
         extracted_data = electrical_series.data[:]
         expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -610,13 +568,8 @@ class TestAddElectrodes(TestCase):
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
-        channel_ids = self.base_recording.get_channel_ids()
-        self.recording_1 = self.base_recording.channel_slice(
-            channel_ids=channel_ids, renamed_channel_ids=["a", "b", "c", "d"]
-        )
-        self.recording_2 = self.base_recording.channel_slice(
-            channel_ids=channel_ids, renamed_channel_ids=["c", "d", "e", "f"]
-        )
+        self.recording_1 = self.base_recording.rename_channels(new_channel_ids=["a", "b", "c", "d"])
+        self.recording_2 = self.base_recording.rename_channels(new_channel_ids=["c", "d", "e", "f"])
 
         self.device = self.nwbfile.create_device(name="extra_device")
         self.electrode_group = self.nwbfile.create_electrode_group(
@@ -817,6 +770,98 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
+
+    def test_adding_ragged_array_properties(self):
+
+        ragged_array_values1 = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        self.recording_1.set_property(key="ragged_property", values=ragged_array_values1)
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property"].to_list()
+        np.testing.assert_array_equal(written_values, ragged_array_values1)
+
+        # Add a new recording that contains more properties for the ragged array
+        ragged_array_values2 = [[5, 6], [7, 8], [9, 10], [11, 12]]
+        self.recording_2.set_property(key="ragged_property", values=ragged_array_values2)
+        second_ragged_array_values = [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"], ["j", "k", "l"]]
+        self.recording_2.set_property(key="ragged_property2", values=second_ragged_array_values)
+
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property"].to_list()
+        expected_values = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]]
+        np.testing.assert_array_equal(written_values, expected_values)
+
+        written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property2"].to_list()
+        values_appended_to_table = [[], []]
+        expected_values = values_appended_to_table + second_ragged_array_values
+
+        # We need a for loop because this is a non-homogenous ragged array
+        for i, value in enumerate(written_values):
+            np.testing.assert_array_equal(value, expected_values[i])
+
+    def test_adding_doubled_ragged_arrays(self):
+
+        # Simple test for a double ragged array
+        doubled_nested_array1 = [
+            [[1, 2], [3, 4]],
+            [[5, 6], [7, 8]],
+            [[9, 10], [11, 12]],
+            [[13, 14], [15, 16]],
+        ]
+        self.recording_1.set_property(key="double_ragged_property", values=doubled_nested_array1)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property"].to_list()
+        np.testing.assert_array_equal(written_values, doubled_nested_array1)
+
+        # Add a new recording that contains a continuation of the previous double ragged array
+        # There is overlapping in the channel names
+        doubled_nested_array2 = [
+            [[9, 10], [11, 12]],
+            [[13, 14], [15, 16]],
+            [[17, 18], [19, 20]],
+            [[21, 22], [23, 24]],
+        ]
+        self.recording_2.set_property(key="double_ragged_property", values=doubled_nested_array2)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property"].to_list()
+
+        # Note this adds a combination of both arrays
+        expected_values = [
+            [[1, 2], [3, 4]],
+            [[5, 6], [7, 8]],
+            [[9, 10], [11, 12]],
+            [[13, 14], [15, 16]],
+            [[17, 18], [19, 20]],
+            [[21, 22], [23, 24]],
+        ]
+
+        np.testing.assert_array_equal(written_values, expected_values)
+
+        second_doubled_nested_array = [
+            [["a", "b", "c"], ["d", "e", "f"]],
+            [["g", "h", "i"], ["j", "k", "l"]],
+            [["m", "n", "o"], ["p", "q", "r"]],
+            [["s", "t", "u"], ["v", "w", "x"]],
+        ]
+
+        # We add another properyt to recording 2 tat is not in recording 1
+        self.recording_2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property2"].to_list()
+
+        values_appended_to_table = [
+            [],
+            [],
+        ]
+
+        expected_values = values_appended_to_table + second_doubled_nested_array
+        # We need a for loop because this is a non-homogenous ragged array
+        for i, value in enumerate(written_values):
+            np.testing.assert_array_equal(value, expected_values[i])
 
     def test_row_matching_by_channel_name_with_new_property(self):
         """
@@ -1138,6 +1183,79 @@ class TestAddUnitsTable(TestCase):
         )
         self.assertIn("test_bool", self.nwbfile.units.colnames)
         assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
+
+    def test_adding_ragged_array_properties(self):
+
+        sorting1 = generate_sorting(num_units=4)
+        sorting1 = sorting1.rename_units(new_unit_ids=["a", "b", "c", "d"])
+        sorting2 = generate_sorting(num_units=4)
+        sorting2 = sorting2.rename_units(new_unit_ids=["e", "f", "g", "h"])
+
+        ragged_array_values1 = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        sorting1.set_property(key="ragged_property", values=ragged_array_values1)
+        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.units.to_dataframe()["ragged_property"].to_list()
+        np.testing.assert_array_equal(written_values, ragged_array_values1)
+
+        # Add a new recording that contains more properties for the ragged array
+        ragged_array_values2 = [[9, 10], [11, 12], [13, 14], [15, 16]]
+        sorting2.set_property(key="ragged_property", values=ragged_array_values2)
+        second_ragged_array_values = [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"], ["j", "k", "l"]]
+        sorting2.set_property(key="ragged_property2", values=second_ragged_array_values)
+        add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.units.to_dataframe()["ragged_property"].to_list()
+        expected_values = ragged_array_values1 + ragged_array_values2
+        np.testing.assert_array_equal(written_values, expected_values)
+
+        written_values = self.nwbfile.units.to_dataframe()["ragged_property2"].to_list()
+        number_of_rows_added_before = sorting1.get_num_units()
+        values_appended_to_table = [[] for _ in range(number_of_rows_added_before)]
+        expected_values = values_appended_to_table + second_ragged_array_values
+
+        # We need a for loop because this is a non-homogenous ragged array
+        for i, value in enumerate(written_values):
+            np.testing.assert_array_equal(value, expected_values[i])
+
+    def test_adding_doubled_ragged_arrays(self):
+
+        sorting1 = generate_sorting(num_units=4)
+        sorting1 = sorting1.rename_units(new_unit_ids=["a", "b", "c", "d"])
+        sorting2 = generate_sorting(num_units=4)
+        sorting2 = sorting2.rename_units(new_unit_ids=["e", "f", "g", "h"])
+
+        doubled_nested_array = [[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]], [[13, 14], [15, 16]]]
+        sorting1.set_property(key="double_ragged_property", values=doubled_nested_array)
+        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.units.to_dataframe()["double_ragged_property"].to_list()
+        np.testing.assert_array_equal(written_values, doubled_nested_array)
+
+        # Add a new recording that contains more properties for the ragged array
+        doubled_nested_array2 = [[[17, 18], [19, 20]], [[21, 22], [23, 24]], [[25, 26], [27, 28]], [[29, 30], [31, 32]]]
+        sorting2.set_property(key="double_ragged_property", values=doubled_nested_array2)
+        second_doubled_nested_array = [
+            [["a", "b", "c"], ["d", "e", "f"]],
+            [["g", "h", "i"], ["j", "k", "l"]],
+            [["m", "n", "o"], ["p", "q", "r"]],
+            [["s", "t", "u"], ["v", "w", "x"]],
+        ]
+        sorting2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
+        add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+
+        written_values = self.nwbfile.units.to_dataframe()["double_ragged_property"].to_list()
+        expected_values = doubled_nested_array + doubled_nested_array2
+        np.testing.assert_array_equal(written_values, expected_values)
+
+        written_values = self.nwbfile.units.to_dataframe()["double_ragged_property2"].to_list()
+        number_of_rows_added_before = sorting1.get_num_units()
+        values_appended_to_table = [[] for _ in range(number_of_rows_added_before)]
+        expected_values = values_appended_to_table + second_doubled_nested_array
+
+        # We need a for loop because this is a non-homogenous ragged array
+        for i, value in enumerate(written_values):
+            np.testing.assert_array_equal(value, expected_values[i])
 
 
 from packaging.version import Version

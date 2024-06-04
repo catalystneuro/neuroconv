@@ -26,7 +26,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "lfp",
         write_electrical_series: bool = True,
-        compression: Optional[str] = "gzip",
+        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,

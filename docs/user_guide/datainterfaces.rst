@@ -36,7 +36,7 @@ but generally will not read the underlying data.
 
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 
-    spikeglx_interface = SpikeGLXRecordingInterface(file_path="path/to/towersTask_g0_t0.imec0.ap.bin")
+    interface = SpikeGLXRecordingInterface(file_path="path/to/towersTask_g0_t0.imec0.ap.bin")
 
 .. note::
 
@@ -45,31 +45,108 @@ but generally will not read the underlying data.
      the user of the required and optional input arguments to the downstream readers.
 
 
-3. Get metadata
-~~~~~~~~~~~~~~~
+3. Get and adjust metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 Each ``DataInterface`` can extract relevant metadata from the source files and
-organize it for writing to NWB in a hierarchical dictionary. This dictionary
+organize it in a ``metadata`` hierarchical dictionary. This dictionary
 can be edited to include data not available in the source files.
 
 .. code-block:: python
 
-    metadata = spikeglx_interface.get_metadata()
-    metadata["NWBFile"]["experimenter"] = ["Darwin, Charles"]
+    metadata = interface.get_metadata()
+
+The DANDI Archive requires subject ID, sex, age, and species, which are rarely present in the source data. Here is how you would add them.
+
+.. code-block:: python
+
     metadata["Subject"] = dict(
         subject_id="M001",
         sex="M",
         age="P30D",
+        species="Mus musculus",
     )
 
+``subject_id`` is a unique identifier for the subject.
+
+``sex`` is the biological sex of the subject and can take the values:
+
+- ``M`` for Male
+- ``F`` for Female
+- ``U`` for Unknown
+- ``O`` for Other
+
+``age`` follows the `ISO 8601 duration format <https://en.wikipedia.org/wiki/ISO_8601#Durations>`_. For example, ``P30D`` is 30 days old, and ``P1Y`` would be 1 year old. To express a range of ages, you can use a slash, for example ``P30D/P35D`` for 30 to 35 days old.
+
+``species`` is the scientific Latin binomial name of the species. For example, ``Mus musculus``
+for a mouse.
+
+See :ref:`Subject Best Practices <best_practice_subject_exists>` for details
+
+The ``session_start_time`` is also required. This is sometimes found in the source data. If it is not found, you must add it.
+
+.. code-block:: python
+
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
+
+You can use ``tz.tzlocal()`` to get the local timezone.
+
+If the ``session_start_time`` is extracted from the source data, it is often missing a timezone. This is not required but is a recommended best practice. Here is how you would add it.
+
+.. code-block:: python
+
+    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+
+NWB Best Practices also recommends several other fields that are rarely present in the extracted metadata. The metadata dictionary is the place to add this information.
+
+.. code-block:: python
+
+    metadata["NWBFile"].update(
+        session_id="session_1",
+        session_description="Observations of desert plants and reptiles on the island of San Cristobal.",
+        experiment_description="Observations of wildlife across the Galapagos Islands.",
+        experimenter="Darwin, Charles",
+        lab="Evolutionary Biology",
+        institution="University of Cambridge",
+        keywords=["finches", "evolution", "Galapagos"],
+    )
+
+The ``metadata`` dictionary also contains metadata that pertain to the specific data being converted. In this example, the ``Ecephys`` key contains metadata that pertains to the electrophysiology data being converted. This metadata can be edited in the same way.
+
+.. code-block:: python
+
+    metadata["Ecephys"]
+
+    {'Device': [{'name': 'Neuropixel-Imec',
+       'description': '{"probe_type": "0", "probe_type_description": "NP1.0", "flex_part_number": "NP2_FLEX_0", "connected_base_station_part_number": "NP2_QBSC_00"}',
+       'manufacturer': 'Imec'}],
+     'ElectrodeGroup': [{'name': 's0',
+       'description': 'a group representing shank s0',
+       'location': 'unknown',
+       'device': 'Neuropixel-Imec'}],
+     'ElectricalSeriesAP': {'name': 'ElectricalSeriesAP',
+      'description': 'Acquisition traces for the ElectricalSeriesAP.'},
+     'Electrodes': [{'name': 'shank_electrode_number',
+       'description': '0-indexed channel within a shank.'},
+      {'name': 'group_name',
+       'description': 'Name of the ElectrodeGroup this electrode is a part of.'},
+      {'name': 'contact_shapes', 'description': 'The shape of the electrode'}]}
+
+Here we can see that ``metadata["Ecephys"]["ElectrodeGroup"][0]["location"]`` is ``unknown``. We can add this information as follows:
+
+.. code-block:: python
+
+    metadata["Ecephys"]["ElectrodeGroup"]["location"] = "V1"
+
+
+Use ``.get_metadata_schema()`` to get the schema of the metadata dictionary. This schema is a JSON-schema-like dictionary that specifies required and optional fields in the metadata dictionary. See :ref:`metadata schema <metadata_schema>` for more information.
 
 4. Run conversion
 ~~~~~~~~~~~~~~~~~
 The ``.run_conversion`` method takes the (edited) metadata dictionary and
 the path of an NWB file, and launches the actual data conversion into NWB.
-This process generally reads and writes large datasets piece-by-piece, so you
-can convert large datasets without overloading the computer's available RAM.
-It also uses good defaults for data chunking and lossless compression, reducing
-the file size of the output NWB file.
 
 .. code-block:: python
 
@@ -77,3 +154,8 @@ the file size of the output NWB file.
         save_path="path/to/destination.nwb",
         metadata=metadata
     )
+
+This method reads and writes large datasets piece-by-piece, so you
+can convert large datasets without overloading the computer's available RAM.
+It also uses good defaults for data chunking and lossless compression, reducing
+the file size of the output NWB file and optimizing the file for cloud compute.

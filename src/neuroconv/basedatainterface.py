@@ -16,6 +16,7 @@ from .tools.nwb_helpers import (
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
+from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
     NWBMetaDataEncoder,
     get_schema_from_method_signature,
@@ -86,8 +87,9 @@ class BaseDataInterface(ABC):
         if metadata is None:
             metadata = self.get_metadata()
 
-        nwbfile = make_nwbfile_from_metadata(metadata)
-        self.add_to_nwbfile(nwbfile, metadata=metadata, **conversion_options)
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+
         return nwbfile
 
     @abstractmethod
@@ -115,7 +117,7 @@ class BaseDataInterface(ABC):
         # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
         # backend: Union[Literal["hdf5", "zarr"]],
         # backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
-        backend: Literal["hdf5"] = "hdf5",
+        backend: Optional[Literal["hdf5"]] = None,
         backend_configuration: Optional[HDF5BackendConfiguration] = None,
         **conversion_options,
     ):
@@ -134,8 +136,10 @@ class BaseDataInterface(ABC):
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        backend : "hdf5" or a HDF5BackendConfiguration, default: "hdf5"
+        backend : "hdf5", optional
             The type of backend to use when writing the file.
+            If a `backend_configuration` is not specified, the default type will be "hdf5".
+            If a `backend_configuration` is specified, then the type will be auto-detected.
         backend_configuration : HDF5BackendConfiguration, optional
             The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
@@ -148,8 +152,7 @@ class BaseDataInterface(ABC):
                 "NWBFile object in memory, use DataInterface.create_nwbfile. To append to an existing NWBFile object,"
                 " use DataInterface.add_to_nwbfile."
             )
-        if backend_configuration is not None and nwbfile is None:
-            raise ValueError("When specifying a custom `backend_configuration`, you must also provide an `nwbfile`.")
+        backend = _resolve_backend(backend, backend_configuration)
 
         if metadata is None:
             metadata = self.get_metadata()
@@ -163,8 +166,8 @@ class BaseDataInterface(ABC):
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
             if backend_configuration is None:
-                # In this case, assume the relevant data has already been added to the NWBFile
-                self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+                # In this case, assume the relevant data has not been added to the NWBFile
+                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
 
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
@@ -184,8 +187,9 @@ class BaseDataInterface(ABC):
         ----------
         nwbfile : pynwb.NWBFile
             The in-memory object with this interface's data already added to it.
-        backend : "hdf5" or "zarr", default: "hdf5"
+        backend : "hdf5", default: "hdf5"
             The type of backend to use when creating the file.
+            Additional backend types will be added soon.
 
         Returns
         -------

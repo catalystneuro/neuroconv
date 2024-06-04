@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator
 from roiextractors import ImagingExtractor
+from tqdm import tqdm
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
@@ -19,6 +20,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         chunk_mb: Optional[float] = None,
         chunk_shape: Optional[tuple] = None,
         display_progress: bool = False,
+        progress_bar_class: Optional[tqdm] = None,
         progress_bar_options: Optional[dict] = None,
     ):
         """
@@ -50,6 +52,9 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             The default is None.
         display_progress : bool, default=False
             Display a progress bar with iteration rate and estimated completion time.
+        progress_bar_class : dict, optional
+            The progress bar class to use.
+            Defaults to tqdm.tqdm if the TQDM package is installed.
         progress_bar_options : dict, optional
             Dictionary of keyword arguments to be passed directly to tqdm.
             See https://github.com/tqdm/tqdm#parameters for options.
@@ -80,6 +85,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             buffer_shape=buffer_shape,
             chunk_shape=chunk_shape,
             display_progress=display_progress,
+            progress_bar_class=progress_bar_class,
             progress_bar_options=progress_bar_options,
         )
 

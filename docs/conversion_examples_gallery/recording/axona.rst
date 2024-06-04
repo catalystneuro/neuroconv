@@ -12,7 +12,7 @@ Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axo
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import AxonaRecordingInterface
     >>>
@@ -24,7 +24,7 @@ Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axo
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> tzinfo = tz.gettz("US/Pacific")
+    >>> tzinfo = ZoneInfo("US/Pacific")
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>

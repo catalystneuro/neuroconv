@@ -1,4 +1,5 @@
 import math
+import re
 import unittest
 from copy import deepcopy
 from datetime import datetime
@@ -10,7 +11,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import psutil
-import pynwb.testing.mock.file
+import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
@@ -41,6 +42,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 from neuroconv.tools.roiextractors.roiextractors import (
     get_default_segmentation_metadata,
 )
+from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
 from neuroconv.utils import dict_deep_update
 
 
@@ -608,6 +610,27 @@ class TestAddPlaneSegmentation(TestCase):
         assert "image_mask" not in plane_segmentation
         assert "pixel_mask" not in plane_segmentation
         assert "voxel_mask" not in plane_segmentation
+
+    def test_invalid_mask_type(self):
+        """Test that an invalid mask_type raises a AssertionError."""
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        expected_error_message = re.escape(
+            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', or "
+            "None (to not write any masks)! Received 'invalid'."
+        )
+        with pytest.raises(AssertionError, match=expected_error_message):
+            add_plane_segmentation(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                mask_type="invalid",
+                plane_segmentation_name=self.plane_segmentation_name,
+            )
 
     def test_pixel_masks_auto_switch(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
@@ -1523,9 +1546,7 @@ class TestAddPhotonSeries(TestCase):
         mock_imaging.get_image_size.return_value = image_size
         mock_imaging.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = (
-            "Memory error, full TwoPhotonSeries data is (.*?) GB are available! Please use iterator_type='v2'"
-        )
+        reg_expression = "Memory error, full TwoPhotonSeries data is (.*?) are available! Please use iterator_type='v2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_imaging_fits_into_memory(imaging=mock_imaging)
