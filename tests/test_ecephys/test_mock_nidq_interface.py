@@ -1,3 +1,4 @@
+import pathlib
 from datetime import datetime
 
 from hdmf.testing import TestCase
@@ -74,13 +75,13 @@ class TestMockSpikeGLXNIDQInterface(TestCase):
         expected_start_time = datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["NWBFile"]["session_start_time"] == expected_start_time
 
-    def test_mock_run_conversion(self):
+    def test_mock_run_conversion(self, tmpdir: pathlib.Path):
         interface = MockSpikeGLXNIDQInterface()
 
         metadata = interface.get_metadata()
 
-        nwbfile = mock_NWBFile()
-        interface.run_conversion(nwbfile=nwbfile, metadata=metadata)
+        nwbfile_path = tmpdir / "TestMockSpikeGLXNIDQInterface" / "test_mock_run_conversion.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         assert "Neuropixel-Imec" in nwbfile.devices
         assert "NIDQChannelGroup" in nwbfile.electrode_groups
