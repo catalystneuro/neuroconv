@@ -103,7 +103,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
-        source_schema = super().get_metadata_schema()
+        source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .dat file."
         return source_schema
 
@@ -196,7 +196,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
-        source_schema = super().get_metadata_schema()
+        source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .lfp or .eeg file."
         return source_schema
 
@@ -254,7 +254,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
-        source_schema = super().get_metadata_schema()
+        source_schema = super().get_sourcec_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
         source_schema["properties"]["keep_mua_units"][
             "description"
