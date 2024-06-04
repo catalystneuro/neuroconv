@@ -71,7 +71,7 @@ def test_mock_metadata():
         }
     }
     print(metadata["Ecephys"])
-    self.assertDictEqual(d1=metadata["Ecephys"], d2=expected_ecephys_metadata["Ecephys"])
+    assert metadata["Ecephys"] == expected_ecephys_metadata["Ecephys"]
 
     expected_start_time = datetime(2020, 11, 3, 10, 35, 10)
     assert metadata["NWBFile"]["session_start_time"] == expected_start_time
