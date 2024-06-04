@@ -3,6 +3,7 @@ from datetime import datetime
 
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_almost_equal
+from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
@@ -81,10 +82,16 @@ def test_mock_run_conversion(tmpdir: pathlib.Path):
 
     metadata = interface.get_metadata()
 
-    nwbfile_path = tmpdir / "TestMockSpikeGLXNIDQInterface" / "test_mock_run_conversion.nwb"
-    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    test_directory = tmpdir / "TestMockSpikeGLXNIDQInterface"
+    test_directory.mkdir(exist_ok=True)
+    nwbfile_path = test_directory / "test_mock_run_conversion.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    assert "Neuropixel-Imec" in nwbfile.devices
-    assert "NIDQChannelGroup" in nwbfile.electrode_groups
-    assert nwbfile.electrodes.id[:] == [0, 1, 2, 3, 4, 5, 6, 7]
-    assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
+    
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+
+        assert "Neuropixel-Imec" in nwbfile.devices
+        assert "NIDQChannelGroup" in nwbfile.electrode_groups
+        assert nwbfile.electrodes.id[:] == [0, 1, 2, 3, 4, 5, 6, 7]
+        assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
