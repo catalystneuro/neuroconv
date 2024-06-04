@@ -22,6 +22,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["folder_path"][
             "description"
         ] = "The main Miniscope folder. The microscope movie files are expected to be in sub folders within the main folder."
+        
+        return source_schema
 
     def __init__(self, folder_path: FolderPathType):
         """
