@@ -83,7 +83,7 @@ def test_mock_run_conversion(tmpdir: pathlib.Path):
     metadata = interface.get_metadata()
 
     test_directory = tmpdir / "TestMockSpikeGLXNIDQInterface"
-    test_directory.mkdir(exist_ok=True)
+    test_directory.mkdir(exists_ok=True)
     nwbfile_path = test_directory / "test_mock_run_conversion.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
