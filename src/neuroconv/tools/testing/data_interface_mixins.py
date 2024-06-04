@@ -914,11 +914,96 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
                 self.check_nwbfile_temporal_alignment()
 
 
-class MedPCInterfaceMixin(DataInterfaceTestMixin):
+class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
+
+    def check_interface_get_original_timestamps(self):
+        """
+        Just to ensure each interface can call .get_original_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        original_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=self.interface.default_medpc_name_to_info_dict
+        )
+        for name in self.interface.source_data["aligned_timestamp_names"]:
+            original_timestamps = original_timestamps_dict[name]
+            assert len(original_timestamps) != 0, f"Timestamps for {name} are empty."
+
+    def check_interface_get_timestamps(self):
+        """
+        Just to ensure each interface can call .get_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        timestamps_dict = self.interface.get_timestamps()
+        for timestamps in timestamps_dict.values():
+            assert len(timestamps) != 0
+
+    def check_interface_set_aligned_timestamps(self):
+        """Ensure that internal mechanisms for the timestamps getter/setter work as expected."""
+        self.setUpFreshInterface()
+        unaligned_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=self.interface.default_medpc_name_to_info_dict
+        )
+
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_timestamps_dict = {}
+        for name, unaligned_timestamps in unaligned_timestamps_dict.items():
+            aligned_timestamps = (
+                unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+            )
+            aligned_timestamps_dict[name] = aligned_timestamps
+        self.interface.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
+
+        retrieved_aligned_timestamps = self.interface.get_timestamps()
+        for name, aligned_timestamps in aligned_timestamps_dict.items():
+            assert_array_equal(retrieved_aligned_timestamps[name], aligned_timestamps)
+
+    def check_shift_timestamps_by_start_time(self):
+        """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
+        self.setUpFreshInterface()
+        unaligned_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=self.interface.default_medpc_name_to_info_dict
+        )
+
+        aligned_starting_time = 1.23
+        self.interface.set_aligned_starting_time(
+            aligned_starting_time=aligned_starting_time,
+            medpc_name_to_info_dict=self.interface.default_medpc_name_to_info_dict,
+        )
+
+        aligned_timestamps = self.interface.get_timestamps()
+        expected_timestamps_dict = {
+            name: unaligned_timestamps + aligned_starting_time
+            for name, unaligned_timestamps in unaligned_timestamps_dict.items()
+        }
+        for name, expected_timestamps in expected_timestamps_dict.items():
+            assert_array_equal(aligned_timestamps[name], expected_timestamps)
+
+    def check_interface_original_timestamps_inmutability(self):
+        """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
+        self.setUpFreshInterface()
+        pre_alignment_original_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=self.interface.default_medpc_name_to_info_dict
+        )
+
+        aligned_timestamps_dict = {
+            name: pre_alignment_og_timestamps + 1.23
+            for name, pre_alignment_og_timestamps in pre_alignment_original_timestamps_dict.items()
+        }
+        self.interface.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
+
+        post_alignment_original_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=self.interface.default_medpc_name_to_info_dict
+        )
+        for name, post_alignment_original_timestamps_dict in post_alignment_original_timestamps_dict.items():
+            assert_array_equal(post_alignment_original_timestamps_dict, pre_alignment_original_timestamps_dict[name])
 
 
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

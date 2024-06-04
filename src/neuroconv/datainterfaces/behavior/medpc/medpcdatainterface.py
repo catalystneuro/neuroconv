@@ -176,10 +176,12 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", self.default_medpc_name_to_info_dict)
+        info_name_to_medpc_name = {
+            info_dict["name"]: medpc_name for medpc_name, info_dict in medpc_name_to_info_dict.items()
+        }
         for name in self.source_data["aligned_timestamp_names"]:
-            for medpc_name, info_dict in medpc_name_to_info_dict.items():
-                if info_dict["name"] == name:
-                    medpc_name_to_info_dict.pop(medpc_name)
+            medpc_name = info_name_to_medpc_name[name]
+            medpc_name_to_info_dict.pop(medpc_name)
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,

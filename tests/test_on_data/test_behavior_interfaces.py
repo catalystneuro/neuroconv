@@ -756,6 +756,7 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
             "Box": {"name": "box", "is_array": False},
             "MSN": {"name": "MSN", "is_array": False},
         },
+        aligned_timestamp_names=[],
     )
     save_directory = OUTPUT_PATH
     expected_metadata = {
@@ -847,7 +848,7 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
                 event = nwbfile.processing["behavior"].data_interfaces[expected_name]
                 assert event.description == expected_description
 
-            for interval_dict in self.interface.default_interval_series:
+            for interval_dict in self.expected_interval_series:
                 expected_name = interval_dict["name"]
                 expected_description = interval_dict["description"]
                 assert expected_name in nwbfile.processing["behavior"]["behavioral_epochs"].interval_series
