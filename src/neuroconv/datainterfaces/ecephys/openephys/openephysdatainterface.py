@@ -16,6 +16,14 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to OpenEphys directory (.continuous or .dat files)."
+        return source_schema
+
     def __new__(
         cls,
         folder_path: FolderPathType,
