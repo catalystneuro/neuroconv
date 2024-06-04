@@ -168,7 +168,7 @@ class BaseDataInterface(ABC):
         ) as nwbfile_out:
             if no_nwbfile_provided:
                 self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
-            
+
             if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
