@@ -8,7 +8,6 @@ from pynwb.testing.mock.file import mock_NWBFile
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 
 
-
 def test_current_default_inferred_ttl_times(self):
     interface = MockSpikeGLXNIDQInterface()
 
@@ -22,6 +21,7 @@ def test_current_default_inferred_ttl_times(self):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
         assert_array_almost_equal(x=inferred_ttl_times, y=expected_ttl_times[channel_index], decimal=4)
 
+
 def test_explicit_original_default_inferred_ttl_times(self):
     interface = MockSpikeGLXNIDQInterface(signal_duration=7.0, ttl_times=None, ttl_duration=1.0)
 
@@ -31,6 +31,7 @@ def test_explicit_original_default_inferred_ttl_times(self):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
         assert_array_almost_equal(x=inferred_ttl_times, y=expected_ttl_times[channel_index], decimal=4)
 
+
 def test_custom_inferred_ttl_times(self):
     custom_ttl_times = [[1.2], [3.6], [0.7, 4.5], [5.1]]
     interface = MockSpikeGLXNIDQInterface(ttl_times=custom_ttl_times)
@@ -39,6 +40,7 @@ def test_custom_inferred_ttl_times(self):
     for channel_index, channel_name in enumerate(channel_names):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
         assert_array_almost_equal(x=inferred_ttl_times, y=custom_ttl_times[channel_index], decimal=4)
+
 
 def test_mock_metadata(self):
     interface = MockSpikeGLXNIDQInterface()
@@ -72,6 +74,7 @@ def test_mock_metadata(self):
 
     expected_start_time = datetime(2020, 11, 3, 10, 35, 10)
     assert metadata["NWBFile"]["session_start_time"] == expected_start_time
+
 
 def test_mock_run_conversion(self, tmpdir: pathlib.Path):
     interface = MockSpikeGLXNIDQInterface()
