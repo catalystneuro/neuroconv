@@ -78,7 +78,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         nwbfile_kwargs["identifier"] = str(uuid.uuid4())
     if "source_scipt" not in nwbfile_kwargs:
         neuroconv_version = importlib.metadata.version("neuroconv")
-        nwbfile_kwargs["source_scipt"] = f"Created using NeuroConv v{neuroconv_version}"
+        nwbfile_kwargs["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
 
     if "Subject" in metadata:
         nwbfile_kwargs["subject"] = metadata["Subject"]
