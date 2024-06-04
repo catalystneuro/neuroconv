@@ -256,9 +256,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     def get_source_schema(self) -> dict:
         source_schema = super().get_metadata_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
-        source_schema["properties"]["keep_mua_units"]["description"] = "Whether to return sorted spikes from multi-unit activity."
+        source_schema["properties"]["keep_mua_units"][
+            "description"
+        ] = "Whether to return sorted spikes from multi-unit activity."
         source_schema["properties"]["exclude_shanks"]["description"] = "List of indices to ignore."
-        source_schema["properties"]["xml_file_path"]["description"] = "Path to .xml file containing device and electrode configuration."
+        source_schema["properties"]["xml_file_path"][
+            "description"
+        ] = "Path to .xml file containing device and electrode configuration."
         return source_schema
 
     def __init__(

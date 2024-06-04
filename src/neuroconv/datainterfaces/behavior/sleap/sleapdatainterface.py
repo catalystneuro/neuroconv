@@ -22,7 +22,9 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .slp file (the output of sleap)"
-        source_schema["properties"]["video_file_path"]["description"] = "Path of the video for extracting timestamps (optional)."
+        source_schema["properties"]["video_file_path"][
+            "description"
+        ] = "Path of the video for extracting timestamps (optional)."
         return source_schema
 
     def __init__(

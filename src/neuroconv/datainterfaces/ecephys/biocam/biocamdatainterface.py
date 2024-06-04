@@ -19,7 +19,6 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
         schema["properties"]["file_path"]["description"] = "Path to the .bwr file."
         return schema
 
-
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Biocam.

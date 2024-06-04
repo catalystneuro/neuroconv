@@ -12,7 +12,9 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["folder_path"]["description"] = "Path to the output Phy folder (containing the params.py)"
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to the output Phy folder (containing the params.py)"
         return source_schema
 
     def __init__(

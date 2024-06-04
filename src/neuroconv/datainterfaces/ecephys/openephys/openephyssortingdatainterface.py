@@ -15,7 +15,9 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
         metadata_schema = get_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id"]
         )
-        metadata_schema["properties"]["folder_path"].update(description="Path to directory containing OpenEphys .spikes files.")
+        metadata_schema["properties"]["folder_path"].update(
+            description="Path to directory containing OpenEphys .spikes files."
+        )
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 

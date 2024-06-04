@@ -18,7 +18,9 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["folder_path"]["description"] = "The main Miniscope folder. The movie files are expected to be in sub folders within the main folder."
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "The main Miniscope folder. The movie files are expected to be in sub folders within the main folder."
         return source_schema
 
     def __init__(self, folder_path: FolderPathType):

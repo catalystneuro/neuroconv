@@ -27,7 +27,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["folder_path"]["description"] = 'Path to Neuralynx directory containing ".nse", ".ntt", ".nse", or ".nev" files.'
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = 'Path to Neuralynx directory containing ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
     def __init__(

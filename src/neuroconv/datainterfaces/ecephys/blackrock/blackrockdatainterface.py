@@ -18,7 +18,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
-        source_schema["properties"]["file_path"]["description"] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
+        source_schema["properties"]["file_path"][
+            "description"
+        ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
 
     def __init__(
