@@ -87,7 +87,6 @@ def test_mock_run_conversion(tmpdir: pathlib.Path):
     nwbfile_path = test_directory / "test_mock_run_conversion.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
 
