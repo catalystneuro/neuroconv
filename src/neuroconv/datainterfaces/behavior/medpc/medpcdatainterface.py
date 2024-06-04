@@ -1,18 +1,19 @@
-import copy
+from typing import Optional
 
+import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from ndx_events import Events
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
 from pynwb.file import NWBFile
 
-from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import nwb_helpers
 from neuroconv.utils import DeepDict
 
 from .medpc_helpers import read_medpc_file
 
 
-class MedPCInterface(BaseDataInterface):
+class MedPCInterface(BaseTemporalAlignmentInterface):
     """Data Interface for MedPC output files.
 
     The output files from MedPC are raw text files that contain behavioral data from the operant box sessions such as
@@ -44,6 +45,7 @@ class MedPCInterface(BaseDataInterface):
         session_conditions: dict,
         start_variable: str,
         metadata_medpc_name_to_info_dict: dict,
+        aligned_timestamp_names: Optional[list[str]] = None,
         verbose: bool = True,
     ):
         """Initialize MedpcInterface.
@@ -59,18 +61,25 @@ class MedPCInterface(BaseDataInterface):
             The name of the variable that starts the session (ex. 'Start Date').
         metadata_medpc_name_to_info_dict : dict
             A dictionary mapping the names of the desired variables in the MedPC file
-            to an info dictionary with the names of the variables in the metadata and their types.
-            ex. {"Start Date": {"name": "start_date", "type": "date"}}
+            to an info dictionary with the names of the variables in the metadata and whether or not they are arrays.
+            ex. {"Start Date": {"name": "start_date", "is_array": False}}
+        aligned_timestamp_names : list, optional
+            The names of the variables that are externally aligned timestamps,
+            which should be retrieved from self.timestamps_dict instead of the MedPC output file.
         verbose : bool, optional
             Whether to print verbose output, by default True
         """
+        if aligned_timestamp_names is None:
+            aligned_timestamp_names = []
         super().__init__(
             file_path=file_path,
             session_conditions=session_conditions,
             start_variable=start_variable,
             metadata_medpc_name_to_info_dict=metadata_medpc_name_to_info_dict,
+            aligned_timestamp_names=aligned_timestamp_names,
             verbose=verbose,
         )
+        self.timestamps_dict = {}
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -94,14 +103,92 @@ class MedPCInterface(BaseDataInterface):
         }
         return metadata_schema
 
+    def get_original_timestamps(self, medpc_name_to_info_dict: dict) -> dict[str, np.ndarray]:
+        """
+        Retrieve the original unaltered timestamps dictionary for the data in this interface.
+
+        This function retrieves the data on-demand by re-reading the medpc file.
+
+        Parameters
+        ----------
+        medpc_name_to_info_dict : dict
+            A dictionary mapping the names of the desired variables in the MedPC file
+            to an info dictionary with the names of the variables in the metadata and whether or not they are arrays.
+            ex. {"A": {"name": "left_nose_poke_times", "is_array": True}}
+
+        Returns
+        -------
+        timestamps_dict: dict
+            A dictionary mapping the names of the variables to the original medpc timestamps.
+        """
+        timestamps_dict = read_medpc_file(
+            file_path=self.source_data["file_path"],
+            medpc_name_to_info_dict=medpc_name_to_info_dict,
+            session_conditions=self.source_data["session_conditions"],
+            start_variable=self.source_data["start_variable"],
+        )
+        return timestamps_dict
+
+    def get_timestamps(self) -> dict[str, np.ndarray]:
+        """
+        Retrieve the timestamps dictionary for the data in this interface.
+
+        Returns
+        -------
+        timestamps_dict: dict
+            A dictionary mapping the names of the variables to the timestamps.
+        """
+        return self.timestamps_dict
+
+    def set_aligned_timestamps(self, aligned_timestamps_dict: dict[str, np.ndarray]) -> None:
+        """
+        Replace all timestamps for this interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_timestamps_dict : dict
+            A dictionary mapping the names of the variables to the synchronized timestamps for data in this interface.
+        """
+        self.timestamps_dict = aligned_timestamps_dict
+
+    def set_aligned_starting_time(self, aligned_starting_time: float, medpc_name_to_info_dict: dict) -> None:
+        """
+        Align the starting time for this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_starting_time : float
+            The starting time for all temporal data in this interface.
+        medpc_name_to_info_dict : dict
+            A dictionary mapping the names of the desired variables in the MedPC file
+            to an info dictionary with the names of the variables in the metadata and whether or not they are arrays.
+            ex. {"A": {"name": "left_nose_poke_times", "is_array": True}}
+        """
+        original_timestamps_dict = self.get_original_timestamps(medpc_name_to_info_dict=medpc_name_to_info_dict)
+        aligned_timestamps_dict = {}
+        for name, original_timestamps in original_timestamps_dict.items():
+            aligned_timestamps_dict[name] = original_timestamps + aligned_starting_time
+        self.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
+
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", self.default_medpc_name_to_info_dict)
+        for name in self.source_data["aligned_timestamp_names"]:
+            for medpc_name, info_dict in medpc_name_to_info_dict.items():
+                if info_dict["name"] == name:
+                    medpc_name_to_info_dict.pop(medpc_name)
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             session_conditions=self.source_data["session_conditions"],
             start_variable=self.source_data["start_variable"],
         )
+        aligned_timestamps_dict = self.get_timestamps()
+        for name, aligned_timestamps in aligned_timestamps_dict.items():
+            session_dict[name] = aligned_timestamps
 
         # Add behavior data to nwbfile
         module_name = metadata["MedPC"].get("module_name", self.default_module_name)
