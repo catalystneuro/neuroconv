@@ -1,5 +1,6 @@
 """Collection of helper functions related to NWB."""
 
+import importlib
 import uuid
 import warnings
 from contextlib import contextmanager
@@ -47,10 +48,14 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
     Proper conversions should override these fields prior to calling ``NWBConverter.run_conversion()``
     """
+    neuroconv_version = importlib.metadata.version("neuroconv")
+    
     metadata = DeepDict()
     metadata["NWBFile"].deep_update(
         session_description="no description",
         identifier=str(uuid.uuid4()),
+        # Add NeuroConv watermark (overridden if going through the GUIDE)
+        source_script=f"Created using NeuroConv v{neuroconv_version}",
     )
 
     return metadata
@@ -71,6 +76,10 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         nwbfile_kwargs["session_description"] = "No description."
     if "identifier" not in nwbfile_kwargs:
         nwbfile_kwargs["identifier"] = str(uuid.uuid4())
+    if "source_scipt" not in nwbfile_kwargs:
+        neuroconv_version = importlib.metadata.version("neuroconv")
+        nwbfile_kwargs["source_scipt"] = f"Created using NeuroConv v{neuroconv_version}"
+    
     if "Subject" in metadata:
         nwbfile_kwargs["subject"] = metadata["Subject"]
         # convert ISO 8601 string to datetime
@@ -79,7 +88,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
                 nwbfile_kwargs["subject"]["date_of_birth"]
             )
         nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
-
+    
     return NWBFile(**nwbfile_kwargs)
 
 
