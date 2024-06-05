@@ -61,6 +61,7 @@ class BaseDataInterface(ABC):
         # Add NeuroConv watermark (overridden if going through the GUIDE)
         neuroconv_version = importlib.metadata.version("neuroconv")
         metadata["NWBFile"]["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
+        metadata["NWBFile"]["source_script_file_name"] = __file__  # Required for validation
 
         return metadata
 

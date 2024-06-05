@@ -56,6 +56,7 @@ def get_default_nwbfile_metadata() -> DeepDict:
         identifier=str(uuid.uuid4()),
         # Add NeuroConv watermark (overridden if going through the GUIDE)
         source_script=f"Created using NeuroConv v{neuroconv_version}",
+        source_script_file_name=__file__,  # Required for validation
     )
 
     return metadata
@@ -79,6 +80,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     if "source_scipt" not in nwbfile_kwargs:
         neuroconv_version = importlib.metadata.version("neuroconv")
         nwbfile_kwargs["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
+        nwbfile_kwargs["source_script_file_name"] = __file__  # Required for validation
 
     if "Subject" in metadata:
         nwbfile_kwargs["subject"] = metadata["Subject"]

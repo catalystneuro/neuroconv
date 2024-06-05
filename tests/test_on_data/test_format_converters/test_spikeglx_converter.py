@@ -56,7 +56,11 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             test_metadata["NWBFile"].pop(exclude_field)
         expected_metadata = load_dict_from_file(file_path=Path(__file__).parent / "single_probe_metadata.json")
         neuroconv_version = importlib.metadata.version("neuroconv")
-        expected_metadata["NWBFile"]["source_script"] = f"Created using Neuroconv v{neuroconv_version}"
+
+        # Exclude watermarks from testing assertions
+        del test_metadata["NWBFile"]["source_script"]
+        del test_metadata["NWBFile"]["source_script_file_name"]
+        
         self.assertDictEqual(d1=test_metadata, d2=expected_metadata)
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter.nwb"
