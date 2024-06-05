@@ -96,6 +96,7 @@ Behavior
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
+    MedPC <behavior/medpc>
 
 
 Text
