@@ -134,7 +134,7 @@ def read_medpc_file(
             if is_array:
                 if session_dict[output_name] == "":
                     session_dict[output_name] = np.array([], dtype=float)
-                elif type(session_dict[output_name]) == "str":  # not a multiline variable
+                elif type(session_dict[output_name]) == str:  # not a multiline variable
                     raise ValueError(
                         f"Expected {output_name} to be a multiline variable, but found a single line variable."
                     )

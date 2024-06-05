@@ -243,3 +243,14 @@ def test_read_medpc_file(medpc_file_path):
     assert np.array_equal(session_dict["a"], expected_session_dict["a"])
     assert np.array_equal(session_dict["b"], expected_session_dict["b"])
     assert np.array_equal(session_dict["c"], expected_session_dict["c"])
+
+
+def test_read_medpc_file_invalid_multiline_variable(medpc_file_path):
+    medpc_name_to_info_dict = {
+        "Start Date": {"name": "start_date", "is_array": True},
+    }
+    session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
+    start_variable = "Start Date"
+    with pytest.raises(ValueError) as exc_info:
+        session_dict = read_medpc_file(medpc_file_path, medpc_name_to_info_dict, session_conditions, start_variable)
+    assert str(exc_info.value) == "Expected start_date to be a multiline variable, but found a single line variable."
