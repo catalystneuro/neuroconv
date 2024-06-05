@@ -108,7 +108,6 @@ def test_get_session_lines(medpc_file_path, session_conditions, start_variable, 
     with open(medpc_file_path, "r") as f:
         lines = f.readlines()
     session_lines = get_session_lines(lines, session_conditions, start_variable)
-    print(session_lines)
     expected_session_lines = lines[expected_slice]
     assert session_lines == expected_session_lines
 
