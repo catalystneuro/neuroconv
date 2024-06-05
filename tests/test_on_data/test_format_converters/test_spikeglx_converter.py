@@ -60,7 +60,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         # Exclude watermarks from testing assertions
         del test_metadata["NWBFile"]["source_script"]
         del test_metadata["NWBFile"]["source_script_file_name"]
-        
+
         self.assertDictEqual(d1=test_metadata, d2=expected_metadata)
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter.nwb"
