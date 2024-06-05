@@ -20,14 +20,14 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     colon-separated variables that are either single-line (for metadata) or multi-line (for arrays). The multi-line
     variables keep a colon-separated index of the array every 5 elements.  For example, a single variable might look like::
 
-    Start Date: 11/09/18
+        Start Date: 11/09/18
 
     while a multi-line variable might look like::
 
-    A:
-      0:      175.150      270.750      762.050      762.900     1042.600
-      5:     1567.800     1774.950     2448.450     2454.050     2552.800
-     10:     2620.550     2726.250
+        A:
+            0:      175.150      270.750      762.050      762.900     1042.600
+            5:     1567.800     1774.950     2448.450     2454.050     2552.800
+            10:     2620.550     2726.250
 
     Different sessions are usually separated by a blank line or two.
 
@@ -47,7 +47,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         file_path: FilePathType,
         session_conditions: dict,
         start_variable: str,
-        metadata_medpc_name_to_info_dict: dict,
+        medpc_name_to_info_dict: dict,
         aligned_timestamp_names: Optional[list[str]] = None,
         verbose: bool = True,
     ):
@@ -62,9 +62,9 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             and the values are the values of those variables for the desired session (ex. '11/09/18').
         start_variable : str
             The name of the variable that starts the session (ex. 'Start Date').
-        metadata_medpc_name_to_info_dict : dict
+        medpc_name_to_info_dict : dict
             A dictionary mapping the names of the desired variables in the MedPC file
-            to an info dictionary with the names of the variables in the metadata and whether or not they are arrays.
+            to an info dictionary with the names of the variables and whether or not they are arrays.
             ex. {"Start Date": {"name": "start_date", "is_array": False}}
         aligned_timestamp_names : list, optional
             The names of the variables that are externally aligned timestamps,
@@ -78,9 +78,15 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             file_path=file_path,
             session_conditions=session_conditions,
             start_variable=start_variable,
-            metadata_medpc_name_to_info_dict=metadata_medpc_name_to_info_dict,
+            medpc_name_to_info_dict=medpc_name_to_info_dict,
             aligned_timestamp_names=aligned_timestamp_names,
             verbose=verbose,
+        )
+        self.session_dict = read_medpc_file(
+            file_path=file_path,
+            medpc_name_to_info_dict=medpc_name_to_info_dict,
+            session_conditions=session_conditions,
+            start_variable=start_variable,
         )
         self.timestamps_dict = {}
 
