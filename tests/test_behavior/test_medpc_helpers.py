@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from neuroconv.datainterfaces.behavior.medpc.medpc_helpers import (
@@ -8,7 +9,7 @@ from neuroconv.datainterfaces.behavior.medpc.medpc_helpers import (
 
 
 @pytest.fixture(scope="function")
-def medpc_file(tmp_path):
+def medpc_file_path(tmp_path):
     content = """
 Start Date: 04/09/19
 End Date: 04/09/19
@@ -84,10 +85,59 @@ C:
     return medpc_file_path
 
 
-def test_get_medpc_variables(medpc_file):
-    variables = get_medpc_variables(medpc_file, ["Start Date", "End Date", "Subject"])
+def test_get_medpc_variables(medpc_file_path):
+    variables = get_medpc_variables(medpc_file_path, ["Start Date", "End Date", "Subject"])
     assert variables == {
         "Start Date": ["04/09/19", "04/11/19", "04/12/19"],
         "End Date": ["04/09/19", "04/11/19", "04/12/19"],
         "Subject": ["95.259", "95.259", "95.259"],
     }
+
+
+@pytest.mark.parametrize(
+    "session_conditions, start_variable, expected_slice",
+    [
+        ({"Start Date": "04/09/19", "Start Time": "10:34:30"}, "Start Date", slice(1, 23)),
+        ({"Start Date": "04/11/19", "Start Time": "09:41:34"}, "Start Date", slice(25, 47)),
+        ({"Start Date": "04/12/19", "Start Time": "12:40:18"}, "Start Date", slice(49, 71)),
+    ],
+)
+def test_get_session_lines(medpc_file_path, session_conditions, start_variable, expected_slice):
+    with open(medpc_file_path, "r") as f:
+        lines = f.readlines()
+    session_lines = get_session_lines(lines, session_conditions, start_variable)
+    expected_session_lines = lines[expected_slice]
+    assert session_lines == expected_session_lines
+
+
+def test_get_session_lines_invalid_session_conditions(medpc_file_path):
+    with open(medpc_file_path, "r") as f:
+        lines = f.readlines()
+    session_conditions = {"Invalid": "session condition"}
+    start_variable = "Start Date"
+    with pytest.raises(ValueError) as exc_info:
+        get_session_lines(lines, session_conditions, start_variable)
+    assert str(exc_info.value) == f"Could not find the session with conditions {session_conditions}"
+
+
+def test_get_session_lines_invalid_start_variable(medpc_file_path):
+    with open(medpc_file_path, "r") as f:
+        lines = f.readlines()
+    session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
+    start_variable = "Invalid Start Variable"
+    with pytest.raises(ValueError) as exc_info:
+        get_session_lines(lines, session_conditions, start_variable)
+    assert (
+        str(exc_info.value)
+        == f"Could not find the start variable ({start_variable}) of the session with conditions {session_conditions}"
+    )
+
+
+def test_get_session_lines_ambiguous_session_conditions(medpc_file_path):
+    with open(medpc_file_path, "r") as f:
+        lines = f.readlines()
+    session_conditions = {"Subject": "95.259"}
+    start_variable = "Start Date"
+    session_lines = get_session_lines(lines, session_conditions, start_variable)
+    expected_session_lines = lines[1:23]
+    assert session_lines == expected_session_lines

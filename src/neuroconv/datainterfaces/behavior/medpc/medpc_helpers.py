@@ -52,6 +52,10 @@ def get_session_lines(lines: list, session_conditions: dict, start_variable: str
         If the session with the given conditions could not be found.
     ValueError
         If the start variable of the session with the given conditions could not be found.
+
+    Notes
+    -----
+    If multiple sessions satisfy the session_conditions, the first session that meets the conditions will be returned.
     """
     session_condition_has_been_met = {name: False for name in session_conditions}
     start_line, end_line = None, len(lines)
