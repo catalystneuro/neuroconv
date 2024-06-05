@@ -2,12 +2,11 @@ from typing import Optional
 
 import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from ndx_events import Events
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from neuroconv.tools import nwb_helpers
+from neuroconv.tools import get_package, nwb_helpers
 from neuroconv.utils import DeepDict, FilePathType
 
 from .medpc_helpers import read_medpc_file
@@ -175,6 +174,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         self.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
+        ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", self.default_medpc_name_to_info_dict)
         info_name_to_medpc_name = {
             info_dict["name"]: medpc_name for medpc_name, info_dict in medpc_name_to_info_dict.items()
@@ -207,7 +207,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             description = event_dict["description"]
             event_data = session_dict[name]
             if len(event_data) > 0:
-                event = Events(
+                event = ndx_events.Events(
                     name=name,
                     description=description,
                     timestamps=H5DataIO(event_data, compression=True),
