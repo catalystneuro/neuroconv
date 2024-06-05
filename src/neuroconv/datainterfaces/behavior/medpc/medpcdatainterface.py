@@ -19,12 +19,12 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     lever presses, reward port entries, nose pokes, etc. The output text files format this data into a series of
     colon-separated variables that are either single-line (for metadata) or multi-line (for arrays). The multi-line
     variables keep a colon-separated index of the array every 5 elements.  For example, a single variable might look like:
-    Start Date: 11/09/18
+    >>> Start Date: 11/09/18
     while a multi-line variable might look like:
-    A:
-     0:      175.150      270.750      762.050      762.900     1042.600
-     5:     1567.800     1774.950     2448.450     2454.050     2552.800
-    10:     2620.550     2726.250
+    >>> A:
+    >>>  0:      175.150      270.750      762.050      762.900     1042.600
+    >>>  5:     1567.800     1774.950     2448.450     2454.050     2552.800
+    >>> 10:     2620.550     2726.250
     Different sessions are usually separated by a blank line or two.
 
     This data is parsed by the MedPCInterface and added to the NWBFile as Events and IntervalSeries objects in the
