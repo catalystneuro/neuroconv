@@ -90,7 +90,32 @@ def read_medpc_file(
     session_conditions: dict,
     start_variable: str,
 ) -> dict:
-    """Read a raw MedPC text file into a dictionary."""
+    """Read a raw MedPC text file into a dictionary.
+
+    Parameters
+    ----------
+    file_path : FilePathType
+        The path to the MedPC file.
+    medpc_name_to_info_dict : dict
+        A dictionary where the keys are the MedPC variable names and the values are dictionaries with the keys 'name' and
+        'is_array'. 'name' is the name of the variable in the output dictionary and 'is_array' is a boolean indicating
+        whether the variable is an array.  Ex. {'Start Date': {'name': 'start_date', 'is_array': False}}
+    session_conditions : dict
+        The conditions that define the session. The keys are the names of the single-line variables (ex. 'Start Date')
+        and the values are the values of those variables for the desired session (ex. '11/09/18').
+    start_variable : str
+        The name of the variable that starts the session (ex. 'Start Date').
+
+    Returns
+    -------
+    dict
+        A dictionary with the variable names as keys and the data extracted from medpc output are the values.
+
+    Raises
+    ------
+    ValueError
+        If the session with the given conditions could not be found.
+    """
     with open(file_path, "r") as f:
         lines = f.readlines()
     session_lines = get_session_lines(lines, session_conditions=session_conditions, start_variable=start_variable)
