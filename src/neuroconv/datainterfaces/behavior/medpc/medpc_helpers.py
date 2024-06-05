@@ -103,6 +103,8 @@ def read_medpc_file(
         split_line = line.split(":", maxsplit=1)
         medpc_name, data = split_line
         data = data.strip()
+        if "\t" in data:  # some sessions have a bunch of garbage after the last datum in the line separated by tabs
+            data = data.split("\t")[0]
         if line.find(":") == 6:  # multiline variable
             if medpc_name == "     0":  # first line of multiline variable
                 multiline_variable_name = session_lines[i - 1].split(":")[0]
@@ -116,10 +118,6 @@ def read_medpc_file(
                 datum = datum.strip()
                 if datum == "":
                     continue
-                if (
-                    "\t" in datum
-                ):  # some sessions have a bunch of garbage after the last datum in the line separated by tabs
-                    datum = datum.split("\t")[0]  # TODO: Make sure this is generalizable for neuroconv
                 output_name = medpc_name_to_info_dict[multiline_variable_name]["name"]
                 session_dict[output_name].append(datum)
 
