@@ -1,6 +1,7 @@
 # Upcoming
 
-
+### Features
+* Added MedPCInterface for operant behavioral output files: [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 
 ## v0.4.9 (June 5, 2024)
 
