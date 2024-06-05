@@ -2,11 +2,11 @@ MedPC data conversion
 -----------------------------
 
 MedPC output files contain information about operant behavior such as nose pokes and rewards.
-This interface requires no additional dependencies, so you can install NeuroConv using:
+Install NeuroConv with the additional dependencies necessary for writing medpc behavioral data.
 
 .. code-block:: bash
 
-    pip install neuroconv
+    pip install neuroconv[medpc]
 
 Convert MedPC output data to NWB using
 :py:class:`~.neuroconv.datainterfaces.behavior.medpc.medpcdatainterface.MedPCInterface`.
