@@ -47,7 +47,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         file_path: FilePathType,
         session_conditions: dict,
         start_variable: str,
-        medpc_name_to_info_dict: dict,
+        metadata_medpc_name_to_info_dict: dict,
         aligned_timestamp_names: Optional[list[str]] = None,
         verbose: bool = True,
     ):
@@ -62,9 +62,9 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             and the values are the values of those variables for the desired session (ex. '11/09/18').
         start_variable : str
             The name of the variable that starts the session (ex. 'Start Date').
-        medpc_name_to_info_dict : dict
+        metadata_medpc_name_to_info_dict : dict
             A dictionary mapping the names of the desired variables in the MedPC file
-            to an info dictionary with the names of the variables and whether or not they are arrays.
+            to an info dictionary with the names of the variables in the metadata and whether or not they are arrays.
             ex. {"Start Date": {"name": "start_date", "is_array": False}}
         aligned_timestamp_names : list, optional
             The names of the variables that are externally aligned timestamps,
@@ -78,15 +78,9 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             file_path=file_path,
             session_conditions=session_conditions,
             start_variable=start_variable,
-            medpc_name_to_info_dict=medpc_name_to_info_dict,
+            metadata_medpc_name_to_info_dict=metadata_medpc_name_to_info_dict,
             aligned_timestamp_names=aligned_timestamp_names,
             verbose=verbose,
-        )
-        self.session_dict = read_medpc_file(
-            file_path=file_path,
-            medpc_name_to_info_dict=medpc_name_to_info_dict,
-            session_conditions=session_conditions,
-            start_variable=start_variable,
         )
         self.timestamps_dict = {}
 
