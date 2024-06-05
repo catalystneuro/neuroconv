@@ -7,9 +7,9 @@ from neuroconv.datainterfaces.behavior.medpc.medpc_helpers import (
 )
 
 
-@pytest.fixture(scope="module")
-def medpc_file_contents():
-    return """
+@pytest.fixture(scope="function")
+def medpc_file(tmp_path):
+    content = """
 Start Date: 04/09/19
 End Date: 04/09/19
 Subject: 95.259
@@ -79,11 +79,12 @@ C:
     10:      573.150      579.100      616.350      649.100      665.150
     15:      666.150      702.550      703.350      703.850      706.300
 """
+    medpc_file_path = tmp_path / "medpc_file.txt"
+    medpc_file_path.write_text(content)
+    return medpc_file_path
 
 
-def test_get_medpc_variables(tmp_path, medpc_file_contents):
-    medpc_file = tmp_path / "test_medpc_file.txt"
-    medpc_file.write_text(medpc_file_contents)
+def test_get_medpc_variables(medpc_file):
     variables = get_medpc_variables(medpc_file, ["Start Date", "End Date", "Subject"])
     assert variables == {
         "Start Date": ["04/09/19", "04/11/19", "04/12/19"],
