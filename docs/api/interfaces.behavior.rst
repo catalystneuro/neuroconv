@@ -28,3 +28,8 @@ SLEAP
 Video
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
+
+MedPC
+-----
+.. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface
+.. automodule:: neuroconv.datainterfaces.behavior.medpc.medpc_helpers
