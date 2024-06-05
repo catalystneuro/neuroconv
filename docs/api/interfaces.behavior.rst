@@ -32,7 +32,4 @@ Video
 MedPC
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface
-
-MedPC Helpers
--------------
  .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpc_helpers
