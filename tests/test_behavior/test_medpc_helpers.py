@@ -15,6 +15,7 @@ Start Date: 04/09/19
 End Date: 04/09/19
 Subject: 95.259
 Experiment:
+\\ This line is a comment
 Group:
 Box: 1
 Start Time: 10:34:30
@@ -23,16 +24,17 @@ MSN: FOOD_FR1 TTL Left
 A:
      0:      175.150      270.750      762.050      762.900     1042.600
      5:     1567.800     1774.950     2448.450     2454.050     2552.800
-    10:     2620.550     2726.250
+    10:     2620.550     2726.250     0.000000     0.000000     0.000000
 B:
      0:      175.150      270.750      762.050     1042.600     1567.800
      5:     1774.950     2448.450     2552.800     2620.550     2726.250
+    10:        0.000        0.000        0.000        0.000        0.000
 C:
      0:      330.050      362.500      947.200     1232.100     1233.400
      5:     1255.200     1309.200     1430.300     1460.500     1466.850
     10:     1468.800     1967.450     2537.950     2542.250     2614.850
     15:     2707.350     2717.700     2801.050     2818.450     3324.450
-    20:     3384.750     3538.250
+    20:     3384.750     3538.250								someGarbage-9172937
 
 
 Start Date: 04/11/19
@@ -97,15 +99,16 @@ def test_get_medpc_variables(medpc_file_path):
 @pytest.mark.parametrize(
     "session_conditions, start_variable, expected_slice",
     [
-        ({"Start Date": "04/09/19", "Start Time": "10:34:30"}, "Start Date", slice(1, 23)),
-        ({"Start Date": "04/11/19", "Start Time": "09:41:34"}, "Start Date", slice(25, 47)),
-        ({"Start Date": "04/12/19", "Start Time": "12:40:18"}, "Start Date", slice(49, 71)),
+        ({"Start Date": "04/09/19", "Start Time": "10:34:30"}, "Start Date", slice(1, 25)),
+        ({"Start Date": "04/11/19", "Start Time": "09:41:34"}, "Start Date", slice(27, 49)),
+        ({"Start Date": "04/12/19", "Start Time": "12:40:18"}, "Start Date", slice(51, 73)),
     ],
 )
 def test_get_session_lines(medpc_file_path, session_conditions, start_variable, expected_slice):
     with open(medpc_file_path, "r") as f:
         lines = f.readlines()
     session_lines = get_session_lines(lines, session_conditions, start_variable)
+    print(session_lines)
     expected_session_lines = lines[expected_slice]
     assert session_lines == expected_session_lines
 
@@ -139,5 +142,104 @@ def test_get_session_lines_ambiguous_session_conditions(medpc_file_path):
     session_conditions = {"Subject": "95.259"}
     start_variable = "Start Date"
     session_lines = get_session_lines(lines, session_conditions, start_variable)
-    expected_session_lines = lines[1:23]
+    expected_session_lines = lines[1:25]
     assert session_lines == expected_session_lines
+
+
+def test_read_medpc_file(medpc_file_path):
+    medpc_name_to_info_dict = {
+        "Start Date": {"name": "start_date", "is_array": False},
+        "End Date": {"name": "end_date", "is_array": False},
+        "Subject": {"name": "subject", "is_array": False},
+        "Experiment": {"name": "experiment", "is_array": False},
+        "Group": {"name": "group", "is_array": False},
+        "Box": {"name": "box", "is_array": False},
+        "Start Time": {"name": "start_time", "is_array": False},
+        "End Time": {"name": "end_time", "is_array": False},
+        "MSN": {"name": "msn", "is_array": False},
+        "A": {"name": "a", "is_array": True},
+        "B": {"name": "b", "is_array": True},
+        "C": {"name": "c", "is_array": True},
+    }
+    session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
+    start_variable = "Start Date"
+    session_dict = read_medpc_file(medpc_file_path, medpc_name_to_info_dict, session_conditions, start_variable)
+    expected_session_dict = {
+        "start_date": "04/09/19",
+        "end_date": "04/09/19",
+        "subject": "95.259",
+        "experiment": "",
+        "group": "",
+        "box": "1",
+        "start_time": "10:34:30",
+        "end_time": "11:35:53",
+        "msn": "FOOD_FR1 TTL Left",
+        "a": np.array(
+            [
+                175.150,
+                270.750,
+                762.050,
+                762.900,
+                1042.600,
+                1567.800,
+                1774.950,
+                2448.450,
+                2454.050,
+                2552.800,
+                2620.550,
+                2726.250,
+            ]
+        ),
+        "b": np.array(
+            [
+                175.150,
+                270.750,
+                762.050,
+                1042.600,
+                1567.800,
+                1774.950,
+                2448.450,
+                2552.800,
+                2620.550,
+                2726.250,
+            ]
+        ),
+        "c": np.array(
+            [
+                330.050,
+                362.500,
+                947.200,
+                1232.100,
+                1233.400,
+                1255.200,
+                1309.200,
+                1430.300,
+                1460.500,
+                1466.850,
+                1468.800,
+                1967.450,
+                2537.950,
+                2542.250,
+                2614.850,
+                2707.350,
+                2717.700,
+                2801.050,
+                2818.450,
+                3324.450,
+                3384.750,
+                3538.250,
+            ]
+        ),
+    }
+    assert session_dict["start_date"] == expected_session_dict["start_date"]
+    assert session_dict["end_date"] == expected_session_dict["end_date"]
+    assert session_dict["subject"] == expected_session_dict["subject"]
+    assert session_dict["experiment"] == expected_session_dict["experiment"]
+    assert session_dict["group"] == expected_session_dict["group"]
+    assert session_dict["box"] == expected_session_dict["box"]
+    assert session_dict["start_time"] == expected_session_dict["start_time"]
+    assert session_dict["end_time"] == expected_session_dict["end_time"]
+    assert session_dict["msn"] == expected_session_dict["msn"]
+    assert np.array_equal(session_dict["a"], expected_session_dict["a"])
+    assert np.array_equal(session_dict["b"], expected_session_dict["b"])
+    assert np.array_equal(session_dict["c"], expected_session_dict["c"])
