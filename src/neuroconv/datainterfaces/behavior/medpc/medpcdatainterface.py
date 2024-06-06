@@ -36,6 +36,9 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     """
 
     keywords = ["behavior"]
+    display_name = "MedPC"
+    info = "Interface for handling MedPC output files."
+    associated_suffixes = ".txt"
     default_medpc_name_to_info_dict = {}
     default_events = []
     default_interval_series = []
