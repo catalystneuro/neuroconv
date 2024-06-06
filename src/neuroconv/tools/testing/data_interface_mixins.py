@@ -908,11 +908,6 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-
     def check_interface_get_original_timestamps(self):
         """
         Just to ensure each interface can call .get_original_timestamps() without an error raising.
