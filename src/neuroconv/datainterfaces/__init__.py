@@ -193,5 +193,6 @@ interfaces_by_category = dict(
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
+        MedPC=MedPCInterface,
     ),
 )

@@ -100,9 +100,6 @@ class DataInterfaceTestMixin:
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
 
-        for k, v in metadata["MedPC"].items():
-            assert v == metadata_in["MedPC"][k], f"Metadata key '{k}' was mutated by add_to_nwbfile method."
-
         assert metadata == metadata_in
 
     def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
