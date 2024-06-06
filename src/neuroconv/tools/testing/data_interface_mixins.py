@@ -211,10 +211,6 @@ class DataInterfaceTestMixin:
         """Override this in child classes to inject additional custom checks."""
         pass
 
-    def setUpFreshInterface(self):
-        """Protocol for creating a fresh instance of the interface."""
-        self.interface = self.data_interface_cls(**self.test_kwargs)
-
     def test_all_conversion_checks(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -223,7 +219,7 @@ class DataInterfaceTestMixin:
             with self.subTest(str(num)):
                 self.case = num
                 self.test_kwargs = kwargs
-                self.setUpFreshInterface()
+                self.interface = self.data_interface_cls(**self.test_kwargs)
 
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
