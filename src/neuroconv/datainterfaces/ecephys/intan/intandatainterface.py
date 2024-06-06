@@ -47,6 +47,12 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Intan recording data."
     stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
+        return source_schema
+
     def __init__(
         self,
         file_path: FilePathType,

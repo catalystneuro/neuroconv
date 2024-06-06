@@ -19,7 +19,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
-        ] = "The path that points to the folder containing the Bruker volumetric TIF image files and configuration files."
+        ] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
         return source_schema
 
     @classmethod
@@ -186,7 +186,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
-        ] = "The path that points to the folder containing the Bruker TIF image files and configuration files."
+        ] = "The folder containing the Bruker TIF image files and configuration files."
         return source_schema
 
     @classmethod
