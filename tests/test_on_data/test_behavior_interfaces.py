@@ -743,10 +743,10 @@ class TestVideoConversions(TestCase):
 class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
     data_interface_cls = MedPCInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "medpc" / "95.259"),
+        file_path=str(BEHAVIOR_DATA_PATH / "medpc" / "example_medpc_file_06_06_2024.txt"),
         session_conditions={
-            "Start Date": "04/18/19",
-            "Start Time": "10:41:42",
+            "Start Date": "04/10/19",
+            "Start Time": "12:36:13",
         },
         start_variable="Start Date",
         metadata_medpc_name_to_info_dict={
@@ -760,11 +760,11 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
     )
     save_directory = OUTPUT_PATH
     expected_metadata = {
-        "start_date": "04/18/19",
-        "start_time": "10:41:42",
+        "start_date": "04/10/19",
+        "start_time": "12:36:13",
         "subject": "95.259",
         "box": "1",
-        "MSN": "Footshock Degradation Left",
+        "MSN": "FOOD_FR1 TTL Left",
     }
     expected_events = [
         {
@@ -776,12 +776,8 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
             "description": "Right nose poke times",
         },
         {
-            "name": "right_reward_times",
-            "description": "Right reward times",
-        },
-        {
-            "name": "footshock_times",
-            "description": "Footshock times",
+            "name": "left_reward_times",
+            "description": "Left reward times",
         },
     ]
     expected_interval_series = [
@@ -802,7 +798,6 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
             "D": {"name": "right_reward_times", "is_array": True},
             "E": {"name": "duration_of_port_entry", "is_array": True},
             "G": {"name": "port_entry_times", "is_array": True},
-            "H": {"name": "footshock_times", "is_array": True},
         }
         self.interface.default_events = [
             {
@@ -820,10 +815,6 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
             {
                 "name": "right_reward_times",
                 "description": "Right reward times",
-            },
-            {
-                "name": "footshock_times",
-                "description": "Footshock times",
             },
         ]
         self.interface.default_interval_series = [
