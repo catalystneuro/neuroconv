@@ -846,6 +846,44 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
                 interval_series = nwbfile.processing["behavior"]["behavioral_epochs"].interval_series[expected_name]
                 assert interval_series.description == expected_description
 
+    def test_all_conversion_checks(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.setUpFreshInterface()
+
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+
+                self.check_no_metadata_mutation()
+
+                self.check_configure_backend_for_equivalent_nwbfiles()
+
+                self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
+                self.check_run_conversion_with_backend_configuration(nwbfile_path=self.nwbfile_path, backend="hdf5")
+
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # TODO: enable when all H5DataIO prewraps are gone
+                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
 
 if __name__ == "__main__":
     unittest.main()
