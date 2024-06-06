@@ -156,6 +156,7 @@ interface_list = [
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
+    MedPCInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
