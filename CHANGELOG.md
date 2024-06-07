@@ -3,6 +3,13 @@
 ### Features
 * Added MedPCInterface for operant behavioral output files: [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 
+
+## v0.4.10 (June 6, 2024)
+
+### Bug fixes
+* Fixed bug causing overwrite of NWB GUIDE watermark. [PR #890](https://github.com/catalystneuro/neuroconv/pull/890)
+
+
 ## v0.4.9 (June 5, 2024)
 
 ### Deprecations
