@@ -134,9 +134,9 @@ Then we can use this configuration to write the NWB file:
 
     from neuroconv.tools.nwb_helpers import configure_backend, BACKEND_NWB_IO, configure_and_write_nwbfile
 
-    dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
+    backend_configuration["acquisition/MyTimeSeries/data"] = dataset_configuration
 
-    configure_and_write_nwbfile(nwbfile=nwbfile, dataset_configurations=dataset_configurations)
+    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
 
 Interfaces and Converters
