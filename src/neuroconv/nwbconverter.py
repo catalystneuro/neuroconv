@@ -203,6 +203,7 @@ class NWBConverter:
             conversion specification is requested.
         """
         backend = _resolve_backend(backend, backend_configuration)
+        no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
 
         if metadata is None:
             metadata = self.get_metadata()
@@ -220,10 +221,10 @@ class NWBConverter:
             backend=backend,
             verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
-            if backend_configuration is None:
-                # Otherwise assume the data has already been added to the NWBFile
-                self.add_to_nwbfile(nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+            if no_nwbfile_provided:
+                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
+            if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)

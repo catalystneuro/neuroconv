@@ -59,6 +59,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
     _timestamps = None
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .h5 file output by dlc."
+        source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file"
+        return source_schema
+
     def __init__(
         self,
         file_path: FilePathType,

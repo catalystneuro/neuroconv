@@ -16,6 +16,12 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".h5",)
     info = "Interface for MEArec recording data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the MEArec .h5 file."
+        return source_schema
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MEArec.

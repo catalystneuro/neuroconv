@@ -288,7 +288,22 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
+        return source_schema
+
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+        """
+
+        Parameters
+        ----------
+        folder_path: str
+            Folder containing the .session.mat file.
+        verbose: bool, default=True
+        es_key: str, default="ElectricalSeries"
+        """
         self.session_path = Path(folder_path)
 
         # No super here, we need to do everything by hand

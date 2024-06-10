@@ -18,7 +18,9 @@ class MiniscopeConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls)
+        source_schema = get_schema_from_method_signature(cls)
+        source_schema["properties"]["folder_path"]["description"] = "The path to the main Miniscope folder."
+        return source_schema
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
