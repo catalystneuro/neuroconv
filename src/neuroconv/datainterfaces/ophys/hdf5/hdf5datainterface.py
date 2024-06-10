@@ -1,3 +1,5 @@
+from typing import Literal
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType, FilePathType
 
@@ -18,6 +20,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         metadata: dict = None,
         channel_names: ArrayType = None,
         verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
 
@@ -40,4 +43,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             metadata=metadata,
             channel_names=channel_names,
             verbose=verbose,
+            photon_series_type=photon_series_type,
         )
