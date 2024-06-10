@@ -174,8 +174,8 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(photon_series_type=photon_series_type)
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
