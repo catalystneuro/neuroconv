@@ -42,7 +42,7 @@ def integer_array(
 def integer_array_with_zero_length_axis(
     seed: int = 1,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 0),
+    shape: Tuple[int, int] = (12, 0),  # 12 so it matches the dimension of the other column
 ):
     """Generate an array of integers with a zero-length axis."""
     assert 0 in shape, "The shape must contain a zero-length axis."
