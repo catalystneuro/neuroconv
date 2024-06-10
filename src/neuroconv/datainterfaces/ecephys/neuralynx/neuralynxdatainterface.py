@@ -24,6 +24,14 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = 'Path to Neuralynx directory containing ".nse", ".ntt", ".nse", or ".nev" files.'
+        return source_schema
+
     def __init__(
         self,
         folder_path: FolderPathType,
@@ -37,7 +45,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         folder_path: FolderPathType
-            Path to OpenEphys directory.
+            Path to Neuralynx directory.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
             Call `NeuralynxRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.

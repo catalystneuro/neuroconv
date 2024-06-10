@@ -90,7 +90,9 @@ def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
         ),
     }
 
-    return HDF5BackendConfiguration(dataset_configurations=dataset_configurations)
+    return HDF5BackendConfiguration(
+        dataset_configurations=dataset_configurations,
+    )
 
 
 def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:

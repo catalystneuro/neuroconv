@@ -36,6 +36,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         super().__init__(**source_data)
         self.recording_extractor = self.get_extractor()(**source_data)
+        property_names = self.recording_extractor.get_property_keys()
+        # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.100.7 is released
+        if "channel_name" not in property_names and "channel_names" in property_names:
+            channel_names = self.recording_extractor.get_property("channel_names")
+            self.recording_extractor.set_property("channel_name", channel_names)
+            self.recording_extractor.delete_property("channel_names")
+
         self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
@@ -261,7 +268,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
+        from spikeinterface.core.segmentutils import AppendSegmentRecording
 
         max_frames = 100
 
@@ -273,9 +280,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             segment.frame_slice(start_frame=0, end_frame=end_frame)
             for segment, end_frame in zip(recording_segments, end_frame_list)
         ]
-        recording_extractor = ConcatenateSegmentRecording(recording_segments_stubbed)
+        recording_extractor_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
-        return recording_extractor
+        times_stubbed = [
+            recording_extractor.get_times(segment_index=segment_index)[:end_frame]
+            for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
+        ]
+        for segment_index in range(number_of_segments):
+            recording_extractor_stubbed.set_times(times=times_stubbed[segment_index], segment_index=segment_index)
+
+        return recording_extractor_stubbed
 
     def add_to_nwbfile(
         self,

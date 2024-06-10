@@ -13,6 +13,12 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".bwr",)
     info = "Interface for Biocam recording data."
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        schema = super().get_source_schema()
+        schema["properties"]["file_path"]["description"] = "Path to the .bwr file."
+        return schema
+
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Biocam.
