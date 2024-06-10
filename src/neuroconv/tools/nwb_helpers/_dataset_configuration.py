@@ -7,6 +7,7 @@ import numpy as np
 import zarr
 from hdmf import Container
 from hdmf.data_utils import DataIO
+from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
@@ -107,6 +108,7 @@ def get_default_dataset_io_configurations(
 
             for column in dynamic_table.columns:
                 candidate_dataset = column.data  # VectorData object
+                # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
@@ -124,8 +126,15 @@ def get_default_dataset_io_configurations(
                 if isinstance(column, TimeSeriesReferenceVectorData):
                     continue
 
+                # Skip datasets with any zero-length axes
+                dataset_name = "data"
+                candidate_dataset = getattr(column, dataset_name)
+                full_shape = get_data_shape(data=candidate_dataset)
+                if any(axis_length == 0 for axis_length in full_shape):
+                    continue
+
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=column, dataset_name="data"
+                    neurodata_object=column, dataset_name=dataset_name
                 )
 
                 yield dataset_io_configuration
@@ -138,6 +147,7 @@ def get_default_dataset_io_configurations(
                 candidate_dataset = getattr(neurodata_object, known_dataset_field)
 
                 # Skip if already written to file
+                # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
@@ -149,6 +159,12 @@ def get_default_dataset_io_configurations(
 
                 # Skip edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
                 if isinstance(candidate_dataset, np.ndarray) and candidate_dataset.size == 0:
+                    continue
+
+                # Skip datasets with any zero-length axes
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
+                full_shape = get_data_shape(data=candidate_dataset)
+                if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
