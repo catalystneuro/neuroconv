@@ -142,7 +142,10 @@ Then we can use this configuration to write the NWB file:
 Interfaces and Converters
 -------------------------
 
-The normal workflow when writing an NWB file using a ``DataInterface`` or ``NWBConverter`` is simple to configure.
+A similar workflow can be used when writing an NWB file using a ``DataInterface`` or ``NWBConverter`` is simple to configure.
+
+Having get_default_backend_configuration as a method of the DataInterface and NWBConverter classes allows descending
+classes to override the default configuration.
 
 The following example uses the :ref:`example data <example_data>` available from the testing repo:
 
@@ -173,13 +176,11 @@ The following example uses the :ref:`example data <example_data>` available from
     # Fetch available metadata
     metadata = converter.get_metadata()
 
-    # Create the in-memory NWBFile object and retrieve a default configuration
-    backend="hdf5"
-
+    # Create the in-memory NWBFile object and retrieve a default configuration for the backend
     nwbfile = converter.create_nwbfile(metadata=metadata)
     backend_configuration = converter.get_default_backend_configuration(
         nwbfile=nwbfile,
-        backend=backend,
+        backend="hdf5",
     )
 
     # Make any modifications to the configuration in this step, for example...
@@ -195,7 +196,7 @@ The following example uses the :ref:`example data <example_data>` available from
         backend_configuration=backend_configuration,
     )
 
-If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow the classic workflow:
+If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow a more streamlined approach:
 
     .. code-block:: python
 
@@ -216,61 +217,6 @@ If you do not intend to make any alterations to the default configuration for th
         )
 
 and all datasets in the NWB file will automatically use the default configurations!
-
-
-Generic tools
--------------
-
-If you are not using data interfaces or converters you can still use the general tools to configure the backend of any in-memory ``pynwb.NWBFile``:
-
-.. code-block:: python
-
-    from uuid import uuid4
-    from datetime import datetime
-
-    from zoneinfo import ZoneInfo
-    from neuroconv.tools.nwb_helpers import make_or_load_nwbfile, get_default_backend_configuration, configure_backend
-    from pynwb import NWBFile, TimeSeries
-
-    nwbfile_path = "./my_nwbfile.nwb"
-    backend="hdf5"
-
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    nwbfile = NWBFile(
-        session_start_time=session_start_time,
-        session_description="My description...",
-        identifier=str(uuid4()),
-    )
-
-    # Add neurodata objects to the NWBFile, for example...
-    time_series = TimeSeries(
-        name="MyTimeSeries",
-        description="A time series from my experiment.",
-        unit="cm/s",
-        data=[1., 2., 3.],
-        timestamps=[0.0, 0.2, 0.4],
-    )
-    nwbfile.add_acquisition(time_series)
-
-    with make_or_load_nwbfile(
-        nwbfile_path=nwbfile_path,
-        nwbfile=nwbfile,
-        overwrite=True,
-        backend=backend,
-        verbose=True,
-    ):
-        backend_configuration = get_default_backend_configuration(
-            nwbfile=nwbfile, backend=backend
-        )
-
-        # Make any modifications to the configuration in this step, for example...
-        dataset_configurations = backend_configuration.dataset_configurations
-        dataset_configurations["acquisition/MyTimeSeries/data"].compression_options = dict(level=7)
-
-        configure_backend(
-            nwbfile=nwbfile, backend_configuration=backend_configuration
-        )
-
 
 
 FAQ
