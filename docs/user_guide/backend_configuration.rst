@@ -180,7 +180,7 @@ The following example uses the :ref:`example data <example_data>` available from
     nwbfile = converter.create_nwbfile(metadata=metadata)
     backend_configuration = converter.get_default_backend_configuration(
         nwbfile=nwbfile,
-        backend="hdf5,
+        backend="hdf5",
     )
 
     # Make any modifications to the configuration in this step, for example...
