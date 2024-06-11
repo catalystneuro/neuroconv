@@ -1,7 +1,6 @@
 from typing import Optional
 
 import numpy as np
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
 from pynwb.file import NWBFile
 
@@ -217,7 +216,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
                 event = ndx_events.Events(
                     name=name,
                     description=description,
-                    timestamps=H5DataIO(event_data, compression=True),
+                    timestamps=event_data,
                 )
                 behavior_module.add(event)
         interval_dicts = metadata["MedPC"].get("IntervalSeries", self.default_interval_series)
@@ -241,8 +240,8 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             interval = IntervalSeries(
                 name=name,
                 description=description,
-                timestamps=H5DataIO(interval_times, compression=True),
-                data=H5DataIO(data, compression=True),
+                timestamps=interval_times,
+                data=data,
             )
             behavioral_epochs = BehavioralEpochs(name="behavioral_epochs")
             behavioral_epochs.add_interval_series(interval)
