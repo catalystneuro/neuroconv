@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 from warnings import warn
 
 from pynwb import NWBHDF5IO
