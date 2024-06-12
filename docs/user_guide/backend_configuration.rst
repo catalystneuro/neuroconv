@@ -292,4 +292,4 @@ Which prints out:
 .. note::
 
     You may have noticed that the name of the key for that compression option got lost in translation; this is because
-HDF5 implicitly forces the order of each option in the tuple (or in this case, a scalar).
+    HDF5 implicitly forces the order of each option in the tuple (or in this case, a scalar).
