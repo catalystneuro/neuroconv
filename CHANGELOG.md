@@ -1,5 +1,10 @@
 # Upcoming
 
+### Features
+* Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
+
+
+
 ## v0.4.10 (June 6, 2024)
 
 ### Bug fixes
