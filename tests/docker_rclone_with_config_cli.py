@@ -20,6 +20,7 @@ RCLONE_DRIVE_ACCESS_TOKEN = os.getenv("RCLONE_DRIVE_ACCESS_TOKEN")
 RCLONE_DRIVE_REFRESH_TOKEN = os.getenv("RCLONE_DRIVE_REFRESH_TOKEN")
 RCLONE_EXPIRY_TOKEN = os.getenv("RCLONE_EXPIRY_TOKEN")
 
+
 @pytest.mark.skipIf(RCLONE_DRIVE_ACCESS_TOKEN is None, reason="The Rclone Google Drive token has not been specified.")
 class TestLatestDockerYAMLConversionSpecification(TestCase):
     test_folder = OUTPUT_PATH
@@ -33,14 +34,14 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             refresh_token=RCLONE_DRIVE_REFRESH_TOKEN,
             expiry=RCLONE_EXPIRY_TOKEN,
         )
-        token_string = str(token_dictionary).replace("'", "\"").replace(" ", "")
+        token_string = str(token_dictionary).replace("'", '"').replace(" ", "")
         rclone_config_contents = [
             "[test]\n",
             "type = drive\n",
             "scope = drive\n",
             f"token = {token_string}\n",
             "team_drive = \n",
-            "\n"
+            "\n",
         ]
         with open(path=test_config_file, mode="w") as io:
             io.writelines(rclone_config_contents)
@@ -51,7 +52,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
         with open(path=test_config_file, mode="r") as io:
             rclone_config_file_stream = io.read()
-      
+
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
 
         output = deploy_process(
@@ -63,7 +64,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 "ghcr.io/catalystneuro/neuroconv:rclone_with_config "
                 "rclone cp "  # TODO
                 "--drive-shared-with-me "
-                #f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
+                # f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             ),
             catch_output=True,
         )
