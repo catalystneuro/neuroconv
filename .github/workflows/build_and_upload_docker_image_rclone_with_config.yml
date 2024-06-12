@@ -1,4 +1,4 @@
-name: Build and Upload Docker Image of Current Dev Branch to GHCR
+name: Build and Upload Docker Image of Rclone With Config to GHCR
 
 on:
   schedule:
