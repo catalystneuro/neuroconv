@@ -37,9 +37,12 @@ jobs:
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
 
+      - name: Install NeuroConv with minimal requirements
+        run: pip install .
+      - name: Test initial import of all non-lazy dependencies
+        run: python -c "import neuroconv"
 
-
-      - name: Install neuroconv with minimal requirements
+      - name: Install NeuroConv with testing requirements
         run: pip install .[test]
       - name: Run import tests
         run: |
