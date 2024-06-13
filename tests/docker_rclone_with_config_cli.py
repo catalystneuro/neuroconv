@@ -3,8 +3,8 @@ This file is hidden from normal pytest globbing by not including 'test' in the f
 
 Instead, the tests must be invoked directly from the file. This is designed mostly for use in the GitHub Actions.
 
-To allow this test to work, the developer must create a folder 'testing_rclone_with_config'
-which contains a single example text file 'test_text_file.txt' containing the content
+To allow this test to work, the developer must create a folder on the outer level called 'testing_rclone_with_config'
+which contains a single subfolder 'ci_tests' with example text file 'test_text_file.txt' containing the content
 "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!".
 """
 
@@ -42,7 +42,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
         )
         token_string = str(token_dictionary).replace("'", '"').replace(" ", "")
         rclone_config_contents = [
-            "[test]\n",
+            "[test_google_drive_remote]\n",
             "type = drive\n",
             "scope = drive\n",
             f"token = {token_string}\n",
@@ -60,7 +60,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             rclone_config_file_stream = io.read()
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
-        os.environ["RCLONE_COMMAND"] = f"rclone copy testing_rclone_with_config/test_text_file.txt {self.test_folder}"
+        os.environ["RCLONE_COMMAND"] = f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder}"
 
         output = deploy_process(
             command=(
@@ -74,7 +74,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
         )
         print(output)
 
-        testing_file_path = self.test_folder / "testing_rclone_with_config" / "test_text_file.txt"
+        testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file()
 
         with open(path=testing_file_path, mode="r") as io:
