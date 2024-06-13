@@ -15,3 +15,4 @@ pandas
 parse>=1.20.0
 click
 docstring-parser
+packaging  # Issue 903
