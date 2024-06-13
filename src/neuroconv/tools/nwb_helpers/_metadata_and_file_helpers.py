@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Literal, Optional
 from warnings import warn
 
+import h5py
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, get_nwbfile_version
 from pynwb.file import Subject
 
 from . import BackendConfiguration, configure_backend, get_default_backend_configuration
@@ -200,23 +201,23 @@ def make_or_load_nwbfile(
         load_kwargs.update(path=str(nwbfile_path_in))
         if file_initially_exists and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
+
+            backends_that_can_read = [
+                backend_name
+                for backend_name, backend_io_class in BACKEND_NWB_IO.items()
+                if backend_io_class.can_read(path=str(nwbfile_path_in))
+            ]
+            # Future-proofing: raise an error if more than one backend can read the file
+            assert (
+                len(backends_that_can_read) <= 1
+            ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
+            if backend not in backends_that_can_read:
+                raise IOError(
+                    f"The chosen backend ('{backend}') is unable to read the file! "
+                    f"Please select '{backends_that_can_read[0]}' instead."
+                )
         else:
             load_kwargs.update(mode="w")
-
-        backends_that_can_read = [
-            backend_name
-            for backend_name, backend_io_class in BACKEND_NWB_IO.items()
-            if backend_io_class.can_read(path=str(nwbfile_path_in))
-        ]
-        # Future-proofing: raise an error if more than one backend can read the file
-        assert (
-            len(backends_that_can_read) <= 1
-        ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
-        if load_kwargs["mode"] == "r+" and backend not in backends_that_can_read:
-            raise IOError(
-                f"The chosen backend ('{backend}') is unable to read the file! "
-                f"Please select '{backends_that_can_read[0]}' instead."
-            )
 
         io = backend_io_class(**load_kwargs)
 
