@@ -3,6 +3,10 @@
 ### Features
 * Added MedPCInterface for operant behavioral output files: [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 
+### Bug fixes
+* Added a skip condition in `get_default_dataset_io_configurations` for datasets with any zero-length axis in their `full_shape`. [PR #894](https://github.com/catalystneuro/neuroconv/pull/894)
+
+
 
 ## v0.4.10 (June 6, 2024)
 
