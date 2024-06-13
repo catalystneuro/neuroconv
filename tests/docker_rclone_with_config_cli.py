@@ -32,7 +32,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
     def setUp(self):
         test_folder.mkdir(exist_ok=True)
-        
+
         # Pretend as if .conf file already exists on the system (created via interactive `rclone config` command)
         token_dictionary = dict(
             access_token=RCLONE_DRIVE_ACCESS_TOKEN,
@@ -61,7 +61,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
         os.environ["RCLONE_COMMAND"] = f"rclone copy testing_rclone_with_config/test_text_file.txt {self.test_folder}"
-        
+
         output = deploy_process(
             command=(
                 "docker run -t "
