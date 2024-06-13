@@ -60,7 +60,9 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             rclone_config_file_stream = io.read()
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
-        os.environ["RCLONE_COMMAND"] = f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder}"
+        os.environ["RCLONE_COMMAND"] = (
+            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder}"
+        )
 
         output = deploy_process(
             command=(
