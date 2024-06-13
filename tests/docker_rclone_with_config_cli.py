@@ -3,9 +3,13 @@ This file is hidden from normal pytest globbing by not including 'test' in the f
 
 Instead, the tests must be invoked directly from the file. This is designed mostly for use in the GitHub Actions.
 
-To allow this test to work, the developer must create a folder on the outer level called 'testing_rclone_with_config'
-which contains a single subfolder 'ci_tests' with example text file 'test_text_file.txt' containing the content
+To allow this test to work, the developer must create a folder on the outer level of their personal Google Drive
+called 'testing_rclone_with_config' which contains a single subfolder 'ci_tests'
+with example text file 'test_text_file.txt' containing the content
 "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!".
+
+Then the developer must install Rclone and call `rclone config` to generate tokens in their own `rclone.conf` file.
+The developer can easily find the location of the config file on their system using `rclone config file`.
 """
 
 import os
