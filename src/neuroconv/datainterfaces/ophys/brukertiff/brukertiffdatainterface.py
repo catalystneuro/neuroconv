@@ -218,7 +218,6 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             stream_name=stream_name,
             verbose=verbose,
         )
-        self._determine_position_current()
         self.folder_path = folder_path
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._image_size = self.imaging_extractor.get_image_size()
