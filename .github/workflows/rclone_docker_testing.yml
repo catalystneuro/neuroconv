@@ -1,4 +1,4 @@
-name: Docker CLI tests
+name: Rclone Docker Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
