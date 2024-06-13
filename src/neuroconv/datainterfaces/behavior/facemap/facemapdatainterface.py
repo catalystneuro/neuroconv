@@ -14,7 +14,7 @@ from neuroconv.utils.dict import DeepDict
 from ..video.video_utils import get_video_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
-from ....utils import FilePathType
+from ....utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 def install_package(package):
@@ -65,32 +65,64 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         self.original_timestamps = None
         self.timestamps = None
 
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        spatial_series_metadata_schema = get_schema_from_hdmf_class(SpatialSeries)
+        time_series_metadata_schema = get_schema_from_hdmf_class(TimeSeries)
+        metadata_schema["properties"]["Behavior"].update(
+            required=["EyeTracking", "PupilTracking", "MotionSVDMasks", "MotionSVDSeries"],
+            properties=dict(
+                EyeTracking=dict(
+                    type="array",
+                    minItems=1,
+                    items=spatial_series_metadata_schema,
+                ),
+                PupilTracking=dict(
+                    type="array",
+                    minItems=1,
+                    items=time_series_metadata_schema,
+                ),
+                MotionSVDMasks=dict(
+                    type="object",
+                    properties=dict(
+                        name=dict(type="string"),
+                        description=dict(type="string"),
+                    ),
+                    required=["name", "description"],
+                ),
+                MotionSVDSeries=dict(
+                    type="object",
+                    properties=dict(
+                        name=dict(type="string"),
+                        description=dict(type="string"),
+                    ),
+                    required=["name", "description"],
+                ),
+            ),
+        )
+
+        return metadata_schema
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        metadata["Behavior"]["EyeTracking"] = {
-            "name": "eye_center_of_mass",
-            "description": "The position of the eye measured in degrees.",
-            "reference_frame": "unknown",
-            "unit": "degrees",
-        }
-        metadata["Behavior"]["PupilTracking"]["area"] = {
-            "name": "pupil_area",
-            "description": "Area of pupil.",
-            "unit": "unknown",
-        }
-        metadata["Behavior"]["PupilTracking"]["area_raw"] = {
-            "name": "pupil_area_raw",
-            "description": "Raw unprocessed area of pupil.",
-            "unit": "unknown",
-        }
-        metadata["Behavior"]["MotionSVDMasks"] = {
-            "name": "MotionSVDMasks",
-            "description": "Motion masks",
-        }
-        metadata["Behavior"]["MotionSVDSeries"] = {
-            "name": "MotionSVDSeries",
-            "description": "Motion SVD components",
-        }
+        behavior_metadata = dict(
+            EyeTracking=[
+                dict(
+                    name="eye_center_of_mass",
+                    description="The position of the eye measured in degrees.",
+                    reference_frame="unknown",
+                    unit="degrees",
+                )
+            ],
+            PupilTracking=[
+                dict(name="pupil_area", description="Area of pupil.", unit="unknown"),
+                dict(name="pupil_area_raw", description="Raw unprocessed area of pupil.", unit="unknown"),
+            ],
+            MotionSVDMasks=dict(name="MotionSVDMasks", description="Motion masks"),
+            MotionSVDSeries=dict(name="MotionSVDSeries", description="Motion SVD components"),
+        )
+        metadata["Behavior"] = behavior_metadata
         return metadata
 
     def add_eye_tracking(self, nwbfile: NWBFile, metadata: DeepDict):
@@ -101,7 +133,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         with h5py.File(self.source_data["mat_file_path"], "r") as file:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
-            eye_tracking_metadata = metadata["Behavior"]["EyeTracking"]
+            eye_tracking_metadata = metadata["Behavior"]["EyeTracking"][0]
 
             eye_com = SpatialSeries(
                 name=eye_tracking_metadata["name"],
@@ -124,12 +156,13 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
 
-            pupil_area_metadata = metadata["Behavior"]["PupilTracking"][pupil_trace_type]
+            pupil_area_metadata_ind = 0 if pupil_trace_type == "area" else 1
+            pupil_area_metadata = metadata["Behavior"]["PupilTracking"][pupil_area_metadata_ind]
 
             if "EyeTracking" not in behavior_module.data_interfaces:
                 self.add_eye_tracking(nwbfile=nwbfile, metadata=metadata)
 
-            eye_tracking_name = metadata["Behavior"]["EyeTracking"]["name"]
+            eye_tracking_name = metadata["Behavior"]["EyeTracking"][0]["name"]
             eye_com = behavior_module.data_interfaces["EyeTracking"].spatial_series[eye_tracking_name]
 
             pupil_trace = TimeSeries(
@@ -197,7 +230,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 if c == self.first_n_components:
                     break
                 componendt_2d = component.reshape((y2 - y1, x2 - x1))
-                motion_masks_table.add_row(image_mask=componendt_2d.T)
+                motion_masks_table.add_row(image_mask=componendt_2d.T, check_ragged=False)
 
             motion_masks = DynamicTableRegion(
                 name="motion_masks",
@@ -258,7 +291,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 series_ref = series_ref[0]
                 mask_ref = mask_ref[0]
 
-                # skipping the first ROI because it referes to "running" mask, from Facemap doc
+                # skipping the first ROI because it refers to "running" mask, from Facemap doc
                 mask_coordinates = file[file["proc"]["locROI"][n][0]]
                 y1 = int(np.round(mask_coordinates[0][0]) - 1)  # correct matlab indexing
                 x1 = int(np.round(mask_coordinates[1][0]) - 1)  # correct matlab indexing
@@ -277,7 +310,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 for c, component in enumerate(file[mask_ref]):
                     if c == self.first_n_components:
                         break
-                    motion_masks_table.add_row(image_mask=component.T)
+                    motion_masks_table.add_row(image_mask=component.T, check_ragged=False)
 
                 motion_masks = DynamicTableRegion(
                     name="motion_masks",
