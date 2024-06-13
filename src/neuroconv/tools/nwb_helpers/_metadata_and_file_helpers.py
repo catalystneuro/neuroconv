@@ -195,7 +195,7 @@ def make_or_load_nwbfile(
 
     load_kwargs = dict()
     file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
-    if nwbfile_path_in:
+    if nwbfile_path_in is not None:
         load_kwargs.update(path=str(nwbfile_path_in))
 
         append_mode = file_initially_exists and not overwrite
@@ -233,22 +233,23 @@ def make_or_load_nwbfile(
         nwbfile_loaded_succesfully = False
         raise load_error
     finally:
-        if nwbfile_path_in:
+        if nwbfile_path_in is not None and nwbfile_loaded_succesfully:
             nwbfile_written_succesfully = True
             try:
-                if nwbfile_loaded_succesfully:
-                    io.write(nwbfile)
+                io.write(nwbfile)
 
-                    if verbose:
-                        print(f"NWB file saved at {nwbfile_path_in}!")
+                if verbose:
+                    print(f"NWB file saved at {nwbfile_path_in}!")
             except Exception as write_error:
                 nwbfile_written_succesfully = False
                 raise write_error
             finally:
                 io.close()
 
-                if not nwbfile_written_succesfully and not file_initially_exists:
-                    nwbfile_path_in.unlink()
+        any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
+        attempt_to_remove_existing_file = any_load_or_write_error and not file_initially_exists
+        if attempt_to_remove_existing_file:
+            nwbfile_path_in.unlink()
 
 
 def _resolve_backend(
