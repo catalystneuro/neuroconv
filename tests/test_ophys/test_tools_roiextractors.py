@@ -1712,11 +1712,10 @@ class TestAddPhotonSeries(TestCase):
             )
 
     def test_add_photon_series_inconclusive_metadata(self):
-        """Test error is raised when `photon_series_type` specifies 'TwoPhotonSeries' but metadata contains 'OnePhotonSeries'."""
-        with self.assertRaisesWith(
-            AssertionError,
-            "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified.",
-        ):
+        """Test warning is raised when `photon_series_type` specifies 'TwoPhotonSeries' but metadata contains also 'OnePhotonSeries'."""
+
+        exc_msg = "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
+        with self.assertWarnsWith(warn_type=UserWarning, exc_msg=exc_msg):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
