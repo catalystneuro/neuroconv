@@ -223,6 +223,7 @@ def make_or_load_nwbfile(
         io = backend_io_class(**load_kwargs)
 
     nwbfile_loaded_succesfully = True
+    nwbfile_written_succesfully = True
     try:
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
@@ -234,7 +235,6 @@ def make_or_load_nwbfile(
         raise load_error
     finally:
         if nwbfile_path_in is not None and nwbfile_loaded_succesfully:
-            nwbfile_written_succesfully = True
             try:
                 io.write(nwbfile)
 
