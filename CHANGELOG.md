@@ -1,5 +1,10 @@
 # Upcoming
 
+### Bug fixes
+* Fixed bug when using `make_or_load_nwbfile` with `overwrite=True` on an existing (but corrupt) HDF5 file. [PR #911](https://github.com/catalystneuro/neuroconv/pull/911)
+
+
+
 ## v0.4.10 (June 6, 2024)
 
 ### Bug fixes
