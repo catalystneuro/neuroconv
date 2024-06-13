@@ -257,7 +257,9 @@ def make_or_load_nwbfile(
                 nwbfile_path_in.unlink()
             # Windows in particular can encounter errors at this step
             except PermissionError:  # pragma: no cover
-                message = f"Unable to remove NWB file located at {nwbfile_path_in.absolute()}! Please remove it manually."
+                message = (
+                    f"Unable to remove NWB file located at {nwbfile_path_in.absolute()}! Please remove it manually."
+                )
                 warn(message=message, stacklevel=2)
 
 
