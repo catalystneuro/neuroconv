@@ -37,9 +37,6 @@ jobs:
           python -m pip install -U pip  # Official recommended way
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-          pip install wheel # Needed for scan image
-
-
 
       - name: Install full requirements
         run: pip install --no-cache-dir .[full,test]
