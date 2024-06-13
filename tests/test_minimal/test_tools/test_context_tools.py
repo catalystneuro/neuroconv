@@ -8,8 +8,8 @@ from unittest.mock import patch
 from hdmf.testing import TestCase
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries
-from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 
@@ -199,6 +199,7 @@ class TestMakeOrLoadNWBFile(TestCase):
             nwbfile_out = io.read()
             assert "test1" in nwbfile_out.acquisition
             assert "test2" in nwbfile_out.acquisition
+
 
 def test_make_or_load_nwbfile_on_corrupt_file(tmpdir: Path) -> None:
     """Testing fix to https://github.com/catalystneuro/neuroconv/issues/910."""
