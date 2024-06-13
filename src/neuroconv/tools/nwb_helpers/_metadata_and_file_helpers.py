@@ -247,9 +247,6 @@ def make_or_load_nwbfile(
             finally:
                 io.close()
 
-                if not nwbfile_loaded_succesfully and not file_initially_exists:  # Not sure we need this
-                    nwbfile_path_in.unlink()
-
                 if not nwbfile_written_succesfully and not file_initially_exists:
                     nwbfile_path_in.unlink()
 
