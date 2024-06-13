@@ -5,3 +5,4 @@ parameterized>=0.8.1
 ndx-miniscope
 spikeinterface[qualitymetrics]>=0.100.0
 zarr<2.18.0  # Error with Blosc (read-only during decode) in numcodecs on May 7; check later if resolved
+pytest-xdist
