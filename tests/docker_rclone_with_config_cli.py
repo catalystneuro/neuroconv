@@ -2,6 +2,10 @@
 This file is hidden from normal pytest globbing by not including 'test' in the filename.
 
 Instead, the tests must be invoked directly from the file. This is designed mostly for use in the GitHub Actions.
+
+To allow this test to work, the developer must create a folder 'testing_rclone_with_config'
+which contains a single example text file 'test_text_file.txt' containing the content
+"This is a test file for the Rclone (with config) docker image hosted on NeuroConv!".
 """
 
 import os
@@ -23,10 +27,12 @@ RCLONE_EXPIRY_TOKEN = os.getenv("RCLONE_EXPIRY_TOKEN")
 
 @pytest.mark.skipIf(RCLONE_DRIVE_ACCESS_TOKEN is None, reason="The Rclone Google Drive token has not been specified.")
 class TestLatestDockerYAMLConversionSpecification(TestCase):
-    test_folder = OUTPUT_PATH
+    test_folder = OUTPUT_PATH / "rclone_tests"
     test_config_file = test_folder / "rclone.conf"
 
     def setUp(self):
+        test_folder.mkdir(exist_ok=True)
+        
         # Pretend as if .conf file already exists on the system (created via interactive `rclone config` command)
         token_dictionary = dict(
             access_token=RCLONE_DRIVE_ACCESS_TOKEN,
@@ -54,20 +60,23 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             rclone_config_file_stream = io.read()
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
-
+        os.environ["RCLONE_COMMAND"] = f"rclone copy testing_rclone_with_config/test_text_file.txt {self.test_folder}"
+        
         output = deploy_process(
             command=(
                 "docker run -t "
-                f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
                 '-e RCLONE_CONFIG="$RCLONE_CONFIG" '
-                "ghcr.io/catalystneuro/neuroconv:rclone_with_config "
-                "rclone cp "  # TODO
-                "--drive-shared-with-me "
-                # f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
+                '-e RCLONE_COMMAND="$RCLONE_COMMAND" '
+                "ghcr.io/catalystneuro/neuroconv:rclone_with_config"
             ),
             catch_output=True,
         )
         print(output)
 
-        # TODO: assert file downloaded from the Drive just fine
+        testing_file_path = self.test_folder / "testing_rclone_with_config" / "test_text_file.txt"
+        assert testing_file_path.is_file()
+
+        with open(path=testing_file_path, mode="r") as io:
+            file_content = io.read()
+            assert file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"
