@@ -247,7 +247,8 @@ def make_or_load_nwbfile(
                 io.close()
 
         any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
-        attempt_to_cleanup = any_load_or_write_error and not file_initially_exists and nwbfile_path_in.exists()
+        file_was_freshly_created = not file_initially_exists and nwbfile_path_in is not None and nwbfile_path_in.exists()
+        attempt_to_cleanup = any_load_or_write_error and file_was_freshly_created
         if attempt_to_cleanup:
             nwbfile_path_in.unlink()
 
