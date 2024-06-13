@@ -245,6 +245,7 @@ def make_or_load_nwbfile(
                 raise write_error
             finally:
                 io.close()
+                del io
 
         any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
         file_was_freshly_created = (
@@ -252,7 +253,12 @@ def make_or_load_nwbfile(
         )
         attempt_to_cleanup = any_load_or_write_error and file_was_freshly_created
         if attempt_to_cleanup:
-            nwbfile_path_in.unlink()
+            try:
+                nwbfile_path_in.unlink()
+            # Windows in particular can encounter errors at this step
+            except PermissionError:  # pragma: no cover
+                message = f"Unable to remove NWB file located at {nwbfile_path_in.absolute()}! Please remove it manually."
+                warn(message=message, stacklevel=2)
 
 
 def _resolve_backend(
