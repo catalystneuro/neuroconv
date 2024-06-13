@@ -1715,11 +1715,17 @@ class TestAddPhotonSeries(TestCase):
         """Test warning is raised when `photon_series_type` specifies 'TwoPhotonSeries' but metadata contains also 'OnePhotonSeries'."""
 
         exc_msg = "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
+        photon_series_metadata = deepcopy(self.one_photon_series_metadata)
+        photon_series_metadata["Ophys"].update(
+            TwoPhotonSeries=self.two_photon_series_metadata["Ophys"]["TwoPhotonSeries"]
+        )
+
         with self.assertWarnsWith(warn_type=UserWarning, exc_msg=exc_msg):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
-                metadata=self.one_photon_series_metadata,
+                metadata=photon_series_metadata,
+                photon_series_type="TwoPhotonSeries",
             )
 
     def test_add_one_photon_series(self):
