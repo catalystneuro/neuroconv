@@ -5,6 +5,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 from unittest.mock import patch
 
+import h5py
 from hdmf.testing import TestCase
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries
