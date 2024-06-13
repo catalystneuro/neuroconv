@@ -10,10 +10,9 @@ from pathlib import Path
 from typing import Literal, Optional
 from warnings import warn
 
-import h5py
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBHDF5IO, NWBFile, get_nwbfile_version
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from . import BackendConfiguration, configure_backend, get_default_backend_configuration
@@ -195,13 +194,15 @@ def make_or_load_nwbfile(
         raise NotImplementedError("Appending a Zarr file is not yet supported!")
 
     load_kwargs = dict()
-    success = True
     file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
     if nwbfile_path_in:
         load_kwargs.update(path=str(nwbfile_path_in))
-        if file_initially_exists and not overwrite:
+
+        append_mode = file_initially_exists and not overwrite
+        if append_mode:
             load_kwargs.update(mode="r+", load_namespaces=True)
 
+            # Check if the selected backend is the backend of the file in nwfile_path
             backends_that_can_read = [
                 backend_name
                 for backend_name, backend_io_class in BACKEND_NWB_IO.items()
@@ -221,27 +222,35 @@ def make_or_load_nwbfile(
 
         io = backend_io_class(**load_kwargs)
 
+    nwbfile_loaded_succesfully = True
     try:
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
         elif nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         yield nwbfile
-    except Exception as e:
-        success = False
-        raise e
+    except Exception as load_error:
+        nwbfile_loaded_succesfully = False
+        raise load_error
     finally:
         if nwbfile_path_in:
+            nwbfile_written_succesfully = True
             try:
-                if success:
+                if nwbfile_loaded_succesfully:
                     io.write(nwbfile)
 
                     if verbose:
                         print(f"NWB file saved at {nwbfile_path_in}!")
+            except Exception as write_error:
+                nwbfile_written_succesfully = False
+                raise write_error
             finally:
                 io.close()
 
-                if not success and not file_initially_exists:
+                if not nwbfile_loaded_succesfully and not file_initially_exists:  # Not sure we need this
+                    nwbfile_path_in.unlink()
+
+                if not nwbfile_written_succesfully and not file_initially_exists:
                     nwbfile_path_in.unlink()
 
 
