@@ -147,7 +147,10 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
-def _cleanup_existing_nwbfile(nwbfile_path: FilePath) -> None:
+def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
+    if not nwbfile_path.exists():
+        return
+
     try:
         nwbfile_path.unlink()
     # Windows in particular can encounter errors at this step
@@ -257,10 +260,10 @@ def make_or_load_nwbfile(
                 del io
 
                 if not nwbfile_written_succesfully:
-                    _cleanup_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+                    _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
         elif nwbfile_path_in is not None and not nwbfile_loaded_succesfully:
             # The instantiation of the IO object can itself create a file
-            _cleanup_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+            _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
         # Final attempt to cleanup an unintended file creation, just to be sure
         any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
@@ -269,7 +272,7 @@ def make_or_load_nwbfile(
         )
         attempt_to_cleanup = any_load_or_write_error and file_was_freshly_created
         if attempt_to_cleanup:
-            _cleanup_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+            _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
 
 def _resolve_backend(
