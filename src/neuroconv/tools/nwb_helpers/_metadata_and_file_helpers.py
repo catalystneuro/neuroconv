@@ -147,6 +147,17 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
+def _cleanup_existing_nwbfile(nwbfile_path: FilePath) -> None:
+    try:
+        nwbfile_path.unlink()
+    # Windows in particular can encounter errors at this step
+    except PermissionError:  # pragma: no cover
+        message = (
+            f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
+        )
+        warn(message=message, stacklevel=2)
+
+
 @contextmanager
 def make_or_load_nwbfile(
     nwbfile_path: Optional[FilePath] = None,
@@ -247,20 +258,20 @@ def make_or_load_nwbfile(
                 io.close()
                 del io
 
+                if not nwbfile_written_succesfully:
+                    _cleanup_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+        elif nwbfile_path_in is not None and not nwbfile_loaded_succesfully:
+            # The instantiation of the IO object can itself create a file
+            _cleanup_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+
+        # Final attempt to cleanup an unintended file creation, just to be sure
         any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
         file_was_freshly_created = (
             not file_initially_exists and nwbfile_path_in is not None and nwbfile_path_in.exists()
         )
         attempt_to_cleanup = any_load_or_write_error and file_was_freshly_created
         if attempt_to_cleanup:
-            try:
-                nwbfile_path_in.unlink()
-            # Windows in particular can encounter errors at this step
-            except PermissionError:  # pragma: no cover
-                message = (
-                    f"Unable to remove NWB file located at {nwbfile_path_in.absolute()}! Please remove it manually."
-                )
-                warn(message=message, stacklevel=2)
+            _cleanup_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
 
 def _resolve_backend(
