@@ -399,10 +399,11 @@ def add_photon_series(
     metadata_copy = dict_deep_update(
         get_nwb_imaging_metadata(imaging, photon_series_type=photon_series_type), metadata_copy, append_list=False
     )
-    if photon_series_type == "TwoPhotonSeries":
-        assert (
-            "OnePhotonSeries" not in metadata_copy["Ophys"]
-        ), "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified."
+
+    if photon_series_type == "TwoPhotonSeries" and "OnePhotonSeries" in metadata_copy["Ophys"]:
+        warn(
+            "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
+        )
 
     assert parent_container in [
         "acquisition",

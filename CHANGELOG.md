@@ -14,6 +14,7 @@
 
 ### Bug fixes
 * Fixed bug causing overwrite of NWB GUIDE watermark. [PR #890](https://github.com/catalystneuro/neuroconv/pull/890)
+* Change error trigger with warning trigger when adding both `OnePhotonSeries` and `TwoPhotonSeries` to the same file ([Issue #906](https://github.com/catalystneuro/neuroconv/issues/906)). [PR #907](https://github.com/catalystneuro/neuroconv/pull/907)
 
 
 
