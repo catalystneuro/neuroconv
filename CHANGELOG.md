@@ -1,7 +1,7 @@
 # Upcoming
 
 ### Features
-* Added MedPCInterface for operant behavioral output files: [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
+* Added MedPCInterface for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 
 
 
