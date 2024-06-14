@@ -152,9 +152,7 @@ def _cleanup_existing_nwbfile(nwbfile_path: FilePath) -> None:
         nwbfile_path.unlink()
     # Windows in particular can encounter errors at this step
     except PermissionError:  # pragma: no cover
-        message = (
-            f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
-        )
+        message = f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
         warn(message=message, stacklevel=2)
 
 
