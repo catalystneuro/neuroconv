@@ -28,7 +28,12 @@ class VideoInterface(BaseDataInterface):
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats."
 
-    def __init__(self, file_paths: list, verbose: bool = False):  # TODO - debug why List[FilePathType] fails
+    def __init__(
+        self,
+        file_paths: list,
+        metadata_key_name: str = "Videos",
+        verbose: bool = False,
+    ):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.
 
@@ -37,12 +42,15 @@ class VideoInterface(BaseDataInterface):
         file_paths : list of FilePathTypes
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
+        metadata_key_name : str, optional, default: "Videos"
+            The key name to use for the metadata associated with this video interface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
         self._segment_starting_times = None
+        self.metadata_key_name = metadata_key_name
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -53,26 +61,22 @@ class VideoInterface(BaseDataInterface):
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"].update(
-            required=["Videos"],
-            properties=dict(
-                Videos=dict(
-                    type="array",
-                    minItems=1,
-                    items=image_series_metadata_schema,
-                )
-            ),
+        metadata_schema["properties"]["Behavior"]["required"].append(self.metadata_key_name)
+        metadata_schema["properties"]["Behavior"]["properties"][self.metadata_key_name] = dict(
+            type="array",
+            minItems=1,
+            items=image_series_metadata_schema,
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        behavior_metadata = dict(
-            Videos=[
+        behavior_metadata = {
+            self.metadata_key_name: [
                 dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
-        )
+        }
         metadata["Behavior"] = behavior_metadata
 
         return metadata
@@ -307,9 +311,9 @@ class VideoInterface(BaseDataInterface):
         file_paths = self.source_data["file_paths"]
 
         # Be sure to copy metadata at this step to avoid mutating in-place
-        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("Videos", None)
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get(self.metadata_key_name, None)
         if videos_metadata is None:
-            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["Videos"])
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"][self.metadata_key_name])
 
         assert len(videos_metadata) == self._number_of_files, (
             "Incomplete metadata "
