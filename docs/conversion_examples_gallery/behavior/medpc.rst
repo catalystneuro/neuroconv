@@ -1,5 +1,5 @@
 MedPC data conversion
------------------------------
+---------------------
 
 MedPC output files contain information about operant behavior such as nose pokes and rewards.
 Install NeuroConv with the additional dependencies necessary for writing medpc behavioral data.
