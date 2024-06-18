@@ -29,7 +29,7 @@ def get_medpc_variables(file_path: FilePathType, variable_names: list) -> dict:
     return medpc_variables
 
 
-def get_session_lines(lines: list, session_conditions: dict, start_variable: str) -> list:
+def _get_session_lines(lines: list, session_conditions: dict, start_variable: str) -> list:
     """
     Get the lines for a session from a MedPC file.
 
@@ -119,7 +119,7 @@ def read_medpc_file(
     """
     with open(file_path, "r") as f:
         lines = f.readlines()
-    session_lines = get_session_lines(lines, session_conditions=session_conditions, start_variable=start_variable)
+    session_lines = _get_session_lines(lines, session_conditions=session_conditions, start_variable=start_variable)
 
     # Parse the session lines into a dictionary
     session_dict = {}
