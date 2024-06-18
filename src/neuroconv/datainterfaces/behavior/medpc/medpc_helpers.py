@@ -90,7 +90,8 @@ def read_medpc_file(
     session_conditions: dict,
     start_variable: str,
 ) -> dict:
-    """Read a raw MedPC text file into a dictionary.
+    """
+    Read a raw MedPC text file into a dictionary.
 
     Parameters
     ----------

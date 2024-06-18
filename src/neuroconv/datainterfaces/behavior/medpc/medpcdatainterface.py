@@ -12,7 +12,8 @@ from .medpc_helpers import read_medpc_file
 
 
 class MedPCInterface(BaseTemporalAlignmentInterface):
-    """Data Interface for MedPC output files.
+    """
+    Data Interface for MedPC output files.
 
     The output files from MedPC are raw text files that contain behavioral data from the operant box sessions such as
     lever presses, reward port entries, nose pokes, etc. The output text files format this data into a series of
@@ -53,7 +54,8 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         aligned_timestamp_names: Optional[list[str]] = None,
         verbose: bool = True,
     ):
-        """Initialize MedpcInterface.
+        """
+        Initialize MedpcInterface.
 
         Parameters
         ----------
