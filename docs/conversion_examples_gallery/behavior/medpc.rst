@@ -53,29 +53,29 @@ Convert MedPC output data to NWB using
     metadata["MedPC"]["Events"] = [
         {
             "name": "left_nose_poke_times",
-            "description": "Left nose poke times",
+            "description": "Left nose poke times.",
         },
         {
             "name": "left_reward_times",
-            "description": "Left reward times",
+            "description": "Left reward times.",
         },
         {
             "name": "right_nose_poke_times",
-            "description": "Right nose poke times",
+            "description": "Right nose poke times.",
         },
         {
             "name": "right_reward_times",
-            "description": "Right reward times",
+            "description": "Right reward times.",
         },
         {
             "name": "footshock_times",
-            "description": "Footshock times",
+            "description": "Footshock times.",
         },
     ]
     metadata["MedPC"]["IntervalSeries"] = [
         {
             "name": "reward_port_intervals",
-            "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+            "description": "Interval of time spent in reward port (1 is entry, -1 is exit).",
             "onset_name": "port_entry_times",
             "duration_name": "duration_of_port_entry",
         },
