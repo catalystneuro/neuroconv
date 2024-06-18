@@ -1,2 +1,2 @@
-spikeinterface>0.100.7
+spikeinterface==0.101.0rc0
 neo>=0.13.1
