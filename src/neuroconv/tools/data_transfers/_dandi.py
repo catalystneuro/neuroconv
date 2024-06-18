@@ -4,18 +4,18 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import List, Union
+from typing import List, Optional, Union
 from warnings import warn
 
 from pynwb import NWBHDF5IO
 
-from ...utils import FolderPathType, OptionalFolderPathType
+from ...utils import FolderPathType
 
 
 def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: FolderPathType,
-    dandiset_folder_path: OptionalFolderPathType = None,
+    dandiset_folder_path: Optional[FolderPathType] = None,
     version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,
@@ -23,9 +23,9 @@ def automatic_dandi_upload(
     number_of_threads: Union[int, None] = None,
 ) -> List[Path]:
     """
-    Fully automated upload of NWBFiles to a DANDISet.
+    Fully automated upload of NWB files to a Dandiset.
 
-    Requires an API token set as an envrinment variable named DANDI_API_KEY.
+    Requires an API token set as an environment variable named ``DANDI_API_KEY``.
 
     To set this in your bash terminal in Linux or macOS, run
         export DANDI_API_KEY=...
@@ -37,21 +37,20 @@ def automatic_dandi_upload(
     Parameters
     ----------
     dandiset_id : str
-        Six-digit string identifier for the DANDISet the NWBFiles will be uploaded to.
+        Six-digit string identifier for the Dandiset the NWB files will be uploaded to.
     nwb_folder_path : folder path
-        Folder containing the NWBFiles to be uploaded.
+        Folder containing the NWB files to be uploaded.
     dandiset_folder_path : folder path, optional
         A separate folder location within which to download the dandiset.
         Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
         Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
-    version : {None, "draft", "version"}
-        The default is "draft".
+    version : str, default="draft"
+        The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
+        Dandiset metadata yaml file. Default is "draft", which is the latest state.
     staging : bool, default: False
-        Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
-        The default is False.
+        Is the Dandiset hosted on the staging server? This is mostly for testing purposes.
     cleanup : bool, default: False
-        Whether to remove the dandiset folder path and nwb_folder_path.
-        Defaults to False.
+        Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
         The number of jobs to use in the DANDI upload process.
     number_of_threads : int, optional

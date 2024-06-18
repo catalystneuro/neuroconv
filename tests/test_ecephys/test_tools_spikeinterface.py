@@ -1266,7 +1266,7 @@ spike_interface_version = get_package_version("spikeinterface")
 
 
 @unittest.skipIf(
-    spike_interface_version >= Version("0.101"), reason="WaveformExtractor not available in spikeinterface"
+    spike_interface_version >= Version("0.100"), reason="WaveformExtractor not available in spikeinterface"
 )
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
