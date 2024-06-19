@@ -31,9 +31,10 @@ class VideoInterface(BaseDataInterface):
     def __init__(
         self,
         file_paths: list,
-        metadata_key_name: str = "Videos",
         verbose: bool = False,
-    ):  # TODO - debug why List[FilePathType] fails
+        *,
+        metadata_key_name: str = "Videos",
+    ):
         """
         Create the interface for writing videos as ImageSeries.
 
