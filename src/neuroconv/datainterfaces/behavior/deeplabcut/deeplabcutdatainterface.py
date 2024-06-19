@@ -15,6 +15,7 @@ def write_subject_to_nwb(
     individual_name: str,
     config_file: FilePathType,
     timestamps: Optional[Union[List, np.ndarray]] = None,
+    name: Optional[str] = "PoseEstimation",
 ):
     """
     Given, subject name, write h5file to an existing nwbfile.
@@ -32,6 +33,8 @@ def write_subject_to_nwb(
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
         Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
+    name : str or None, default: PoseEstimation
+        Description of the pose estimation procedure and output. Default from npx-pose.
     Returns
     -------
     nwbfile : pynwb.NWBFile
@@ -45,7 +48,7 @@ def write_subject_to_nwb(
 
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
     return dlc2nwb.utils._write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
+        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False, name=name,
     )
 
 
@@ -133,6 +136,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        name: Optional[str] = "PoseEstimation",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -151,4 +155,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             individual_name=self.subject_name,
             config_file=str(self.source_data["config_file_path"]),
             timestamps=self._timestamps,
+            name=name,
         )
