@@ -33,7 +33,7 @@ def write_subject_to_nwb(
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
         Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
-    name : str or None, default: PoseEstimation
+    container_name : str or None, default: PoseEstimation
         Description of the pose estimation procedure and output. Default from npx-pose.
     Returns
     -------
@@ -144,7 +144,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        name: Optional[str] = "PoseEstimation",
+        container_name: Optional[str] = "PoseEstimation",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -163,5 +163,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             individual_name=self.subject_name,
             config_file=str(self.source_data["config_file_path"]),
             timestamps=self._timestamps,
-            name=name,
+            container_name=container_name,
         )
