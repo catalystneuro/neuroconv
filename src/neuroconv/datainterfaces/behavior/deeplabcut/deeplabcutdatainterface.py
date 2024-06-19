@@ -15,7 +15,7 @@ def write_subject_to_nwb(
     individual_name: str,
     config_file: FilePathType,
     timestamps: Optional[Union[List, np.ndarray]] = None,
-    name: Optional[str] = "PoseEstimation",
+    container_name: Optional[str] = "PoseEstimation",
 ):
     """
     Given, subject name, write h5file to an existing nwbfile.
