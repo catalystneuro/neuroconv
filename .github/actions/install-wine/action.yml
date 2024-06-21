@@ -23,6 +23,7 @@ runs:
       run: |
         brew install --cask xquartz
         brew install --cask wine-stable
+        echo "WINEARCH=win64" >> $GITHUB_ENV  # Set the environment variable
       shell: bash
 
     - name: Skip installation on Windows
