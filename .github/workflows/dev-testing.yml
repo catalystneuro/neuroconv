@@ -38,6 +38,11 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
 
+      - name: Install Wine (For Plexon2 Tests)
+        uses: ./.github/actions/install-wine
+        with:
+          os: ${{ runner.os }}
+
       - name: Install full requirements
         run: pip install --no-cache-dir .[full,test]
 

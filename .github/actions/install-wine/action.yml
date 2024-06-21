@@ -22,6 +22,7 @@ runs:
       if: runner.os == 'macOS'
       run: |
         brew tap homebrew/cask-versions
+        brew install --cask xquartz
         brew install --cask wine-stable
       shell: bash
 
