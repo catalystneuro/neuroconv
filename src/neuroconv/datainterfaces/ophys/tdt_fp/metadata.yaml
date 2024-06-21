@@ -27,7 +27,7 @@ Ophys:
         model: Newport Visible Femtowatt Photoreceiver Module
         detector_type: photodiode
         detected_wavelength_in_nm: 525.0
-        gain: 1e10
+        gain: 1.0e+10
     BandOpticalFilters:
       - name: emission_filter
         description: "Dual excitation band fiber photometry measurements use a Fluorescence Mini Cube with 4 ports: one port for the functional fluorescence excitation light, one for the isosbestic excitation, one for the fluorescence detection, and one for the sample. The cube has dichroic mirrors to combine isosbestic and fluorescence excitations and separate the fluorescence emission and narrow bandpass filters limiting the excitation fluorescence spectrum."
@@ -148,3 +148,4 @@ Ophys:
         stream_indices: [null, null, null, null]
         unit: a.u.
         fiber_photometry_table_region: [0, 1, 2, 3]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DMS calcium signal, DMS isosbestic control, DLS calcium signal, and DLS isosbestic control.

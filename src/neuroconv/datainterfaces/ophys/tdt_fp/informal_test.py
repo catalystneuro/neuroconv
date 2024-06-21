@@ -14,7 +14,7 @@ from neuroconv.utils import dict_deep_update, load_dict_from_file
 
 def main():
     folder_path = Path(
-        "/Volumes/T7/CatalystNeuro/NWB/Lerner/raw_data/FP Experiments/Photometry/Punishment Sensitive/Early RI60/Photo_112_283-190620-093542"
+        "/Volumes/T7/CatalystNeuro/NWB/Lerner/raw_data/FP Experiments/Photometry/Punishment Sensitive/Late RI60/Photo_249_391-200721-120136"
     )
     editable_metadata_path = Path(
         "/Users/pauladkisson/Documents/CatalystNeuro/NWB/neuroconv/src/neuroconv/datainterfaces/ophys/tdt_fp/metadata.yaml"
