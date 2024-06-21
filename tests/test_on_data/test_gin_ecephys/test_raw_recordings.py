@@ -26,6 +26,7 @@ from neuroconv.datainterfaces import (
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
+    Plexon2RecordingInterface,
     PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,

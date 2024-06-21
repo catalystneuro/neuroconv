@@ -53,6 +53,7 @@ from .ecephys.openephys.openephyslegacydatainterface import (
 from .ecephys.openephys.openephyssortingdatainterface import OpenEphysSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.plexon.plexondatainterface import (
+    Plexon2RecordingInterface,
     PlexonRecordingInterface,
     PlexonSortingInterface,
 )
