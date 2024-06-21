@@ -4,6 +4,7 @@ This module contains informal tests for the TDTFiberPhotometryInterface.
 These tests will be formalized into the testing structure in the future and this file will be deleted.
 """
 
+import shutil
 from datetime import datetime
 from pathlib import Path
 from pprint import pprint
@@ -27,6 +28,9 @@ def main():
     metadata = dict_deep_update(metadata, editable_metadata)
 
     output_dir_path = Path("/Volumes/T7/CatalystNeuro/NWB/Lerner/conversion_nwb")
+    if output_dir_path.exists():
+        shutil.rmtree(output_dir_path, ignore_errors=True)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
     nwbfile_path = output_dir_path / "test_medpc.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 

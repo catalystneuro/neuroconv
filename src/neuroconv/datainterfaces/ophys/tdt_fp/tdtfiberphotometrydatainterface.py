@@ -192,7 +192,10 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 assert (
                     tdt_photometry.streams[stream_name].fs == rate
                 ), f"All streams in the same FiberPhotometryResponseSeries must have the same sampling rate. But stream {stream_name} has a different sampling rate than {first_stream_name}."
-                data_trace = tdt_photometry.streams[stream_name].data[stream_index, :]
+                if stream_index is None:
+                    data_trace = tdt_photometry.streams[stream_name].data
+                else:
+                    data_trace = tdt_photometry.streams[stream_name].data[stream_index, :]
                 data_traces.append(data_trace)
             data = np.column_stack(data_traces)
 
