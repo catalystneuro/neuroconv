@@ -87,7 +87,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .ophys.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text

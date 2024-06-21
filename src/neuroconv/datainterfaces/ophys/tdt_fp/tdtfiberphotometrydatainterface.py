@@ -44,6 +44,15 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return NotImplementedError
+
+    def get_timestamps(self) -> np.ndarray:
+        return NotImplementedError
+
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
+        return NotImplementedError
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -57,6 +66,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             if t2 is None:
                 tdt_photometry = read_block(str(folder_path))
 
+        return
         # Optical Fibers
         optical_fiber = OpticalFiber(
             name="optical_fiber",
