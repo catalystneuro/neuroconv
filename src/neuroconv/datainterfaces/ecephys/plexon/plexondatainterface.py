@@ -33,7 +33,6 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
-        assert file_path.is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> DeepDict:
@@ -79,6 +78,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         """
         stream_id = "3"  # TODO figure out if "4" is not raw signal as well
+        assert file_path.is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(
             file_path=file_path,
             verbose=verbose,
