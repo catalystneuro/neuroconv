@@ -1,1 +1,1 @@
-neo>=0.9.0
+git+https://github.com/h-mayorquin/python-neo.git@plexon_for_apple_silicon
