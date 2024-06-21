@@ -20,6 +20,7 @@ from pynwb.file import NWBFile
 from tdt import read_block
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
 from neuroconv.utils import DeepDict, FilePathType
 
 
@@ -66,77 +67,22 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             if t2 is None:
                 tdt_photometry = read_block(str(folder_path))
 
-        # Optical Fibers
-        for optical_fiber_metadata in metadata["Ophys"]["FiberPhotometry"]["OpticalFibers"]:
-            optical_fiber = OpticalFiber(
-                name=optical_fiber_metadata["name"],
-                description=optical_fiber_metadata["description"],
-                manufacturer=optical_fiber_metadata["manufacturer"],
-                model=optical_fiber_metadata["model"],
-                core_diameter_in_um=optical_fiber_metadata["core_diameter_in_um"],
-                numerical_aperture=optical_fiber_metadata["numerical_aperture"],
-            )
-            nwbfile.add_device(optical_fiber)
-
-        # Excitation Sources
-        for excitation_source_metadata in metadata["Ophys"]["FiberPhotometry"]["ExcitationSources"]:
-            excitation_source = ExcitationSource(
-                name=excitation_source_metadata["name"],
-                description=excitation_source_metadata["description"],
-                manufacturer=excitation_source_metadata["manufacturer"],
-                model=excitation_source_metadata["model"],
-                illumination_type=excitation_source_metadata["illumination_type"],
-                excitation_wavelength_in_nm=excitation_source_metadata["excitation_wavelength_in_nm"],
-            )
-            nwbfile.add_device(excitation_source)
-
-        # Photodetectors
-        for photodetector_metadata in metadata["Ophys"]["FiberPhotometry"]["Photodetectors"]:
-            photodetector = Photodetector(
-                name=photodetector_metadata["name"],
-                description=photodetector_metadata["description"],
-                manufacturer=photodetector_metadata["manufacturer"],
-                model=photodetector_metadata["model"],
-                detector_type=photodetector_metadata["detector_type"],
-                detected_wavelength_in_nm=photodetector_metadata["detected_wavelength_in_nm"],
-                gain=photodetector_metadata["gain"],
-            )
-            nwbfile.add_device(photodetector)
-
-        # Optical Filters
-        for optical_filter_metadata in metadata["Ophys"]["FiberPhotometry"]["BandOpticalFilters"]:
-            optical_filter = BandOpticalFilter(
-                name=optical_filter_metadata["name"],
-                description=optical_filter_metadata["description"],
-                manufacturer=optical_filter_metadata["manufacturer"],
-                model=optical_filter_metadata["model"],
-                center_wavelength_in_nm=optical_filter_metadata["center_wavelength_in_nm"],
-                bandwidth_in_nm=optical_filter_metadata["bandwidth_in_nm"],
-                filter_type=optical_filter_metadata["filter_type"],
-            )
-            nwbfile.add_device(optical_filter)
-
-        # Dichroic Mirror
-        for dichroic_mirror_metadata in metadata["Ophys"]["FiberPhotometry"]["DichroicMirrors"]:
-            dichroic_mirror = DichroicMirror(
-                name=dichroic_mirror_metadata["name"],
-                description=dichroic_mirror_metadata["description"],
-                manufacturer=dichroic_mirror_metadata["manufacturer"],
-                model=dichroic_mirror_metadata["model"],
-            )
-            nwbfile.add_device(dichroic_mirror)
-
-        # Indicators (aka Fluorophores)
-        for indicator_metadata in metadata["Ophys"]["FiberPhotometry"]["Indicators"]:
-            indicator = Indicator(
-                name=indicator_metadata["name"],
-                description=indicator_metadata["description"],
-                manufacturer=indicator_metadata["manufacturer"],
-                label=indicator_metadata["label"],
-                injection_location=indicator_metadata["injection_location"],
-                injection_coordinates_in_mm=indicator_metadata["injection_coordinates_in_mm"],
-            )
-            nwbfile.add_device(indicator)
+        # Add Devices
+        device_types = [
+            "OpticalFiber",
+            "ExcitationSource",
+            "Photodetector",
+            "BandOpticalFilter",
+            "DichroicMirror",
+            "Indicator",
+        ]
+        for device_type in device_types:
+            for device_metadata in metadata["Ophys"]["FiberPhotometry"][device_type + "s"]:
+                add_fiber_photometry_device(
+                    nwbfile=nwbfile,
+                    device_metadata=device_metadata,
+                    device_type=device_type,
+                )
 
         # Commanded Voltage Series
         for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"]["CommandedVoltageSeries"]:

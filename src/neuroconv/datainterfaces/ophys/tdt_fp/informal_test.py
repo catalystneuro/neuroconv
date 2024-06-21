@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from pprint import pprint
+from zoneinfo import ZoneInfo
 
 from neuroconv.datainterfaces import TDTFiberPhotometryInterface
 from neuroconv.utils import dict_deep_update, load_dict_from_file
@@ -23,7 +24,7 @@ def main():
 
     interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=True)
     metadata = interface.get_metadata()
-    metadata["NWBFile"]["session_start_time"] = datetime.now()
+    metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
     editable_metadata = load_dict_from_file(editable_metadata_path)
     metadata = dict_deep_update(metadata, editable_metadata)
 
