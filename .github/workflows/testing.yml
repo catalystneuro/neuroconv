@@ -38,7 +38,10 @@ jobs:
         run: pip install .
       - name: Test initial import of all non-lazy dependencies
         run: python -c "import neuroconv"
-
+      - name: Install Wine (For Plexon2 Tests)
+        uses: ./.github/actions/install-wine
+        with:
+          os: ${{ runner.os }}
       - name: Install NeuroConv with testing requirements
         run: pip install .[test]
       - name: Run import tests

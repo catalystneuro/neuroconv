@@ -12,7 +12,7 @@
 
 ### Improvements
 * Propagated `photon_series_type` to `BaseImagingExtractorInterface` init instead of passing it as an argument of `get_metadata()` and `get_metadata_schema()`. [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)
-
+* Add Plexon2 support [PR #918](https://github.com/catalystneuro/neuroconv/pull/918)
 
 
 ## v0.4.10 (June 6, 2024)

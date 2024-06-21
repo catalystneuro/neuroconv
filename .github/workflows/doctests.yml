@@ -29,7 +29,10 @@ jobs:
       - name: Install neuroconv with minimal requirements
         run: pip install .[full,test]
 
-
+      - name: Install Wine (For Plexon2 Tests)
+        uses: ./.github/actions/install-wine
+        with:
+          os: ${{ runner.os }}
 
       - name: Get ephy_testing_data current head hash
         id: ephys

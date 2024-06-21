@@ -97,6 +97,12 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             case_name="plexon_recording",
         ),
         param(
+            data_interface=Plexon2RecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
+            ),
+        ),
+        param(
             data_interface=BiocamRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw")),
             case_name="biocam",
