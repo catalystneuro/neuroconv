@@ -14,11 +14,11 @@ Convert Plexon recording data to NWB using :py:class:`~neuroconv.datainterfaces.
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import PlexonRecordingInterface
+    >>> from neuroconv.datainterfaces import Plexon2RecordingInterface
     >>>
     >>> file_path = f"{ECEPHY_DATA_PATH}/plexon/4chDemoPL2.pl2"
     >>> # Change the file_path to the location in your system
-    >>> interface = PlexonRecordingInterface(file_path=file_path, verbose=False)
+    >>> interface = Plexon2RecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
