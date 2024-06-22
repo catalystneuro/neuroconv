@@ -5,16 +5,10 @@ from typing import Optional
 
 import numpy as np
 from ndx_fiber_photometry import (
-    BandOpticalFilter,
     CommandedVoltageSeries,
-    DichroicMirror,
-    ExcitationSource,
     FiberPhotometry,
     FiberPhotometryResponseSeries,
     FiberPhotometryTable,
-    Indicator,
-    OpticalFiber,
-    Photodetector,
 )
 from pynwb.file import NWBFile
 from tdt import read_block
@@ -86,9 +80,11 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         # Commanded Voltage Series
         for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"]["CommandedVoltageSeries"]:
-            data = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data[
-                commanded_voltage_series_metadata["index"], :
-            ]
+            index = commanded_voltage_series_metadata["index"]
+            if index is None:
+                data = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data
+            else:
+                data = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data[index, :]
             commanded_voltage_series = CommandedVoltageSeries(
                 name=commanded_voltage_series_metadata["name"],
                 description=commanded_voltage_series_metadata["description"],
