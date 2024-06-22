@@ -17,13 +17,11 @@ runs:
         sudo apt-get update -qq
         sudo apt-get install -yqq --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine
       shell: bash
-
     - name: Install wine on macOS
       if: runner.os == 'macOS'
       run: |
         brew install --cask xquartz
         brew install --cask wine-stable
-        echo "WINEARCH=win64" >> $GITHUB_ENV  # Set the environment variable
       shell: bash
 
     - name: Skip installation on Windows
