@@ -79,17 +79,24 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
-        stream_id = "3"  # TODO figure out if "4" is not raw signal as well
+        stream_id = "3"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(
             file_path=file_path,
             verbose=verbose,
             es_key=es_key,
             stream_id=stream_id,
+            all_annotations=True,
         )
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+
+        neo_reader = self.recording_extractor.neo_reader
+
+        block_ind = self.recording_extractor.block_index
+        neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
+        metadata["NWBFile"].update(session_start_time=neo_metadata["m_CreatorDateTime"])
 
         return metadata
 
