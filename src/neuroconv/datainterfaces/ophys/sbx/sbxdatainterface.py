@@ -34,6 +34,11 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             photon_series_type=photon_series_type,
         )
 
+    def get_source_schema(self) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to .sbx file."
+        return source_schema
+
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
