@@ -93,6 +93,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
 
+
 def test_electrode_table_writing(tmp_path):
     converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
     metadata = converter.get_metadata()
