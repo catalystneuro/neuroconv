@@ -84,9 +84,9 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         source_data = dict(SpikeGLX=dict(folder_path=str(SPIKEGLX_PATH / "Noise4Sam_g0")))
         converter = TestConverter(source_data=source_data)
 
-        metadata_schema = converter.get_metadata_schema()
-
-        assert len(metadata_schema["properties"]["SpikeGLX"]["properties"]) != 0
+        # Relevant to https://github.com/catalystneuro/neuroconv/issues/919
+        conversion_options_schema = converter.get_conversion_options_schema()
+        assert len(conversion_options_schema["properties"]["SpikeGLX"]["properties"]) != 0
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
