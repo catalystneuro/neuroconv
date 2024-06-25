@@ -1,5 +1,8 @@
 # Upcoming
 
+### Bug fixes
+* Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
+
 
 
 ## v0.4.11 (June 14, 2024)
