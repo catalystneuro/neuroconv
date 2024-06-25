@@ -284,7 +284,7 @@ class TestInternalVideoInterface(TestVideoInterface):
             nwbfile = io.read()
             mod = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for video_index in range(len(metadata["Behavior"]["Vide1"])):
+            for video_index in range(len(metadata["Behavior"]["Video1"])):
                 video_interface_name = metadata["Behavior"]["Video1"][video_index]["name"]
                 assert mod[video_interface_name].data.shape[0] == 10
                 assert mod[video_interface_name].timestamps.shape[0] == 10
