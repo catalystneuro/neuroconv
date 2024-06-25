@@ -45,6 +45,7 @@ class VideoInterface(BaseDataInterface):
             Pass the file paths for this videos as a list in sorted, consecutive order.
         metadata_key_name : str, optional, default: "Videos"
             The key name to use for the metadata associated with this video interface.
+            Necessary to define whenever using multiple video interfaces in the same converter.
             This will be located in metadata["Behavior"][metadata_key_name].
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
