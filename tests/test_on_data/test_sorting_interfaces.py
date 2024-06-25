@@ -151,6 +151,7 @@ class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
 
 class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTestMixin, TestCase):
     """Corresponding to issue https://github.com/NeurodataWithoutBorders/nwb-guide/issues/881."""
+
     data_interface_cls = NeuroScopeSortingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"))
     save_directory = OUTPUT_PATH
