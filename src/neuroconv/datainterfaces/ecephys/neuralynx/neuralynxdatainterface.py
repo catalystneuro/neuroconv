@@ -14,7 +14,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     display_name = "Neuralynx Recording"
-    associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
+    associated_suffixes = (".ncs", ".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx recording data."
 
     @classmethod
@@ -29,7 +29,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
-        ] = 'Path to Neuralynx directory containing ".nse", ".ntt", ".nse", or ".nev" files.'
+        ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
     def __init__(
