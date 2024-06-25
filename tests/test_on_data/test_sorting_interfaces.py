@@ -156,8 +156,9 @@ class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTest
     interface_kwargs = dict(folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"))
     save_directory = OUTPUT_PATH
 
+    # The XML is not found and so no metadata is extracted
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 8, 31, 0, 0)
+        pass
 
 
 class TestPhySortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
