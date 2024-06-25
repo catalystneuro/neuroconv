@@ -304,7 +304,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
-        xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
+        xml_file_path = self.source_data["xml_file_path"] or session_path / f"{session_id}.xml"
 
         if not Path(xml_file_path).is_file():
             return metadata
