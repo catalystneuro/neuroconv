@@ -20,7 +20,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     display_name = "Spike2 Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("CED",)
-    associated_suffixes = ".smrx"
+    associated_suffixes = (".smrx",)
     info = "Interface for Spike2 recording data from CED (Cambridge Electronic Design)."
 
     ExtractorName = "CedRecordingExtractor"
