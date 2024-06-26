@@ -149,6 +149,18 @@ class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
         assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 8, 31, 0, 0)
 
 
+class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTestMixin, TestCase):
+    """Corresponding to issue https://github.com/NeurodataWithoutBorders/nwb-guide/issues/881."""
+
+    data_interface_cls = NeuroScopeSortingInterface
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"))
+    save_directory = OUTPUT_PATH
+
+    # The XML is not found and so no metadata is extracted
+    def check_extracted_metadata(self, metadata: dict):
+        pass
+
+
 class TestPhySortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = PhySortingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
