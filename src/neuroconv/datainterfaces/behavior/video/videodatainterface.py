@@ -43,10 +43,30 @@ class VideoInterface(BaseDataInterface):
         file_paths : list of FilePathTypes
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
-        metadata_key_name : str, optional, default: "Videos"
-            The key name to use for the metadata associated with this video interface.
-            Necessary to define whenever using multiple video interfaces in the same converter.
-            This will be located in metadata["Behavior"][metadata_key_name].
+        metadata_key_name : str, optional
+            The key used to identify this video data within the overall experiment metadata.
+            Defaults to "Videos".
+
+            This key is essential when multiple video streams are present in a single experiment.
+            The associated metadata should be a list of dictionaries, with each dictionary
+            containing metadata for a specific video segment:
+
+            ```
+            metadata["Behavior"][metadata_key_name] = [
+                {video1_metadata},
+                {video2_metadata},
+                ...
+            ]
+            ```
+
+            If other video interfaces exist, they would follow a similar structure:
+
+            ```
+            metadata["Behavior"]["other_video_key_name"] = [
+                {other_video1_metadata},
+                {other_video2_metadata},
+                ...
+            ]
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
