@@ -4,8 +4,23 @@
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
 
 ### Bug fixes
-* Added a skip condition in `get_default_dataset_io_configurations` for datasets with any zero-length axis in their `full_shape`. [PR #894](https://github.com/catalystneuro/neuroconv/pull/894)
+* Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
+* Fixed a case of the `NeuroScopeSortingExtractor` when the optional `xml_file_path` is not specified. [PR #926](https://github.com/catalystneuro/neuroconv/pull/926)
+* Fixed `Can't specify experiment type when converting .abf to .nwb with Neuroconv`. [PR #609](https://github.com/catalystneuro/neuroconv/pull/609)
 
+
+
+## v0.4.11 (June 14, 2024)
+
+### Bug fixes
+* Added a skip condition in `get_default_dataset_io_configurations` for datasets with any zero-length axis in their `full_shape`. [PR #894](https://github.com/catalystneuro/neuroconv/pull/894)
+* Added `packaging` explicitly to minimal requirements. [PR #904](https://github.com/catalystneuro/neuroconv/pull/904)
+* Fixed bug when using `make_or_load_nwbfile` with `overwrite=True` on an existing (but corrupt) HDF5 file. [PR #911](https://github.com/catalystneuro/neuroconv/pull/911)
+* Change error trigger with warning trigger when adding both `OnePhotonSeries` and `TwoPhotonSeries` to the same file ([Issue #906](https://github.com/catalystneuro/neuroconv/issues/906)). [PR #907](https://github.com/catalystneuro/neuroconv/pull/907)
+
+### Improvements
+* Propagated `photon_series_type` to `BaseImagingExtractorInterface` init instead of passing it as an argument of `get_metadata()` and `get_metadata_schema()`. [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)
+* Converter working with multiple VideoInterface instances [PR 914](https://github.com/catalystneuro/neuroconv/pull/914)
 
 
 ## v0.4.10 (June 6, 2024)
@@ -58,7 +73,6 @@
 ### Improvements
 * Added soft deprecation warning for removing `photon_series_type` from `get_metadata()` and `get_metadata_schema()` (in [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)). [PR #866](https://github.com/catalystneuro/neuroconv/pull/866)
 * Fixed docstrings related to backend configurations for various methods. [PR #822](https://github.com/catalystneuro/neuroconv/pull/822)
-* Propagated `photon_series_type` to `BaseImagingExtractorInterface` init instead of passing it as an argument of `get_metadata()` and `get_metadata_schema()`. [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)
 * Added automatic `backend` detection when a `backend_configuration` is passed to an interface or converter. [PR #840](https://github.com/catalystneuro/neuroconv/pull/840)
 * Improve printing of bytes. [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
 * Support for pathlib in source data schema validation. [PR #854](https://github.com/catalystneuro/neuroconv/pull/854)

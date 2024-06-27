@@ -58,7 +58,14 @@ class TestIcephysNwbConversions(unittest.TestCase):
     parameterized_recording_list = [
         param(
             data_interface=AbfInterface,
-            interface_kwargs=dict(file_paths=[str(DATA_PATH / "axon" / "File_axon_1.abf")]),
+            interface_kwargs=dict(
+                file_paths=[str(DATA_PATH / "axon" / "File_axon_1.abf")],
+                icephys_metadata={
+                    "recording_sessions": [
+                        {"abf_file_name": "File_axon_1.abf", "icephys_experiment_type": "voltage_clamp"}
+                    ]
+                },
+            ),
         )
     ]
 
