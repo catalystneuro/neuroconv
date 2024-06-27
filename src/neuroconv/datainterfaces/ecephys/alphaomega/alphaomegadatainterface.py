@@ -9,8 +9,15 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.AlphaOmegaRecordingExtractor`.
     """
 
-    help = "Interface class for converting AlphaOmega recording data."
     display_name = "AlphaOmega Recording"
+    associated_suffixes = (".mpx",)
+    info = "Interface class for converting AlphaOmega recording data."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "Path to the folder of .mpx files."
+        return source_schema
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -19,7 +26,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         folder_path: string or Path
-            Path to the folder of .mrx files.
+            Path to the folder of .mpx files.
         verbose: boolean
             Allows verbose.
             Default is True.

@@ -149,7 +149,8 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
         NWBFile object to add the icephys electrode to.
     metadata : dict, optional
         Metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Icephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -159,17 +160,16 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
                 ...
             ]
     """
+    metadata_copy = deepcopy(metadata) if metadata is not None else dict()
+
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding Icephys Electrode, no Devices were found on nwbfile. Creating a Device now...")
-        add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
+        add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata_copy)
 
-    if metadata is None:
-        metadata = dict()
-
-    if "Icephys" not in metadata:
-        metadata["Icephys"] = dict()
+    if "Icephys" not in metadata_copy:
+        metadata_copy["Icephys"] = dict()
 
     defaults = [
         dict(
@@ -180,15 +180,15 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
         for elec_id in range(get_number_of_electrodes(neo_reader))
     ]
 
-    if "Electrodes" not in metadata["Icephys"] or len(metadata["Icephys"]["Electrodes"]) == 0:
-        metadata["Icephys"]["Electrodes"] = deepcopy(defaults)
+    if "Electrodes" not in metadata_copy["Icephys"] or len(metadata_copy["Icephys"]["Electrodes"]) == 0:
+        metadata_copy["Icephys"]["Electrodes"] = defaults
 
     assert all(
-        [isinstance(x, dict) for x in metadata["Icephys"]["Electrodes"]]
+        [isinstance(x, dict) for x in metadata_copy["Icephys"]["Electrodes"]]
     ), "Expected metadata['Icephys']['Electrodes'] to be a list of dictionaries!"
 
     # Create Icephys electrode from metadata
-    for elec in metadata["Icephys"]["Electrodes"]:
+    for elec in metadata_copy["Icephys"]["Electrodes"]:
         if elec.get("name", defaults[0]["name"]) not in nwbfile.icephys_electrodes:
             device_name = elec.pop("device_name", None) or elec.pop("device", defaults[0]["device_name"])
             # elec.pop("device_name", 0)
@@ -286,8 +286,10 @@ def add_icephys_recordings(
     else:
         sessions_offset = 0
 
-    relative_session_start_time = metadata["Icephys"]["Sessions"][sessions_offset]["relative_session_start_time"]
-    session_stimulus_type = metadata["Icephys"]["Sessions"][sessions_offset]["stimulus_type"]
+    relative_session_start_time = deepcopy(
+        metadata["Icephys"]["Sessions"][sessions_offset]["relative_session_start_time"]
+    )
+    session_stimulus_type = deepcopy(metadata["Icephys"]["Sessions"][sessions_offset]["stimulus_type"])
 
     # Sequential icephys recordings
     simultaneous_recordings = list()
@@ -448,9 +450,12 @@ def write_neo_to_nwb(
         Required if a save_path is not specified. If passed, this function
         will fill the relevant fields within the nwbfile.
     metadata: dict
-        metadata info for constructing the nwb file (optional). Should be of the format
+        metadata info for constructing the nwb file (optional). Should be of the format::
+
             metadata['Ecephys'] = {}
-        with keys of the forms
+
+        with keys of the forms::
+
             metadata['Ecephys']['Device'] = [
                 {
                     'name': my_name,

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Literal, Union
 
 import numcodecs
 import zarr
-from pydantic import Field, root_validator
+from pydantic import Field, InstanceOf, model_validator
 
 from ._base_dataset_io import DatasetIOConfiguration
 
@@ -45,21 +45,16 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
 class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
-    # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
-
-    compression_method: Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None] = (
-        Field(
-            default="gzip",  # TODO: would like this to be 'auto'
-            description=(
-                "The specified compression method to apply to this dataset. "
-                "Can be either a string that matches an available method on your system, "
-                "or an instantiated numcodec.Codec object."
-                "Set to `None` to disable compression."
-            ),
-        )
+    compression_method: Union[
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec], None
+    ] = Field(
+        default="gzip",  # TODO: would like this to be 'auto'
+        description=(
+            "The specified compression method to apply to this dataset. "
+            "Can be either a string that matches an available method on your system, "
+            "or an instantiated numcodec.Codec object."
+            "Set to `None` to disable compression."
+        ),
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
@@ -67,7 +62,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         default=None, description="The optional parameters to use for the specified compression method."
     )
     filter_methods: Union[
-        List[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec]], None
+        List[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec]]], None
     ] = Field(
         default=None,
         description=(
@@ -81,7 +76,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         default=None, description="The optional parameters to use for each specified filter method."
     )
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # Inherited docstring from parent. noqa: D105
         string = super().__str__()
         if self.filter_methods is not None:
             string += f"\n  filter methods : {self.filter_methods}"
@@ -92,10 +87,10 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return string
 
-    @root_validator
+    @model_validator(mode="before")
     def validate_filter_methods_and_options_length_match(cls, values: Dict[str, Any]):
-        filter_methods = values["filter_methods"]
-        filter_options = values["filter_options"]
+        filter_methods = values.get("filter_methods", None)
+        filter_options = values.get("filter_options", None)
 
         if filter_methods is None and filter_options is not None:
             raise ValueError(

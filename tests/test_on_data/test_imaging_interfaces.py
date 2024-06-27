@@ -7,6 +7,7 @@ import numpy as np
 from dateutil.tz import tzoffset
 from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
+from parameterized import parameterized_class
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
@@ -17,11 +18,20 @@ from neuroconv.datainterfaces import (
     MiniscopeImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
+    ScanImageMultiFileImagingInterface,
     TiffImagingInterface,
+)
+from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
+    ScanImageMultiPlaneImagingInterface,
+    ScanImageMultiPlaneMultiFileImagingInterface,
+    ScanImageSinglePlaneImagingInterface,
+    ScanImageSinglePlaneMultiFileImagingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     ImagingExtractorInterfaceTestMixin,
     MiniscopeImagingInterfaceMixin,
+    ScanImageMultiPlaneImagingInterfaceMixin,
+    ScanImageSinglePlaneImagingInterfaceMixin,
 )
 
 try:
@@ -39,8 +49,161 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
     save_directory = OUTPUT_PATH
 
 
+@parameterized_class(
+    [
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 1",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel1",
+            "imaging_plane_name": "ImagingPlaneChannel1",
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 4",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel4",
+            "imaging_plane_name": "ImagingPlaneChannel4",
+        },
+    ],
+)
+class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin, TestCase):
+    data_interface_cls = ScanImageImagingInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+        channel_name="Channel 1",
+    )
+    save_directory = OUTPUT_PATH
+
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_rate = 29.1248
+    expected_starting_time = 0.0
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+
+@parameterized_class(
+    [
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 1",
+                plane_name="0",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel1Plane0",
+            "imaging_plane_name": "ImagingPlaneChannel1Plane0",
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 1",
+                plane_name="1",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel1Plane1",
+            "imaging_plane_name": "ImagingPlaneChannel1Plane1",
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 4",
+                plane_name="0",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel4Plane0",
+            "imaging_plane_name": "ImagingPlaneChannel4Plane0",
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                channel_name="Channel 4",
+                plane_name="1",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel4Plane1",
+            "imaging_plane_name": "ImagingPlaneChannel4Plane1",
+        },
+    ],
+)
+class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin, TestCase):
+    data_interface_cls = ScanImageImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+        channel_name="Channel 1",
+        plane_name="0",
+    )
+
+    photon_series_name = "TwoPhotonSeriesChannel1Plane0"
+    imaging_plane_name = "ImagingPlaneChannel1Plane0"
+    expected_two_photon_series_data_shape = (6, 256, 528)
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+
+class TestScanImageImagingInterfacesAssertions(hdmf_TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data_interface_cls = ScanImageImagingInterface
+
+    def test_not_recognized_scanimage_version(self):
+        """Test that ValueError is returned when ScanImage version could not be determined from metadata."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif")
+        with self.assertRaisesRegex(ValueError, "ScanImage version could not be determined from metadata."):
+            self.data_interface_cls(file_path=file_path)
+
+    def test_not_supported_scanimage_version(self):
+        """Test that ValueError is raised for ScanImage version 3.8 when ScanImageSinglePlaneImagingInterface is used."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff")
+        with self.assertRaisesRegex(ValueError, "ScanImage version 3.8 is not supported."):
+            ScanImageSinglePlaneImagingInterface(file_path=file_path)
+
+    def test_channel_name_not_specified(self):
+        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
+        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
+            self.data_interface_cls(file_path=file_path)
+
+    def test_channel_name_not_specified_for_multi_plane_data(self):
+        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
+        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
+            ScanImageMultiPlaneImagingInterface(file_path=file_path)
+
+    def test_plane_name_not_specified(self):
+        """Test that ValueError is raised when plane_name is not specified for data with multiple planes."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
+        with self.assertRaisesRegex(ValueError, "More than one plane is detected!"):
+            ScanImageSinglePlaneImagingInterface(file_path=file_path, channel_name="Channel 1")
+
+    def test_incorrect_channel_name(self):
+        """Test that ValueError is raised when incorrect channel name is specified."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
+        channel_name = "Channel 2"
+        with self.assertRaisesRegex(AssertionError, "Channel 'Channel 2' not found in the tiff file."):
+            self.data_interface_cls(file_path=file_path, channel_name=channel_name)
+
+    def test_incorrect_plane_name(self):
+        """Test that ValueError is raised when incorrect plane name is specified."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
+        with self.assertRaisesRegex(AssertionError, "Plane '20' not found in the tiff file"):
+            self.data_interface_cls(file_path=file_path, plane_name="20")
+
+    def test_non_volumetric_data(self):
+        """Test that ValueError is raised for non-volumetric imaging data."""
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead.",
+        ):
+            ScanImageMultiPlaneImagingInterface(file_path=file_path, channel_name="Channel 1")
+
+
 @skipIf(platform.machine() == "arm64", "Interface not supported on arm64 architecture")
-class TestScanImageImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
@@ -53,22 +216,141 @@ class TestScanImageImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase
         )
 
 
-@skipIf(platform.machine() == "arm64", "Interface not supported on arm64 architecture")
-class TestScanImageImagingInterfaceRecent(ImagingExtractorInterfaceTestMixin, TestCase):
-    # Second class for ScanImageImagingInterface as recommended easier than modifying the first to check metadata in
-    # each of several cases
-    data_interface_cls = ScanImageImagingInterface
+@parameterized_class(
+    [
+        {
+            "interface_kwargs": dict(
+                folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+                file_pattern="scanimage_20220923_roi.tif",
+                channel_name="Channel 1",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel1",
+            "imaging_plane_name": "ImagingPlaneChannel1",
+        },
+        {
+            "interface_kwargs": dict(
+                folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+                file_pattern="scanimage_20220923_roi.tif",
+                channel_name="Channel 4",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel4",
+            "imaging_plane_name": "ImagingPlaneChannel4",
+        },
+    ],
+)
+class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin, TestCase):
+    data_interface_cls = ScanImageMultiFileImagingInterface
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+        file_pattern="scanimage_20220923_roi.tif",
+        channel_name="Channel 1",
     )
     save_directory = OUTPUT_PATH
 
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_rate = 29.1248
+    expected_starting_time = 0.0
+
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 8, 8, 16, 39, 49, 190000)
-        assert (
-            metadata["Ophys"]["TwoPhotonSeries"][0]["description"]
-            == '{"frameNumbers": "8", "acquisitionNumbers": "1", "frameNumberAcquisition": "8", "frameTimestamps_sec": "0.233287620", "acqTriggerTimestamps_sec": "-1.000000000", "nextFileMarkerTimestamps_sec": "-1.000000000", "endOfAcquisition": "1", "endOfAcquisitionMode": "0", "dcOverVoltage": "0", "epoch": "[2022  8  8 16 39 49.190]", "auxTrigger0": "[]", "auxTrigger1": "[]", "auxTrigger2": "[]", "auxTrigger3": "[]", "I2CData": "{}", "SI.LINE_FORMAT_VERSION": "1", "SI.PREMIUM": "true", "SI.TIFF_FORMAT_VERSION": "4", "SI.VERSION_COMMIT": "\'00ac849a74d5101cc34d41b1129ea49c1eb8b1d1\'", "SI.VERSION_MAJOR": "2022", "SI.VERSION_MINOR": "0", "SI.VERSION_UPDATE": "0", "SI.acqState": "\'grab\'", "SI.acqsPerLoop": "1", "SI.errorMsg": "\'\'", "SI.extTrigEnable": "false", "SI.fieldCurvatureRxs": "[]", "SI.fieldCurvatureRys": "[]", "SI.fieldCurvatureTilt": "0", "SI.fieldCurvatureTip": "0", "SI.fieldCurvatureZs": "[]", "SI.hBeams.enablePowerBox": "false", "SI.hBeams.errorMsg": "\'\'", "SI.hBeams.flybackBlanking": "true", "SI.hBeams.interlaceDecimation": "1", "SI.hBeams.interlaceOffset": "0", "SI.hBeams.lengthConstants": "Inf", "SI.hBeams.name": "\'SI Beams\'", "SI.hBeams.powerBoxEndFrame": "Inf", "SI.hBeams.powerBoxStartFrame": "1", "SI.hBeams.powerFractionLimits": "1", "SI.hBeams.powerFractions": "0.92", "SI.hBeams.powers": "92", "SI.hBeams.pzAdjust": "scanimage.types.BeamAdjustTypes.Exponential", "SI.hBeams.pzFunction": "{\'@scanimage.util.defaultPowerFunction\'}", "SI.hBeams.pzLUTSource": "{\'\'}", "SI.hBeams.reserverInfo": "\'\'", "SI.hBeams.totalNumBeams": "1", "SI.hBeams.userInfo": "\'\'", "SI.hBeams.warnMsg": "\'\'", "SI.hCameraManager.errorMsg": "\'\'", "SI.hCameraManager.name": "\'SI CameraManager\'", "SI.hCameraManager.reserverInfo": "\'\'", "SI.hCameraManager.userInfo": "\'\'", "SI.hCameraManager.warnMsg": "\'\'", "SI.hChannels.channelAdcResolution": "{16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16}", "SI.hChannels.channelDisplay": "1", "SI.hChannels.channelInputRange": "{[-1 1] [-1 1]}", "SI.hChannels.channelLUT": "{[-18 5038] [-113 5615] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100] [0 100]}", "SI.hChannels.channelMergeColor": "{\'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\' \'red\'}", "SI.hChannels.channelName": "{\'Channel 1\' \'Channel 2\' \'Channel 3\' \'Channel 4\' \'Channel 5\' \'Channel 6\' \'Channel 7\' \'Channel 8\' \'Channel 9\' \'Channel 10\' \'Channel 11\' \'Channel 12\' \'Channel 13\' \'Channel 14\' \'Channel 15\' \'Channel 16\' \'Channel 17\' \'Channel 18\' \'Channel 19\' \'Channel 20\' \'Channel 21\' \'Channel 22\' \'Channel 23\' \'Channel 24\' \'Channel 25\' \'Channel 26\' \'Channel 27\' \'Channel 28\' \'Channel 29\' \'Channel 30\' \'Channel 31\' \'Channel 32\' \'Channel 33\' \'Channel 34\' \'Channel 35\' \'Channel 36\' \'Channel 37\' \'Channel 38\' \'Channel 39\' \'Channel 40\' \'Channel 41\' \'Channel 42\' \'Channel 43\' \'Channel 44\' \'Channel 45\' \'Channel 46\' \'Channel 47\' \'Channel 48\' \'Channel 49\' \'Channel 50\' \'Channel 51\' \'Channel 52\' \'Channel 53\' \'Channel 54\' \'Channel 55\' \'Channel 56\' \'Channel 57\' \'Channel 58\' \'Channel 59\' \'Channel 60\' \'Channel 61\' \'Channel 62\' \'Channel 63\' \'Channel 64\'}", "SI.hChannels.channelOffset": "[320 -14486]", "SI.hChannels.channelSave": "1", "SI.hChannels.channelSubtractOffset": "[true true]", "SI.hChannels.channelType": "{\'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\' \'stripe\'}", "SI.hChannels.channelsActive": "1", "SI.hChannels.channelsAvailable": "2", "SI.hChannels.errorMsg": "\'\'", "SI.hChannels.loggingEnable": "1", "SI.hChannels.name": "\'SI Channels\'", "SI.hChannels.reserverInfo": "\'\'", "SI.hChannels.userInfo": "\'\'", "SI.hChannels.warnMsg": "\'\'", "SI.hConfigurationSaver.cfgFilename": "\'\'", "SI.hConfigurationSaver.errorMsg": "\'\'", "SI.hConfigurationSaver.name": "\'SI ConfigurationSaver\'", "SI.hConfigurationSaver.reserverInfo": "\'\'", "SI.hConfigurationSaver.userInfo": "\'\'", "SI.hConfigurationSaver.usrFilename": "\'\'", "SI.hConfigurationSaver.warnMsg": "\'\'", "SI.hCoordinateSystems.errorMsg": "\'\'", "SI.hCoordinateSystems.name": "\'SI CoordinateSystems\'", "SI.hCoordinateSystems.reserverInfo": "\'\'", "SI.hCoordinateSystems.userInfo": "\'\'", "SI.hCoordinateSystems.warnMsg": "\'\'", "SI.hCycleManager.cycleIterIdxTotal": "0", "SI.hCycleManager.cyclesCompleted": "0", "SI.hCycleManager.enabled": "false", "SI.hCycleManager.errorMsg": "\'\'", "SI.hCycleManager.itersCompleted": "0", "SI.hCycleManager.name": "\'SI CycleManager\'", "SI.hCycleManager.reserverInfo": "\'\'", "SI.hCycleManager.totalCycles": "1", "SI.hCycleManager.userInfo": "\'\'", "SI.hCycleManager.warnMsg": "\'\'", "SI.hDisplay.autoScaleSaturationFraction": "[0.1 0.01]", "SI.hDisplay.channelsMergeEnable": "false", "SI.hDisplay.channelsMergeFocusOnly": "false", "SI.hDisplay.displayRollingAverageFactor": "8", "SI.hDisplay.displayRollingAverageFactorLock": "false", "SI.hDisplay.enableScanfieldDisplays": "false", "SI.hDisplay.errorMsg": "\'\'", "SI.hDisplay.lineScanHistoryLength": "1000", "SI.hDisplay.name": "\'SI Display\'", "SI.hDisplay.renderer": "\'auto\'", "SI.hDisplay.reserverInfo": "\'\'", "SI.hDisplay.scanfieldDisplayColumns": "5", "SI.hDisplay.scanfieldDisplayRows": "5", "SI.hDisplay.scanfieldDisplayTilingMode": "\'Auto\'", "SI.hDisplay.scanfieldDisplays.enable": "false", "SI.hDisplay.scanfieldDisplays.name": "\'Display 1\'", "SI.hDisplay.scanfieldDisplays.channel": "1", "SI.hDisplay.scanfieldDisplays.roi": "1", "SI.hDisplay.scanfieldDisplays.z": "0", "SI.hDisplay.selectedZs": "[]", "SI.hDisplay.showScanfieldDisplayNames": "true", "SI.hDisplay.userInfo": "\'\'", "SI.hDisplay.volumeDisplayStyle": "\'Tiled\'", "SI.hDisplay.warnMsg": "\'\'", "SI.hFastZ.actuatorLag": "0", "SI.hFastZ.discardFlybackFrames": "false", "SI.hFastZ.enable": "false", "SI.hFastZ.enableFieldCurveCorr": "false", "SI.hFastZ.errorMsg": "\'\'", "SI.hFastZ.flybackTime": "0.07", "SI.hFastZ.hasFastZ": "true", "SI.hFastZ.name": "\'SI FastZ\'", "SI.hFastZ.numDiscardFlybackFrames": "0", "SI.hFastZ.position": "50", "SI.hFastZ.reserverInfo": "\'\'", "SI.hFastZ.userInfo": "\'\'", "SI.hFastZ.volumePeriodAdjustment": "-0.0006", "SI.hFastZ.warnMsg": "\'\'", "SI.hFastZ.waveformType": "\'sawtooth\'", "SI.hIntegrationRoiManager.enable": "false", "SI.hIntegrationRoiManager.enableDisplay": "true", "SI.hIntegrationRoiManager.errorMsg": "\'\'", "SI.hIntegrationRoiManager.integrationHistoryLength": "1000", "SI.hIntegrationRoiManager.name": "\'SI IntegrationRoiManager\'", "SI.hIntegrationRoiManager.outputChannelsEnabled": "[]", "SI.hIntegrationRoiManager.outputChannelsFunctions": "{}", "SI.hIntegrationRoiManager.outputChannelsNames": "{}", "SI.hIntegrationRoiManager.outputChannelsPhysicalNames": "{}", "SI.hIntegrationRoiManager.outputChannelsRoiNames": "{}", "SI.hIntegrationRoiManager.postProcessFcn": "\'@scanimage.components.integrationRois.integrationPostProcessingFcn\'", "SI.hIntegrationRoiManager.reserverInfo": "\'\'", "SI.hIntegrationRoiManager.userInfo": "\'\'", "SI.hIntegrationRoiManager.warnMsg": "\'\'", "SI.hMotionManager.correctionBoundsXY": "[-5 5]", "SI.hMotionManager.correctionBoundsZ": "[-50 50]", "SI.hMotionManager.correctionDeviceXY": "\'galvos\'", "SI.hMotionManager.correctionDeviceZ": "\'fastz\'", "SI.hMotionManager.correctionEnableXY": "false", "SI.hMotionManager.correctionEnableZ": "false", "SI.hMotionManager.correctorClassName": "\'scanimage.components.motionCorrectors.SimpleMotionCorrector\'", "SI.hMotionManager.enable": "false", "SI.hMotionManager.errorMsg": "\'\'", "SI.hMotionManager.estimatorClassName": "\'scanimage.components.motionEstimators.SimpleMotionEstimator\'", "SI.hMotionManager.motionHistoryLength": "100", "SI.hMotionManager.motionMarkersXY": "zeros(0,2)", "SI.hMotionManager.name": "\'SI MotionManager\'", "SI.hMotionManager.reserverInfo": "\'\'", "SI.hMotionManager.resetCorrectionAfterAcq": "true", "SI.hMotionManager.userInfo": "\'\'", "SI.hMotionManager.warnMsg": "\'\'", "SI.hMotionManager.zStackAlignmentFcn": "\'@scanimage.components.motionEstimators.util.alignZRoiData\'", "SI.hMotors.axesPosition": "[44251.1 43604.4 12562]", "SI.hMotors.azimuth": "0", "SI.hMotors.elevation": "0", "SI.hMotors.errorMsg": "\'\'", "SI.hMotors.errorTf": "false", "SI.hMotors.isAligned": "false", "SI.hMotors.isHomed": "true", "SI.hMotors.isRelativeZeroSet": "true", "SI.hMotors.maxZStep": "Inf", "SI.hMotors.minPositionQueryInterval_s": "0.001", "SI.hMotors.motorErrorMsg": "{\'\'}", "SI.hMotors.moveInProgress": "false", "SI.hMotors.moveTimeout_s": "10", "SI.hMotors.name": "\'SI Motors\'", "SI.hMotors.reserverInfo": "\'\'", "SI.hMotors.samplePosition": "[-5913.12 -20399.4 692.467]", "SI.hMotors.simulatedAxes": "[false false false]", "SI.hMotors.userDefinedPositions": "[]", "SI.hMotors.userInfo": "\'\'", "SI.hMotors.warnMsg": "\'\'", "SI.hPhotostim.allowMultipleOutputs": "false", "SI.hPhotostim.autoTriggerPeriod": "0", "SI.hPhotostim.compensateMotionEnabled": "true", "SI.hPhotostim.completedSequences": "0", "SI.hPhotostim.errorMsg": "\'\'", "SI.hPhotostim.laserActiveSignalAdvance": "0.001", "SI.hPhotostim.lastMotion": "[0 0]", "SI.hPhotostim.logging": "false", "SI.hPhotostim.monitoring": "false", "SI.hPhotostim.monitoringSampleRate": "9000", "SI.hPhotostim.name": "\'SI Photostim\'", "SI.hPhotostim.nextStimulus": "1", "SI.hPhotostim.numOutputs": "0", "SI.hPhotostim.numSequences": "Inf", "SI.hPhotostim.reserverInfo": "\'\'", "SI.hPhotostim.sequencePosition": "1", "SI.hPhotostim.sequenceSelectedStimuli": "[]", "SI.hPhotostim.status": "\'Offline\'", "SI.hPhotostim.stimImmediately": "false", "SI.hPhotostim.stimSelectionAssignment": "[]", "SI.hPhotostim.stimSelectionDevice": "\'\'", "SI.hPhotostim.stimSelectionTerms": "[]", "SI.hPhotostim.stimSelectionTriggerTerm": "[]", "SI.hPhotostim.stimTriggerTerm": "1", "SI.hPhotostim.stimulusMode": "\'onDemand\'", "SI.hPhotostim.syncTriggerTerm": "[]", "SI.hPhotostim.userInfo": "\'\'", "SI.hPhotostim.warnMsg": "\'\'", "SI.hPhotostim.zMode": "\'2D\'", "SI.hPmts.autoPower": "true", "SI.hPmts.autoPowerOnWaitTime_s": "0.3", "SI.hPmts.bandwidths": "8e+07", "SI.hPmts.errorMsg": "\'\'", "SI.hPmts.gains": "0.7", "SI.hPmts.name": "\'SI Pmts\'", "SI.hPmts.names": "{\'PMT2100\'}", "SI.hPmts.offsets": "0.4019", "SI.hPmts.powersOn": "true", "SI.hPmts.reserverInfo": "\'\'", "SI.hPmts.tripped": "false", "SI.hPmts.userInfo": "\'\'", "SI.hPmts.warnMsg": "\'\'", "SI.hRoiManager.errorMsg": "\'\'", "SI.hRoiManager.forceSquarePixelation": "true", "SI.hRoiManager.forceSquarePixels": "true", "SI.hRoiManager.imagingFovDeg": "[-9 -9;9 -9;9 9;-9 9]", "SI.hRoiManager.imagingFovUm": "[-135 -135;135 -135;135 135;-135 135]", "SI.hRoiManager.linePeriod": "6.31018e-05", "SI.hRoiManager.linesPerFrame": "512", "SI.hRoiManager.mroiEnable": "false", "SI.hRoiManager.name": "\'SI RoiManager\'", "SI.hRoiManager.pixelsPerLine": "512", "SI.hRoiManager.reserverInfo": "\'\'", "SI.hRoiManager.scanAngleMultiplierFast": "1", "SI.hRoiManager.scanAngleMultiplierSlow": "1", "SI.hRoiManager.scanAngleShiftFast": "0", "SI.hRoiManager.scanAngleShiftSlow": "0", "SI.hRoiManager.scanFramePeriod": "0.0333177", "SI.hRoiManager.scanFrameRate": "30.0141", "SI.hRoiManager.scanRotation": "0", "SI.hRoiManager.scanType": "\'frame\'", "SI.hRoiManager.scanVolumeRate": "0.187588", "SI.hRoiManager.scanZoomFactor": "1", "SI.hRoiManager.userInfo": "\'\'", "SI.hRoiManager.warnMsg": "\'\'", "SI.hScan2D.beamClockDelay": "1.5e-06", "SI.hScan2D.beamClockExtend": "0", "SI.hScan2D.bidirectional": "true", "SI.hScan2D.channelOffsets": "[320 -14486]", "SI.hScan2D.channels": "{}", "SI.hScan2D.channelsAdcResolution": "16", "SI.hScan2D.channelsAutoReadOffsets": "true", "SI.hScan2D.channelsAvailable": "2", "SI.hScan2D.channelsDataType": "\'int16\'", "SI.hScan2D.channelsFilter": "\'fbw\'", "SI.hScan2D.channelsInputRanges": "{[-1 1] [-1 1]}", "SI.hScan2D.channelsSubtractOffsets": "[true true]", "SI.hScan2D.customFilterClockPeriod": "2880", "SI.hScan2D.errorMsg": "\'\'", "SI.hScan2D.fillFractionSpatial": "0.9", "SI.hScan2D.fillFractionTemporal": "0.712867", "SI.hScan2D.flybackTimePerFrame": "0.001", "SI.hScan2D.flytoTimePerScanfield": "0.001", "SI.hScan2D.fovCornerPoints": "[-13 -10;13 -10;13 10;-13 10]", "SI.hScan2D.hasResonantMirror": "true", "SI.hScan2D.hasXGalvo": "true", "SI.hScan2D.isPolygonalScanner": "false", "SI.hScan2D.keepResonantScannerOn": "false", "SI.hScan2D.linePhase": "2.56e-08", "SI.hScan2D.linePhaseMode": "\'Nearest Neighbor\'", "SI.hScan2D.lineScanFdbkSamplesPerFrame": "[]", "SI.hScan2D.lineScanNumFdbkChannels": "[]", "SI.hScan2D.lineScanSamplesPerFrame": "[]", "SI.hScan2D.logAverageDisableDivide": "false", "SI.hScan2D.logAverageFactor": "8", "SI.hScan2D.logFramesPerFile": "Inf", "SI.hScan2D.logFramesPerFileLock": "false", "SI.hScan2D.logOverwriteWarn": "false", "SI.hScan2D.mask": "[12;13;12;12;12;11;12;11;11;11;11;11;11;10;11;10;10;10;11;9;10;10;10;9;10;9;10;9;9;9;9;9;9;9;9;8;9;9;8;9;8;9;8;8;9;8;8;8;8;8;8;8;8;8;8;7;8;8;7;8;8;7;8;7;8;7;8;7;7;8;7;7;7;8;7;7;7;7;7;7;7;7;7;7;7;7;7;7;6;7;7;7;6;7;7;7;6;7;6;7;7;6;7;6;7;6;7;6;7;6;7;6;6;7;6;6;7;6;6;7;6;6;7;6;6;6;6;7;6;6;6;6;6;6;6;7;6;6;6;6;6;6;6;6;6;6;6;6;6;6;6;6;6;5;6;6;6;6;6;6;6;5;6;6;6;6;6;5;6;6;6;6;5;6;6;6;5;6;6;6;5;6;6;5;6;6;6;5;6;6;5;6;6;5;6;5;6;6;5;6;6;5;6;6;5;6;5;6;6;5;6;5;6;5;6;6;5;6;5;6;5;6;6;5;6;5;6;5;6;5;6;5;6;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;5;6;6;5;6;5;6;5;6;5;6;5;6;6;5;6;5;6;5;6;6;5;6;5;6;5;6;6;5;6;5;6;6;5;6;6;5;6;6;5;6;5;6;6;5;6;6;5;6;6;6;5;6;6;5;6;6;6;5;6;6;6;5;6;6;6;6;5;6;6;6;6;6;5;6;6;6;6;6;6;6;5;6;6;6;6;6;6;6;6;6;6;6;6;6;6;6;6;6;7;6;6;6;6;6;6;6;7;6;6;6;6;7;6;6;7;6;6;7;6;6;7;6;6;7;6;7;6;7;6;7;6;7;6;7;7;6;7;6;7;7;7;6;7;7;7;6;7;7;7;7;7;7;7;7;7;7;7;7;7;7;8;7;7;7;8;7;7;8;7;8;7;8;7;8;8;7;8;8;7;8;8;8;8;8;8;8;8;8;8;9;8;8;9;8;9;8;9;9;8;9;9;9;9;9;9;9;9;10;9;10;9;10;10;10;9;11;10;10;10;11;10;11;11;11;11;11;11;12;11;12;12;12;13;12]", "SI.hScan2D.maxSampleRate": "2.5e+09", "SI.hScan2D.name": "\'Imaging_RGG\'", "SI.hScan2D.nominalFovCornerPoints": "[-13 -10;13 -10;13 10;-13 10]", "SI.hScan2D.parkSlmForAcquisition": "true", "SI.hScan2D.photonDiscriminatorDifferentiateWidths": "[4 4]", "SI.hScan2D.photonDiscriminatorModes": "{\'threshold crossing\' \'threshold crossing\'}", "SI.hScan2D.photonDiscriminatorThresholds": "[1000 500]", "SI.hScan2D.physicalChannelsAvailable": "2", "SI.hScan2D.pixelBinFactor": "1", "SI.hScan2D.recordScannerFeedback": "false", "SI.hScan2D.reserverInfo": "\'\'", "SI.hScan2D.sampleRate": "2.5e+09", "SI.hScan2D.sampleRateCtl": "1e+06", "SI.hScan2D.sampleRateFdbk": "1e+06", "SI.hScan2D.scanMode": "\'resonant\'", "SI.hScan2D.scanPixelTimeMaxMinRatio": "2.6", "SI.hScan2D.scanPixelTimeMean": "8.785e-08", "SI.hScan2D.scannerFrequency": "7923.71", "SI.hScan2D.scannerToRefTransform": "[1 0 0;0 1 0;0 0 1]", "SI.hScan2D.scannerType": "\'RGG\'", "SI.hScan2D.settleTimeFraction": "0", "SI.hScan2D.simulated": "false", "SI.hScan2D.stripingEnable": "false", "SI.hScan2D.stripingPeriod": "0.1", "SI.hScan2D.trigAcqEdge": "\'rising\'", "SI.hScan2D.trigAcqInTerm": "\'\'", "SI.hScan2D.trigNextEdge": "\'rising\'", "SI.hScan2D.trigNextInTerm": "\'\'", "SI.hScan2D.trigNextStopEnable": "true", "SI.hScan2D.trigStopEdge": "\'rising\'", "SI.hScan2D.trigStopInTerm": "\'\'", "SI.hScan2D.uniformSampling": "false", "SI.hScan2D.useCustomFilterClock": "false", "SI.hScan2D.userInfo": "\'\'", "SI.hScan2D.virtualChannelSettings__1.source": "\'AI1\'", "SI.hScan2D.virtualChannelSettings__1.mode": "\'analog\'", "SI.hScan2D.virtualChannelSettings__1.threshold": "false", "SI.hScan2D.virtualChannelSettings__1.binarize": "false", "SI.hScan2D.virtualChannelSettings__1.edgeDetect": "false", "SI.hScan2D.virtualChannelSettings__1.laserGate": "false", "SI.hScan2D.virtualChannelSettings__1.disableDivide": "false", "SI.hScan2D.virtualChannelSettings__1.thresholdValue": "100", "SI.hScan2D.virtualChannelSettings__1.laserFilterWindow": "[25 25]", "SI.hScan2D.virtualChannelSettings__2.source": "\'AI1\'", "SI.hScan2D.virtualChannelSettings__2.mode": "\'analog\'", "SI.hScan2D.virtualChannelSettings__2.threshold": "false", "SI.hScan2D.virtualChannelSettings__2.binarize": "false", "SI.hScan2D.virtualChannelSettings__2.edgeDetect": "false", "SI.hScan2D.virtualChannelSettings__2.laserGate": "false", "SI.hScan2D.virtualChannelSettings__2.disableDivide": "false", "SI.hScan2D.virtualChannelSettings__2.thresholdValue": "100", "SI.hScan2D.virtualChannelSettings__2.laserFilterWindow": "[0 1]", "SI.hScan2D.warnMsg": "\'\'", "SI.hShutters.errorMsg": "\'\'", "SI.hShutters.name": "\'SI Shutters\'", "SI.hShutters.reserverInfo": "\'\'", "SI.hShutters.userInfo": "\'\'", "SI.hShutters.warnMsg": "\'\'", "SI.hStackManager.actualNumSlices": "20", "SI.hStackManager.actualNumVolumes": "1", "SI.hStackManager.actualStackZStepSize": "8.949", "SI.hStackManager.arbitraryZs": "[0;1]", "SI.hStackManager.boundedStackDefinition": "\'numSlices\'", "SI.hStackManager.centeredStack": "1", "SI.hStackManager.closeShutterBetweenSlices": "false", "SI.hStackManager.enable": "true", "SI.hStackManager.errorMsg": "\'\'", "SI.hStackManager.framesPerSlice": "8", "SI.hStackManager.name": "\'SI StackManager\'", "SI.hStackManager.numFastZActuators": "1", "SI.hStackManager.numFramesPerVolume": "160", "SI.hStackManager.numFramesPerVolumeWithFlyback": "160", "SI.hStackManager.numSlices": "20", "SI.hStackManager.numVolumes": "1", "SI.hStackManager.reserverInfo": "\'\'", "SI.hStackManager.stackActuator": "\'motor\'", "SI.hStackManager.stackDefinition": "\'bounded\'", "SI.hStackManager.stackEndPowerFraction": "0.92", "SI.hStackManager.stackFastWaveformType": "\'sawtooth\'", "SI.hStackManager.stackMode": "\'slow\'", "SI.hStackManager.stackReturnHome": "true", "SI.hStackManager.stackStartPowerFraction": "0.92", "SI.hStackManager.stackZEndPos": "912.489", "SI.hStackManager.stackZStartPos": "742.467", "SI.hStackManager.stackZStepSize": "1", "SI.hStackManager.useStartEndPowers": "1", "SI.hStackManager.userInfo": "\'\'", "SI.hStackManager.warnMsg": "\'\'", "SI.hStackManager.zPowerReference": "742.467", "SI.hStackManager.zs": "[742.467 742.467 742.467 742.467 742.467 742.467 742.467 742.467 751.416 751.416 751.416 751.416 751.416 751.416 751.416 751.416 760.364 760.364 760.364 760.364 760.364 760.364 760.364 760.364 769.313 769.313 769.313 769.313 769.313 769.313 769.313 769.313 778.261 778.261 778.261 778.261 778.261 778.261 778.261 778.261 787.21 787.21 787.21 787.21 787.21 787.21 787.21 787.21 796.158 796.158 796.158 796.158 796.158 796.158 796.158 796.158 805.107 805.107 805.107 805.107 805.107 805.107 805.107 805.107 814.055 814.055 814.055 814.055 814.055 814.055 814.055 814.055 823.004 823.004 823.004 823.004 823.004 823.004 823.004 823.004 831.952 831.952 831.952 831.952 831.952 831.952 831.952 831.952 840.901 840.901 840.901 840.901 840.901 840.901 840.901 840.901 849.849 849.849 849.849 849.849 849.849 849.849 849.849 849.849 858.798 858.798 858.798 858.798 858.798 858.798 858.798 858.798 867.746 867.746 867.746 867.746 867.746 867.746 867.746 867.746 876.695 876.695 876.695 876.695 876.695 876.695 876.695 876.695 885.643 885.643 885.643 885.643 885.643 885.643 885.643 885.643 894.592 894.592 894.592 894.592 894.592 894.592 894.592 894.592 903.54 903.54 903.54 903.54 903.54 903.54 903.54 903.54 912.489 912.489 912.489 912.489 912.489 912.489 912.489 912.489]", "SI.hStackManager.zsAllActuators": "[742.467;742.467;742.467;742.467;742.467;742.467;742.467;742.467;751.416;751.416;751.416;751.416;751.416;751.416;751.416;751.416;760.364;760.364;760.364;760.364;760.364;760.364;760.364;760.364;769.313;769.313;769.313;769.313;769.313;769.313;769.313;769.313;778.261;778.261;778.261;778.261;778.261;778.261;778.261;778.261;787.21;787.21;787.21;787.21;787.21;787.21;787.21;787.21;796.158;796.158;796.158;796.158;796.158;796.158;796.158;796.158;805.107;805.107;805.107;805.107;805.107;805.107;805.107;805.107;814.055;814.055;814.055;814.055;814.055;814.055;814.055;814.055;823.004;823.004;823.004;823.004;823.004;823.004;823.004;823.004;831.952;831.952;831.952;831.952;831.952;831.952;831.952;831.952;840.901;840.901;840.901;840.901;840.901;840.901;840.901;840.901;849.849;849.849;849.849;849.849;849.849;849.849;849.849;849.849;858.798;858.798;858.798;858.798;858.798;858.798;858.798;858.798;867.746;867.746;867.746;867.746;867.746;867.746;867.746;867.746;876.695;876.695;876.695;876.695;876.695;876.695;876.695;876.695;885.643;885.643;885.643;885.643;885.643;885.643;885.643;885.643;894.592;894.592;894.592;894.592;894.592;894.592;894.592;894.592;903.54;903.54;903.54;903.54;903.54;903.54;903.54;903.54;912.489;912.489;912.489;912.489;912.489;912.489;912.489;912.489]", "SI.hStackManager.zsRelative": "[50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50;50]", "SI.hTileManager.acqDoneFlag": "false", "SI.hTileManager.errorMsg": "\'\'", "SI.hTileManager.isFastZ": "false", "SI.hTileManager.loopedAcquisition": "false", "SI.hTileManager.name": "\'SI TileManager\'", "SI.hTileManager.reserverInfo": "\'\'", "SI.hTileManager.scanAbortFlag": "false", "SI.hTileManager.scanFramesPerTile": "1", "SI.hTileManager.scanStageSettleTime": "0.1", "SI.hTileManager.scanTileSortFcn": "\'scanimage.components.tileTools.tileSortingFcns.naiveNearest\'", "SI.hTileManager.tileScanIndices": "[]", "SI.hTileManager.tileScanningInProgress": "false", "SI.hTileManager.tilesDone": "[]", "SI.hTileManager.userInfo": "\'\'", "SI.hTileManager.warnMsg": "\'\'", "SI.hUserFunctions.errorMsg": "\'\'", "SI.hUserFunctions.name": "\'SI UserFunctions\'", "SI.hUserFunctions.reserverInfo": "\'\'", "SI.hUserFunctions.userFunctionsCfg": "[]", "SI.hUserFunctions.userFunctionsUsr": "[]", "SI.hUserFunctions.userInfo": "\'\'", "SI.hUserFunctions.warnMsg": "\'\'", "SI.hWSConnector.communicationTimeout": "5", "SI.hWSConnector.enable": "false", "SI.hWSConnector.errorMsg": "\'\'", "SI.hWSConnector.name": "\'SI WSConnector\'", "SI.hWSConnector.reserverInfo": "\'\'", "SI.hWSConnector.userInfo": "\'\'", "SI.hWSConnector.warnMsg": "\'\'", "SI.hWaveformManager.errorMsg": "\'\'", "SI.hWaveformManager.name": "\'SI WaveformManager\'", "SI.hWaveformManager.optimizedScanners": "{}", "SI.hWaveformManager.reserverInfo": "\'\'", "SI.hWaveformManager.userInfo": "\'\'", "SI.hWaveformManager.warnMsg": "\'\'", "SI.imagingSystem": "\'Imaging_RGG\'", "SI.loopAcqInterval": "10", "SI.name": "\'ScanImage\'", "SI.objectiveResolution": "15", "SI.reserverInfo": "\'\'", "SI.shutDownScript": "\'\'", "SI.startUpScript": "\'\'", "SI.userInfo": "\'\'", "SI.warnMsg": "\'\'"}'
-        )
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+
+@parameterized_class(
+    [
+        {
+            "interface_kwargs": dict(
+                folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+                file_pattern="scanimage_20240320_multifile*.tif",
+                channel_name="Channel 1",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel1",
+            "imaging_plane_name": "ImagingPlaneChannel1",
+        },
+        {
+            "interface_kwargs": dict(
+                folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+                file_pattern="scanimage_20240320_multifile*.tif",
+                channel_name="Channel 2",
+            ),
+            "photon_series_name": "TwoPhotonSeriesChannel2",
+            "imaging_plane_name": "ImagingPlaneChannel2",
+        },
+    ],
+)
+class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin, TestCase):
+    data_interface_cls = ScanImageMultiFileImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
+        file_pattern="scanimage_20240320_multifile*.tif",
+        channel_name="Channel 1",
+    )
+    save_directory = OUTPUT_PATH
+
+    photon_series_name = "TwoPhotonSeriesChannel1"
+    imaging_plane_name = "ImagingPlaneChannel1"
+    expected_two_photon_series_data_shape = (30, 512, 512)
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 3, 26, 15, 7, 53, 110000)
+
+
+class TestScanImageMultiFileImagingInterfacesAssertions(hdmf_TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data_interface_cls = ScanImageMultiFileImagingInterface
+
+    def test_not_supported_scanimage_version(self):
+        """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
+        file_pattern = "sample_scanimage.tiff"
+        with self.assertRaisesRegex(ValueError, "ScanImage version 3.8 is not supported."):
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
+
+    def test_not_supported_scanimage_version_multiplane(self):
+        """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
+        file_pattern = "sample_scanimage.tiff"
+        with self.assertRaisesRegex(
+            ValueError, "ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead."
+        ):
+            ScanImageMultiPlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
+
+    def test_non_volumetric_data(self):
+        """Test that ValueError is raised for non-volumetric imaging data."""
+
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
+        file_pattern = "scanimage_20240320_multifile*.tif"
+        channel_name = "Channel 1"
+        with self.assertRaisesRegex(
+            ValueError,
+            "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneMultiFileImagingInterface instead.",
+        ):
+            ScanImageMultiPlaneMultiFileImagingInterface(
+                folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name
+            )
+
+    def test_channel_name_not_specified(self):
+        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
+        file_pattern = "scanimage_20220923_roi.tif"
+        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
+
+    def test_not_recognized_scanimage_version(self):
+        """Test that ValueError is returned when ScanImage version could not be determined from metadata."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
+        file_pattern = "*.tif"
+        with self.assertRaisesRegex(ValueError, "ScanImage version could not be determined from metadata."):
+            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
+
+    def test_plane_name_not_specified(self):
+        """Test that ValueError is raised when plane_name is not specified for data with multiple planes."""
+        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
+        file_pattern = "scanimage_20220801_volume.tif"
+        with self.assertRaisesRegex(ValueError, "More than one plane is detected!"):
+            ScanImageSinglePlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
 
 
 class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):

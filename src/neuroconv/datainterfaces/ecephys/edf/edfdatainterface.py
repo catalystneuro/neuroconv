@@ -11,12 +11,16 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     Not supported for Python 3.8 and 3.9 on M1 macs.
     """
 
-    help = "Interface for European Data Format (EDF) recording data."
     display_name = "EDF Recording"
+    keywords = BaseRecordingExtractorInterface.keywords + ("European Data Format",)
+    associated_suffixes = (".edf",)
+    info = "Interface for European Data Format (EDF) recording data."
 
-    keywords = BaseRecordingExtractorInterface.keywords + [
-        "European Data Format",
-    ]
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
+        return source_schema
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """

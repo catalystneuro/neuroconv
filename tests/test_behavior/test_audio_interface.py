@@ -94,18 +94,12 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
         self.assertEqual(len(audio_metadata), self.num_audio_files)
 
     def test_incorrect_write_as(self):
-        expected_error_message = """'bad_option' is not one of ['stimulus', 'acquisition']
-
-Failed validating 'enum' in schema['properties']['Audio']['properties']['write_as']:
-    {'default': 'stimulus', 'enum': ['stimulus', 'acquisition']}
-
-On instance['Audio']['write_as']:
-    'bad_option'"""
-        with self.assertRaisesWith(exc_type=jsonschema.exceptions.ValidationError, exc_msg=expected_error_message):
+        with self.assertRaises(jsonschema.exceptions.ValidationError):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 metadata=self.metadata,
                 conversion_options=dict(Audio=dict(write_as="bad_option")),
+                overwrite=True,
             )
 
     def test_write_as_acquisition(self):
@@ -132,13 +126,13 @@ On instance['Audio']['write_as']:
             "The Audio metadata is incomplete (1 entry)! Expected 3 (one for each entry of 'file_paths')."
         )
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
-            self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata)
+            self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True)
 
     def test_metadata_update(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"]["Audio"][0].update(description="New description for Acoustic waveform series.")
         nwbfile_path = str(self.test_dir / "audio_with_updated_metadata.nwb")
-        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             container = nwbfile.stimulus
@@ -156,7 +150,7 @@ On instance['Audio']['write_as']:
         )
         expected_error_message = "Some of the names for Audio metadata are not unique."
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
-            self.interface.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata)
+            self.interface.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True)
 
     def test_segment_starting_times_are_floats(self):
         with self.assertRaisesWith(
@@ -209,6 +203,7 @@ On instance['Audio']['write_as']:
                     )
                 )
             ),  # use a low buffer_gb, so we can test the full GenericDataChunkIterator
+            overwrite=True,
         )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:

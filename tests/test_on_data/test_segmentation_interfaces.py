@@ -1,5 +1,6 @@
-from datetime import datetime
 from unittest import TestCase
+
+from parameterized import parameterized_class
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -17,6 +18,17 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 
+@parameterized_class(
+    [
+        {"conversion_options": {"mask_type": "image", "include_background_segmentation": True}},
+        {"conversion_options": {"mask_type": "pixel", "include_background_segmentation": True}},
+        {"conversion_options": {"mask_type": "voxel", "include_background_segmentation": True}},
+        # {"conversion_options": {"mask_type": None, "include_background_segmentation": True}}, # Uncomment when https://github.com/catalystneuro/neuroconv/issues/530 is resolved
+        {"conversion_options": {"include_roi_centroids": False, "include_background_segmentation": True}},
+        {"conversion_options": {"include_roi_acceptance": False, "include_background_segmentation": True}},
+        {"conversion_options": {"include_background_segmentation": False}},
+    ]
+)
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CaimanSegmentationInterface
     interface_kwargs = dict(

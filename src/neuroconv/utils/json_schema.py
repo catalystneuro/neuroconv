@@ -2,8 +2,10 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Callable, Dict, List, Literal, Optional
 
+import docstring_parser
 import hdmf.data_utils
 import numpy as np
 import pynwb
@@ -29,6 +31,27 @@ class NWBMetaDataEncoder(json.JSONEncoder):
             return obj.tolist()
 
         # The base-class handles it
+        return super().default(obj)
+
+
+class NWBSourceDataEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+
+        # Over-write behaviors for Paths
+        if isinstance(obj, Path):
+            return str(obj)
+
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+
+        # Transform numpy generic integers and floats to python ints floats
+        if isinstance(obj, np.generic):
+            return obj.item()
+
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+
         return super().default(obj)
 
 
@@ -88,10 +111,14 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
         FolderPathType="string",
     )
     args_spec = dict()
+    parsed_docstring = docstring_parser.parse(method.__doc__)
     for param_name, param in inspect.signature(method).parameters.items():
         if param_name in exclude:
             continue
         args_spec[param_name] = dict()
+        for doc_param in parsed_docstring.params:
+            if doc_param.arg_name == param_name and doc_param.description:
+                args_spec[param_name].update(description=doc_param.description)
         if param.annotation:
             if getattr(param.annotation, "__origin__", None) == Literal:
                 args_spec[param_name]["enum"] = list(param.annotation.__args__)
@@ -269,20 +296,20 @@ def get_metadata_schema_for_icephys():
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(
-        Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
+        Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/definitions/Device"}),
         Electrodes=dict(
             type="array",
             minItems=1,
-            items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
+            items={"$ref": "#/properties/Icephys/definitions/Electrode"},
         ),
         Sessions=dict(
             type="array",
             minItems=1,
-            items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
+            items={"$ref": "#/properties/Icephys/definitions/Sessions"},
         ),
     )
 
-    schema["properties"]["definitions"] = dict(
+    schema["definitions"] = dict(
         Device=get_schema_from_hdmf_class(Device),
         Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
         Sessions=dict(
@@ -302,7 +329,7 @@ def get_metadata_schema_for_icephys():
             recordings=dict(
                 type="array",
                 minItems=1,
-                items={"$ref": "#/properties/Icephys/properties/definitions/SessionsRecordings"},
+                items={"$ref": "#/properties/Icephys/definitions/SessionsRecordings"},
             ),
         ),
         SessionsRecordings=dict(

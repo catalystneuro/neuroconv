@@ -26,6 +26,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     Uses :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`.
     """
 
+    display_name = "OpenEphys Binary Recording"
+    associated_suffixes = (".dat", ".oebin", ".npy")
+    info = "Interface for converting binary OpenEphys recording data."
+
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
@@ -61,7 +65,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         folder_path: FolderPathType
-            Path to OpenEphys directory.
+            Path to directory containing OpenEphys binary files.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
             Call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.

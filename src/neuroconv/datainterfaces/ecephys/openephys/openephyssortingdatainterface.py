@@ -5,13 +5,19 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting OpenEphys spiking data."""
 
+    display_name = "OpenEphys Sorting"
+    associated_suffixes = (".spikes",)
+    info = "Interface for converting legacy OpenEphys sorting data."
+
     @classmethod
     def get_source_schema(cls) -> dict:
         """Compile input schema for the SortingExtractor."""
         metadata_schema = get_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id"]
         )
-        metadata_schema["properties"]["folder_path"].update(description="Path to directory containing OpenEphys files.")
+        metadata_schema["properties"]["folder_path"].update(
+            description="Path to directory containing OpenEphys .spikes files."
+        )
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 

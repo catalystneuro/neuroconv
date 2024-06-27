@@ -11,13 +11,16 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Blackrock data using a
     :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
-    help = "Interface for Blackrock recording data."
     display_name = "Blackrock Recording"
+    associated_suffixes = (".ns0", ".ns1", ".ns2", ".ns3", ".ns4", ".ns5")
+    info = "Interface for Blackrock recording data."
 
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
-        source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
+        source_schema["properties"]["file_path"][
+            "description"
+        ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
 
     def __init__(
@@ -33,7 +36,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         file_path : FilePathType
-            The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
+            Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
@@ -67,11 +70,15 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
 
+    display_name = "Blackrock Sorting"
+    associated_suffixes = (".nev",)
+    info = "Interface for Blackrock sorting data."
+
     @classmethod
     def get_source_schema(cls) -> dict:
         metadata_schema = get_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
-        metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
+        metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
     def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):

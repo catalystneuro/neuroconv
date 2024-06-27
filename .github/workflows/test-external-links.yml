@@ -16,8 +16,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install package for API docs
-        run: pip install -e .[docs]
+        run: pip install .[docs]
       - name: Test External Links
         run: sphinx-build -b linkcheck ./docs ./docs/_build/

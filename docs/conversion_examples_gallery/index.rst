@@ -93,6 +93,7 @@ Behavior
     DeepLabCut <behavior/deeplabcut>
     FicTrac <behavior/fictrac>
     LightningPose <behavior/lightningpose>
+    Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
 

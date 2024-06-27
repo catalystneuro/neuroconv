@@ -13,7 +13,7 @@ Convert Blackrock sorting data to NWB using
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import BlackrockSortingInterface
     >>>
@@ -25,7 +25,7 @@ Convert Blackrock sorting data to NWB using
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
-    >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}" # This should be something like: "./saved_file.nwb"

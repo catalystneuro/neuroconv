@@ -13,7 +13,7 @@ Convert Neuralynx data to NWB using
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>>
     >>> from neuroconv.datainterfaces import NeuralynxSortingInterface
@@ -23,7 +23,7 @@ Convert Neuralynx data to NWB using
     >>> interface = NeuralynxSortingInterface(folder_path=folder_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific")).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./neuralynx_conversion.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

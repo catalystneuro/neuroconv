@@ -14,7 +14,7 @@ Convert Bruker TIFF imaging data to NWB using
 
 .. code-block:: python
 
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.converters import BrukerTiffSinglePlaneConverter
     >>>
     >>> # The 'folder_path' is the path to the folder containing the OME-TIF image files and the XML configuration file.
@@ -24,7 +24,7 @@ Convert Bruker TIFF imaging data to NWB using
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = tz.gettz("US/Pacific")
+    >>> tzinfo = ZoneInfo("US/Pacific")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
@@ -41,7 +41,7 @@ Use "contiguous" to create the volumetric two photon series, and "disjoint" to c
 
 .. code-block:: python
 
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.converters import BrukerTiffMultiPlaneConverter
     >>>
     >>> # The 'folder_path' is the path to the folder containing the OME-TIF image files and the XML configuration file.
@@ -51,7 +51,7 @@ Use "contiguous" to create the volumetric two photon series, and "disjoint" to c
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = tz.gettz("US/Pacific")
+    >>> tzinfo = ZoneInfo("US/Pacific")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion

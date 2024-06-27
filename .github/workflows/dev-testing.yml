@@ -23,9 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
@@ -36,15 +35,11 @@ jobs:
       - name: Global Setup
         run: |
           python -m pip install -U pip  # Official recommended way
-          pip install pytest-xdist
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-          pip install wheel # Needed for scan image
 
-
-
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install --no-cache-dir -e .[full,test]
+      - name: Install full requirements
+        run: pip install --no-cache-dir .[full,test]
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
@@ -52,16 +47,19 @@ jobs:
         run: pip install --no-cache-dir git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
         run: pip install --no-cache-dir git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+      - name: Dev gallery - ProbeInterface
+        run: pip install --no-cache-dir git+https://github.com/spikeinterface/probeinterface@main
       - name: Dev gallery - SpikeInterface
-        run: pip install --no-cache-dir git+https://github.com/spikeinterface/spikeinterface@main
+        run: pip install --no-cache-dir "spikeinterface[test_core] @ git+https://github.com/spikeinterface/spikeinterface@main"
       - name: Dev gallery - NEO
         run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
         run: pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf@dev
+      - name: Dev gallery - HDMF-ZARR
+        run : pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
       - name: Display installed packages and their sources
         run: |
-          conda list
           pip list
 
       - name: Get ephy_testing_data current head hash
@@ -72,7 +70,7 @@ jobs:
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ephys-datasets-2023-06-26-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-2024-03-27-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"

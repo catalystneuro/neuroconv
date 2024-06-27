@@ -1,4 +1,3 @@
-from datetime import time
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -54,10 +53,18 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
     display_name = "DeepLabCut"
-
-    keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
+    keywords = ("DLC",)
+    associated_suffixes = (".h5",)
+    info = "Interface for handling data from DeepLabCut."
 
     _timestamps = None
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .h5 file output by dlc."
+        source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file"
+        return source_schema
 
     def __init__(
         self,
@@ -116,7 +123,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        timestamps : list, np.ndarray
+        aligned_timestamps : list, np.ndarray
             alternative timestamps vector.
         """
 

@@ -12,9 +12,18 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class BrukerTiffMultiPlaneConverter(NWBConverter):
+    display_name = "Bruker TIFF Imaging (multiple channels, multiple planes)"
+    keywords = BrukerTiffMultiPlaneImagingInterface.keywords
+    associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
+    info = "Interface for handling all channels and all planes of Bruker imaging data."
+
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls)
+        source_schema = get_schema_from_method_signature(cls)
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
+        return source_schema
 
     def get_conversion_options_schema(self):
         interface_name = list(self.data_interface_objects.keys())[0]
@@ -28,6 +37,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
     ):
         """
         Initializes the data interfaces for Bruker volumetric imaging data stream.
+
         Parameters
         ----------
         folder_path : PathType
@@ -112,6 +122,11 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
 
 class BrukerTiffSinglePlaneConverter(NWBConverter):
+    display_name = "Bruker TIFF Imaging (multiple channels, single plane)"
+    keywords = BrukerTiffMultiPlaneImagingInterface.keywords
+    associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
+    info = "Interface for handling multiple channels of a single plane of Bruker imaging data."
+
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)
@@ -127,6 +142,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
     ):
         """
         Initializes the data interfaces for Bruker imaging data stream.
+
         Parameters
         ----------
         folder_path : PathType

@@ -60,10 +60,7 @@ from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import (
     SpikeGadgetsRecordingInterface,
 )
-from .ecephys.spikeglx.spikeglxdatainterface import (
-    SpikeGLXLFPInterface,
-    SpikeGLXRecordingInterface,
-)
+from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
@@ -84,7 +81,10 @@ from .ophys.micromanagertiff.micromanagertiffdatainterface import (
 )
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
-from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
+from .ophys.scanimage.scanimageimaginginterfaces import (
+    ScanImageImagingInterface,
+    ScanImageMultiFileImagingInterface,
+)
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
@@ -102,7 +102,6 @@ interface_list = [
     NeuroScopeLFPInterface,
     Spike2RecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
@@ -142,6 +141,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    ScanImageMultiFileImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,

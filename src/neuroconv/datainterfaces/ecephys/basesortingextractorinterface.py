@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import List, Literal, Optional, Union
 
 import numpy as np
@@ -13,7 +14,7 @@ from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 class BaseSortingExtractorInterface(BaseExtractorInterface):
     """Primary class for all SortingExtractor interfaces."""
 
-    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "spike sorting"]
+    keywords = ("extracellular electrophysiology", "spike sorting")
 
     ExtractorModuleName = "spikeinterface.extractors"
 
@@ -31,26 +32,26 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = []
         metadata_schema["properties"]["Ecephys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}),
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ecephys/definitions/Device"}),
             ElectrodeGroup=dict(
-                type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
+                type="array", minItems=1, items={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroup"}
             ),
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
-                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"},
+                items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
             ),
             UnitProperties=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
-                items={"$ref": "#/properties/Ecephys/properties/definitions/UnitProperties"},
+                items={"$ref": "#/properties/Ecephys/definitions/UnitProperties"},
             ),
         )
 
         # Schema definition for arrays
-        metadata_schema["properties"]["Ecephys"]["properties"]["definitions"] = dict(
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             Electrodes=dict(
@@ -172,13 +173,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
             else:
                 self.set_aligned_segment_timestamps(
-                    aligned_timestamps=[
-                        segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
-                    ]
+                    [segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()]
                 )
         else:
             for sorting_segment in self.sorting_extractor._sorting_segments:
-                sorting_segment._t_start += aligned_starting_time
+                if sorting_segment._t_start is None:
+                    sorting_segment._t_start = aligned_starting_time
+                else:
+                    sorting_segment._t_start += aligned_starting_time
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
         """
@@ -309,8 +311,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """
         from ...tools.spikeinterface import add_sorting
 
+        metadata_copy = deepcopy(metadata)
         if write_ecephys_metadata:
-            self.add_channel_metadata_to_nwb(nwbfile=nwbfile, metadata=metadata)
+            self.add_channel_metadata_to_nwb(nwbfile=nwbfile, metadata=metadata_copy)
 
         if stub_test:
             sorting_extractor = self.subset_sorting()
@@ -318,7 +321,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             sorting_extractor = self.sorting_extractor
 
         property_descriptions = dict()
-        for metadata_column in metadata["Ecephys"].get("UnitProperties", []):
+        for metadata_column in metadata_copy["Ecephys"].get("UnitProperties", []):
             property_descriptions.update({metadata_column["name"]: metadata_column["description"]})
             for unit_id in sorting_extractor.get_unit_ids():
                 # Special condition for wrapping electrode group pointers to actual object ids rather than string names

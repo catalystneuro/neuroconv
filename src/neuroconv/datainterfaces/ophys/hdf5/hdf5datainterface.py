@@ -1,3 +1,5 @@
+from typing import Literal
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType, FilePathType
 
@@ -5,8 +7,9 @@ from ....utils import ArrayType, FilePathType
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     """Interface for HDF5 imaging data."""
 
-    help = "Interface for HDF5 imaging data."
     display_name = "HDF5 Imaging"
+    associated_suffixes = (".h5", ".hdf5")
+    info = "Interface for HDF5 imaging data."
 
     def __init__(
         self,
@@ -17,6 +20,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         metadata: dict = None,
         channel_names: ArrayType = None,
         verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
 
@@ -39,4 +43,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             metadata=metadata,
             channel_names=channel_names,
             verbose=verbose,
+            photon_series_type=photon_series_type,
         )

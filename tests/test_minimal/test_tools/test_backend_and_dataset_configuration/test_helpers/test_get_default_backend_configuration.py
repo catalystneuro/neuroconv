@@ -96,20 +96,20 @@ def test_complex_hdf5(hdf5_nwbfile_path):
         print(backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the hdf5 backend
--------------------------------------------------------
+HDF5 dataset configurations
+---------------------------
 
 epochs/start_time/data
 ----------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40 B
 
   compression method : gzip
 
@@ -118,13 +118,13 @@ epochs/stop_time/data
 ---------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40 B
 
   compression method : gzip
 
@@ -133,13 +133,13 @@ acquisition/NewRawTimeSeries/data
 ---------------------------------
   dtype : int32
   full shape of source array : (2, 3)
-  full size of source array : 0.00 GB
+  full size of source array : 24 B
 
   buffer shape : (2, 3)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 24 B
 
   chunk shape : (2, 3)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 24 B
 
   compression method : gzip
 
@@ -148,13 +148,13 @@ processing/ecephys/NewProcessedTimeSeries/data
 ----------------------------------------------
   dtype : float64
   full shape of source array : (4, 2)
-  full size of source array : 0.00 GB
+  full size of source array : 64 B
 
   buffer shape : (4, 2)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 64 B
 
   chunk shape : (4, 2)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 64 B
 
   compression method : gzip
 
@@ -198,20 +198,20 @@ def test_complex_zarr(zarr_nwbfile_path):
         print(backend_configuration)
 
     expected_print = """
-Configurable datasets identified using the zarr backend
--------------------------------------------------------
+Zarr dataset configurations
+---------------------------
 
 epochs/start_time/data
 ----------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40 B
 
   compression method : gzip
 
@@ -220,13 +220,13 @@ epochs/stop_time/data
 ---------------------
   dtype : float64
   full shape of source array : (5,)
-  full size of source array : 0.00 GB
+  full size of source array : 40 B
 
   buffer shape : (5,)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 40 B
 
   chunk shape : (5,)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 40 B
 
   compression method : gzip
 
@@ -235,13 +235,13 @@ acquisition/NewRawTimeSeries/data
 ---------------------------------
   dtype : int32
   full shape of source array : (2, 3)
-  full size of source array : 0.00 GB
+  full size of source array : 24 B
 
   buffer shape : (2, 3)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 24 B
 
   chunk shape : (2, 3)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 24 B
 
   compression method : gzip
 
@@ -250,13 +250,13 @@ processing/ecephys/NewProcessedTimeSeries/data
 ----------------------------------------------
   dtype : float64
   full shape of source array : (4, 2)
-  full size of source array : 0.00 GB
+  full size of source array : 64 B
 
   buffer shape : (4, 2)
-  expected RAM usage : 0.00 GB
+  expected RAM usage : 64 B
 
   chunk shape : (4, 2)
-  disk space usage per chunk : 0.00 MB
+  disk space usage per chunk : 64 B
 
   compression method : gzip
 

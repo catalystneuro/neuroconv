@@ -10,9 +10,19 @@ from ....utils import FolderPathType
 class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     """Abstract class that defines which interface class to use for a given Open Ephys recording."""
 
-    ExtractorName = "OpenEphysBinaryRecordingExtractor"
-    help = "Interface for OpenEphys recording data."
     display_name = "OpenEphys Recording"
+    associated_suffixes = (".dat", ".oebin", ".npy")
+    info = "Interface for converting any OpenEphys recording data."
+
+    ExtractorName = "OpenEphysBinaryRecordingExtractor"
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to OpenEphys directory (.continuous or .dat files)."
+        return source_schema
 
     def __new__(
         cls,

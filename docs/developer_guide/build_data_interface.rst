@@ -8,7 +8,7 @@ subclass based on the predefined base classes provided in the
 `NeuroConv <https://github.com/catalystneuro/neuroconv>`_ package.
 
 To enable standardization among subclasses, the :code:`BaseDataInterface` is an abstract base class which require a new
-subclass to **override all methods which are decorated with @abstractmethod**. The :code:`BaseDataInterface` class has several abstract methods: :code:`get_source_schema()`, :code:`get_metadata_schema()`, :code:`get_metadata()`, and most importantly :code:`run_conversion()`. So all you need to do is create a class that inherits from :code:`:code:`BaseDataInterface`` and implements these two methods.
+subclass to **override all methods which are decorated with @abstractmethod**. The :code:`BaseDataInterface` class has several abstract methods: :code:`get_source_schema()`, :code:`get_metadata_schema()`, :code:`get_metadata()`, and most importantly :code:`add_to_newfile()`. So all you need to do is create a class that inherits from :code:`:code:`BaseDataInterface`` and implements these two methods.
 
 Along with these two methods, you can also optionally override the :code:`__init__()` function as needed to instantiate additional data.
 
