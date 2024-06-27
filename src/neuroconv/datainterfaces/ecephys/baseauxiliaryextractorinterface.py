@@ -1,4 +1,5 @@
 """Base class for all auxiliary channels, e.g., analog signals, digital pulses, etc."""
+
 from typing import List
 
 import numpy as np

@@ -1,4 +1,5 @@
 """Primary data interface for converting the NIDQ streams from SpikeGLX format."""
+
 from pathlib import Path
 
 from .spikeglx_utils import get_device_metadata, get_session_start_time

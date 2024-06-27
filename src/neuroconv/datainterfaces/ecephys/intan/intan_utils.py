@@ -1,4 +1,5 @@
 """Common utility functions for the Intan format."""
+
 from pathlib import Path
 
 from ....tools import get_package

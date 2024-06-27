@@ -1,4 +1,5 @@
 """Interface for converting and parsing data in auxiliary or digital channels from the intan .rhd or .rhs file."""
+
 from pathlib import Path
 from typing import Literal
 
