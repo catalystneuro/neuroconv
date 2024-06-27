@@ -3,10 +3,10 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 from platform import python_version as get_python_version
-from sys import platform
 from tempfile import mkdtemp
 from warnings import warn
 
+import jsonschema
 import numpy as np
 import pytest
 from hdmf.testing import TestCase
@@ -15,7 +15,7 @@ from pynwb import NWBHDF5IO
 from spikeinterface.extractors import NumpySorting
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import CEDRecordingInterface
+from neuroconv.datainterfaces import Spike2RecordingInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
@@ -41,34 +41,30 @@ class TestRecordingInterface(TestCase):
         metadata = interface.get_metadata()
         interface.run_conversion(stub_test=True, metadata=metadata)
 
+    def test_no_slash_in_name(self):
+        interface = self.single_segment_recording_interface
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
+        with self.assertRaises(jsonschema.exceptions.ValidationError):
+            interface.validate_metadata(metadata)
+
 
 class TestAssertions(TestCase):
-    @pytest.mark.skipif(
-        platform != "darwin" or python_version >= Version("3.8"),
-        reason="Only testing on MacOSX with Python 3.7!",
-    )
-    def test_ced_import_assertions_python_3_7(self):
-        with self.assertRaisesWith(
-            exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available on the darwin platform for Python version 3.7!",
-        ):
-            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
-
     @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
-    def test_ced_import_assertions_3_10(self):
+    def test_spike2_import_assertions_3_10(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.10!",
         ):
-            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+            Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
     @pytest.mark.skipif(python_version.minor != 11, reason="Only testing with Python 3.11!")
-    def test_ced_import_assertions_3_11(self):
+    def test_spike2_import_assertions_3_11(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
         ):
-            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+            Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
 
 class TestSortingInterface(unittest.TestCase):
@@ -77,6 +73,7 @@ class TestSortingInterface(unittest.TestCase):
         cls.test_dir = Path(mkdtemp())
         cls.sorting_start_frames = [100, 200, 300]
         cls.num_frames = 1000
+        cls.sampling_frequency = 3000.0
         times = np.array([], dtype="int")
         labels = np.array([], dtype="int")
         for i, start_frame in enumerate(cls.sorting_start_frames):
@@ -84,7 +81,7 @@ class TestSortingInterface(unittest.TestCase):
             labels_i = (i + 1) * np.ones_like(times_i, dtype="int")
             times = np.concatenate((times, times_i))
             labels = np.concatenate((labels, labels_i))
-        sorting = NumpySorting.from_times_labels(times, labels, sampling_frequency=3000.0)
+        sorting = NumpySorting.from_times_labels(times, labels, sampling_frequency=cls.sampling_frequency)
 
         class TestSortingInterface(BaseSortingExtractorInterface):
             ExtractorName = "NumpySorting"
@@ -120,6 +117,30 @@ class TestSortingInterface(unittest.TestCase):
             start_frame_max = np.max(self.sorting_start_frames)
             for i, start_times in enumerate(self.sorting_start_frames):
                 assert len(nwbfile.units["spike_times"][i]) == (start_frame_max * 1.1) - start_times
+
+    def test_sorting_stub_with_recording(self):
+        subset_end_frame = int(np.max(self.sorting_start_frames) * 1.1 - 1)
+        sorting_interface = self.test_sorting_interface.data_interface_objects["TestSortingInterface"]
+        sorting_interface.sorting_extractor = sorting_interface.sorting_extractor.frame_slice(
+            start_frame=0, end_frame=subset_end_frame
+        )
+        recording_interface = MockRecordingInterface(
+            durations=[subset_end_frame / self.sampling_frequency],
+            sampling_frequency=self.sampling_frequency,
+        )
+        sorting_interface.register_recording(recording_interface)
+
+        minimal_nwbfile = self.test_dir / "stub_temp_recording.nwb"
+        conversion_options = dict(TestSortingInterface=dict(stub_test=True))
+        metadata = self.test_sorting_interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        self.test_sorting_interface.run_conversion(
+            nwbfile_path=minimal_nwbfile, metadata=metadata, conversion_options=conversion_options
+        )
+        with NWBHDF5IO(minimal_nwbfile, "r") as io:
+            nwbfile = io.read()
+            for i, start_times in enumerate(self.sorting_start_frames):
+                assert len(nwbfile.units["spike_times"][i]) == subset_end_frame - start_times
 
     def test_sorting_full(self):
         minimal_nwbfile = self.test_dir / "temp.nwb"

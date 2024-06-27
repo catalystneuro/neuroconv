@@ -13,12 +13,24 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
+    display_name = "Neuralynx Recording"
+    associated_suffixes = (".ncs", ".nse", ".ntt", ".nse", ".nev")
+    info = "Interface for Neuralynx recording data."
+
     @classmethod
     def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
+        return source_schema
 
     def __init__(
         self,
@@ -33,7 +45,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         folder_path: FolderPathType
-            Path to OpenEphys directory.
+            Path to Neuralynx directory.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
             Call `NeuralynxRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
@@ -82,6 +94,10 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    display_name = "Neuralynx Sorting"
+    associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
+    info = "Interface for Neuralynx sorting data."
+
     def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
         """_summary_
 
@@ -118,7 +134,7 @@ def extract_neo_header_metadata(neo_reader) -> dict:
     # check if neuralynx file header objects are present and use these metadata extraction
     if hasattr(neo_reader, "file_headers"):
         # use only ncs files as only continuous signals are extracted
-        # note that in the neo io the order of file headers is be the same as for channels
+        # note that in the neo io the order of file headers is the same as for channels
         headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith(".ncs")]
 
     # use metadata provided as array_annotations for each channel (neo version <=0.11.0)

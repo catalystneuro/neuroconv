@@ -7,13 +7,15 @@ from ....utils import FolderPathType
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for MicroManagerTiffImagingExtractor."""
 
+    display_name = "Micro-Manager TIFF Imaging"
+    associated_suffixes = (".ome", ".tif", ".json")
+    info = "Interface for Micro-Manager TIFF imaging data."
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
 
-        source_schema["properties"]["folder_path"][
-            "description"
-        ] = "The path that points to the folder containing the OME-TIF image files."
+        source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
         return source_schema
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):

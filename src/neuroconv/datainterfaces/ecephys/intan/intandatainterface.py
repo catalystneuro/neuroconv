@@ -1,47 +1,28 @@
-from pathlib import Path
+import warnings
+from typing import Optional
 
+from packaging.version import Version
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....tools import get_package
+from ....tools import get_package, get_package_version
 from ....utils import FilePathType, get_schema_from_hdmf_class
 
 
-def extract_electrode_metadata_with_pyintan(file_path) -> dict:
-    pyintan = get_package(package_name="pyintan")
-
-    if ".rhd" in Path(file_path).suffixes:
-        intan_file_metadata = pyintan.intan.read_rhd(file_path)[1]
-    else:
-        intan_file_metadata = pyintan.intan.read_rhs(file_path)[1]
-
-    exclude_chan_types = ["AUX", "ADC", "VDD", "_STIM", "ANALOG"]
-
-    valid_channels = [
-        x for x in intan_file_metadata if not any([y in x["native_channel_name"] for y in exclude_chan_types])
-    ]
-
-    group_names = [channel["native_channel_name"].split("-")[0] for channel in valid_channels]
-    unique_group_names = set(group_names)
-    group_electrode_numbers = [channel["native_order"] for channel in valid_channels]
-    custom_names = [channel["custom_channel_name"] for channel in valid_channels]
-
-    electrodes_metadata = dict(
-        group_names=group_names,
-        unique_group_names=unique_group_names,
-        group_electrode_numbers=group_electrode_numbers,
-        custom_names=custom_names,
-    )
-
-    return electrodes_metadata
-
-
 def extract_electrode_metadata(recording_extractor) -> dict:
-    channel_name_array = recording_extractor.get_property("channel_name")
 
-    group_names = [channel.split("-")[0] for channel in channel_name_array]
+    neo_version = get_package_version(name="neo")
+
+    # The native native_channel_name in Intan have the following form: A-000, A-001, A-002, B-000, B-001, B-002, etc.
+    if neo_version > Version("0.13.0"):  # TODO: Remove after the release of neo 0.14.0
+        native_channel_names = recording_extractor.get_channel_ids()
+    else:
+        # Previous to version 0.13.1 the native_channel_name was stored as channel_name
+        native_channel_names = recording_extractor.get_property("channel_name")
+
+    group_names = [channel.split("-")[0] for channel in native_channel_names]
     unique_group_names = set(group_names)
-    group_electrode_numbers = [int(channel.split("-")[1]) for channel in channel_name_array]
+    group_electrode_numbers = [int(channel.split("-")[1]) for channel in native_channel_names]
     custom_names = list()
 
     electrodes_metadata = dict(
@@ -55,15 +36,30 @@ def extract_electrode_metadata(recording_extractor) -> dict:
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting Intan data using the
-    :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`."""
+    """
+    Primary data interface class for converting Intan data using the
+
+    :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`.
+    """
+
+    display_name = "Intan Recording"
+    associated_suffixes = (".rhd", ".rhs")
+    info = "Interface for Intan recording data."
+    stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
+        return source_schema
 
     def __init__(
         self,
         file_path: FilePathType,
-        stream_id: str = "0",
+        stream_id: Optional[str] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
+        ignore_integrity_checks: bool = False,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
@@ -77,10 +73,33 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
             Verbose
         es_key : str, default: "ElectricalSeries"
+        ignore_integrity_checks, bool, default: False.
+            If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
+            check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
         """
 
-        self.stream_id = stream_id
-        super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
+        neo_version = get_package_version(name="neo")
+        spikeinterface_version = get_package_version(name="spikeinterface")
+
+        init_kwargs = dict(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
+        if neo_version >= Version("0.13.1") and spikeinterface_version >= Version("0.100.6"):
+            init_kwargs["ignore_integrity_checks"] = ignore_integrity_checks
+        else:
+            if ignore_integrity_checks:
+                warnings.warn(
+                    "The 'ignore_integrity_checks' parameter is not supported for neo versions < 0.13.1. "
+                    "or spikeinterface versions < 0.100.6.",
+                    UserWarning,
+                )
+
+        if stream_id is not None:
+            warnings.warn(
+                "Use of the 'stream_id' parameter is deprecated and it will be removed after September 2024.",
+                DeprecationWarning,
+            )
+            self.stream_id = stream_id
+
+        super().__init__(**init_kwargs)
         electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]

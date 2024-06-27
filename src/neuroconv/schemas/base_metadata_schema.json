@@ -94,7 +94,7 @@
         },
         "virus": {
           "type": "string",
-          "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+          "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."
         },
         "data_collection": {
           "type": "string",
@@ -102,7 +102,7 @@
         },
         "stimulus_notes": {
           "type": "string",
-          "description": "Notes about data collection and analysis."
+          "description": "Notes about stimuli, such as how and where presented."
         }
       }
     },
@@ -140,13 +140,15 @@
             "M",
             "F",
             "U",
-            "O"
+            "O",
+            "XX",
+            "XO"
           ]
         },
         "species": {
           "type": "string",
           "description": "Species of subject. Use latin name.",
-          "pattern": "^[A-Z][a-z]+ [a-z]+"
+          "pattern": "^[A-Z][a-z]+ [a-z]+|http://purl.obolibrary.org/obo/NCBITaxon_[0-9]+"
         },
         "subject_id": {
           "type": "string",

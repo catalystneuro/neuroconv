@@ -48,7 +48,7 @@ them together, call::
 
     metadata = converter.get_metadata()
 
-The metadata can then be manually modified with any additional user-input::
+The metadata can then be manually modified with any additional user-input, just like ``DataInterface`` objects::
 
     metadata["NWBFile"]["session_description"] = "NeuroConv tutorial."
     metadata["NWBFile"]["experimenter"] = "My name"
@@ -62,6 +62,3 @@ The final metadata dictionary should follow the form defined by
 Though this example was only for two data streams (recording and spike-sorted
 data), it can easily extend to any number of sources, including video of a
 subject, extracted position estimates, stimuli, or any other data source.
-
-The sections below describe source schema and metadata schema in more detail through
-another example for two data streams (ophys and ecephys data).

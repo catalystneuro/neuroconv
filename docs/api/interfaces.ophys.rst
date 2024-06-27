@@ -7,7 +7,7 @@ Base Imaging
 
 Bruker Tiff Imaging
 -------------------
-.. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffdatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffconverter
 
 HDF5 Imaging
 ------------
@@ -27,7 +27,7 @@ Sbx Imaging
 
 ScanImage Imaging
 -----------------
-.. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface
+.. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces
 
 Tiff Imaging
 ------------

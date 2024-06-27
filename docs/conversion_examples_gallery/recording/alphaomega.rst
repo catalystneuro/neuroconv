@@ -12,7 +12,7 @@ Convert AlphaOmega data to NWB using :py:class:`~neuroconv.datainterfaces.ecephy
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
     >>>

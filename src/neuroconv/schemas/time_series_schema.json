@@ -5,7 +5,8 @@
         "name": {
             "title": "Name",
             "description": "The name of this TimeSeries dataset.",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^/]*$"
         },
         "description": {
             "title": "Description",

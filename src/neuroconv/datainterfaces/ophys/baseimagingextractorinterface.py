@@ -1,4 +1,6 @@
 """Author: Ben Dichter."""
+
+import warnings
 from typing import Literal, Optional
 
 import numpy as np
@@ -8,6 +10,7 @@ from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
+    DeepDict,
     dict_deep_update,
     fill_defaults,
     get_base_schema,
@@ -18,35 +21,59 @@ from ...utils import (
 class BaseImagingExtractorInterface(BaseExtractorInterface):
     """Parent class for all ImagingExtractorInterfaces."""
 
+    keywords = (
+        "ophys",
+        "optical electrophysiology",
+        "fluorescence",
+        "microscopy",
+        "two photon",
+        "one photon",
+        "voltage imaging",
+        "calcium imaging",
+    )
+
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, verbose: bool = True, **source_data):
+    def __init__(
+        self,
+        verbose: bool = True,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        **source_data,
+    ):
         super().__init__(**source_data)
         self.imaging_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
+        self.photon_series_type = photon_series_type
 
     def get_metadata_schema(
-        self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries"
+        self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None
     ) -> dict:
+
+        if photon_series_type is not None:
+            warnings.warn(
+                "The 'photon_series_type' argument is deprecated and will be removed in a future version. "
+                "Please set 'photon_series_type' during the initialization of the BaseImagingExtractorInterface instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.photon_series_type = photon_series_type
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
 
         # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", photon_series_type]
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", self.photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/Device"}),
-            ImagingPlane=dict(
-                type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/ImagingPlane"}
-            ),
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
+            ImagingPlane=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}),
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             {
-                photon_series_type: dict(
+                self.photon_series_type: dict(
                     type="array",
                     minItems=1,
-                    items={"$ref": f"#/properties/Ophys/properties/definitions/{photon_series_type}"},
+                    items={"$ref": f"#/properties/Ophys/definitions/{self.photon_series_type}"},
                 ),
             }
         )
@@ -55,28 +82,40 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
         imaging_plane_schema["properties"]["optical_channel"].pop("maxItems")
-        metadata_schema["properties"]["Ophys"]["properties"]["definitions"] = dict(
+        metadata_schema["properties"]["Ophys"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=imaging_plane_schema,
         )
         photon_series = dict(
             OnePhotonSeries=OnePhotonSeries,
             TwoPhotonSeries=TwoPhotonSeries,
-        )[photon_series_type]
-        metadata_schema["properties"]["Ophys"]["properties"]["definitions"].update(
+        )[self.photon_series_type]
+        metadata_schema["properties"]["Ophys"]["definitions"].update(
             {
-                photon_series_type: get_schema_from_hdmf_class(photon_series),
+                self.photon_series_type: get_schema_from_hdmf_class(photon_series),
             }
         )
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(
+        self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None
+    ) -> DeepDict:
+
+        if photon_series_type is not None:
+            warnings.warn(
+                "The 'photon_series_type' argument is deprecated and will be removed in a future version. "
+                "Please set 'photon_series_type' during the initialization of the BaseImagingExtractorInterface instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.photon_series_type = photon_series_type
+
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
+        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
         metadata = dict_deep_update(default_metadata, metadata)
 
         # fix troublesome data types
@@ -103,6 +142,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+        photon_series_index: int = 0,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
@@ -119,4 +160,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+            parent_container=parent_container,
         )

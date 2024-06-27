@@ -1,6 +1,5 @@
 from pathlib import Path
-from typing import List, Literal, Optional, Union
-from warnings import warn
+from typing import Literal, Optional
 
 import numpy as np
 import scipy
@@ -282,10 +281,29 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     The extraction of channel metadata is described in the function: `add_channel_metadata_to_recoder`
     """
 
+    display_name = "CellExplorer Recording"
+    associated_suffixes = (".dat", ".session", ".sessionInfo", ".mat")
+    info = "Interface for CellExplorer recording data."
+
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
+        return source_schema
+
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+        """
+
+        Parameters
+        ----------
+        folder_path: str
+            Folder containing the .session.mat file.
+        verbose: bool, default=True
+        es_key: str, default="ElectricalSeries"
+        """
         self.session_path = Path(folder_path)
 
         # No super here, we need to do everything by hand
@@ -343,12 +361,15 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):
-    keywords = BaseRecordingExtractorInterface.keywords + [
+    display_name = "CellExplorer LFP"
+    keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",
         "LFP",
         "local field potential",
         "LF",
-    ]
+    )
+    associated_suffixes = (".lfp", ".session", ".mat")
+    info = "Interface for CellExplorer LFP recording data."
 
     sampling_frequency_key = "srLfp"
     binary_file_extension = "lfp"
@@ -386,6 +407,10 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
+    display_name = "CellExplorer Sorting"
+    associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
+    info = "Interface for CellExplorer sorting data."
+
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
         Initialize read of Cell Explorer file.
@@ -421,7 +446,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "extracellular" in session_data.keys():
                 sampling_frequency = session_data["extracellular"].get("sr", None)
 
-        super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 

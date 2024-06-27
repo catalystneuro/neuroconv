@@ -8,13 +8,13 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
     pip install neuroconv[miniscope]
 
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
-The :py:class:`~neuroconv.converters.MiniscopeConverter` combines the two data streams
+The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` combines the two data streams
 into a single conversion.
 
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.converters import MiniscopeConverter
     >>>
@@ -25,7 +25,7 @@ into a single conversion.
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = tz.gettz("US/Pacific")
+    >>> tzinfo = ZoneInfo("US/Pacific")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion

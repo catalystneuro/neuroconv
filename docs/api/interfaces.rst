@@ -1,5 +1,5 @@
 Interfaces
-============
+==========
 
 .. toctree::
     :maxdepth: 4
@@ -8,3 +8,4 @@ Interfaces
     interfaces.icephys
     interfaces.ophys
     interfaces.behavior
+    interfaces.text

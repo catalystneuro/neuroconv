@@ -1,3 +1,4 @@
+import math
 import os
 import tempfile
 import unittest
@@ -162,7 +163,7 @@ class TestVideoInterface(unittest.TestCase):
     def test_frame_shape_big(self):
         frame_shape = (800, 600, 3)
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
-        num_frames_chunk = int(1e6 // np.prod(frame_shape))
+        num_frames_chunk = 6
         num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
         it = H5DataIO(VideoDataChunkIterator(video_file), compression="gzip")
         img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
@@ -172,14 +173,12 @@ class TestVideoInterface(unittest.TestCase):
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             expected_chunk_shape = (num_frames_chunk,) + frame_shape
-            assert all(
-                [nwbfile.acquisition["imageseries"].data.chunks[i] == j for i, j in enumerate(expected_chunk_shape)]
-            )
+            assert nwbfile.acquisition["imageseries"].data.chunks == expected_chunk_shape
 
     def test_frame_shape_small(self):
         frame_shape = (400, 300, 3)
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
-        num_frames_chunk = int(1e6 // np.prod(frame_shape))
+        num_frames_chunk = 27
         num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
         it = H5DataIO(VideoDataChunkIterator(video_file), compression="gzip")
         img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
@@ -189,9 +188,7 @@ class TestVideoInterface(unittest.TestCase):
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             expected_chunk_shape = (num_frames_chunk,) + frame_shape
-            assert all(
-                [nwbfile.acquisition["imageseries"].data.chunks[i] == j for i, j in enumerate(expected_chunk_shape)]
-            )
+            assert nwbfile.acquisition["imageseries"].data.chunks == expected_chunk_shape
 
     def test_custom_chunk_shape(self):
         custom_frame_shape = (1, 100, 100, 3)
@@ -208,7 +205,7 @@ class TestVideoInterface(unittest.TestCase):
             )
 
     def test_small_buffer_size(self):
-        frame_size_mb = np.prod(self.frame_shape) / 1e6
+        frame_size_mb = math.prod(self.frame_shape) / 1e6
         buffer_size = frame_size_mb / 1e3 / 2
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
         with self.assertRaises(AssertionError):

@@ -1,4 +1,5 @@
 """Abstract class defining the structure of all Extractor-based Interfaces."""
+
 from abc import ABC
 from typing import Optional
 

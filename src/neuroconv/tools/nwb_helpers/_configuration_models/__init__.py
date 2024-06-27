@@ -1,0 +1,4 @@
+from ._hdf5_dataset_io import HDF5DatasetIOConfiguration
+from ._zarr_dataset_io import ZarrDatasetIOConfiguration
+
+DATASET_IO_CONFIGURATIONS = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)

@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import List
 from warnings import warn
 
@@ -23,6 +24,12 @@ def get_start_datetime(neo_reader):
 
 
 class AbfInterface(BaseIcephysInterface):
+    """Interface for ABF intracellular electrophysiology data."""
+
+    display_name = "ABF Icephys"
+    associated_suffixes = (".abf",)
+    info = "Interface for ABF intracellular electrophysiology data."
+
     ExtractorName = "AxonIO"
 
     @classmethod
@@ -102,10 +109,9 @@ class AbfInterface(BaseIcephysInterface):
         iii = 0
         for ir, reader in enumerate(self.readers_list):
             # Get extra info from metafile, if present
-            abf_file_name = reader.filename.split("/")[-1]
-            item = [s for s in icephys_sessions if s.get("abf_file_name", "") == abf_file_name]
+            abf_file_name = Path(reader.filename).name
+            item = [s for s in icephys_sessions if Path(s.get("abf_file_name", "")).name == abf_file_name]
             extra_info = item[0] if len(item) > 0 else dict()
-
             abfDateTime = get_start_datetime(neo_reader=reader)
 
             # Calculate session start time relative to first abf file (first session), in seconds
@@ -164,6 +170,7 @@ class AbfInterface(BaseIcephysInterface):
             The relative starting times of each video.
             Outer list is over file paths (readers).
             Inner list is over segments of each recording.
+        stub_test : bool, default=False
         """
         number_of_files_from_starting_times = len(aligned_segment_starting_times)
         assert number_of_files_from_starting_times == len(self.readers_list), (

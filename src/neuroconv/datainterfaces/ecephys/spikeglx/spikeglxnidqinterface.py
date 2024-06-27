@@ -9,6 +9,11 @@ from ....utils import FilePathType, get_schema_from_method_signature
 class SpikeGLXNIDQInterface(BaseAuxiliaryExtractorInterface):
     """Primary data interface for converting the NIDQ streams from SpikeGLX format."""
 
+    display_name = "NIDQ Recording"
+    keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
+    associated_suffixes = (".nidq", ".meta", ".bin")
+    info = "Interface for NIDQ board recording data."
+
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod

@@ -1,11 +1,11 @@
 import itertools
+import os
 import unittest
 from datetime import datetime
-from platform import python_version, system
+from platform import system
 
 import pytest
 from jsonschema.validators import Draft7Validator
-from packaging import version
 from parameterized import param, parameterized
 from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
@@ -17,7 +17,6 @@ from neuroconv.datainterfaces import (
     AxonaRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
-    CEDRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
     MaxOneRecordingInterface,
@@ -71,7 +70,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         ),
         param(
             data_interface=TdtRecordingInterface,
-            interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05")),
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=1.0),
             case_name="multi_segment",
         ),
         param(
@@ -135,20 +134,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
             ),
-            case_name=f"openephyslegacy",
+            case_name="openephyslegacy",
         ),
     ]
 
-    this_python_version = version.parse(python_version())
-    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
-        parameterized_recording_list.append(
-            param(
-                data_interface=CEDRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-                case_name="smrx",
-            )
-        )
-    if system() == "Linux":
+    if system() == "Linux" and "CI" not in os.environ:
         parameterized_recording_list.append(
             param(
                 data_interface=MaxOneRecordingInterface,
@@ -188,16 +178,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         ]
     )
 
-    this_python_version = version.parse(python_version())
-    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
-        parameterized_recording_list.append(
-            param(
-                data_interface=CEDRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-                case_name="smrx",
-            )
-        )
-
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
@@ -208,6 +188,23 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 case_name=suffix,
             )
         )
+
+    # Intan multiple files format
+    parameterized_recording_list.append(
+        param(
+            data_interface=IntanRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / "intan_fpc_test_231117_052630/info.rhd")),
+            case_name="one-file-per-channel",
+        )
+    )
+
+    parameterized_recording_list.append(
+        param(
+            data_interface=IntanRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / "intan_fps_test_231117_052500/info.rhd")),
+            case_name="one-file-per-signal",
+        )
+    )
 
     file_name_list = ["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"]
     num_channels_list = [512, 128]
@@ -256,6 +253,17 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
+        # Read NWB file
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            electrodes = nwbfile.electrodes
+            electrodes_columns = electrodes.colnames
+
+            assert "offset_to_uV" not in electrodes_columns
+            assert "grain_to_uV" not in electrodes_columns
+
         es_key = converter.data_interface_objects["TestRecording"].es_key
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
@@ -264,7 +272,9 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segment.
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
+            nwb_recording = NwbRecordingExtractor(
+                file_path=nwbfile_path, electrical_series_name=electrical_series_name, use_pynwb=True
+            )
             if "channel_name" in recording.get_property_keys():
                 renamed_channel_ids = recording.get_property("channel_name")
             else:

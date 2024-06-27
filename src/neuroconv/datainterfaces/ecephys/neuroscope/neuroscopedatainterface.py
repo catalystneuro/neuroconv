@@ -97,6 +97,16 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
     :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
+    display_name = "NeuroScope Recording"
+    associated_suffixes = (".dat", ".xml")
+    info = "Interface for converting NeuroScope recording data."
+
+    @classmethod
+    def get_source_schema(self) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to .dat file."
+        return source_schema
+
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
         """Auto-populates ecephys metadata from the xml_file_path."""
@@ -178,7 +188,17 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
+    display_name = "NeuroScope LFP"
+    associated_suffixes = (".lfp", ".eeg", ".xml")
+    info = "Interface for converting NeuroScope LFP data."
+
     ExtractorName = "NeuroScopeRecordingExtractor"
+
+    @classmethod
+    def get_source_schema(self) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to .lfp or .eeg file."
+        return source_schema
 
     def __init__(
         self,
@@ -192,7 +212,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         Parameters
         ----------
         file_path : FilePathType
-            Path to .dat file.
+            Path to .lfp or .eeg file.
         gain : float, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
@@ -228,6 +248,23 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
 
+    display_name = "NeuroScope Sorting"
+    associated_suffixes = (".res", ".clu", ".res.*", ".clu.*", ".xml")
+    info = "Interface for converting NeuroScope recording data."
+
+    @classmethod
+    def get_source_schema(self) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
+        source_schema["properties"]["keep_mua_units"][
+            "description"
+        ] = "Whether to return sorted spikes from multi-unit activity."
+        source_schema["properties"]["exclude_shanks"]["description"] = "List of indices to ignore."
+        source_schema["properties"]["xml_file_path"][
+            "description"
+        ] = "Path to .xml file containing device and electrode configuration."
+        return source_schema
+
     def __init__(
         self,
         folder_path: FolderPathType,
@@ -245,7 +282,6 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Path to folder containing .clu and .res files.
         keep_mua_units : bool, default: True
             Optional. Whether to return sorted spikes from multi-unit activity.
-            The default is True.
         exclude_shanks : list, optional
             List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
             final integer of all the .res.%i and .clu.%i pairs.
@@ -268,7 +304,11 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
-        xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
+        xml_file_path = self.source_data["xml_file_path"] or session_path / f"{session_id}.xml"
+
+        if not Path(xml_file_path).is_file():
+            return metadata
+
         metadata["Ecephys"] = NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:

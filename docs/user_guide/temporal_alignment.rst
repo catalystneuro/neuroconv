@@ -26,6 +26,11 @@ indicating the temporal offset between the two systems. To do this, use the Data
 The advantage of this approach is its simplicity, but it cannot account for any drift due to misalignment between the
 clocks of the two systems.
 
+.. image:: ../../_static/images/time_alignment_1.png
+   :alt: Diagram of the first method of time alignment, where the start time of the secondary system is shifted to match the primary system.
+   :width: 600px
+   :align: center
+
 2. Synchronize Timestamps
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -37,6 +42,11 @@ can then align the timestamps of the secondary system by setting them to the pul
 system, aligning the times to that system. Once the timestamps are known they can be set in any DataInterface via the
 DataInterface method
 :py:meth:`~neuroconv.basetemporalalignmentinterface.BaseTemporalAlignmentInterface.set_aligned_timestamps`.
+
+.. image:: ../../_static/images/time_alignment_2.png
+   :alt: Diagram of the second method of time alignment, where the timestamps of the secondary system are aligned to the primary system.
+   :width: 600px
+   :align: center
 
 
 3. Synchronize Based on a Synchronization Signal
@@ -50,6 +60,11 @@ via the DataInterface method
 :py:meth:`~neuroconv.basetemporalalignmentinterface.BaseTemporalAlignmentInterface.align_by_interpolation`.
 Note the data values for the series itself is *not* changed during the process, only the timestamp values are
 inferred for common reference time.
+
+.. image:: ../../_static/images/time_alignment_3.png
+   :alt: Diagram of the third method of time alignment, where the timestamps of the secondary system are aligned to the primary system using a synchronization signal.
+   :width: 600px
+   :align: center
 
 To use this type of synchronization, all the user must provide is the mapping determined by the
 
@@ -114,7 +129,7 @@ that as the start time of the audio stream.
             Audio=AudioDataInterface,
         )
 
-        def temporally_align_data_interfaces():
+        def temporally_align_data_interfaces(self):
             nidq_interface = self.data_interface_objects["SpikeGLXNIDQ"]
             audio_interface = self.data_interface_objects["Audio"]
             ttl_times = nidq_interface.get_event_times_from_ttl("channel-name")
