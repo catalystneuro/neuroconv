@@ -1,6 +1,7 @@
+"""Contains core class definitions for the NWBConverter and ConverterPipe."""
+
 import json
 from collections import Counter
-from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
@@ -53,25 +54,22 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
-    def get_conversion_options_schema(self) -> dict:
-        """Compile conversion option schemas from each of the data interface classes."""
-        conversion_options_schema = get_base_schema(
-            root=True,
-            id_="conversion_options.schema.json",
-            title="Conversion options schema",
-            description="Schema for the conversion options",
-            version="0.1.0",
-        )
-        for interface_name, data_interface in self.data_interface_objects.items():
-            conversion_options_schema["properties"].update(
-                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
-            )
-        return conversion_options_schema
-
     @classmethod
     def validate_source(cls, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
+
+    def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
+
+        encoder = NWBSourceDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(serialized_source_data)
+
+        validate(instance=decoded_source_data, schema=self.get_source_schema())
+        if verbose:
+            print("Source data is valid!")
 
     def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
@@ -112,23 +110,26 @@ class NWBConverter:
         if self.verbose:
             print("Metadata is valid!")
 
+    def get_conversion_options_schema(self) -> dict:
+        """Compile conversion option schemas from each of the data interface classes."""
+        conversion_options_schema = get_base_schema(
+            root=True,
+            id_="conversion_options.schema.json",
+            title="Conversion options schema",
+            description="Schema for the conversion options",
+            version="0.1.0",
+        )
+        for interface_name, data_interface in self.data_interface_objects.items():
+            conversion_options_schema["properties"].update(
+                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
+            )
+        return conversion_options_schema
+
     def validate_conversion_options(self, conversion_options: Dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""
         validate(instance=conversion_options or {}, schema=self.get_conversion_options_schema())
         if self.verbose:
             print("conversion_options is valid!")
-
-    def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
-
-        encoder = NWBSourceDataEncoder()
-        # The encoder produces a serialized object, so we deserialized it for comparison
-
-        serialized_source_data = encoder.encode(source_data)
-        decoded_source_data = json.loads(serialized_source_data)
-
-        validate(instance=decoded_source_data, schema=self.get_source_schema())
-        if verbose:
-            print("Source data is valid!")
 
     def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
         """
@@ -230,7 +231,7 @@ class NWBConverter:
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
     def temporally_align_data_interfaces(self):
-        """Override this method to implement custom alignment"""
+        """Override this method to implement custom alignment."""
         pass
 
     @staticmethod
@@ -257,28 +258,15 @@ class NWBConverter:
 
 
 class ConverterPipe(NWBConverter):
-    """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class"""
+    """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class."""
 
-    def get_conversion_options_schema(self) -> dict:
-        """Compile conversion option schemas from each of the data interface classes."""
-        conversion_options_schema = get_base_schema(
-            root=True,
-            id_="conversion_options.schema.json",
-            title="Conversion options schema",
-            description="Schema for the conversion options",
-            version="0.1.0",
-        )
-        for interface_name, data_interface in self.data_interface_objects.items():
-            conversion_options_schema["properties"].update(
-                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
-            )
-        return conversion_options_schema
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        raise NotImplementedError("Source data not available with previously initialized classes.")
 
-    def get_source_schema(self) -> dict:
-        raise NotImplementedError("Source data not available with previously initialized classes")
-
-    def validate_source(self):
-        raise NotImplementedError("Source data not available with previously initialized classes")
+    @classmethod
+    def validate_source(cls):
+        raise NotImplementedError("Source data not available with previously initialized classes.")
 
     def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose
@@ -299,3 +287,18 @@ class ConverterPipe(NWBConverter):
         self.data_interface_classes = {
             name: interface.__class__ for name, interface in self.data_interface_objects.items()
         }
+
+    def get_conversion_options_schema(self) -> dict:
+        """Compile conversion option schemas from each of the data interface classes."""
+        conversion_options_schema = get_base_schema(
+            root=True,
+            id_="conversion_options.schema.json",
+            title="Conversion options schema",
+            description="Schema for the conversion options",
+            version="0.1.0",
+        )
+        for interface_name, data_interface in self.data_interface_objects.items():
+            conversion_options_schema["properties"].update(
+                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
+            )
+        return conversion_options_schema
