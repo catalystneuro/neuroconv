@@ -4,16 +4,10 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from ndx_fiber_photometry import (
-    CommandedVoltageSeries,
-    FiberPhotometry,
-    FiberPhotometryResponseSeries,
-    FiberPhotometryTable,
-)
 from pynwb.file import NWBFile
-from tdt import read_block
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from neuroconv.tools import get_package
 from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
 from neuroconv.utils import DeepDict, FilePathType
 
@@ -54,6 +48,15 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata: dict,
         t2: Optional[float] = None,
     ):
+        # Dynamic Imports
+        ndx_fiber_photometry = get_package("ndx_fiber_photometry")
+        CommandedVoltageSeries = ndx_fiber_photometry.CommandedVoltageSeries
+        FiberPhotometry = ndx_fiber_photometry.FiberPhotometry
+        FiberPhotometryResponseSeries = ndx_fiber_photometry.FiberPhotometryResponseSeries
+        FiberPhotometryTable = ndx_fiber_photometry.FiberPhotometryTable
+        tdt = get_package("tdt", installation_instructions="pip install tdt")
+        read_block = tdt.read_block
+
         # Load Data
         folder_path = Path(self.source_data["folder_path"])
         assert folder_path.is_dir(), f"Folder path {folder_path} does not exist."
