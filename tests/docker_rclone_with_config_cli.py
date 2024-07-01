@@ -62,7 +62,7 @@ class TestRcloneWithConfig(TestCase):
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
         os.environ["RCLONE_COMMAND"] = (
-            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress"
+            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress --config ./rclone.conf"
         )
 
         output = deploy_process(
