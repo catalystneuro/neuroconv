@@ -79,11 +79,13 @@ class SpikeGLXConverterPipe(ConverterPipe):
             if "nidq" in stream:
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
-            data_interfaces.update({stream: interface})
+            data_interfaces.update({str(stream): interface})  # Without str() casting, is a numpy string
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
     def get_conversion_options_schema(self) -> dict:
-        return {
-            name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()
-        }
+        conversion_options_schema = super().get_conversion_options_schema()
+        conversion_options_schema["properties"].update(
+            {name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()}
+        )
+        return conversion_options_schema
