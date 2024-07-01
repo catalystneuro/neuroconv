@@ -1,0 +1,30 @@
+name: Install packages
+description: This action installs the package and its dependencies for testing
+
+inputs:
+  os:
+    description: 'Operating system to set up'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install wine on Linux
+      if: runner.os == 'Linux'
+      run: |
+        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+        sudo dpkg --add-architecture i386
+        sudo apt-get update -qq
+        sudo apt-get install -yqq --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine
+      shell: bash
+    - name: Install wine on macOS
+      if: runner.os == 'macOS'
+      run: |
+        brew install --cask xquartz
+        brew install --cask wine-stable
+      shell: bash
+
+    - name: Skip installation on Windows
+      if: ${{ inputs.os == 'Windows' }}
+      run: echo "Skipping Wine installation on Windows. Not necessary."
+      shell: bash
