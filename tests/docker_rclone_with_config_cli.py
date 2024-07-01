@@ -13,7 +13,6 @@ The developer can easily find the location of the config file on their system us
 """
 
 import os
-from pathlib import Path
 
 from hdmf.testing import TestCase
 
@@ -65,17 +64,14 @@ class TestRcloneWithConfig(TestCase):
             f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress --config ./rclone.conf"
         )
 
-        output = deploy_process(
-            command=(
-                "docker run -t "
-                f"--volume {self.test_folder}:{self.test_folder} "
-                '-e RCLONE_CONFIG="$RCLONE_CONFIG" '
-                '-e RCLONE_COMMAND="$RCLONE_COMMAND" '
-                "ghcr.io/catalystneuro/rclone_with_config:latest"
-            ),
-            catch_output=True,
+        command = (
+            "docker run -t "
+            f"--volume {self.test_folder}:{self.test_folder} "
+            '-e RCLONE_CONFIG="$RCLONE_CONFIG" '
+            '-e RCLONE_COMMAND="$RCLONE_COMMAND" '
+            "ghcr.io/catalystneuro/rclone_with_config:latest"
         )
-        print(output)
+        deploy_process(command=command)
 
         # The .conf file created inside the container should not be viewable outside the running container
         # (it was not saved to mounted location)
