@@ -29,7 +29,7 @@ RCLONE_DRIVE_REFRESH_TOKEN = os.getenv("RCLONE_DRIVE_REFRESH_TOKEN")
 RCLONE_EXPIRY_TOKEN = os.getenv("RCLONE_EXPIRY_TOKEN")
 
 
-@pytest.mark.skipIf(RCLONE_DRIVE_ACCESS_TOKEN is None, reason="The Rclone Google Drive token has not been specified.")
+@pytest.mark.skipif(RCLONE_DRIVE_ACCESS_TOKEN is None, reason="The Rclone Google Drive token has not been specified.")
 class TestRcloneWithConfig(TestCase):
     test_folder = OUTPUT_PATH / "rclone_tests"
     test_config_file = test_folder / "rclone.conf"
@@ -65,7 +65,7 @@ class TestRcloneWithConfig(TestCase):
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
         os.environ["RCLONE_COMMAND"] = (
-            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder}"
+            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose"
         )
 
         output = deploy_process(
