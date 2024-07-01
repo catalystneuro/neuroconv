@@ -54,6 +54,8 @@ After building the image itself, we can publish the container with...
 
     Though it may appear confusing, the use of the ``IMAGE_NAME`` in these steps determines only the _name_ of the package as available from the 'packages' screen of the host repository; the ``LABEL`` itself ensured the upload and linkage to the NeuroConv GHCR.
 
+All our docker images can be built in GitHub Actions (for Ubuntu) and pushed automatically to the GHCR by manually triggering their respective workflow. Keep in mind that most of them are on semi-regular CRON schedules, though.
+
 
 
 Run Docker container on local YAML conversion specification file
@@ -73,12 +75,13 @@ and can then run the entrypoint (equivalent to the usual command line usage) on 
 
 
 
+
 Run Docker container on YAML conversion specification environment variable
 --------------------------------------------------------------------------
 
 An alternative approach that simplifies usage on systems such as AWS Batch is to specify the YAML contents as an environment variable. The YAML file is constructed in the first step of the container launch.
 
-The only potential downside with this usage is the maximum size of an environment variable (~13,000 characters). Typical YAML specification files should not come remotely close to this limit.
+The only potential downside with this usage is the maximum size of an environment variable (~13,000 characters). Typical YAML specification files should not come remotely close to this limit. This is contrasted to the limits on the CMD line of any docker container, which is either 8192 characters for Windows or either 64 or 128 KiB depending on UNIX build.
 
 Otherwise, in any cloud deployment, the YAML file transfer will have to be managed separately, likely as a part of the data transfer or an entirely separate step.
 
