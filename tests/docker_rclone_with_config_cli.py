@@ -60,7 +60,7 @@ class TestRcloneWithConfig(TestCase):
         path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
-        with open(path=self.test_config_file, mode="r") as io:
+        with open(file=self.test_config_file, mode="r") as io:
             rclone_config_file_stream = io.read()
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
