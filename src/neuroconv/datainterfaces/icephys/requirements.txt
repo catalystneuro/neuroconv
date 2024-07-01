@@ -1,1 +1,1 @@
-neo @ git+https://github.com/h-mayorquin/python-neo.git@plexon_for_apple_silicon
+neo @ git+https://github.com/NeuralEnsemble/python-neo.git@master
