@@ -91,6 +91,3 @@ class TestRcloneWithConfig(TestCase):
             assert (
                 file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"
             ), "The file content does not match expectations!"
-
-    def test_helper_function(self):
-        pass  # TODO
