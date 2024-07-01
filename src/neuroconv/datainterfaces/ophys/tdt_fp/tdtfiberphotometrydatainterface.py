@@ -24,6 +24,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             folder_path=folder_path,
             verbose=verbose,
         )
+        import ndx_fiber_photometry
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -81,12 +82,12 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         t2: Optional[float] = None,
         timing_source: Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"] = "original",
     ):
-        # Dynamic Imports
-        ndx_fiber_photometry = get_package("ndx_fiber_photometry")
-        CommandedVoltageSeries = ndx_fiber_photometry.CommandedVoltageSeries
-        FiberPhotometry = ndx_fiber_photometry.FiberPhotometry
-        FiberPhotometryResponseSeries = ndx_fiber_photometry.FiberPhotometryResponseSeries
-        FiberPhotometryTable = ndx_fiber_photometry.FiberPhotometryTable
+        from ndx_fiber_photometry import (
+            CommandedVoltageSeries,
+            FiberPhotometry,
+            FiberPhotometryResponseSeries,
+            FiberPhotometryTable,
+        )
 
         # Load Data
         tdt_photometry = self.load()
