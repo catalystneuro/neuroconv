@@ -32,7 +32,8 @@ RCLONE_EXPIRY_TOKEN = os.getenv("RCLONE_EXPIRY_TOKEN")
 @pytest.mark.skipif(RCLONE_DRIVE_ACCESS_TOKEN is None, reason="The Rclone Google Drive token has not been specified.")
 class TestRcloneWithConfig(TestCase):
     test_folder = OUTPUT_PATH / "rclone_tests"
-    test_config_file = test_folder / "rclone.conf"
+    adjacent_folder = OUTPUT_PATH / "rclone_conf"
+    test_config_file = adjacent_folder / "rclone.conf"
 
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
@@ -80,6 +81,9 @@ class TestRcloneWithConfig(TestCase):
         )
         print(output)
 
+        expected_config_file = Path.cwd() / "rclone.conf"
+        assert expected_config_file.is_file()
+        
         testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file()
 
