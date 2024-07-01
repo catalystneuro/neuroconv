@@ -83,6 +83,6 @@ class TestRcloneWithConfig(TestCase):
         testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file()
 
-        with open(path=testing_file_path, mode="r") as io:
+        with open(file=testing_file_path, mode="r") as io:
             file_content = io.read()
             assert file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"
