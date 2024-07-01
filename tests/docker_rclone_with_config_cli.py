@@ -71,7 +71,7 @@ class TestRcloneWithConfig(TestCase):
                 f"--volume {self.test_folder}:{self.test_folder} "
                 '-e RCLONE_CONFIG="$RCLONE_CONFIG" '
                 '-e RCLONE_COMMAND="$RCLONE_COMMAND" '
-                "ghcr.io/catalystneuro/neuroconv:rclone_with_config"
+                "ghcr.io/catalystneuro/rclone_with_config:latest"
             ),
             catch_output=True,
         )
