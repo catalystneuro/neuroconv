@@ -1,0 +1,5 @@
+FROM rclone/rclone:latest
+LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
+LABEL org.opencontainers.image.description="A simple extension of the basic Rclone docker image to automatically create a local .conf file from contents passed via an environment variable."
+CMD printf "$RCLONE_CONFIG" > ./rclone.conf && eval "$RCLONE_COMMAND"
+ENTRYPOINT [""]

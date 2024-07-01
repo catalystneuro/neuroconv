@@ -1,5 +1,5 @@
-Docker Demo
------------
+NeuroConv Docker Demo
+---------------------
 
 The following is an explicit demonstration of how to use the Docker-based NeuroConv YAML specification via the command line.
 
@@ -116,3 +116,32 @@ Voilà! If everything occurred successfully, you should see...
     Metadata is valid!
     conversion_options is valid!
     NWB file saved at /demo_neuroconv_docker/demo_output/phy_from_docker_yaml.nwb!
+
+
+
+
+RClone With Config Docker Demo
+------------------------------
+
+NeuroConv also supports a convenient Docker image for running data transfers via `Rclone <https://rclone.org>`_.
+
+To use this image, you must first configure the remote locally by calling:
+
+.. code::
+
+    rclone config
+
+And following all interactive instructions (defaults are usually sufficient).
+
+The Docker image requires two environment variables to be set (see :ref:`developer_docker_details` for more details in a related process).
+
+- ``RCLONE_CONFIG``: The full file content of the rclone.conf file on your system. You can find this by calling ``rclone config file``. On UNIX, for example, you can set this variable using ``RCLONE_CONFIG=$(<rclone.conf)`` from the folder containing the file
+- ``RCLONE_COMMAND``: The Rclone command to run. For example, ``remote_name:source_folder destination_folder --verbose --progress --config ./rclone.conf``, where ``remote_name`` is the name used during initial setup through ``rclone config``, ``source_folder`` is the name of the folder you wish to transfer data from on that remote, and ``destination_folder`` is the local folder to transfer the data to.
+
+Then, you can use the following command to run the Rclone Docker image:
+
+.. code::
+
+    docker run -t --volume destination_folder:destination_folder -e RCLONE_CONFIG="$RCLONE_CONFIG" -e RCLONE_COMMAND="$RCLONE_COMMAND" ghcr.io/catalystneuro/rclone_with_config:latest
+
+This image is particularly designed for convenience with AWS Batch (EC2) tools that rely heavily on atomic Docker operations. Alternative AWS approaches would have relied on transferring the Rclone configuration file to the EC2 instances using separate transfer protocols or dependent steps, both of which add complexity to the workflow.
