@@ -35,6 +35,7 @@ class TestRcloneWithConfig(TestCase):
 
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
+        self.adjacent_folder.mkdir(exist_ok=True)
 
         # Pretend as if .conf file already exists on the system (created via interactive `rclone config` command)
         token_dictionary = dict(
@@ -56,9 +57,6 @@ class TestRcloneWithConfig(TestCase):
             io.writelines(rclone_config_contents)
 
     def test_rclone_with_config(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
-
         with open(file=self.test_config_file, mode="r") as io:
             rclone_config_file_stream = io.read()
 
