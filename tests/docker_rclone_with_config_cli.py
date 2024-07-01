@@ -53,7 +53,7 @@ class TestRcloneWithConfig(TestCase):
             "team_drive = \n",
             "\n",
         ]
-        with open(path=test_config_file, mode="w") as io:
+        with open(path=self.test_config_file, mode="w") as io:
             io.writelines(rclone_config_contents)
 
     def test_rclone_with_config(self):
