@@ -80,6 +80,8 @@ class TestRcloneWithConfig(TestCase):
         # The .conf file created inside the container should not be viewable outside the running container
         # (it was not saved to mounted location)
 
+        print(self.test_folder.iterdir())
+
         testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file()
 
