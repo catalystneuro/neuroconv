@@ -9,7 +9,7 @@ from ....tools import get_package
 from ....utils import FilePathType
 
 
-def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = None) -> list:
+def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = None) -> np.ndarray:
     """Extract the timestamps of the video located in file_path
 
     Parameters
@@ -43,7 +43,7 @@ class VideoCaptureContext:
         self._frame_count = None
         self._video_open_msg = "The video file is not open!"
 
-    def get_video_timestamps(self, max_frames=None):
+    def get_video_timestamps(self, max_frames=None) -> np.ndarray:
         """Return numpy array of the timestamps(s) for a video file."""
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
