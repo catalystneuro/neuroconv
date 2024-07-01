@@ -31,7 +31,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: ghcr.io/catalystneuro/neuroconv:rclone_with_config
+          tags: ghcr.io/catalystneuro/rclone_with_config:latest
           context: .
           file: dockerfiles/rclone_with_config
           provenance: false

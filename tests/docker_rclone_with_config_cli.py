@@ -13,11 +13,8 @@ The developer can easily find the location of the config file on their system us
 """
 
 import os
-import unittest
-from datetime import datetime
 from pathlib import Path
 
-import pytest
 from hdmf.testing import TestCase
 
 from neuroconv.tools import deploy_process
@@ -29,9 +26,10 @@ RCLONE_DRIVE_REFRESH_TOKEN = os.getenv("RCLONE_DRIVE_REFRESH_TOKEN")
 RCLONE_EXPIRY_TOKEN = os.getenv("RCLONE_EXPIRY_TOKEN")
 
 
-@pytest.mark.skipif(RCLONE_DRIVE_ACCESS_TOKEN is None, reason="The Rclone Google Drive token has not been specified.")
 class TestRcloneWithConfig(TestCase):
     test_folder = OUTPUT_PATH / "rclone_tests"
+
+    # Save the .conf file in a separate folder to avoid the potential of the container using the locally mounted file
     adjacent_folder = OUTPUT_PATH / "rclone_conf"
     test_config_file = adjacent_folder / "rclone.conf"
 
@@ -81,8 +79,8 @@ class TestRcloneWithConfig(TestCase):
         )
         print(output)
 
-        expected_config_file = Path.cwd() / "rclone.conf"
-        assert expected_config_file.is_file()
+        # The .conf file created inside the container should not be viewable outside the running container
+        # (it was not saved to mounted location)
 
         testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file()
