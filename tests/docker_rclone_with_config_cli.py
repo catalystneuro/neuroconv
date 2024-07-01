@@ -83,7 +83,7 @@ class TestRcloneWithConfig(TestCase):
 
         expected_config_file = Path.cwd() / "rclone.conf"
         assert expected_config_file.is_file()
-        
+
         testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file()
 
