@@ -31,6 +31,6 @@ jobs:
           pip install .
 
       - name: Pull docker image
-        run: docker pull ghcr.io/catalystneuro/neuroconv:rclone_with_config
+        run: docker pull ghcr.io/catalystneuro/rclone_with_config:latest
       - name: Run docker tests
         run: pytest tests/docker_rclone_with_config_cli.py -vv -rsx
