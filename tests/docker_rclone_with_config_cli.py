@@ -62,7 +62,7 @@ class TestRcloneWithConfig(TestCase):
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
         os.environ["RCLONE_COMMAND"] = (
-            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress"
+            f"copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress"
         )
 
         output = deploy_process(
@@ -80,11 +80,14 @@ class TestRcloneWithConfig(TestCase):
         # The .conf file created inside the container should not be viewable outside the running container
         # (it was not saved to mounted location)
 
-        print(list(self.test_folder.iterdir()))
+        test_folder_contents_after_call = list(self.test_folder.iterdir())
+        assert len(test_folder_contents_after_call) != 0, f"Test folder {self.test_folder} is empty!"
 
         testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
-        assert testing_file_path.is_file()
+        assert testing_file_path.is_file(), "The specific test transfer file does not exist!"
 
         with open(file=testing_file_path, mode="r") as io:
             file_content = io.read()
-            assert file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"
+            assert (
+                file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"
+            ), "The file content does not match expectations!"
