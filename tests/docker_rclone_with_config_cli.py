@@ -83,7 +83,7 @@ class TestRcloneWithConfig(TestCase):
         test_folder_contents_after_call = list(self.test_folder.iterdir())
         assert len(test_folder_contents_after_call) != 0, f"Test folder {self.test_folder} is empty!"
 
-        testing_file_path = self.test_folder / "testing_rclone_with_config" / "ci_tests" / "test_text_file.txt"
+        testing_file_path = self.test_folder / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file(), "The specific test transfer file does not exist!"
 
         with open(file=testing_file_path, mode="r") as io:
