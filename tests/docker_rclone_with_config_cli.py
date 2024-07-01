@@ -56,13 +56,13 @@ class TestRcloneWithConfig(TestCase):
         with open(file=self.test_config_file, mode="w") as io:
             io.writelines(rclone_config_contents)
 
-    def test_rclone_with_config(self):
+    def test_direct_usage_of_rclone_with_config(self):
         with open(file=self.test_config_file, mode="r") as io:
             rclone_config_file_stream = io.read()
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
         os.environ["RCLONE_COMMAND"] = (
-            f"copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress"
+            f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress"
         )
 
         output = deploy_process(
@@ -91,3 +91,6 @@ class TestRcloneWithConfig(TestCase):
             assert (
                 file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"
             ), "The file content does not match expectations!"
+
+    def test_helper_function(self):
+        pass  # TODO
