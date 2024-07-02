@@ -82,7 +82,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         spikeinterface_version = get_package_version(name="spikeinterface")
 
         init_kwargs = dict(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
-        if neo_version < Version("0.13.0") and spikeinterface_version < Version("0.100"):
+        if neo_version < Version("0.13.0") and spikeinterface_version < Version("0.100.10"):
             if ignore_integrity_checks:
                 warnings.warn(
                     "The 'ignore_integrity_checks' parameter is not supported for neo versions < 0.13.1. "
