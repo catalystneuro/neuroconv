@@ -59,7 +59,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             )
             self.stream_id = stream_id
         else:
-            self.stream_id = "0"
+            self.stream_id = "0"  # These are the amplifier channels or to the stream_name 'RHD2000 amplifier channel'
 
         init_kwargs = dict(
             file_path=file_path,
