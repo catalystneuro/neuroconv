@@ -78,26 +78,34 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
         """
 
-        neo_version = get_package_version(name="neo")
-        spikeinterface_version = get_package_version(name="spikeinterface")
-
-        init_kwargs = dict(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
-        if neo_version >= Version("0.13.1") and spikeinterface_version >= Version("0.101.0"):
-            init_kwargs["ignore_integrity_checks"] = ignore_integrity_checks
-        else:
-            if ignore_integrity_checks:
-                warnings.warn(
-                    "The 'ignore_integrity_checks' parameter is not supported for neo versions < 0.13.1. "
-                    "or spikeinterface versions < 0.101.0.",
-                    UserWarning,
-                )
-
         if stream_id is not None:
             warnings.warn(
                 "Use of the 'stream_id' parameter is deprecated and it will be removed after September 2024.",
                 DeprecationWarning,
             )
             self.stream_id = stream_id
+        else:
+            self.stream_id = "0"
+
+        init_kwargs = dict(
+            file_path=file_path,
+            stream_id=self.stream_id,
+            verbose=verbose,
+            es_key=es_key,
+            all_annotations=True,
+        )
+
+        neo_version = get_package_version(name="neo")
+        spikeinterface_version = get_package_version(name="spikeinterface")
+        if neo_version < Version("0.13.1") or spikeinterface_version < Version("0.100.10"):
+            if ignore_integrity_checks:
+                warnings.warn(
+                    "The 'ignore_integrity_checks' parameter is not supported for neo versions < 0.13.1. "
+                    "or spikeinterface versions < 0.101.0.",
+                    UserWarning,
+                )
+        else:
+            init_kwargs["ignore_integrity_checks"] = ignore_integrity_checks
 
         super().__init__(**init_kwargs)
         electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
