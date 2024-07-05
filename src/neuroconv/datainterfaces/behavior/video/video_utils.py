@@ -54,7 +54,7 @@ class VideoCaptureContext:
         frames_to_extract = min(total_frames, max_frames) if max_frames else total_frames
 
         iterator = (
-            tqd(range(frames_to_extract), desc="retrieving timestamps")
+            tqdm(range(frames_to_extract), desc="retrieving timestamps")
             if display_progress
             else range(frames_to_extract)
         )
