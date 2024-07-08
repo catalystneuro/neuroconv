@@ -8,6 +8,7 @@
 
 ### Improvements
 * Make annotations from the raw format available on `IntanRecordingInterface`. [PR #934](https://github.com/catalystneuro/neuroconv/pull/943)
+* Add an option to suppress display the progress bar (tqdm) in `VideoContext`  [PR #937](https://github.com/catalystneuro/neuroconv/pull/937)
 
 ## v0.4.11 (June 14, 2024)
 
