@@ -15,7 +15,7 @@ def add_acoustic_waveform_series(
     starting_time: float = 0.0,
     write_as: Literal["stimulus", "acquisition"] = "stimulus",
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
 
