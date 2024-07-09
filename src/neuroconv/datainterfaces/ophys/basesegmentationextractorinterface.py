@@ -119,7 +119,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
+        compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
     ):
         """
 
@@ -158,8 +158,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
-        compression_options : dict, optional
-            The options to use when compressing the image masks of the segmentation extractor.
 
         Returns
         -------
@@ -183,5 +181,5 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
-            compression_options=compression_options,
+            compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
         )
