@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
@@ -208,8 +207,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        compression: Optional[str] = "gzip",
-        compression_opts: Optional[int] = None,
+        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
+        compression_opts: Optional[int] = None,  # TODO: remove completely after 10/1/2024
     ):
         """
         Parameters
@@ -218,14 +217,20 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             nwb file to which the recording information is to be added
         metadata: dict, optional
             metadata info for constructing the nwb file.
-        compression: str, default: 'gzip'
-            The type of compression to use. Should be one of 'gzip', 'lzf'. If None, no compression is used.
-        compression_opts: int, optional
-
         """
-
         import pandas as pd
 
+        # TODO: remove completely after 10/1/2024
+        if compression is not None or compression_opts is not None:
+            warn(
+                message=(
+                    "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                    "Please use the `configure_backend` tool function for this purpose."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+        
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
@@ -257,8 +262,6 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
-            if compression:
-                data = H5DataIO(data, compression=compression, compression_opts=compression_opts)
             if self.radius is not None:
                 spatial_series_kwargs["conversion"] = self.radius
                 units = "meters"
