@@ -1,5 +1,8 @@
 # Upcoming
 
+### Deprecations
+* The usage of `compression_options` directly through the `neuroconv.tools.audio` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #939](https://github.com/catalystneuro/neuroconv/pull/939)
+
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
 
@@ -16,6 +19,8 @@
 
 
 
+
+
 ## v0.4.11 (June 14, 2024)
 
 ### Bug fixes
@@ -27,6 +32,7 @@
 ### Improvements
 * Propagated `photon_series_type` to `BaseImagingExtractorInterface` init instead of passing it as an argument of `get_metadata()` and `get_metadata_schema()`. [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)
 * Converter working with multiple VideoInterface instances [PR 914](https://github.com/catalystneuro/neuroconv/pull/914)
+
 
 
 ## v0.4.10 (June 6, 2024)
