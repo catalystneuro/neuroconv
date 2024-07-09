@@ -226,7 +226,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 write_as=write_as,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
-                compression_options=compression_options, # TODO: remove completely after 10/1/2024; still passing for deprecation warning
+                compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
             )
 
         return nwbfile
