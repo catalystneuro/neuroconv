@@ -168,7 +168,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
+        compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
         overwrite: bool = False,
         verbose: bool = True,
     ):
@@ -185,8 +185,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
-        compression_options : dict, optional
-            Dictionary of options for compressing the data for H5DataIO.
         overwrite : bool, default: False
         verbose : bool, default: True
 
@@ -228,7 +226,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 write_as=write_as,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
-                compression_options=compression_options,
+                compression_options=compression_options, # TODO: remove completely after 10/1/2024; still passing for deprecation warning
             )
 
         return nwbfile
