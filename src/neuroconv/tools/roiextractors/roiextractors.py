@@ -753,7 +753,7 @@ def add_plane_segmentation(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
     if include_roi_acceptance:
@@ -938,7 +938,7 @@ def add_background_plane_segmentation(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     default_plane_segmentation_index = 1
     background_ids = segmentation_extractor.get_background_ids()
     if mask_type == "image":
@@ -1010,7 +1010,7 @@ def add_fluorescence_traces(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     default_plane_segmentation_index = 0
 
     traces_to_add = segmentation_extractor.get_traces_dict()
@@ -1263,7 +1263,7 @@ def add_background_fluorescence_traces(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     default_plane_segmentation_index = 1
 
     traces_to_add = segmentation_extractor.get_traces_dict()
@@ -1392,7 +1392,7 @@ def add_segmentation(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     # Add device:
     add_devices(nwbfile=nwbfile, metadata=metadata)
 
@@ -1524,7 +1524,7 @@ def write_segmentation(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     iterator_options = iterator_options or dict()
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
