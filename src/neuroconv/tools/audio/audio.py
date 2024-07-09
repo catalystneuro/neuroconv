@@ -65,7 +65,7 @@ def add_acoustic_waveform_series(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     iterator_options = iterator_options or dict()
 
     container = nwbfile.acquisition if write_as == "acquisition" else nwbfile.stimulus
