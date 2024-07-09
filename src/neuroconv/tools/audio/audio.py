@@ -41,8 +41,6 @@ def add_acoustic_waveform_series(
         "stimulus" or as "acquisition".
     iterator_options : dict, optional
         Dictionary of options for the SliceableDataChunkIterator.
-    compression_options : dict, optional
-        Dictionary of options for compressing the data for H5DataIO.
 
     Returns
     -------
