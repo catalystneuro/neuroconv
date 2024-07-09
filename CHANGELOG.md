@@ -12,6 +12,9 @@
 ### Improvements
 * Make annotations from the raw format available on `IntanRecordingInterface`. [PR #934](https://github.com/catalystneuro/neuroconv/pull/943)
 * Add an option to suppress display the progress bar (tqdm) in `VideoContext`  [PR #937](https://github.com/catalystneuro/neuroconv/pull/937)
+* Automatic compression of data in the `LightnignPoseDataInterface` has been disabled - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #942](https://github.com/catalystneuro/neuroconv/pull/942)
+
+
 
 ## v0.4.11 (June 14, 2024)
 
