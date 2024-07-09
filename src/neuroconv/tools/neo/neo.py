@@ -240,7 +240,7 @@ def add_icephys_recordings(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     n_segments = get_number_of_segments(neo_reader, block=0)
 
     # Check for protocol data (only ABF2), necessary for stimuli data
@@ -418,7 +418,7 @@ def add_neo_to_nwb(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
     add_icephys_electrode(
@@ -528,7 +528,7 @@ def write_neo_to_nwb(
             category=DeprecationWarning,
             stacklevel=2,
         )
-    
+
     if metadata is None:
         metadata = get_nwb_metadata(neo_reader=neo_reader)
 
