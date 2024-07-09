@@ -2,6 +2,7 @@
 
 ### Deprecations
 * The usage of `compression_options` directly through the `neuroconv.tools.audio` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #939](https://github.com/catalystneuro/neuroconv/pull/939)
+* The usage of `compression` directly through the `neuroconv.tools.neo` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #943](https://github.com/catalystneuro/neuroconv/pull/943)
 
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
