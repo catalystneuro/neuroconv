@@ -147,6 +147,18 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
+def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
+    if not nwbfile_path.exists():
+        return
+
+    try:
+        nwbfile_path.unlink()
+    # Windows in particular can encounter errors at this step
+    except PermissionError:  # pragma: no cover
+        message = f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
+        warn(message=message, stacklevel=2)
+
+
 @contextmanager
 def make_or_load_nwbfile(
     nwbfile_path: Optional[FilePath] = None,
@@ -194,54 +206,73 @@ def make_or_load_nwbfile(
         raise NotImplementedError("Appending a Zarr file is not yet supported!")
 
     load_kwargs = dict()
-    success = True
     file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
-    if nwbfile_path_in:
+    if nwbfile_path_in is not None:
         load_kwargs.update(path=str(nwbfile_path_in))
-        if file_initially_exists and not overwrite:
+
+        append_mode = file_initially_exists and not overwrite
+        if append_mode:
             load_kwargs.update(mode="r+", load_namespaces=True)
+
+            # Check if the selected backend is the backend of the file in nwfile_path
+            backends_that_can_read = [
+                backend_name
+                for backend_name, backend_io_class in BACKEND_NWB_IO.items()
+                if backend_io_class.can_read(path=str(nwbfile_path_in))
+            ]
+            # Future-proofing: raise an error if more than one backend can read the file
+            assert (
+                len(backends_that_can_read) <= 1
+            ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
+            if backend not in backends_that_can_read:
+                raise IOError(
+                    f"The chosen backend ('{backend}') is unable to read the file! "
+                    f"Please select '{backends_that_can_read[0]}' instead."
+                )
         else:
             load_kwargs.update(mode="w")
 
-        backends_that_can_read = [
-            backend_name
-            for backend_name, backend_io_class in BACKEND_NWB_IO.items()
-            if backend_io_class.can_read(path=str(nwbfile_path_in))
-        ]
-        # Future-proofing: raise an error if more than one backend can read the file
-        assert (
-            len(backends_that_can_read) <= 1
-        ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
-        if load_kwargs["mode"] == "r+" and backend not in backends_that_can_read:
-            raise IOError(
-                f"The chosen backend ('{backend}') is unable to read the file! "
-                f"Please select '{backends_that_can_read[0]}' instead."
-            )
-
         io = backend_io_class(**load_kwargs)
 
+    nwbfile_loaded_succesfully = True
+    nwbfile_written_succesfully = True
     try:
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
         elif nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         yield nwbfile
-    except Exception as e:
-        success = False
-        raise e
+    except Exception as load_error:
+        nwbfile_loaded_succesfully = False
+        raise load_error
     finally:
-        if nwbfile_path_in:
+        if nwbfile_path_in is not None and nwbfile_loaded_succesfully:
             try:
-                if success:
-                    io.write(nwbfile)
+                io.write(nwbfile)
 
-                    if verbose:
-                        print(f"NWB file saved at {nwbfile_path_in}!")
+                if verbose:
+                    print(f"NWB file saved at {nwbfile_path_in}!")
+            except Exception as write_error:
+                nwbfile_written_succesfully = False
+                raise write_error
             finally:
                 io.close()
+                del io
 
-                if not success and not file_initially_exists:
-                    nwbfile_path_in.unlink()
+                if not nwbfile_written_succesfully:
+                    _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+        elif nwbfile_path_in is not None and not nwbfile_loaded_succesfully:
+            # The instantiation of the IO object can itself create a file
+            _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
+
+        # Final attempt to cleanup an unintended file creation, just to be sure
+        any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
+        file_was_freshly_created = (
+            not file_initially_exists and nwbfile_path_in is not None and nwbfile_path_in.exists()
+        )
+        attempt_to_cleanup = any_load_or_write_error and file_was_freshly_created
+        if attempt_to_cleanup:
+            _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
 
 def _resolve_backend(
@@ -289,16 +320,17 @@ def configure_and_write_nwbfile(
     """
     Write an NWBFile to a file using a specific backend or backend configuration.
 
-    You must provide either a ``backend`` or a ``backend_configuration``.
-
-    If no ``backend_configuration`` is specified, the default configuration for that backend is used.
+    You must provide either a ``backend`` or a ``backend_configuration``. If both are provided, they must match.
 
     Parameters
     ----------
     nwbfile: NWBFile
     output_filepath: str
-    backend: {"hdf5"}, default= "hdf5"
+    backend: {"hdf5"}, optional
+        The type of backend used to create the file. If no ``backend`` is specified, the ``backend_configuration`` is used.
     backend_configuration: BackendConfiguration, optional
+        Specifies the backend type and the chunking and compression parameters of each dataset. If no
+        ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
 
     """
 
