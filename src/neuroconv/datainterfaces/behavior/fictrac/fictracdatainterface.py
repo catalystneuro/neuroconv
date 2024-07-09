@@ -230,7 +230,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
                 category=DeprecationWarning,
                 stacklevel=2,
             )
-        
+
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
