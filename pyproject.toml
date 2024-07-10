@@ -41,6 +41,8 @@ exclude = [
 select = ["F401", "I"]  # TODO: eventually, expand to other 'F' linting
 fixable = ["ALL"]
 
+[tool.ruff.lint.isort]
+default-section = "first-party"
 
 
 [tool.codespell]
