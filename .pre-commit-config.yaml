@@ -24,3 +24,10 @@ repos:
   - id: codespell
     additional_dependencies:
     - tomli
+
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.3.5
+  hooks:
+  - id: ruff
+    args: [ --fix ]
