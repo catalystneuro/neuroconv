@@ -37,14 +37,14 @@ def write_subject_to_nwb(
     nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
-    dlc2nwb = get_package(package_name="dlc2nwb")
+    from ._dlc_utils import _get_pes_args, _write_pes_to_nwbfile
 
-    scorer, df, video, paf_graph, dlc_timestamps, _ = dlc2nwb.utils._get_pes_args(config_file, h5file, individual_name)
+    scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(config_file, h5file, individual_name)
     if timestamps is None:
         timestamps = dlc_timestamps
 
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
-    return dlc2nwb.utils._write_pes_to_nwbfile(
+    return _write_pes_to_nwbfile(
         nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
     )
 
@@ -126,7 +126,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         aligned_timestamps : list, np.ndarray
             alternative timestamps vector.
         """
-
         self._timestamps = np.array(aligned_timestamps)
 
     def add_to_nwbfile(
@@ -144,7 +143,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         """
-
         write_subject_to_nwb(
             nwbfile=nwbfile,
             h5file=str(self.source_data["file_path"]),
