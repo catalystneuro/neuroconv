@@ -16,7 +16,7 @@ from neuroconv.tools.data_transfers import (
 )
 
 HAVE_GLOBUS_CLI = importlib.util.find_spec(name="globus_cli") is None
-LOGGED_INTO_GLOBUS = not os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read():
+LOGGED_INTO_GLOBUS = not os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read()
 
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
