@@ -5,7 +5,7 @@ import pickle
 import warnings
 from pathlib import Path
 from platform import python_version
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 import cv2
 import numpy as np
@@ -18,6 +18,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from ruamel.yaml import YAML
 
 from ....utils import FilePathType
+
 
 def _read_config(configname):
     """
@@ -66,7 +67,7 @@ def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=Tr
     for _ in range(n_frames):
         _ = reader.read()
         timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
-    
+
     for _ in range(len(reader)):
         _ = reader.read()
         timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
@@ -267,7 +268,7 @@ def add_subject_to_nwbfile(
         timestamps = dlc_timestamps
 
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
-    
+
     return _write_pes_to_nwbfile(
         nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
     )
