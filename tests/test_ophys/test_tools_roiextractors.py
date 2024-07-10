@@ -975,7 +975,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         series_outer_data = df_over_f[trace_name].data
         assert_array_equal(series_outer_data.data.data, traces["dff"])
 
-
     def test_add_fluorescence_one_of_the_traces_is_none(self):
         """Test that roi response series with None values are not added to the
         nwbfile."""
