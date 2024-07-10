@@ -1,9 +1,10 @@
 import unittest
 from datetime import datetime
 
+from parameterized import param, parameterized
+
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import Suite2pSegmentationInterface, TiffImagingInterface
-from parameterized import param, parameterized
 
 from .setup_paths import OPHYS_DATA_PATH
 

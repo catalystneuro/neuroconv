@@ -1,7 +1,7 @@
-from ....utils import DeepDict
-from ....utils.types import FilePathType
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils import DeepDict
+from ....utils.types import FilePathType
 
 
 class PlexonRecordingInterface(BaseRecordingExtractorInterface):

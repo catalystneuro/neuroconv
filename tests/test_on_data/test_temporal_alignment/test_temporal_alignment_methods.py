@@ -6,15 +6,16 @@ from typing import Dict, Union
 
 import numpy as np
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_almost_equal, assert_array_equal
+from pandas import DataFrame
+from pynwb import NWBHDF5IO
+
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.datainterfaces import CsvTimeIntervalsInterface
 from neuroconv.tools.testing import (
     MockBehaviorEventInterface,
     MockSpikeGLXNIDQInterface,
 )
-from numpy.testing import assert_array_almost_equal, assert_array_equal
-from pandas import DataFrame
-from pynwb import NWBHDF5IO
 
 
 class TestNIDQInterfacePulseTimesAlignment(TestCase):

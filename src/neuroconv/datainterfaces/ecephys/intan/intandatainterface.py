@@ -4,9 +4,9 @@ from typing import Optional
 from packaging.version import Version
 from pynwb.ecephys import ElectricalSeries
 
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package_version
 from ....utils import FilePathType, get_schema_from_hdmf_class
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):

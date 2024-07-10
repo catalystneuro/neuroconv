@@ -5,8 +5,8 @@ from typing import Any, Dict, Literal, Union
 import h5py
 from pydantic import Field, InstanceOf
 
-from ...importing import is_package_installed
 from ._base_dataset_io import DatasetIOConfiguration
+from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
 _excluded_hdf5_filters = set(

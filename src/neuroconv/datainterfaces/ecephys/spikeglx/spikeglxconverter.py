@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import List, Optional
 
-from ....nwbconverter import ConverterPipe
-from ....utils import FolderPathType, get_schema_from_method_signature
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
+from ....nwbconverter import ConverterPipe
+from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class SpikeGLXConverterPipe(ConverterPipe):

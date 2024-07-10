@@ -4,8 +4,9 @@ from datetime import datetime
 import pytz
 from hdmf.testing import TestCase
 from jsonschema.exceptions import ValidationError
-from neuroconv.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 from pynwb import ProcessingModule
+
+from neuroconv.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 
 
 class TestNWBHelpers(TestCase):

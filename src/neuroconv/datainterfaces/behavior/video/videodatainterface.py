@@ -11,12 +11,12 @@ from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
 
+from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
 from ....utils import get_base_schema, get_schema_from_hdmf_class
 from ....utils.str_utils import human_readable_size
-from .video_utils import VideoCaptureContext
 
 
 class VideoInterface(BaseDataInterface):

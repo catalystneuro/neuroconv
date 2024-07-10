@@ -1,7 +1,8 @@
 import numpy as np
 from hdmf.testing import TestCase
-from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from numpy.testing import assert_array_equal
+
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 
 
 class TestIteratorAssertions(TestCase):

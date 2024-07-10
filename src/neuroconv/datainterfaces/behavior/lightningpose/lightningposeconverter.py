@@ -1,6 +1,8 @@
 from copy import deepcopy
 from typing import Optional
 
+from pynwb import NWBFile
+
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import LightningPoseDataInterface, VideoInterface
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
@@ -10,7 +12,6 @@ from neuroconv.utils import (
     dict_deep_update,
     get_schema_from_method_signature,
 )
-from pynwb import NWBFile
 
 
 class LightningPoseConverter(NWBConverter):

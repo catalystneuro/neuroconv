@@ -3,8 +3,8 @@ from typing import Optional
 
 from pynwb import NWBFile
 
-from ....utils import DeepDict, FolderPathType
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ....utils import DeepDict, FolderPathType
 
 
 def _update_metadata_links_for_plane_segmentation_name(metadata: dict, plane_segmentation_name: str) -> DeepDict:

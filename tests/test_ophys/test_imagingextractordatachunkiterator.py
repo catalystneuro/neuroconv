@@ -2,13 +2,14 @@ import math
 
 import numpy as np
 from hdmf.testing import TestCase
-from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
-    ImagingExtractorDataChunkIterator,
-)
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from roiextractors import VolumetricImagingExtractor
 from roiextractors.testing import generate_dummy_imaging_extractor
+
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
+    ImagingExtractorDataChunkIterator,
+)
 
 
 def custom_name_func(testcase_func, param_num, param):

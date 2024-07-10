@@ -5,15 +5,16 @@ from typing import Literal, Optional
 import numpy as np
 import numpy.testing as npt
 import pytest
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO
+from spikeinterface.core import BaseRecording
+
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     AxonaLFPDataInterface,
     NeuroScopeLFPInterface,
     SpikeGLXRecordingInterface,
 )
-from parameterized import param, parameterized
-from pynwb import NWBHDF5IO
-from spikeinterface.core import BaseRecording
 
 # enable to run locally in interactive mode
 try:

@@ -7,8 +7,9 @@ from tempfile import mkdtemp
 
 import pytest
 from hdmf.testing import TestCase
-from neuroconv.datainterfaces import MaxOneRecordingInterface
 from zoneinfo import ZoneInfo
+
+from neuroconv.datainterfaces import MaxOneRecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

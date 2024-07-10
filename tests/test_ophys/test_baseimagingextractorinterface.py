@@ -1,4 +1,5 @@
 from hdmf.testing import TestCase
+
 from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
 
 

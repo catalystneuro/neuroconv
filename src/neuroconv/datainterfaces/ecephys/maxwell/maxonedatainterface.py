@@ -3,8 +3,8 @@ from pathlib import Path
 from platform import system
 from typing import Optional
 
-from ....utils.types import FilePathType, FolderPathType
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils.types import FilePathType, FolderPathType
 
 
 class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no cover

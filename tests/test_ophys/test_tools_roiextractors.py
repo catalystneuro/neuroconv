@@ -14,6 +14,17 @@ import psutil
 import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_equal, assert_raises
+from numpy.typing import ArrayLike
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO, H5DataIO, NWBFile
+from pynwb.device import Device
+from pynwb.ophys import OnePhotonSeries
+from roiextractors.testing import (
+    generate_dummy_imaging_extractor,
+    generate_dummy_segmentation_extractor,
+)
+
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     add_devices,
@@ -32,16 +43,6 @@ from neuroconv.tools.roiextractors.roiextractors import (
     get_default_segmentation_metadata,
 )
 from neuroconv.utils import dict_deep_update
-from numpy.testing import assert_array_equal, assert_raises
-from numpy.typing import ArrayLike
-from parameterized import param, parameterized
-from pynwb import NWBHDF5IO, H5DataIO, NWBFile
-from pynwb.device import Device
-from pynwb.ophys import OnePhotonSeries
-from roiextractors.testing import (
-    generate_dummy_imaging_extractor,
-    generate_dummy_segmentation_extractor,
-)
 
 
 class TestAddDevices(unittest.TestCase):

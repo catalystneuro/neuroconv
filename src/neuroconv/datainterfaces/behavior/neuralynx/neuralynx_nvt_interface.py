@@ -5,10 +5,10 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
+from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....utils import DeepDict, FilePathType, NWBMetaDataEncoder, get_base_schema
 from ....utils.path import infer_path
-from .nvt_utils import read_data, read_header
 
 
 class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):

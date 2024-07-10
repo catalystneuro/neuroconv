@@ -3,10 +3,10 @@ from typing import List
 
 import numpy as np
 
+from .spikeglx_utils import get_device_metadata, get_session_start_time
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import FilePathType, get_schema_from_method_signature
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .spikeglx_utils import get_device_metadata, get_session_start_time
 
 
 class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):

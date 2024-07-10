@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from hdmf.testing import TestCase
+
 from neuroconv.datainterfaces.ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )

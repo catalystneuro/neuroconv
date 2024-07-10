@@ -1,6 +1,6 @@
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
 from ....utils.types import FilePathType
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):

@@ -4,12 +4,13 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from numcodecs import GZip
+
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
     ZarrDatasetIOConfiguration,
 )
 from neuroconv.tools.testing import mock_ZarrDatasetIOConfiguration
-from numcodecs import GZip
 
 
 def test_zarr_dataset_io_configuration_print():

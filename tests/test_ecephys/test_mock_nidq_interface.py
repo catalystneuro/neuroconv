@@ -1,9 +1,10 @@
 import pathlib
 from datetime import datetime
 
-from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 from numpy.testing import assert_array_almost_equal
 from pynwb import NWBHDF5IO
+
+from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 
 
 def test_current_default_inferred_ttl_times():

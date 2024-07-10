@@ -2,9 +2,9 @@ from typing import List, Literal, Optional
 
 from dateutil.parser import parse
 
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FolderPathType
 from ....utils.dict import DeepDict
-from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):

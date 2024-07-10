@@ -5,13 +5,14 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 import numpy as np
+from pynwb import NWBFile
+
 from neuroconv import (
     BaseDataInterface,
     BaseTemporalAlignmentInterface,
     ConverterPipe,
     NWBConverter,
 )
-from pynwb import NWBFile
 
 try:
     from ndx_events import LabeledEvents

@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
 from ....utils import FilePathType, get_schema_from_method_signature
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 def _test_sonpy_installation() -> None:

@@ -3,10 +3,10 @@ from typing import List, Optional
 
 import numpy as np
 
-from ....utils import FolderPathType
-from ....utils.json_schema import dict_deep_update
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils import FolderPathType
+from ....utils.json_schema import dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):

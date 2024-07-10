@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from tests.test_on_data.setup_paths import (
     BEHAVIOR_DATA_PATH,
     ECEPHY_DATA_PATH,

@@ -6,6 +6,10 @@ from unittest import skip, skipIf
 
 import numpy as np
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_equal
+from packaging import version
+from pynwb import NWBHDF5IO
+
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
     AxonaRecordingInterface,
@@ -31,9 +35,6 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
 )
-from numpy.testing import assert_array_equal
-from packaging import version
-from pynwb import NWBHDF5IO
 
 try:
     from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH

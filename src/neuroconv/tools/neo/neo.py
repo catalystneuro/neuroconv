@@ -9,8 +9,8 @@ import neo.io.baseio
 import numpy as np
 import pynwb
 
-from ...utils import OptionalFilePathType
 from ..nwb_helpers import add_device_from_metadata
+from ...utils import OptionalFilePathType
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,

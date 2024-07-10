@@ -1,9 +1,10 @@
 from typing import Literal, Optional
 from warnings import warn
 
+from pynwb import NWBFile
+
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.utils import ArrayType
-from pynwb import NWBFile
 
 
 def add_acoustic_waveform_series(

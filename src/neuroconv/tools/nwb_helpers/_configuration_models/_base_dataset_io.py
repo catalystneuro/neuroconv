@@ -11,7 +11,6 @@ import zarr
 from hdmf import Container
 from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.utils import get_data_shape
-from neuroconv.utils.str_utils import human_readable_size
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -23,8 +22,10 @@ from pydantic import (
 from pynwb import NWBFile
 from typing_extensions import Self
 
-from ...hdmf import SliceableDataChunkIterator
+from neuroconv.utils.str_utils import human_readable_size
+
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
+from ...hdmf import SliceableDataChunkIterator
 
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:

@@ -31,6 +31,9 @@ from roiextractors import (
     SegmentationExtractor,
 )
 
+from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
+from ..hdmf import SliceableDataChunkIterator
+from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
     OptionalFilePathType,
@@ -38,9 +41,6 @@ from ...utils import (
     dict_deep_update,
 )
 from ...utils.str_utils import human_readable_size
-from ..hdmf import SliceableDataChunkIterator
-from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
-from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 
 
 def get_default_ophys_metadata() -> DeepDict:

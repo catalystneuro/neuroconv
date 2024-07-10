@@ -10,6 +10,10 @@ import psutil
 import pynwb.ecephys
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
+from pynwb import NWBHDF5IO, NWBFile
+from spikeinterface.core.generate import generate_recording, generate_sorting
+from spikeinterface.extractors import NumpyRecording
+
 from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata, get_module
 from neuroconv.tools.spikeinterface import (
     add_electrical_series,
@@ -22,9 +26,6 @@ from neuroconv.tools.spikeinterface import (
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from pynwb import NWBHDF5IO, NWBFile
-from spikeinterface.core.generate import generate_recording, generate_sorting
-from spikeinterface.extractors import NumpyRecording
 
 testing_session_time = datetime.now().astimezone()
 
@@ -1252,8 +1253,9 @@ class TestAddUnitsTable(TestCase):
             np.testing.assert_array_equal(value, expected_values[i])
 
 
-from neuroconv.tools import get_package_version
 from packaging.version import Version
+
+from neuroconv.tools import get_package_version
 
 spike_interface_version = get_package_version("spikeinterface")
 

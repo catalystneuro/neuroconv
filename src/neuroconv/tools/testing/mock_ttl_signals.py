@@ -7,8 +7,8 @@ from numpy.typing import DTypeLike
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from ...utils import ArrayType, FolderPathType
 from ..importing import is_package_installed
+from ...utils import ArrayType, FolderPathType
 
 
 def _check_parameter_dtype_consistency(

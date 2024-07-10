@@ -1,5 +1,5 @@
-from ....utils import FolderPathType, get_schema_from_method_signature
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class OpenEphysSortingInterface(BaseSortingExtractorInterface):

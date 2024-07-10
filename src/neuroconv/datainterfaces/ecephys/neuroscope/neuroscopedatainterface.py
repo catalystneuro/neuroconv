@@ -3,17 +3,17 @@ from typing import Optional
 
 import numpy as np
 
-from ....tools import get_package
-from ....utils import FilePathType, FolderPathType
-from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from .neuroscope_utils import (
     get_channel_groups,
     get_neural_channels,
     get_session_start_time,
     get_xml_file_path,
 )
+from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
+from ....utils import FilePathType, FolderPathType
 
 
 def filter_non_neural_channels(recording_extractor, xml_file_path: str):

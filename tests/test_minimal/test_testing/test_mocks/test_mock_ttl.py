@@ -1,9 +1,10 @@
 from pathlib import Path
 
 from hdmf.testing import TestCase
-from neuroconv.tools.testing import generate_mock_ttl_signal
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+
+from neuroconv.tools.testing import generate_mock_ttl_signal
 
 
 class TestMockTTLSignals(TestCase):

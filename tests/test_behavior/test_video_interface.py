@@ -7,9 +7,10 @@ from pathlib import Path
 import numpy as np
 from dateutil.tz import gettz
 from hdmf.testing import TestCase
+from pynwb import NWBHDF5IO
+
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import VideoInterface
-from pynwb import NWBHDF5IO
 
 try:
     import cv2

@@ -8,12 +8,13 @@ from tempfile import mkdtemp
 from unittest import TestCase
 
 import numpy as np
-from neuroconv import ConverterPipe, NWBConverter
-from neuroconv.converters import SpikeGLXConverterPipe
-from neuroconv.utils import load_dict_from_file
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
+
+from neuroconv import ConverterPipe, NWBConverter
+from neuroconv.converters import SpikeGLXConverterPipe
+from neuroconv.utils import load_dict_from_file
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

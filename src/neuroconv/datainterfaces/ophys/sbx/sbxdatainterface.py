@@ -1,7 +1,7 @@
 from typing import Literal
 
-from ....utils import FilePathType
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....utils import FilePathType
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):

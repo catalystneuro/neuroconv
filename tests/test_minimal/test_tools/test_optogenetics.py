@@ -1,6 +1,7 @@
 import numpy as np
-from neuroconv.tools.optogenetics import create_optogenetic_stimulation_timeseries
 from numpy.testing import assert_array_equal
+
+from neuroconv.tools.optogenetics import create_optogenetic_stimulation_timeseries
 
 
 def test_create_ogen_stimulation_timeseries():
