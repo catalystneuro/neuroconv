@@ -5,6 +5,7 @@ import pickle
 import warnings
 from pathlib import Path
 from platform import python_version
+from typing import Optional, Union, List
 
 import cv2
 import numpy as np
@@ -16,6 +17,7 @@ from packaging.version import Version  # Installed with setuptools
 from pynwb import NWBHDF5IO, NWBFile
 from ruamel.yaml import YAML
 
+from ....utils import FilePathType
 
 def _read_config(configname):
     """
@@ -58,13 +60,20 @@ def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=Tr
 
     reader = cv2.VideoCapture(movie_file)
     timestamps = []
+    n_frames = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = reader.get(cv2.CAP_PROP_FPS)
+
+    for _ in range(n_frames):
+        _ = reader.read()
+        timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
+    
     for _ in range(len(reader)):
         _ = reader.read()
         timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
 
     timestamps = np.array(timestamps) / 1000  # Convert to seconds
 
-    if np.nanvar(np.diff(timestamps)) < 1.0 / reader.fps * 1.0 / VARIABILITYBOUND:
+    if np.nanvar(np.diff(timestamps)) < 1.0 / fps * 1.0 / VARIABILITYBOUND:
         warnings.warn(
             "Variability of timestamps suspiciously small. See: https://github.com/DeepLabCut/DLC2NWB/issues/1"
         )
@@ -172,7 +181,10 @@ def _write_pes_to_nwbfile(
     paf_graph,
     timestamps,
     exclude_nans,
+    pose_estimation_container_kwargs: Optional[dict] = None,
 ):
+    pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
+
     pose_estimation_series = []
     for kpt, xyp in df_animal.groupby(level="bodyparts", axis=1, sort=False):
         data = xyp.to_numpy()
@@ -211,6 +223,7 @@ def _write_pes_to_nwbfile(
         source_software_version=deeplabcut_version,
         nodes=[pes.name for pes in pose_estimation_series],
         edges=paf_graph if paf_graph else None,
+        **pose_estimation_container_kwargs,
     )
     if "behavior" in nwbfile.processing:
         behavior_pm = nwbfile.processing["behavior"]
@@ -220,84 +233,41 @@ def _write_pes_to_nwbfile(
     return nwbfile
 
 
-def write_subject_to_nwb(nwbfile, h5file, individual_name, config_file):
+def add_subject_to_nwbfile(
+    nwbfile: NWBFile,
+    h5file: FilePathType,
+    individual_name: str,
+    config_file: FilePathType,
+    timestamps: Optional[Union[List, np.ndarray]] = None,
+) -> NWBFile:
     """
-    Given, subject name, write h5file to an existing nwbfile.
+    Given the subject name, add the DLC .h5 file to an in-memory NWBFile object.
 
     Parameters
     ----------
-    nwbfile: pynwb.NWBFile
-        nwbfile to write the subject specific pose estimation series.
-    h5file : str
-        Path to a h5 data file
+    nwbfile : pynwb.NWBFile
+        The in-memory nwbfile object to which the subject specific pose estimation series will be added.
+    h5file : str or path
+        Path to the DeepLabCut .h5 output file.
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str
+    config_file : str or path
         Path to a project config.yaml file
-    config_dict : dict
-        dict containing configuration options. Provide this as alternative to config.yml file.
+    timestamps : list, np.ndarray or None, default: None
+        Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
 
     Returns
     -------
-    nwbfile: pynwb.NWBFile
+    nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
-    scorer, df, video, paf_graph, timestamps, _ = _get_pes_args(config_file, h5file, individual_name)
+    scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(config_file, h5file, individual_name)
+    if timestamps is None:
+        timestamps = dlc_timestamps
+
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
-    return _write_pes_to_nwbfile(nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps)
-
-
-def convert_h5_to_nwb(config, h5file, individual_name="ind1", infer_timestamps=True):
-    """
-    Convert a DeepLabCut (DLC) video prediction, h5 data file to Neurodata Without Borders (NWB). Also
-    takes project config, to store relevant metadata.
-
-    Parameters
-    ----------
-    config : str
-        Path to a project config.yaml file
-
-    h5file : str
-        Path to a h5 data file
-
-    individual_name : str
-        Name of the subject (whose pose is predicted) for single-animal DLC project.
-        For multi-animal projects, the names from the DLC project will be used directly.
-
-    infer_timestamps : bool
-        Default True. Uses framerate to infer the timestamps returned as 0 from OpenCV.
-        If False, exclude these frames from resulting NWB file.
-
-    TODO: allow one to overwrite those names, with a mapping?
-
-    Returns
-    -------
-    list of str
-        List of paths to the newly created NWB data files.
-        By default NWB files are stored in the same folder as the h5file.
-
-    """
-    scorer, df, video, paf_graph, timestamps, cfg = _get_pes_args(
-        config, h5file, individual_name, infer_timestamps=infer_timestamps
+    
+    return _write_pes_to_nwbfile(
+        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
     )
-    output_paths = []
-    for animal, df_ in df.groupby(level="individuals", axis=1):
-        nwbfile = NWBFile(
-            session_description=cfg["Task"],
-            experimenter=cfg["scorer"],
-            identifier=scorer,
-            session_start_time=datetime.datetime.now(datetime.timezone.utc),
-        )
-
-        # TODO Store the test_pose_config as well?
-        nwbfile = _write_pes_to_nwbfile(
-            nwbfile, animal, df_, scorer, video, paf_graph, timestamps, exclude_nans=(not infer_timestamps)
-        )
-        output_path = h5file.replace(".h5", f"_{animal}.nwb")
-        with warnings.catch_warnings(), NWBHDF5IO(output_path, mode="w") as io:
-            warnings.filterwarnings("ignore", category=DtypeConversionWarning)
-            io.write(nwbfile)
-        output_paths.append(output_path)
-
-    return output_paths
