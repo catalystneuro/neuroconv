@@ -37,6 +37,10 @@ exclude = [
   "*/__init__.py"
 ]
 
+[tool.ruff.lint]
+select = ["F401", "I"]  # TODO: eventually, expand to other 'F' linting
+fixable = ["ALL"]
+
 
 
 [tool.codespell]
