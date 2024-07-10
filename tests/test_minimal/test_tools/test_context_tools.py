@@ -220,3 +220,11 @@ def test_make_or_load_nwbfile_on_corrupt_file(tmpdir: Path) -> None:
     with make_or_load_nwbfile(nwbfile_path=nwbfile_path, nwbfile=nwbfile_in, overwrite=True) as nwbfile:
         time_series = mock_TimeSeries()
         nwbfile.add_acquisition(time_series)
+
+
+def test_make_or_load_nwbfile_metadata_equal_None(tmpdir):
+
+    nwbfile_path = tmpdir / "test_make_or_load_nwbfile_empty_metadata.nwb"
+
+    with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=None, overwrite=True) as nwbfile:
+        nwbfile
