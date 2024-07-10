@@ -163,5 +163,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             individual_name=self.subject_name,
             config_file=str(self.source_data["config_file_path"]),
             timestamps=self._timestamps,
-            container_name=container_name,
+            pose_estimation_container_kwargs=dict(name=container_name),
         )
