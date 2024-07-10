@@ -1,9 +1,9 @@
+import importlib
 import os
 import unittest
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-import importlib
 
 import pytest
 from hdmf.testing import TestCase
