@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
+import importlib
 
 import pytest
 from hdmf.testing import TestCase
@@ -14,14 +15,9 @@ from neuroconv.tools.data_transfers import (
     transfer_globus_content,
 )
 
-try:
-    import globus_cli
+HAVE_GLOBUS_CLI = importlib.util.find_spec(name="globus_cli") is None
+LOGGED_INTO_GLOBUS = not os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read():
 
-    HAVE_GLOBUS, LOGGED_INTO_GLOBUS = True, True
-    if not os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read():
-        LOGGED_INTO_GLOBUS = False
-except ModuleNotFoundError:
-    HAVE_GLOBUS, LOGGED_INTO_GLOBUS = False, False
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
 
