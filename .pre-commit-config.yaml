@@ -12,12 +12,6 @@ repos:
     -   id: black
         exclude: ^docs/
 
--   repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-    -   id: isort
-        exclude: ^docs/
-
 - repo: https://github.com/codespell-project/codespell
   rev: v2.3.0
   hooks:
