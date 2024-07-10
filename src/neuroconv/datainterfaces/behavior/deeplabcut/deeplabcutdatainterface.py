@@ -9,46 +9,6 @@ from ....tools import get_package
 from ....utils import FilePathType
 
 
-def write_subject_to_nwb(
-    nwbfile: NWBFile,
-    h5file: FilePathType,
-    individual_name: str,
-    config_file: FilePathType,
-    timestamps: Optional[Union[List, np.ndarray]] = None,
-):
-    """
-    Given, subject name, write h5file to an existing nwbfile.
-
-    Parameters
-    ----------
-    nwbfile : pynwb.NWBFile
-        The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    h5file : str or path
-        Path to the DeepLabCut .h5 output file.
-    individual_name : str
-        Name of the subject (whose pose is predicted) for single-animal DLC project.
-        For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str or path
-        Path to a project config.yaml file
-    timestamps : list, np.ndarray or None, default: None
-        Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
-    Returns
-    -------
-    nwbfile : pynwb.NWBFile
-        nwbfile with pes written in the behavior module
-    """
-    from ._dlc_utils import _get_pes_args, _write_pes_to_nwbfile
-
-    scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(config_file, h5file, individual_name)
-    if timestamps is None:
-        timestamps = dlc_timestamps
-
-    df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
-    return _write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
-    )
-
-
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
@@ -143,7 +103,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         """
-        write_subject_to_nwb(
+        from ._dlc_utils import add_subject_to_nwbfile
+        
+        add_subject_to_nwbfile(
             nwbfile=nwbfile,
             h5file=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
