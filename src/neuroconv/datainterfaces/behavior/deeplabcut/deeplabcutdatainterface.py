@@ -144,7 +144,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        container_name: Optional[str] = "PoseEstimation",
+        container_name: str = "PoseEstimation",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
