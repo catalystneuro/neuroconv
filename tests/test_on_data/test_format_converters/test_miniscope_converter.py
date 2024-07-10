@@ -10,7 +10,6 @@ from neuroconv.converters import MiniscopeConverter
 from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
 from pynwb.ophys import OnePhotonSeries
-
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 

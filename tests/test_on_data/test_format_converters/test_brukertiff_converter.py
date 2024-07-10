@@ -11,7 +11,6 @@ from neuroconv.datainterfaces.ophys.brukertiff.brukertiffconverter import (
 )
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 

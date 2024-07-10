@@ -11,11 +11,6 @@ import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
 from hdmf_zarr import NWBZarrIO
 from jsonschema.validators import Draft7Validator, validate
-from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
-from pynwb.testing.mock.file import mock_NWBFile
-from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
-
 from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -34,6 +29,10 @@ from neuroconv.tools.nwb_helpers import (
     get_default_backend_configuration,
 )
 from neuroconv.utils import NWBMetaDataEncoder
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
+from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
 from .mock_probes import generate_mock_probe
 
