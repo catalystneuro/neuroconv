@@ -48,7 +48,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             controls verbosity.
         """
         from ._dlc_utils import _read_config
-        
+
         file_path = Path(file_path)
         if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
             raise IOError("The file passed in is not a DeepLabCut h5 data file.")
