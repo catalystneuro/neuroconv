@@ -42,7 +42,6 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 from neuroconv.tools.roiextractors.roiextractors import (
     get_default_segmentation_metadata,
 )
-from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
 from neuroconv.utils import dict_deep_update
 
 
