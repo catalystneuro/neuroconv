@@ -15,7 +15,6 @@ The developer can easily find the location of the config file on their system us
 import os
 
 from hdmf.testing import TestCase
-
 from neuroconv.tools import deploy_process
 
 from .test_on_data.setup_paths import OUTPUT_PATH

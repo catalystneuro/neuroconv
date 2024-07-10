@@ -10,11 +10,6 @@ from natsort import natsorted
 from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
 from ndx_pose import PoseEstimation, PoseEstimationSeries
-from numpy.testing import assert_array_equal
-from parameterized import param, parameterized
-from pynwb import NWBHDF5IO
-from pynwb.behavior import Position, SpatialSeries
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
@@ -32,6 +27,10 @@ from neuroconv.tools.testing.data_interface_mixins import (
     VideoInterfaceMixin,
 )
 from neuroconv.utils import DeepDict
+from numpy.testing import assert_array_equal
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO
+from pynwb.behavior import Position, SpatialSeries
 
 try:
     from .setup_paths import BEHAVIOR_DATA_PATH, OPHYS_DATA_PATH, OUTPUT_PATH

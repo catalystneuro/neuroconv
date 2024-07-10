@@ -1,7 +1,7 @@
 from dateutil.parser import parse
 
-from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FolderPathType
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):

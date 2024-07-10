@@ -24,8 +24,8 @@ from typing_extensions import Self
 
 from neuroconv.utils.str_utils import human_readable_size
 
-from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from ...hdmf import SliceableDataChunkIterator
+from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:

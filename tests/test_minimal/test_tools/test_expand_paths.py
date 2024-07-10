@@ -5,12 +5,11 @@ from pathlib import Path
 from typing import List, Tuple
 
 import pytest
-from parse import parse
-
 from neuroconv.tools import LocalPathExpander
 from neuroconv.tools.path_expansion import construct_path_template
 from neuroconv.tools.testing import generate_path_expander_demo_ibl
 from neuroconv.utils import NWBMetaDataEncoder
+from parse import parse
 
 
 def create_test_directories_and_files(

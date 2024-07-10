@@ -2,7 +2,6 @@ import os
 import tempfile
 from pathlib import Path
 
-
 from neuroconv.utils import load_dict_from_file
 
 # Load the configuration for the data tests

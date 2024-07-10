@@ -6,11 +6,6 @@ from platform import system
 
 import pytest
 from jsonschema.validators import Draft7Validator
-from parameterized import param, parameterized
-from spikeinterface.core import BaseRecording
-from spikeinterface.core.testing import check_recordings_equal
-from spikeinterface.extractors import NwbRecordingExtractor
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
@@ -31,6 +26,10 @@ from neuroconv.datainterfaces import (
     SpikeGLXRecordingInterface,
     TdtRecordingInterface,
 )
+from parameterized import param, parameterized
+from spikeinterface.core import BaseRecording
+from spikeinterface.core.testing import check_recordings_equal
+from spikeinterface.extractors import NwbRecordingExtractor
 
 # enable to run locally in interactive mode
 try:

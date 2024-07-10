@@ -6,7 +6,6 @@ from tempfile import mkdtemp
 
 import pytest
 from hdmf.testing import TestCase
-
 from neuroconv.tools import deploy_process
 from neuroconv.tools.data_transfers import (
     estimate_s3_conversion_cost,

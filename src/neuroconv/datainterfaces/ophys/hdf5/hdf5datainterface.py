@@ -1,7 +1,7 @@
 from typing import Literal
 
-from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType, FilePathType
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):

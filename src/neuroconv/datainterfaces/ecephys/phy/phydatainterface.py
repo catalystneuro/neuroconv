@@ -1,7 +1,7 @@
 from typing import Optional
 
-from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):

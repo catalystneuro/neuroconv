@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Optional
 
+from ....utils import FolderPathType
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from .openephysbinarydatainterface import OpenEphysBinaryRecordingInterface
 from .openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FolderPathType
 
 
 class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):

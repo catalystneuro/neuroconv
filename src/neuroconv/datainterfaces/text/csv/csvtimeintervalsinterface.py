@@ -1,7 +1,7 @@
 import pandas as pd
 
-from ..timeintervalsinterface import TimeIntervalsInterface
 from ....utils.types import FilePathType
+from ..timeintervalsinterface import TimeIntervalsInterface
 
 
 class CsvTimeIntervalsInterface(TimeIntervalsInterface):

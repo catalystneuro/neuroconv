@@ -4,12 +4,11 @@ from datetime import datetime
 import numpy as np
 import numpy.testing as npt
 import pytest
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import NeuroScopeRecordingInterface
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
 from spikeinterface.extractors import NwbRecordingExtractor
-
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import NeuroScopeRecordingInterface
 
 # enable to run locally in interactive mode
 try:

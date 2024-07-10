@@ -10,10 +10,6 @@ import pynwb
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from spikeinterface import BaseRecording, BaseSorting
 
-from .spikeinterfacerecordingdatachunkiterator import (
-    SpikeInterfaceRecordingDataChunkIterator,
-)
-from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
     FilePathType,
@@ -21,6 +17,10 @@ from ...utils import (
     dict_deep_update,
 )
 from ...utils.str_utils import human_readable_size
+from ..nwb_helpers import get_module, make_or_load_nwbfile
+from .spikeinterfacerecordingdatachunkiterator import (
+    SpikeInterfaceRecordingDataChunkIterator,
+)
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):

@@ -8,13 +8,12 @@ from tempfile import mkdtemp
 
 import pytest
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO
-
 from neuroconv.tools.data_transfers import automatic_dandi_upload
 from neuroconv.tools.nwb_helpers import (
     get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
+from pynwb import NWBHDF5IO
 
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks

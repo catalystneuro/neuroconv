@@ -6,13 +6,12 @@ from warnings import warn
 
 from hdmf.testing import TestCase
 from ndx_pose import PoseEstimation
-from pynwb import NWBHDF5IO
-from pynwb.image import ImageSeries
-
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.converters import LightningPoseConverter
 from neuroconv.tools import get_module
 from neuroconv.utils import DeepDict
+from pynwb import NWBHDF5IO
+from pynwb.image import ImageSeries
 
 from ..setup_paths import BEHAVIOR_DATA_PATH
 

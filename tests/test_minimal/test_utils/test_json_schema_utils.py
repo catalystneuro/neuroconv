@@ -5,8 +5,6 @@ from pathlib import Path
 from typing import Dict, Union
 
 import numpy as np
-from pynwb.ophys import ImagingPlane, TwoPhotonSeries
-
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
 from neuroconv.utils import (
     NWBMetaDataEncoder,
@@ -16,6 +14,7 @@ from neuroconv.utils import (
     get_schema_from_method_signature,
     load_dict_from_file,
 )
+from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 
 def compare_dicts(a: dict, b: dict):

@@ -5,12 +5,12 @@ from pathlib import Path
 from unittest import TestCase
 from warnings import warn
 
+from neuroconv import ConverterPipe, NWBConverter
+from neuroconv.converters import MiniscopeConverter
 from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
 from pynwb.ophys import OnePhotonSeries
 
-from neuroconv import ConverterPipe, NWBConverter
-from neuroconv.converters import MiniscopeConverter
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 

@@ -1,7 +1,7 @@
 from typing import Optional
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import ArrayType, FilePathType
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):

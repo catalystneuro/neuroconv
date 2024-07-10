@@ -1,5 +1,5 @@
-from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 from ....utils import FilePathType
+from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):

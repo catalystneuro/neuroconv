@@ -1,5 +1,5 @@
-from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 class KiloSortSortingInterface(BaseSortingExtractorInterface):

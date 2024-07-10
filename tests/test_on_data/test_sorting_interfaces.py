@@ -2,8 +2,6 @@ from datetime import datetime
 from unittest import TestCase
 
 import numpy as np
-from pynwb import NWBHDF5IO
-
 from neuroconv.datainterfaces import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
@@ -16,6 +14,7 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     SortingExtractorInterfaceTestMixin,
 )
+from pynwb import NWBHDF5IO
 
 try:
     from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH

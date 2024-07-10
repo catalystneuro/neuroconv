@@ -4,12 +4,11 @@ from pathlib import Path
 from platform import system
 from shutil import rmtree
 from tempfile import mkdtemp
-from zoneinfo import ZoneInfo
 
 import pytest
 from hdmf.testing import TestCase
-
 from neuroconv.datainterfaces import MaxOneRecordingInterface
+from zoneinfo import ZoneInfo
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

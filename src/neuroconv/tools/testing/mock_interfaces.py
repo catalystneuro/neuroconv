@@ -5,7 +5,6 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
 
-from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -15,6 +14,7 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
 from ...utils import ArrayType, get_schema_from_method_signature
+from .mock_ttl_signals import generate_mock_ttl_signal
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):

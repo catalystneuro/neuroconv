@@ -1,8 +1,7 @@
 import unittest
 
-from pynwb.testing.mock.file import mock_NWBFile
-
 from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
+from pynwb.testing.mock.file import mock_NWBFile
 
 
 class TestMockImagingInterface(unittest.TestCase):

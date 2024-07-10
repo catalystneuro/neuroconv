@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from jsonschema import Draft7Validator
-
 from neuroconv.utils import load_dict_from_file
 
 

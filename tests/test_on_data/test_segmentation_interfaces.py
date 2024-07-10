@@ -1,7 +1,5 @@
 from unittest import TestCase
 
-from parameterized import parameterized_class
-
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -11,6 +9,7 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     SegmentationExtractorInterfaceTestMixin,
 )
+from parameterized import parameterized_class
 
 try:
     from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH

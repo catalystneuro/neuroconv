@@ -1,5 +1,4 @@
 from hdmf.testing import TestCase
-
 from neuroconv.datainterfaces import (
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,

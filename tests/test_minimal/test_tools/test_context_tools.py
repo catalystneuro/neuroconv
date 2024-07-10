@@ -9,11 +9,10 @@ from unittest.mock import patch
 import h5py
 from hdmf.testing import TestCase
 from hdmf_zarr import NWBZarrIO
+from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 from pynwb import NWBHDF5IO, TimeSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
-
-from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 
 
 class TestMakeOrLoadNWBFile(TestCase):

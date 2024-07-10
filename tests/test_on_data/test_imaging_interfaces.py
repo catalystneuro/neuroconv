@@ -6,10 +6,6 @@ from unittest import TestCase, skipIf
 import numpy as np
 from dateutil.tz import tzoffset
 from hdmf.testing import TestCase as hdmf_TestCase
-from numpy.testing import assert_array_equal
-from parameterized import parameterized_class
-from pynwb import NWBHDF5IO
-
 from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
@@ -33,6 +29,9 @@ from neuroconv.tools.testing.data_interface_mixins import (
     ScanImageMultiPlaneImagingInterfaceMixin,
     ScanImageSinglePlaneImagingInterfaceMixin,
 )
+from numpy.testing import assert_array_equal
+from parameterized import parameterized_class
+from pynwb import NWBHDF5IO
 
 try:
     from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH

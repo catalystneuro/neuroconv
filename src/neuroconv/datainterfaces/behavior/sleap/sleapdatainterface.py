@@ -4,10 +4,10 @@ from typing import Optional
 import numpy as np
 from pynwb.file import NWBFile
 
-from .sleap_utils import extract_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
 from ....utils import FilePathType
+from .sleap_utils import extract_timestamps
 
 
 class SLEAPInterface(BaseTemporalAlignmentInterface):

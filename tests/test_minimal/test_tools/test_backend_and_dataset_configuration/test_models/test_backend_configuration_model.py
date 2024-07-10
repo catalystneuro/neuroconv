@@ -1,7 +1,6 @@
 """Unit tests for the BackendConfiguration Pydantic model."""
 
 import pytest
-
 from neuroconv.tools.nwb_helpers import BackendConfiguration
 
 

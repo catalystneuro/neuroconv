@@ -1,7 +1,6 @@
 """Unit tests for the all common Pydantic validations shared across DatasetConfigurations children."""
 
 import pytest
-
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
 from neuroconv.tools.testing import (
     mock_HDF5DatasetIOConfiguration,

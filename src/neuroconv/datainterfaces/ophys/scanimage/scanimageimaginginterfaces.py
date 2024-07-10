@@ -5,8 +5,8 @@ from typing import Optional
 
 from dateutil.parser import parse as dateparse
 
-from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType, FolderPathType
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):

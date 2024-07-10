@@ -2,8 +2,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import List, Optional
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 def _open_with_pyopenephys(folder_path: FolderPathType):

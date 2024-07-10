@@ -6,14 +6,12 @@ from pathlib import Path
 import pytest
 from hdmf.testing import TestCase
 from jsonschema import RefResolver, validate
-from pynwb import NWBHDF5IO
-
 from neuroconv import run_conversion_from_yaml
 from neuroconv.utils import load_dict_from_file
+from pynwb import NWBHDF5IO
 
-from .setup_paths import BEHAVIOR_DATA_PATH
+from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .setup_paths import OUTPUT_PATH
 
 
 @pytest.mark.parametrize(

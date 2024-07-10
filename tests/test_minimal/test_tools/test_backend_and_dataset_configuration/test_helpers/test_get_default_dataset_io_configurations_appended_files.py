@@ -9,16 +9,15 @@ import numpy as np
 import pytest
 from hdmf.common import VectorData
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile
-from pynwb.base import DynamicTable
-from pynwb.testing.mock.base import mock_TimeSeries
-from pynwb.testing.mock.file import mock_NWBFile
-
 from neuroconv.tools.nwb_helpers import (
     HDF5DatasetIOConfiguration,
     ZarrDatasetIOConfiguration,
     get_default_dataset_io_configurations,
 )
+from pynwb import NWBHDF5IO, NWBFile
+from pynwb.base import DynamicTable
+from pynwb.testing.mock.base import mock_TimeSeries
+from pynwb.testing.mock.file import mock_NWBFile
 
 
 def generate_nwbfile_with_existing_time_series() -> NWBFile:

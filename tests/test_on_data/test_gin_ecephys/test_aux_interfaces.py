@@ -2,12 +2,11 @@ import unittest
 from datetime import datetime
 
 import pytest
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import SpikeGLXNIDQInterface
 from parameterized import param, parameterized
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
-
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import SpikeGLXNIDQInterface
 
 # enable to run locally in interactive mode
 try:

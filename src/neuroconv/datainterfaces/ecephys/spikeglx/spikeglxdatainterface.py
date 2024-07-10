@@ -5,14 +5,14 @@ from typing import Optional
 
 import numpy as np
 
+from ....utils import FilePathType, get_schema_from_method_signature
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from .spikeglx_utils import (
     add_recording_extractor_properties,
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
     get_session_start_time,
 )
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):

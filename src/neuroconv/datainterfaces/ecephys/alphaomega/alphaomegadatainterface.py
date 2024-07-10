@@ -1,5 +1,5 @@
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.types import FolderPathType
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):

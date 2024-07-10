@@ -6,16 +6,15 @@ from typing import Literal, Tuple
 import numcodecs
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
-from pynwb.testing.mock.base import mock_TimeSeries
-from pynwb.testing.mock.file import mock_NWBFile
-
 from neuroconv.tools.nwb_helpers import (
     BACKEND_NWB_IO,
     configure_backend,
     get_default_backend_configuration,
     get_module,
 )
+from numpy.testing import assert_array_equal
+from pynwb.testing.mock.base import mock_TimeSeries
+from pynwb.testing.mock.file import mock_NWBFile
 
 
 def _generate_integer_array(

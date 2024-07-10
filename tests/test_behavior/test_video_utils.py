@@ -6,15 +6,14 @@ from datetime import datetime
 
 import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
-from pynwb.image import ImageSeries
-
 from neuroconv.datainterfaces.behavior.video.video_utils import (
     VideoCaptureContext,
     VideoDataChunkIterator,
 )
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
+from pynwb.image import ImageSeries
 
 try:
     import cv2

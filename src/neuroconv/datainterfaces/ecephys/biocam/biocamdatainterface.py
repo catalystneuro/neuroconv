@@ -1,5 +1,5 @@
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.types import FilePathType
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class BiocamRecordingInterface(BaseRecordingExtractorInterface):

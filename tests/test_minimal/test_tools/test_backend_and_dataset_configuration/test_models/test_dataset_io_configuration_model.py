@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
 
 

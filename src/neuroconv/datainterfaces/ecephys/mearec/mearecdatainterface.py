@@ -1,8 +1,8 @@
 import json
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.json_schema import NWBMetaDataEncoder
 from ....utils.types import FilePathType
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class MEArecRecordingInterface(BaseRecordingExtractorInterface):

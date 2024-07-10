@@ -3,9 +3,8 @@ from datetime import datetime
 from pathlib import Path
 
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO
-
 from neuroconv.tools import deploy_process
+from pynwb import NWBHDF5IO
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH

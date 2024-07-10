@@ -1,5 +1,4 @@
 import pytest
-
 from neuroconv.utils.str_utils import human_readable_size
 
 

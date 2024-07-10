@@ -10,10 +10,6 @@ import jsonschema
 import numpy as np
 import pytest
 from hdmf.testing import TestCase
-from packaging.version import Version
-from pynwb import NWBHDF5IO
-from spikeinterface.extractors import NumpySorting
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import Spike2RecordingInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
@@ -21,6 +17,9 @@ from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
 )
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+from packaging.version import Version
+from pynwb import NWBHDF5IO
+from spikeinterface.extractors import NumpySorting
 
 python_version = Version(get_python_version())
 

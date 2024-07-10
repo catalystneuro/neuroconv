@@ -5,10 +5,10 @@ import numpy as np
 import scipy
 from pynwb import NWBFile
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPathType):

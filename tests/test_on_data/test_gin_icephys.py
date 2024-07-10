@@ -6,12 +6,11 @@ from pathlib import Path
 
 import numpy.testing as npt
 import pytest
-from pynwb import NWBHDF5IO
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import AbfInterface
 from neuroconv.tools.neo import get_number_of_electrodes, get_number_of_segments
 from neuroconv.utils import load_dict_from_file
+from pynwb import NWBHDF5IO
 
 try:
     from parameterized import param, parameterized

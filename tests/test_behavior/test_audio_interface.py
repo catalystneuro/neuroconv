@@ -9,14 +9,13 @@ import jsonschema
 import numpy as np
 from dateutil.tz import gettz
 from hdmf.testing import TestCase
-from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
-from scipy.io.wavfile import read, write
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
 from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
 from neuroconv.utils import FilePathType
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
+from scipy.io.wavfile import read, write
 
 
 def create_audio_files(

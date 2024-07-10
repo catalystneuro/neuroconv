@@ -5,8 +5,8 @@ from typing import Literal, Optional
 import numpy as np
 from pynwb import NWBFile
 
-from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict, FolderPathType, dict_deep_update
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 class MiniscopeImagingInterface(BaseImagingExtractorInterface):

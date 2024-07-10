@@ -2,10 +2,10 @@ from typing import Optional
 
 from pynwb import NWBFile
 
-from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import FolderPathType, get_schema_from_method_signature
+from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 
 
 class MiniscopeConverter(NWBConverter):

@@ -7,9 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from pynwb import NWBFile
 from typing_extensions import Self
 
+from .._dataset_configuration import get_default_dataset_io_configurations
 from ._base_dataset_io import DatasetIOConfiguration
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from .._dataset_configuration import get_default_dataset_io_configurations
 
 
 class BackendConfiguration(BaseModel):
