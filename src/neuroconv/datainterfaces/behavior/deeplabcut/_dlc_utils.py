@@ -240,6 +240,7 @@ def add_subject_to_nwbfile(
     individual_name: str,
     config_file: FilePathType,
     timestamps: Optional[Union[List, np.ndarray]] = None,
+    pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """
     Given the subject name, add the DLC .h5 file to an in-memory NWBFile object.
@@ -257,6 +258,8 @@ def add_subject_to_nwbfile(
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
         Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
+    pose_estimation_container_kwargs : dict, optional
+        Dictionary of keyword argument pairs to pass to the PoseEstimation container.
 
     Returns
     -------
@@ -270,5 +273,5 @@ def add_subject_to_nwbfile(
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
 
     return _write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
+        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False, pose_estimation_container_kwargs=pose_estimation_container_kwargs,
     )
