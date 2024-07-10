@@ -1,19 +1,19 @@
 import datetime
+import importlib
 import os
 import pickle
 import warnings
 from pathlib import Path
 from platform import python_version
-import importlib
 
 import cv2
-import yaml
 import numpy as np
 import pandas as pd
+import yaml
 from hdmf.build.warnings import DtypeConversionWarning
+from ndx_pose import PoseEstimation, PoseEstimationSeries
 from packaging.version import Version  # Installed with setuptools
-from pynwb import NWBFile, NWBHDF5IO
-from ndx_pose import PoseEstimationSeries, PoseEstimation
+from pynwb import NWBHDF5IO, NWBFile
 from ruamel.yaml import YAML
 
 
@@ -32,10 +32,7 @@ def _read_config(configname):
                     cfg["project_path"] = curr_dir
         except Exception as err:
             if len(err.args) > 2:
-                if (
-                    err.args[2]
-                    == "could not determine a constructor for the tag '!!python/tuple'"
-                ):
+                if err.args[2] == "could not determine a constructor for the tag '!!python/tuple'":
                     with open(path, "r") as ymlfile:
                         cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
                 else:
@@ -46,7 +43,6 @@ def _read_config(configname):
             "Config file is not found. Please make sure that the file exists and/or that you passed the path of the config file correctly!"
         )
     return cfg
-
 
 
 def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=True):
@@ -77,15 +73,14 @@ def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=Tr
         # Infers times when OpenCV provides 0s
         warning_msg = "Removing"
         timestamp_zero_count = np.count_nonzero(timestamps == 0)
-        timestamps[1:][timestamps[1:] == 0] = np.nan # replace 0s with nan
+        timestamps[1:][timestamps[1:] == 0] = np.nan  # replace 0s with nan
 
         if infer_timestamps:
             warning_msg = "Replacing"
             timestamps = _infer_nan_timestamps(timestamps)
 
-        warnings.warn( # warns user of percent of 0 frames
-            "%s cv2 timestamps returned as 0: %f%%"
-            % (warning_msg, ( timestamp_zero_count / len(timestamps) * 100))
+        warnings.warn(  # warns user of percent of 0 frames
+            "%s cv2 timestamps returned as 0: %f%%" % (warning_msg, (timestamp_zero_count / len(timestamps) * 100))
         )
 
     return timestamps
@@ -95,16 +90,14 @@ def _infer_nan_timestamps(timestamps):
     """Given np.array, interpolate nan values using index * sampling rate"""
     bad_timestamps_mask = np.isnan(timestamps)
     # Runs of good timestamps
-    good_run_indices = np.where( 
-        np.diff(np.hstack(([False], bad_timestamps_mask == False, [False])))
-    )[0].reshape(-1, 2)
-    
+    good_run_indices = np.where(np.diff(np.hstack(([False], bad_timestamps_mask == False, [False]))))[0].reshape(-1, 2)
+
     # For each good run, get the diff and append to cumulative array
     sampling_diffs = np.array([])
-    for idx in good_run_indices: 
-        sampling_diffs = np.append(sampling_diffs, np.diff(timestamps[idx[0]:idx[1]]))
-    estimated_sampling_rate = np.mean(sampling_diffs) # Average over diffs
-    
+    for idx in good_run_indices:
+        sampling_diffs = np.append(sampling_diffs, np.diff(timestamps[idx[0] : idx[1]]))
+    estimated_sampling_rate = np.mean(sampling_diffs)  # Average over diffs
+
     # Infer timestamps with avg sampling rate
     bad_timestamps_indexes = np.argwhere(bad_timestamps_mask)[:, 0]
     inferred_timestamps = bad_timestamps_indexes * estimated_sampling_rate
@@ -118,9 +111,7 @@ def _ensure_individuals_in_header(df, dummy_name):
         # Single animal project -> add individual row to
         # the header of single animal projects.
         temp = pd.concat({dummy_name: df}, names=["individuals"], axis=1)
-        df = temp.reorder_levels(
-            ["scorer", "individuals", "bodyparts", "coords"], axis=1
-        )
+        df = temp.reorder_levels(["scorer", "individuals", "bodyparts", "coords"], axis=1)
     return df
 
 
@@ -166,9 +157,7 @@ def _get_pes_args(config_file, h5file, individual_name, infer_timestamps=True):
         warnings.warn(f"The video file corresponding to {h5file} could not be found...")
         video = "fake_path", "0, 0, 0, 0"
 
-        timestamps = (
-            df.index.tolist()
-        )  # setting timestamps to dummy TODO: extract timestamps in DLC?
+        timestamps = df.index.tolist()  # setting timestamps to dummy TODO: extract timestamps in DLC?
     else:
         timestamps = _get_movie_timestamps(video[0], infer_timestamps=infer_timestamps)
     return scorer, df, video, paf_graph, timestamps, cfg
@@ -183,15 +172,15 @@ def _write_pes_to_nwbfile(
     paf_graph,
     timestamps,
     exclude_nans,
-):  
+):
     pose_estimation_series = []
     for kpt, xyp in df_animal.groupby(level="bodyparts", axis=1, sort=False):
         data = xyp.to_numpy()
 
-        if exclude_nans: 
+        if exclude_nans:
             # exclude_nans is inverse infer_timestamps. if not infer, there may be nans
             data = data[~np.isnan(timestamps)]
-            timestamps_cleaned = timestamps[~np.isnan(timestamps)] 
+            timestamps_cleaned = timestamps[~np.isnan(timestamps)]
         else:
             timestamps_cleaned = timestamps
 
@@ -223,12 +212,10 @@ def _write_pes_to_nwbfile(
         nodes=[pes.name for pes in pose_estimation_series],
         edges=paf_graph if paf_graph else None,
     )
-    if 'behavior' in nwbfile.processing:
+    if "behavior" in nwbfile.processing:
         behavior_pm = nwbfile.processing["behavior"]
     else:
-        behavior_pm = nwbfile.create_processing_module(
-            name="behavior", description="processed behavioral data"
-        )
+        behavior_pm = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
     behavior_pm.add(pe)
     return nwbfile
 
@@ -291,8 +278,9 @@ def convert_h5_to_nwb(config, h5file, individual_name="ind1", infer_timestamps=T
         By default NWB files are stored in the same folder as the h5file.
 
     """
-    scorer, df, video, paf_graph, timestamps, cfg = _get_pes_args(config, h5file, individual_name, 
-                                                                  infer_timestamps=infer_timestamps)
+    scorer, df, video, paf_graph, timestamps, cfg = _get_pes_args(
+        config, h5file, individual_name, infer_timestamps=infer_timestamps
+    )
     output_paths = []
     for animal, df_ in df.groupby(level="individuals", axis=1):
         nwbfile = NWBFile(
@@ -303,8 +291,9 @@ def convert_h5_to_nwb(config, h5file, individual_name="ind1", infer_timestamps=T
         )
 
         # TODO Store the test_pose_config as well?
-        nwbfile = _write_pes_to_nwbfile(nwbfile, animal, df_, scorer, video, paf_graph, timestamps,
-                                        exclude_nans=(not infer_timestamps))
+        nwbfile = _write_pes_to_nwbfile(
+            nwbfile, animal, df_, scorer, video, paf_graph, timestamps, exclude_nans=(not infer_timestamps)
+        )
         output_path = h5file.replace(".h5", f"_{animal}.nwb")
         with warnings.catch_warnings(), NWBHDF5IO(output_path, mode="w") as io:
             warnings.filterwarnings("ignore", category=DtypeConversionWarning)
