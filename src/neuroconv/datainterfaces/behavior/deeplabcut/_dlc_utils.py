@@ -273,5 +273,13 @@ def add_subject_to_nwbfile(
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
 
     return _write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False, pose_estimation_container_kwargs=pose_estimation_container_kwargs,
+        nwbfile,
+        individual_name,
+        df_animal,
+        scorer,
+        video,
+        paf_graph,
+        timestamps,
+        exclude_nans=False,
+        pose_estimation_container_kwargs=pose_estimation_container_kwargs,
     )
