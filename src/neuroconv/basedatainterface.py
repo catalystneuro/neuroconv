@@ -1,7 +1,6 @@
 import importlib
 import json
 import uuid
-import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Literal, Optional, Tuple, Union
@@ -116,7 +115,7 @@ class BaseDataInterface(ABC):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Union[str, Path],
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -152,12 +151,7 @@ class BaseDataInterface(ABC):
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
         """
-        if nwbfile_path is None:
-            warnings.warn(  # TODO: remove on or after 6/21/2024
-                "Using DataInterface.run_conversion without specifying nwbfile_path is deprecated. To create an "
-                "NWBFile object in memory, use DataInterface.create_nwbfile. To append to an existing NWBFile object,"
-                " use DataInterface.add_to_nwbfile."
-            )
+
         backend = _resolve_backend(backend, backend_configuration)
         no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
 
