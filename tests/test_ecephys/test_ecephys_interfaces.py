@@ -34,12 +34,12 @@ class TestRecordingInterface(TestCase):
     def test_stub_single_segment(self):
         interface = self.single_segment_recording_interface
         metadata = interface.get_metadata()
-        interface.run_conversion(stub_test=True, metadata=metadata)
+        interface.create_nwbfile(stub_test=True, metadata=metadata)
 
     def test_stub_multi_segment(self):
         interface = self.multi_segment_recording_interface
         metadata = interface.get_metadata()
-        interface.run_conversion(stub_test=True, metadata=metadata)
+        interface.create_nwbfile(stub_test=True, metadata=metadata)
 
     def test_no_slash_in_name(self):
         interface = self.single_segment_recording_interface
