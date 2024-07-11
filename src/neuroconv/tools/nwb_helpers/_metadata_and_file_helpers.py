@@ -252,11 +252,11 @@ def make_or_load_nwbfile(
             nwbfile = io.read()
         elif create_nwbfile:
             if metadata is None:
-                error_msg = "Metadata is required for creating a nwbilfe "
+                error_msg = "Metadata is required for creating an nwbfile "
                 raise ValueError(error_msg)
             default_metadata = get_default_nwbfile_metadata()
             default_metadata.deep_update(metadata)
-            assert metadata is not None, "Metadata is required when either ."
+
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
 
         yield nwbfile
