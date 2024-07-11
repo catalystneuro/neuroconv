@@ -67,13 +67,15 @@ class SpikeGLXConverterPipe(ConverterPipe):
                 file_path = (
                     folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.ap.bin"
                 )
-                interface = SpikeGLXRecordingInterface(file_path=file_path)
+                es_key = f"ElectricalSeriesAP{probe_name.upper()}"
+                interface = SpikeGLXRecordingInterface(file_path=file_path, es_key=es_key)
             if "lf" in stream:
                 probe_name = stream[:5]
                 file_path = (
                     folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.lf.bin"
                 )
-                interface = SpikeGLXRecordingInterface(file_path=file_path)
+                es_key = f"ElectricalSeriesLF{probe_name.upper()}"
+                interface = SpikeGLXRecordingInterface(file_path=file_path, es_key=es_key)
             if "nidq" in stream:
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
