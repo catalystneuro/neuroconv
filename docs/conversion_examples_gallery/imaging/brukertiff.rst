@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Bruker 
 
 .. code-block:: bash
 
-    pip install neuroconv[brukertiff]
+    pip install "neuroconv[brukertiff]"
 
 **Convert single imaging plane**
 

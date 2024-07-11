@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading TDT dat
 
 .. code-block:: bash
 
-    pip install neuroconv[tdt]
+    pip install "neuroconv[tdt]"
 
 Convert TDT data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface.TdtRecordingInterface`.
 

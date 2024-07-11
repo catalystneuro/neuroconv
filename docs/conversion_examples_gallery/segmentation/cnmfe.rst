@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading CNMF-E 
 
 .. code-block:: bash
 
-    pip install neuroconv[cnmfe]
+    pip install "neuroconv[cnmfe]"
 
 Convert CNMFE segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.cnmfe.cnmfedatainterface.CnmfeSegmentationInterface`.
 
