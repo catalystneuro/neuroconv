@@ -67,6 +67,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     # Validate metadata
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
+    assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
     nwbfile_kwargs = deepcopy(metadata["NWBFile"])
@@ -190,7 +191,12 @@ def make_or_load_nwbfile(
     """
     from . import BACKEND_NWB_IO
 
-    nwbfile_path_in = Path(nwbfile_path) if nwbfile_path else None
+    nwbfile_path_is_provided = nwbfile_path is not None
+    nwbfile_path_in = Path(nwbfile_path) if nwbfile_path_is_provided else None
+
+    nwbfile_is_provided = nwbfile is not None
+    nwbfile_in = nwbfile if nwbfile_is_provided else None
+
     backend_io_class = BACKEND_NWB_IO[backend]
 
     assert not (nwbfile_path is None and nwbfile is None and metadata is None), (
@@ -206,11 +212,11 @@ def make_or_load_nwbfile(
         raise NotImplementedError("Appending a Zarr file is not yet supported!")
 
     load_kwargs = dict()
-    file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_in is not None else None
-    if nwbfile_path_in is not None:
+    file_initially_exists = nwbfile_path_in.exists() if nwbfile_path_is_provided else False
+    append_mode = file_initially_exists and not overwrite
+    if nwbfile_path_is_provided:
         load_kwargs.update(path=str(nwbfile_path_in))
 
-        append_mode = file_initially_exists and not overwrite
         if append_mode:
             load_kwargs.update(mode="r+", load_namespaces=True)
 
@@ -234,19 +240,31 @@ def make_or_load_nwbfile(
 
         io = backend_io_class(**load_kwargs)
 
+    read_nwbfile = nwbfile_path_is_provided and append_mode
+    create_nwbfile = not read_nwbfile and not nwbfile_is_provided
+
     nwbfile_loaded_succesfully = True
     nwbfile_written_succesfully = True
     try:
-        if load_kwargs.get("mode", "") == "r+":
+        if nwbfile_is_provided:
+            nwbfile = nwbfile_in
+        elif read_nwbfile:
             nwbfile = io.read()
-        elif nwbfile is None:
+        elif create_nwbfile:
+            if metadata is None:
+                error_msg = "Metadata is required for creating an nwbfile "
+                raise ValueError(error_msg)
+            default_metadata = get_default_nwbfile_metadata()
+            default_metadata.deep_update(metadata)
+
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+
         yield nwbfile
     except Exception as load_error:
         nwbfile_loaded_succesfully = False
         raise load_error
     finally:
-        if nwbfile_path_in is not None and nwbfile_loaded_succesfully:
+        if nwbfile_path_is_provided and nwbfile_loaded_succesfully:
             try:
                 io.write(nwbfile)
 
@@ -261,15 +279,18 @@ def make_or_load_nwbfile(
 
                 if not nwbfile_written_succesfully:
                     _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
-        elif nwbfile_path_in is not None and not nwbfile_loaded_succesfully:
+        elif nwbfile_path_is_provided and not nwbfile_loaded_succesfully:
             # The instantiation of the IO object can itself create a file
             _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
+        else:
+            # This is the case where nwbfile is provided but not nwbfile_path
+            # Note that io never gets created in this case, so no need to close or delete it
+            pass
+
         # Final attempt to cleanup an unintended file creation, just to be sure
         any_load_or_write_error = not nwbfile_loaded_succesfully or not nwbfile_written_succesfully
-        file_was_freshly_created = (
-            not file_initially_exists and nwbfile_path_in is not None and nwbfile_path_in.exists()
-        )
+        file_was_freshly_created = not file_initially_exists and nwbfile_path_is_provided and nwbfile_path_in.exists()
         attempt_to_cleanup = any_load_or_write_error and file_was_freshly_created
         if attempt_to_cleanup:
             _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
