@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Spike2 
 
 .. code-block:: bash
 
-    pip install neuroconv[spike2]
+    pip install "neuroconv[spike2]"
 
 Convert Spike2 data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spike2.spike2datainterface.Spike2RecordingInterface`.

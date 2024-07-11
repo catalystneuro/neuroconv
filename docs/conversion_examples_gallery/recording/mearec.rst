@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading MEArec 
 
 .. code-block:: bash
 
-    pip install neuroconv[mearec]
+    pip install "neuroconv[mearec]"
 
 Convert MEArec data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.mearec.mearecdatainterface.MEArecRecordingInterface`.
 
