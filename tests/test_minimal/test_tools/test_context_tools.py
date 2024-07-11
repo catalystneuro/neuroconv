@@ -228,4 +228,4 @@ def test_raise_error_when_metadata_is_empty_and_creation_is_needed(tmpdir):
 
     with pytest.raises(ValueError):
         with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=None, overwrite=True) as nwbfile:
-            nwbfile
+            pass
