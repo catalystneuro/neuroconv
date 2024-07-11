@@ -29,6 +29,10 @@ ScanImage Imaging
 -----------------
 .. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces
 
+ThorLabs Imaging
+----------------
+.. automodule:: neuroconv.datainterfaces.ophys.thor.thorimaginginterface
+
 Tiff Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.tiff.tiffdatainterface
