@@ -5,7 +5,6 @@ import numpy as np
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_package
 from ....utils import FilePathType
 
 

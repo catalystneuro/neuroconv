@@ -1,20 +1,16 @@
-import datetime
 import importlib
 import os
 import pickle
 import warnings
 from pathlib import Path
-from platform import python_version
 from typing import List, Optional, Union
 
 import cv2
 import numpy as np
 import pandas as pd
 import yaml
-from hdmf.build.warnings import DtypeConversionWarning
 from ndx_pose import PoseEstimation, PoseEstimationSeries
-from packaging.version import Version  # Installed with setuptools
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from ruamel.yaml import YAML
 
 from ....utils import FilePathType
