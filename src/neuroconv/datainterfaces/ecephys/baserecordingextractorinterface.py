@@ -1,5 +1,4 @@
-import json
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -9,7 +8,6 @@ from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
-    NWBMetaDataEncoder,
     get_base_schema,
     get_schema_from_hdmf_class,
 )
