@@ -115,7 +115,7 @@ class BaseDataInterface(ABC):
 
     def run_conversion(
         self,
-        nwbfile_path: Union[str, Path],
+        nwbfile_path: str,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -132,8 +132,7 @@ class BaseDataInterface(ABC):
         Parameters
         ----------
         nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
+            Path for where the data will be written or appended.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
         metadata : dict, optional
