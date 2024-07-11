@@ -39,8 +39,8 @@ for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
             extras_require[format_subpath.name].extend(format_requirements)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
-gin_config_file_base = Path("./base_gin_test_config.json")
-gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")
+gin_config_file_base = root / "base_gin_test_config.json"
+gin_config_file_local = root / "tests/test_on_data/gin_test_config.json"
 if not gin_config_file_local.exists():
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
