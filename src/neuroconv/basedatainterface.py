@@ -164,6 +164,8 @@ class BaseDataInterface(ABC):
         if metadata is None:
             metadata = self.get_metadata()
 
+        self.validate_metadata(metadata=metadata)
+
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
