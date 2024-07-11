@@ -7,7 +7,6 @@ import numcodecs
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from pynwb import NWBFile, ProcessingModule
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 

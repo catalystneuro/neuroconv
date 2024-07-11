@@ -362,8 +362,8 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
 class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = SbxImagingInterface
     interface_kwargs = [
-        dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / f"sample.mat")),
-        dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / f"sample.sbx")),
+        dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.mat")),
+        dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx")),
     ]
     save_directory = OUTPUT_PATH
 

@@ -144,7 +144,7 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 if num_params > 2:
                     raise ValueError(conflict_message)
                 # Special condition for Optional[...]
-                if num_params == 2 and not args[1] is type(None):  # noqa: E721
+                if num_params == 2 and args[1] is not type(None):  # noqa: E721
                     raise ValueError(conflict_message)
 
                 # Guaranteed to only have a single index by this point
