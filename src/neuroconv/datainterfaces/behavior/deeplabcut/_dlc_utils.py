@@ -20,17 +20,17 @@ from ruamel.yaml import YAML
 from ....utils import FilePathType
 
 
-def _read_config(configname):
+def _read_config(config_file_path):
     """
     Reads structured config file defining a project.
     """
     ruamelFile = YAML()
-    path = Path(configname)
+    path = Path(config_file_path)
     if os.path.exists(path):
         try:
             with open(path, "r") as f:
                 cfg = ruamelFile.load(f)
-                curr_dir = os.path.dirname(configname)
+                curr_dir = os.path.dirname(config_file_path)
                 if cfg["project_path"] != curr_dir:
                     cfg["project_path"] = curr_dir
         except Exception as err:
