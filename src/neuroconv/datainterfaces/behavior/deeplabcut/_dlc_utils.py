@@ -209,7 +209,8 @@ def _write_pes_to_nwbfile(
     is_deeplabcut_installed = importlib.util.find_spec(name="deeplabcut") is not None
     if is_deeplabcut_installed:
         deeplabcut_version = importlib.metadata.version(distribution_name="deeplabcut")
-    pe = PoseEstimation(
+
+    pose_estimation_default_kwargs = dict(
         pose_estimation_series=pose_estimation_series,
         description="2D keypoint coordinates estimated using DeepLabCut.",
         original_videos=[video[0]],
@@ -222,11 +223,15 @@ def _write_pes_to_nwbfile(
         edges=paf_graph if paf_graph else None,
         **pose_estimation_container_kwargs,
     )
-    if "behavior" in nwbfile.processing:
-        behavior_pm = nwbfile.processing["behavior"]
+    pose_estimation_default_kwargs.update(pose_estimation_container_kwargs)
+    pose_estimation_container = PoseEstimation(**pose_estimation_default_kwargs)
+    
+    if "behavior" in nwbfile.processing:  # TODO: replace with get_module
+        behavior_processing_module = nwbfile.processing["behavior"]
     else:
-        behavior_pm = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
-    behavior_pm.add(pe)
+        behavior_processing_module = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
+    behavior_processing_module.add(pose_estimation_container)
+    
     return nwbfile
 
 
