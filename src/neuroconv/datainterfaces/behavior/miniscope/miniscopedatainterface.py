@@ -56,7 +56,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
             miniscope_config_files
         ), f"The configuration files ({configuration_file_name} files) are missing from '{folder_path}'."
 
-        behavcam_subfolders = list(folder_path.glob(f"*/BehavCam*/"))
+        behavcam_subfolders = list(folder_path.glob("*/BehavCam*/"))
         self._miniscope_config = read_miniscope_config(folder_path=str(behavcam_subfolders[0]))
 
         self._recording_start_times = get_recording_start_times(folder_path=str(folder_path))
