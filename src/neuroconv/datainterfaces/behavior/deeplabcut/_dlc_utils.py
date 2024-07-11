@@ -179,7 +179,7 @@ def _write_pes_to_nwbfile(
     pose_estimation_container_kwargs: Optional[dict] = None,
 ):
     from ndx_pose import PoseEstimation, PoseEstimationSeries
-    
+
     pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
 
     pose_estimation_series = []
