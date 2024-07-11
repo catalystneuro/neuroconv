@@ -7,7 +7,6 @@ name = "neuroconv"
 version = "0.4.12"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
-readme-content-type = "text/markdown"
 authors = [
     {name = "Cody Baker"},
     {name = "Szonja Weigl"},
@@ -78,15 +77,12 @@ docs = [
 dandi = ["dandi>=0.58.1"]
 compressors = ["hdf5plugin"]
 
-[tool.setuptools]
-packages = ["find:src"]
-include-package-data = true
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.setuptools.package-dir]
-"" = "src"
 
-[tool.setuptools.scripts]
-console_scripts = ["neuroconv = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"]
+[project.scripts]
+neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 
 [tool.pytest.ini_options]
