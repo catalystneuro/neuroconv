@@ -1,6 +1,5 @@
 """DataInterfaces for SpikeGLX."""
 
-import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -45,7 +44,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeries"
         """
-        from probeinterface import read_spikeglx
 
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
         if es_key is None:

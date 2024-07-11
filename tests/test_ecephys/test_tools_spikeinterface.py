@@ -8,7 +8,6 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pynwb.ecephys
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO, NWBFile
@@ -367,7 +366,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        reg_expression = f"Recording extractors with heterogeneous offsets are not supported"
+        reg_expression = "Recording extractors with heterogeneous offsets are not supported"
 
         with self.assertRaisesRegex(ValueError, reg_expression):
             add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
@@ -463,7 +462,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder.get_num_channels.return_value = num_channels
         mock_recorder.get_num_frames.return_value = num_frames_to_overflow
 
-        reg_expression = f"Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
+        reg_expression = "Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)

@@ -214,7 +214,7 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
     """
 
     session_path = Path(folder_path)
-    chan_map_file_path = session_path / f"chanMap.mat"
+    chan_map_file_path = session_path / "chanMap.mat"
     if not chan_map_file_path.is_file():
         return recording_extractor
 

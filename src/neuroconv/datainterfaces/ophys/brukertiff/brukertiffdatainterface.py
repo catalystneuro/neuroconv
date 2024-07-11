@@ -97,7 +97,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
             # The frames for each plane will have the same positionCurrent values
             position_element = frames_per_stream[0].find(".//PVStateValue[@key='positionCurrent']")
-            default_z_position_values = default_position_element.find(f"./SubindexedValues[@index='ZAxis']")
+            default_z_position_values = default_position_element.find("./SubindexedValues[@index='ZAxis']")
             z_positions = []
             for z_sub_indexed_value in default_z_position_values:
                 z_value = float(z_sub_indexed_value.attrib["value"])
@@ -166,7 +166,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         imaging_plane_metadata.update(
             grid_spacing=grid_spacing,
             origin_coords=origin_coords,
-            description=f"The imaging plane origin_coords units are in the microscope reference frame.",
+            description="The imaging plane origin_coords units are in the microscope reference frame.",
         )
 
         two_photon_series_metadata.update(field_of_view=field_of_view)
@@ -248,7 +248,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         if not position_element:
             return position_values
 
-        default_z_position_values = default_position_element.find(f"./SubindexedValues[@index='ZAxis']")
+        default_z_position_values = default_position_element.find("./SubindexedValues[@index='ZAxis']")
         z_positions = []
         for z_sub_indexed_value in default_z_position_values:
             z_positions.append(float(z_sub_indexed_value.attrib["value"]))

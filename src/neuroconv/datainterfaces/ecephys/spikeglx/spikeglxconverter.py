@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import List, Optional
 
-import numpy as np
-
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
