@@ -225,13 +225,15 @@ def _write_pes_to_nwbfile(
     )
     pose_estimation_default_kwargs.update(pose_estimation_container_kwargs)
     pose_estimation_container = PoseEstimation(**pose_estimation_default_kwargs)
-    
+
     if "behavior" in nwbfile.processing:  # TODO: replace with get_module
         behavior_processing_module = nwbfile.processing["behavior"]
     else:
-        behavior_processing_module = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
+        behavior_processing_module = nwbfile.create_processing_module(
+            name="behavior", description="processed behavioral data"
+        )
     behavior_processing_module.add(pose_estimation_container)
-    
+
     return nwbfile
 
 
