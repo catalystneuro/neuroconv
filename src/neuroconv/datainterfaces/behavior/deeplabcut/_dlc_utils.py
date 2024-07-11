@@ -5,11 +5,9 @@ import warnings
 from pathlib import Path
 from typing import List, Optional, Union
 
-import cv2
 import numpy as np
 import pandas as pd
 import yaml
-from ndx_pose import PoseEstimation, PoseEstimationSeries
 from pynwb import NWBFile
 from ruamel.yaml import YAML
 
@@ -53,7 +51,7 @@ def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=Tr
     movie_file : str
         Path to movie_file
     """
-    # TODO: consider moving this to DLC, and actually extract alongside video analysis!
+    import cv2
 
     reader = cv2.VideoCapture(movie_file)
     timestamps = []
@@ -180,6 +178,8 @@ def _write_pes_to_nwbfile(
     exclude_nans,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ):
+    from ndx_pose import PoseEstimation, PoseEstimationSeries
+    
     pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
 
     pose_estimation_series = []
