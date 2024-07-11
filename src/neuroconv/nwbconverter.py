@@ -1,6 +1,7 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
 import json
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
@@ -203,6 +204,14 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
+
+        if nwbfile_path is None:
+            warnings.warn(  # TODO: remove on or after 12/26/2024
+                "Using Converter.run_conversion without specifying nwbfile_path is deprecated. To create an "
+                "NWBFile object in memory, use Converter.create_nwbfile. To append to an existing NWBFile object,"
+                " use Converter.add_to_nwbfile."
+            )
+
         backend = _resolve_backend(backend, backend_configuration)
         no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
 
