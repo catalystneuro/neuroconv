@@ -1,5 +1,6 @@
 import platform
 import sys
+from collections import defaultdict
 from pathlib import Path
 from shutil import copy
 
@@ -13,9 +14,9 @@ def read_requirements(file):
         return f.readlines()
 
 
-extras_require = {
-    "full": ["dandi>=0.58.1", "hdf5plugin"],
-}
+extras_require = defaultdict(list)
+extras_require["full"] = ["dandi>=0.58.1", "hdf5plugin"]
+
 
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
