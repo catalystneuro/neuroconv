@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb.file import NWBFile
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FolderPathType, DeepDict
+from ....utils import DeepDict, FolderPathType
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):
@@ -28,14 +28,14 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         return source_schema
 
     def get_max_channel(self):
-        folder_path = Path(self.source_data['folder_path'])
+        folder_path = Path(self.source_data["folder_path"])
 
-        templates = np.load(str(folder_path / 'templates.npy'))
-        channel_map = np.load(str(folder_path / 'channel_map.npy'))
+        templates = np.load(str(folder_path / "templates.npy"))
+        channel_map = np.load(str(folder_path / "channel_map.npy"))
         whitening_mat_inv = np.load(str(folder_path / "whitening_mat_inv.npy"))
         templates_unwh = templates @ whitening_mat_inv
 
-        cluster_ids = self.sorting_extractor.get_property('original_cluster_id')
+        cluster_ids = self.sorting_extractor.get_property("original_cluster_id")
         templates = templates_unwh[cluster_ids]
 
         max_over_time = np.max(templates, axis=1)
@@ -85,6 +85,6 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         )
 
         max_channel = self.get_max_channel()
-        nwbfile.units.add_column(name='max_channel', description='Channel with maximum amplitude', data=max_channel)
+        nwbfile.units.add_column(name="max_channel", description="Channel with maximum amplitude", data=max_channel)
 
         return nwbfile
