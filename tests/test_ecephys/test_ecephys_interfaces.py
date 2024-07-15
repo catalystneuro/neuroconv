@@ -188,7 +188,7 @@ class TestSortingInterface(unittest.TestCase):
         test_sorting_interface.sorting_extractor.set_property("new_prop", [2, 3, 4])
 
         nwbfile = test_sorting_interface.create_nwbfile(metadata=metadata, cast_int_to_float=True)
-        self.assertListEqual(list(nwbfile.units["new_prop"]), [2., 3., 4.])
+        self.assertListEqual(list(nwbfile.units["new_prop"]), [2.0, 3.0, 4.0])
 
         nwbfile = test_sorting_interface.create_nwbfile(metadata=metadata, cast_int_to_float=False)
         self.assertListEqual(list(nwbfile.units["new_prop"]), [2, 3, 4])
