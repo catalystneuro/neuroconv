@@ -4,10 +4,16 @@ on:
     - cron: "0 16 * * *"  # Daily at noon EST
   workflow_call:
     secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
       DANDI_API_KEY:
         required: true
 
 env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
 jobs:

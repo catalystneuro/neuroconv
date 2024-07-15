@@ -1,6 +1,7 @@
 """Collection of helper functions for assessing and performing automated data transfers related to AWS."""
 
 import json
+import os
 from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import uuid4
@@ -87,10 +88,37 @@ def submit_aws_batch_job(
 
     job_dependencies = job_dependencies or []
 
-    dynamodb_client = boto3.client("dynamodb", region)
-    dynamodb_resource = boto3.resource("dynamodb", region)
-    iam_client = boto3.client("iam", region)
-    batch_client = boto3.client("batch", region)
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if aws_access_key_id is None or aws_secret_access_key is None:
+        raise EnvironmentError(
+            "'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY' must both be set in the environment to use this function."
+        )
+
+    dynamodb_client = boto3.client(
+        service_name="dynamodb",
+        region=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    dynamodb_resource = boto3.resource(
+        service_name="dynamodb",
+        region=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    iam_client = boto3.client(
+        service_name="iam",
+        region=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    batch_client = boto3.client(
+        service_name="batch",
+        region=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
     # It is extremely useful to have a status tracker that is separate from the job environment
     # Technically detailed logs of inner workings are given in the CloudWatch, but that can only really be
