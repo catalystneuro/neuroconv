@@ -1,4 +1,334 @@
-# v0.3.0 (Upcoming)
+# Upcoming
+
+### Deprecations
+* The usage of `compression_options` directly through the `neuroconv.tools.audio` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #939](https://github.com/catalystneuro/neuroconv/pull/939)
+* The usage of `compression` and `compression_opts` directly through the `FicTracDataInterface` is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #941](https://github.com/catalystneuro/neuroconv/pull/941)
+* The usage of `compression` directly through the `neuroconv.tools.neo` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #943](https://github.com/catalystneuro/neuroconv/pull/943)
+* The usage of `compression_options` directly through the `neuroconv.tools.ophys` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #940](https://github.com/catalystneuro/neuroconv/pull/940)
+* Removed the option of running `interface.run_conversion` without `nwbfile_path` argument . [PR #951](https://github.com/catalystneuro/neuroconv/pull/951)
+
+### Features
+* Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
+* Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for performing cloud-based conversions on data that is accessible via `rclone`, and runtime can be estimated with `neuroconv.tools.data_transfers.estimate_total_conversion_runtime`. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
+
+### Bug fixes
+* Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
+* Fixed a case of the `NeuroScopeSortingExtractor` when the optional `xml_file_path` is not specified. [PR #926](https://github.com/catalystneuro/neuroconv/pull/926)
+* Fixed `Can't specify experiment type when converting .abf to .nwb with Neuroconv`. [PR #609](https://github.com/catalystneuro/neuroconv/pull/609)
+* Remove assumption that the ports of the Intan acquisition system correspond to electrode groupings in `IntanRecordingInterface`  [PR #933](https://github.com/catalystneuro/neuroconv/pull/933)
+* Add ValueError for empty metadata in  `make_or_load_nwbfile` when an nwbfile needs to be created [PR #948](https://github.com/catalystneuro/neuroconv/pull/948)
+
+### Improvements
+* Make annotations from the raw format available on `IntanRecordingInterface`. [PR #934](https://github.com/catalystneuro/neuroconv/pull/943)
+* Add an option to suppress display the progress bar (tqdm) in `VideoContext`  [PR #937](https://github.com/catalystneuro/neuroconv/pull/937)
+* Automatic compression of data in the `LightnignPoseDataInterface` has been disabled - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #942](https://github.com/catalystneuro/neuroconv/pull/942)
+* Port over `dlc2nwb` utility functions for ease of maintenance. [PR #946](https://github.com/catalystneuro/neuroconv/pull/946)
+
+
+
+## v0.4.11 (June 14, 2024)
+
+### Bug fixes
+* Added a skip condition in `get_default_dataset_io_configurations` for datasets with any zero-length axis in their `full_shape`. [PR #894](https://github.com/catalystneuro/neuroconv/pull/894)
+* Added `packaging` explicitly to minimal requirements. [PR #904](https://github.com/catalystneuro/neuroconv/pull/904)
+* Fixed bug when using `make_or_load_nwbfile` with `overwrite=True` on an existing (but corrupt) HDF5 file. [PR #911](https://github.com/catalystneuro/neuroconv/pull/911)
+* Change error trigger with warning trigger when adding both `OnePhotonSeries` and `TwoPhotonSeries` to the same file ([Issue #906](https://github.com/catalystneuro/neuroconv/issues/906)). [PR #907](https://github.com/catalystneuro/neuroconv/pull/907)
+
+### Improvements
+* Propagated `photon_series_type` to `BaseImagingExtractorInterface` init instead of passing it as an argument of `get_metadata()` and `get_metadata_schema()`. [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)
+* Converter working with multiple VideoInterface instances [PR 914](https://github.com/catalystneuro/neuroconv/pull/914)
+
+
+
+## v0.4.10 (June 6, 2024)
+
+### Bug fixes
+* Fixed bug causing overwrite of NWB GUIDE watermark. [PR #890](https://github.com/catalystneuro/neuroconv/pull/890)
+
+
+
+## v0.4.9 (June 5, 2024)
+
+### Deprecations
+* Removed `stream_id` as an argument from `IntanRecordingInterface`. [PR #794](https://github.com/catalystneuro/neuroconv/pull/794)
+* The usage of `compression` and `compression_opts` directly through the `neuroconv.tools.spikeinterface` submodule are now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #805](https://github.com/catalystneuro/neuroconv/pull/805)
+* Dropped the testing of Python 3.8 on the CI. Dropped support for Python 3.8 in setup. [PR #853](https://github.com/catalystneuro/neuroconv/pull/853)
+* Deprecated skip_features argument in `add_sorting`. [PR #872](https://github.com/catalystneuro/neuroconv/pull/872)
+* Deprecate old (v1) iterator from the ecephys pipeline. [PR #876](https://github.com/catalystneuro/neuroconv/pull/876)
+
+### Features
+* Added `backend` control to the `make_or_load_nwbfile` helper method in `neuroconv.tools.nwb_helpers`. [PR #800](https://github.com/catalystneuro/neuroconv/pull/800)
+* Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
+* Support "one-file-per-signal" and "one-file-per-channel" mode with `IntanRecordingInterface`. [PR #791](https://github.com/catalystneuro/neuroconv/pull/791)
+* Added `get_default_backend_configuration` method to all `DataInterface` classes. Also added HDF5 `backend` control to all standalone `.run_conversion(...)` methods for those interfaces. [PR #801](https://github.com/catalystneuro/neuroconv/pull/801)
+* Added `get_default_backend_configuration` method to all `NWBConverter` classes. Also added HDF5 `backend` control to `.run_conversion(...)`. [PR #804](https://github.com/catalystneuro/neuroconv/pull/804)
+* Released the first official Docker images for the package on the GitHub Container Repository (GHCR). [PR #383](https://github.com/catalystneuro/neuroconv/pull/383)
+* Added `ScanImageMultiFileImagingInterface` for multi-file (buffered) ScanImage format and changed `ScanImageImagingInterface` to be routing classes for single and multi-plane imaging. [PR #809](https://github.com/catalystneuro/neuroconv/pull/809)
+* Added a function to generate ogen timestamps and data from onset times and parameters to `tools.optogenetics`. [PR #832](https://github.com/catalystneuro/neuroconv/pull/832)
+* Added `configure_and_write_nwbfile` and optimized imports in `tools.nwb_helpers` module. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
+* `configure_backend` may now apply a `BackendConfiguration` to equivalent in-memory `pynwb.NWBFile` objects that have different address in RAM. [PR #848](https://github.com/catalystneuro/neuroconv/pull/848)
+* Add support for doubled ragged arrays in `add_units_table` [PR #879](https://github.com/catalystneuro/neuroconv/pull/879)
+* Add support for doubled ragged arrays in `add_electrodes` [PR #881](https://github.com/catalystneuro/neuroconv/pull/881)
+* Propagate `ignore_integrity_checks` from neo to IntanRecordingInterface [PR #887](https://github.com/catalystneuro/neuroconv/pull/887)
+
+
+### Bug fixes
+* Remove JSON Schema `definitions` from the `properties` field. [PR #818](https://github.com/catalystneuro/neuroconv/pull/818)
+* Fixed writing waveforms directly to file. [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+* Avoid in-place modification of the metadata in the `VideoInterface` and on neo tools. [PR #814](https://github.com/catalystneuro/neuroconv/pull/814)
+* Replaced `waveform_extractor.is_extension` with `waveform_extractor.has_extension`. [PR #799](https://github.com/catalystneuro/neuroconv/pull/799)
+* Fixed an issue with `set_aligned_starting_time` for all `SortingInterface`'s that did not have an initial segment start set (and no recording attached). [PR #823](https://github.com/catalystneuro/neuroconv/pull/823)
+* Fixed a bug with `parameterized` and `pytest-xdist==3.6.1` in the `ScanImageImagingInterface` tests. [PR #829](https://github.com/catalystneuro/neuroconv/pull/829)
+* Added `XX` and `XO` to the base metadata schema. [PR #833](https://github.com/catalystneuro/neuroconv/pull/833)
+* `BaseImagingExtractor.add_to_nwbfile()` is fixed in the case where metadata is not supplied. [PR #849](https://github.com/catalystneuro/neuroconv/pull/849)
+* Prevent `SpikeGLXConverterPipe` from setting false properties on the sub-`SpikeGLXNIDQInterface`. [PR #860](https://github.com/catalystneuro/neuroconv/pull/860)
+* Fixed a bug when adding ragged arrays to the electrode and units table. [PR #870](https://github.com/catalystneuro/neuroconv/pull/870)
+* Fixed a bug where `write_recording` will call an empty nwbfile when passing a path. [PR #877](https://github.com/catalystneuro/neuroconv/pull/877)
+* Fixed a bug that failed to properly include time alignment information in the output NWB file for objects added from any `RecordingInterface` in combination with `stub_test=True`. [PR #884](https://github.com/catalystneuro/neuroconv/pull/884)
+* Fixed a bug that prevented passing `nwbfile=None` and a `backend_configuration` to `NWBConverter.run_conversion`. [PR #885](https://github.com/catalystneuro/neuroconv/pull/885)
+
+### Improvements
+* Added soft deprecation warning for removing `photon_series_type` from `get_metadata()` and `get_metadata_schema()` (in [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)). [PR #866](https://github.com/catalystneuro/neuroconv/pull/866)
+* Fixed docstrings related to backend configurations for various methods. [PR #822](https://github.com/catalystneuro/neuroconv/pull/822)
+* Added automatic `backend` detection when a `backend_configuration` is passed to an interface or converter. [PR #840](https://github.com/catalystneuro/neuroconv/pull/840)
+* Improve printing of bytes. [PR #831](https://github.com/catalystneuro/neuroconv/pull/831)
+* Support for pathlib in source data schema validation. [PR #854](https://github.com/catalystneuro/neuroconv/pull/854)
+* Use `ZoneInfo` instead of `dateutil.tz` in the conversion gallery. [PR #858](https://github.com/catalystneuro/neuroconv/pull/858)
+* Exposed `progress_bar_class` to ecephys and ophys data iterators. [PR #861](https://github.com/catalystneuro/neuroconv/pull/861)
+* Unified the signatures between `add_units`, `add_sorting` and `write_sorting`. [PR #875](https://github.com/catalystneuro/neuroconv/pull/875)
+* Improved descriptions of all folder and file paths in the source schema, useful for rendering in the GUIDE. [PR #886](https://github.com/catalystneuro/neuroconv/pull/886)
+* Added watermark via `source_script` field of `NWBFile` metadata. `source_script_file_name` is also required to be specified in this case to avoid invalidation. [PR #888](https://github.com/catalystneuro/neuroconv/pull/888)
+* Remove parsing xml parsing from the `__init__` of `BrukerTiffSinglePlaneImagingInterface` [PR #895](https://github.com/catalystneuro/neuroconv/pull/895)
+
+### Testing
+* Add general test for metadata in-place modification by interfaces. [PR #815](https://github.com/catalystneuro/neuroconv/pull/815)
+
+
+
+# v0.4.8 (March 20, 2024)
+
+### Bug fixes
+* Fixed writing the `electrodes` field in `add_electrical_series` when multiple groups are present. [PR #784](https://github.com/catalystneuro/neuroconv/pull/784)
+
+### Improvements
+* Upgraded Pydantic support to `>v2.0.0`. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
+* Absorbed the `DatasetInfo` model into the `DatasetIOConfiguration` model. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
+* Keyword argument `field_name` of the `DatasetIOConfiguration.from_neurodata_object` method has been renamed to `dataset_name` to be more consistent with its usage. This only affects direct initialization of the model; usage via the `BackendConfiguration` constructor and its associated helper functions in `neuroconv.tools.nwb_helpers` is unaffected. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
+* Manual construction of a `DatasetIOConfiguration` now requires the field `dataset_name`, and will be validated to match the final path of `location_in_file`. Usage via the automated constructors is unchanged. [PR #767](https://github.com/catalystneuro/neuroconv/pull/767)
+* Enhance `get_schema_from_method_signature` to extract descriptions from the method docval. [PR #771](https://github.com/catalystneuro/neuroconv/pull/771)
+* Avoid writing `channel_to_uV` and `offset_to_uV` in `add_electrodes`  [PR #803](https://github.com/catalystneuro/neuroconv/pull/803)
+* `BaseSegmentationExtractorInterface` now supports optional background plane segmentations and associated fluorescence traces [PR #783](https://github.com/catalystneuro/neuroconv/pull/783)
+
+
+
+# v0.4.7 (February 21, 2024)
+
+### Deprecation
+* Removed `.get_electrode_table_json()` on the `BaseRecordingExtractorInterface` in favor of GUIDE specific interactions. [PR #431](https://github.com/catalystneuro/neuroconv/pull/431)
+* Removed the `SIPickleRecordingInterface` and `SIPickleSortingInterface` interfaces. [PR #757](https://github.com/catalystneuro/neuroconv/pull/757)
+* Removed the `SpikeGLXLFPInterface` interface. [PR #757](https://github.com/catalystneuro/neuroconv/pull/757)
+
+### Bug fixes
+* LocalPathExpander matches only `folder_paths` or `file_paths` if that is indicated in the passed specification. [PR #679](https://github.com/catalystneuro/neuroconv/pull/675) and [PR #675](https://github.com/catalystneuro/neuroconv/pull/679
+* Fixed depth consideration in partial chunking pattern for the ROI data buffer. [PR #677](https://github.com/catalystneuro/neuroconv/pull/677)
+* Fix mapping between channel names and the electrode table when writing more than one `ElectricalSeries` to the NWBFile. This fixes an issue when the converter pipeline of `SpikeGLXConverterPipe` was writing the electrode table region of the NIDQ stream incorrectly. [PR #678](https://github.com/catalystneuro/neuroconv/pull/678)
+* Fix `configure_backend` when applied to `TimeSeries` contents that leverage internal links for `data` or `timestamps`. [PR #732](https://github.com/catalystneuro/neuroconv/pull/732)
+
+### Features
+* Changed the `Suite2pSegmentationInterface` to support multiple plane segmentation outputs. The interface now has a `plane_name` and `channel_name` arguments to determine which plane output and channel trace add to the NWBFile. [PR #601](https://github.com/catalystneuro/neuroconv/pull/601)
+* Added `create_path_template` and corresponding tests [PR #680](https://github.com/catalystneuro/neuroconv/pull/680)
+* Added tool function `configure_datasets` for configuring all datasets of an in-memory `NWBFile` to be backend specific. [PR #571](https://github.com/catalystneuro/neuroconv/pull/571)
+* Added `LightningPoseConverter` to add pose estimation data and the original and the optional labeled video added as ImageSeries to NWB. [PR #633](https://github.com/catalystneuro/neuroconv/pull/633)
+* Added gain as a required `__init__` argument for `TdtRecordingInterface`. [PR #704](https://github.com/catalystneuro/neuroconv/pull/704)
+* Extract session_start_time from Plexon `plx` recording file. [PR #723](https://github.com/catalystneuro/neuroconv/pull/723)
+
+### Improvements
+* `nwbinspector` has been removed as a minimal dependency. It becomes an extra (optional) dependency with `neuroconv[dandi]`. [PR #672](https://github.com/catalystneuro/neuroconv/pull/672)
+* Added a `from_nwbfile` class method constructor to all `BackendConfiguration` models. [PR #673](https://github.com/catalystneuro/neuroconv/pull/673)
+* Added compression to `FicTracDataInterface`. [PR #678](https://github.com/catalystneuro/neuroconv/pull/678)
+* Exposed `block_index` to all OpenEphys interfaces. [PR #695](https://github.com/catalystneuro/neuroconv/pull/695)
+* Added support for `DynamicTable` columns in the `configure_backend` tool function. [PR #700](https://github.com/catalystneuro/neuroconv/pull/700)
+* Refactored `ScanImagingInterface` to reference ROIExtractors' version of `extract_extra_metadata`. [PR #731](https://github.com/catalystneuro/neuroconv/pull/731)
+* Added support for Long NHP probe types for the `SpikeGLXRecorddingInterfacce`. [PR #701](https://github.com/catalystneuro/neuroconv/pull/701)
+* Remove unnecessary duplication of probe setting in `SpikeGLXRecordingInterface`. [PR #696](https://github.com/catalystneuro/neuroconv/pull/696)
+* Added associated suffixes to all interfaces and converters. [PR #734](https://github.com/catalystneuro/neuroconv/pull/734)
+* Added convenience function `get_format_summaries` to `tools.importing` (and exposed at highest level). [PR #734](https://github.com/catalystneuro/neuroconv/pull/734)
+
+### Testing
+* `RecordingExtractorInterfaceTestMixin` now compares either `group_name`, `group` or a default value of  `ElectrodeGroup` to the `group` property in the `NWBRecordingExtractor` instead of comparing `group` to `group` as it was done before [PR #736](https://github.com/catalystneuro/neuroconv/pull/736)
+* `TestScanImageImagingInterfaceRecent` now checks metadata against new roiextractors implementation [PR #741](https://github.com/catalystneuro/neuroconv/pull/741).
+* Removed editable installs from the CI workflow. [PR #756](https://github.com/catalystneuro/neuroconv/pull/756)
+
+
+# v0.4.6 (November 30, 2023)
+
+### Features
+* Added Pydantic data models of `BackendConfiguration` for both HDF5 and Zarr datasets (container/mapper of all the `DatasetConfiguration`s for a particular file). [PR #568](https://github.com/catalystneuro/neuroconv/pull/568)
+* Changed the metadata schema for `Fluorescence` and `DfOverF` where the traces metadata can be provided as a dict instead of a list of dicts.
+  The name of the plane segmentation is used to determine which traces to add to the `Fluorescence` and `DfOverF` containers. [PR #632](https://github.com/catalystneuro/neuroconv/pull/632)
+* Modify the filtering of traces to also filter out traces with empty values. [PR #649](https://github.com/catalystneuro/neuroconv/pull/649)
+* Added tool function `get_default_dataset_configurations` for identifying and collecting all fields of an in-memory `NWBFile` that could become datasets on disk; and return instances of the Pydantic dataset models filled with default values for chunking/buffering/compression. [PR #569](https://github.com/catalystneuro/neuroconv/pull/569)
+* Added tool function `get_default_backend_configuration` for conveniently packaging the results of `get_default_dataset_configurations` into an easy-to-modify mapping from locations of objects within the file to their correseponding dataset configuration options, as well as linking to a specific backend DataIO. [PR #570](https://github.com/catalystneuro/neuroconv/pull/570)
+* Added `set_probe()` method to `BaseRecordingExtractorInterface`. [PR #639](https://github.com/catalystneuro/neuroconv/pull/639)
+* Changed default chunking of `ImagingExtractorDataChunkIterator` to select `chunk_shape` less than the chunk_mb threshold while keeping the original image size. The default `chunk_mb` changed to 10MB. [PR #667](https://github.com/catalystneuro/neuroconv/pull/667)
+
+### Fixes
+* Fixed GenericDataChunkIterator (in hdmf.py) in the case where the number of dimensions is 1 and the size in bytes is greater than the threshold of 1 GB. [PR #638](https://github.com/catalystneuro/neuroconv/pull/638)
+* Changed `np.floor` and `np.prod` usage to `math.floor` and `math.prod` in various files. [PR #638](https://github.com/catalystneuro/neuroconv/pull/638)
+* Updated minimal required version of DANDI CLI; updated `run_conversion_from_yaml` API function and tests to be compatible with naming changes. [PR #664](https://github.com/catalystneuro/neuroconv/pull/664)
+
+### Improvements
+ * Change metadata extraction library from `fparse` to `parse`. [PR #654](https://github.com/catalystneuro/neuroconv/pull/654)
+ * The `dandi` CLI/API is now an optional dependency; it is still required to use the `tool` function for automated upload as well as the YAML-based NeuroConv CLI. [PR #655](https://github.com/catalystneuro/neuroconv/pull/655)
+
+
+
+# v0.4.5 (November 6, 2023)
+
+### Back-compatibility break
+* The `CEDRecordingInterface` has now been removed; use the `Spike2RecordingInterface` instead. [PR #602](https://github.com/catalystneuro/neuroconv/pull/602)
+
+### Features
+* Added support for python 3.12 [PR #626](https://github.com/catalystneuro/neuroconv/pull/626)
+* Added `session_start_time` extraction to `FicTracDataInterface`. [PR #598](https://github.com/catalystneuro/neuroconv/pull/598)
+* Added `imaging_plane_name` keyword argument to `add_imaging_plane` function to determine which imaging plane to add from the metadata by name instead of `imaging_plane_index`.
+* Added reference for `imaging_plane` to default plane segmentation metadata. [PR #594](https://github.com/catalystneuro/neuroconv/pull/594)
+* Changed Compass container for Position container in the `FicTracDataInterface`.  [PR #606](https://github.com/catalystneuro/neuroconv/pull/605)
+* Added option to write units in meters by providing a radius in `FicTracDataInterface`. [PR #606](https://github.com/catalystneuro/neuroconv/pull/605)
+* Added `parent_container` keyword argument to `add_photon_series` that defines whether to add the photon series to acquisition or 'ophys' processing module. [PR #587](https://github.com/catalystneuro/neuroconv/pull/587)
+* Added Pydantic data models of `DatasetInfo` (immutable summary of core dataset values such as maximum shape and dtype) and `DatasetConfiguration` for both HDF5 and Zarr datasets (the optional layer that specifies chunk/buffering/compression). [PR #567](https://github.com/catalystneuro/neuroconv/pull/567)
+* Added alignment methods to `FicTracDataInterface`.  [PR #607](https://github.com/catalystneuro/neuroconv/pull/607)
+* Added alignment methods support to `MockRecordingInterface` [PR #611](https://github.com/catalystneuro/neuroconv/pull/611)
+* Added `NeuralynxNvtInterface`, which can read position tracking NVT files. [PR #580](https://github.com/catalystneuro/neuroconv/pull/580)
+* Adding radius as a conversion factor in `FicTracDataInterface`.  [PR #619](https://github.com/catalystneuro/neuroconv/pull/619)
+* Coerce `FicTracDataInterface` original timestamps to start from 0.  [PR #619](https://github.com/catalystneuro/neuroconv/pull/619)
+* Added configuration metadata to `FicTracDataInterface`.  [PR #618](https://github.com/catalystneuro/neuroconv/pull/618)
+* Expose number of jobs to `automatic_dandi_upload`. [PR #624](https://github.com/catalystneuro/neuroconv/pull/624)
+* Added `plane_segmentation_name` keyword argument to determine which plane segmentation to add from the metadata by name instead of `plane_segmentation_index`.
+  `plane_segmentation_name` is exposed at `BaseSegmentationExtractorInterface.add_to_nwbfile()` function to support adding segmentation output from multiple planes. [PR #623](https://github.com/catalystneuro/neuroconv/pull/623)
+* Added `SegmentationImages` to metadata_schema in `BaseSegmentationExtractorInterface` to allow for the modification of the name and description of Images container and description of the summary images. [PR #622](https://github.com/catalystneuro/neuroconv/pull/622)
+* Default chunking pattern of RecordingInterfaces now attempts to use as many channels as possible up to 64 total, and fill with as much time as possible up to the `chunk_mb`. This also required raising the lower HDMF version to 3.11.0 (which introduced 10 MB default chunk sizes). [PR #630](https://github.com/catalystneuro/neuroconv/pull/630)
+
+### Fixes
+* Remove `starting_time` reset to default value (0.0) when adding the rate and updating the `photon_series_kwargs` or `roi_response_series_kwargs`, in `add_photon_series` or `add_fluorescence_traces`. [PR #595](https://github.com/catalystneuro/neuroconv/pull/595)
+* Changed the date parsing in `OpenEphysLegacyRecordingInterface` to `datetime.strptime` with the expected date format explicitly set to `"%d-%b-%Y %H%M%S"`. [PR #577](https://github.com/catalystneuro/neuroconv/pull/577)
+* Pin lower bound HDMF version to `3.10.0`. [PR #586](https://github.com/catalystneuro/neuroconv/pull/586)
+
+### Deprecation
+* Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #600](https://github.com/catalystneuro/neuroconv/pull/600)
+
+### Testing
+* Adds `MockImagingInterface` as a general testing mechanism for ophys imaging interfaces [PR #604](https://github.com/catalystneuro/neuroconv/pull/604).
+
+
+
+# v0.4.4
+
+### Features
+
+* `DeepLabCutInterface` now allows using custom timestamps via `set_aligned_timestamps` method before running conversion. [PR #531](https://github.com/catalystneuro/neuroconv/pull/532)
+
+### Fixes
+
+* Reorganize timeintervals schema to reside in `schemas/` dir to ensure its inclusion in package build. [PR #573](https://github.com/catalystneuro/neuroconv/pull/573)
+
+
+
+# v0.4.3
+
+### Fixes
+
+* The `sonpy` package for the Spike2 interface no longer attempts installation on M1 Macs. [PR #563](https://github.com/catalystneuro/neuroconv/pull/563)
+* Fixed `subset_sorting` to explicitly cast `end_frame` to int to avoid SpikeInterface frame slicing edge case. [PR #565](https://github.com/catalystneuro/neuroconv/pull/565)
+
+
+
+# v0.4.2
+
+### Fixes
+
+* Exposed `es_key` argument to users where it was previously omitted on `MaxOneRecordingInterface`, `OpenEphysLegacyRecordingInterface`, and `OpenEphysRecordingInterface`. [PR #542](https://github.com/catalystneuro/neuroconv/pull/542)
+* Added deepcopy for metadata in `make_nwbfile_from_metadata`. [PR #545](https://github.com/catalystneuro/neuroconv/pull/545)
+* Fixed edge case in `subset_sorting` where `end_frame` could exceed recording length. [PR #551](https://github.com/catalystneuro/neuroconv/pull/551)
+* Alter `add_electrodes` behavior,  no error is thrown if a property is present in the metadata but not in the recording extractors. This allows the combination of recording objects that have different properties. [PR #558](https://github.com/catalystneuro/neuroconv/pull/558)
+
+### Features
+
+* Added converters for Bruker TIF format to support multiple streams of imaging data.
+  Added `BrukerTiffSinglePlaneConverter` for single plane imaging data which initializes a `BrukerTiffSinglePlaneImagingInterface` for each data stream.
+  The available data streams can be checked by `BrukerTiffSinglePlaneImagingInterface.get_streams(folder_path)` method.
+  Added `BrukerTiffMultiPlaneConverter` for volumetric imaging data with `plane_separation_type` argument that defines
+  whether to load the imaging planes as a volume (`"contiguous"`) or separately (`"disjoint"`).
+  The available data streams for the defined  `plane_separation_type`  can be checked by `BrukerTiffMultiPlaneImagingInterface.get_streams(folder_path, plane_separation_type)` method.
+* Added FicTrac data interface. [PR #517](https://github.com/catalystneuro/neuroconv/pull/#517)
+
+### Documentation and tutorial enhancements
+
+* Added FicTrac to the conversion gallery and docs API. [PR #560](https://github.com/catalystneuro/neuroconv/pull/#560)
+
+
+
+# v0.4.1
+
+### Fixes
+
+* Propagated additional arguments, such as `cell_id`, from the `metadata["Icephys"]["Electrodes"]` dictionary used in `tools.neo.add_icephys_electrode`. [PR #538](https://github.com/catalystneuro/neuroconv/pull/538)
+* Fixed mismatch between expected `Electrodes` key in `tools.neo.add_icephys_electrode` and the metadata automatically generated by the `AbfInterface`. [PR #538](https://github.com/catalystneuro/neuroconv/pull/538)
+
+
+
+# v0.4.0
+
+### Back-compatibility break
+
+* Create separate `.add_to_nwbfile` method for all DataInterfaces. This is effectively the previous `.run_conversion` method but limited to operations on an in-memory `nwbfile`: pynwb.NWBFile` object and does not handle any I/O. [PR #455](https://github.com/catalystneuro/neuroconv/pull/455)
+
+### Fixes
+
+* Set gzip compression by default on spikeinterface based interfaces `run_conversion`. [PR #499](https://github.com/catalystneuro/neuroconv/pull/#499)
+
+* Temporarily disabled filtering for all-zero traces in `add_fluorescence_traces` as the current implementation is very slow for nearly all zero traces (e.g. suite2p deconvolved traces). [PR #527](https://github.com/catalystneuro/neuroconv/pull/527)
+
+### Features
+
+* Added stream control with the `stream_name` argument to the `NeuralynxRecordingExtractor`. [PR #369](https://github.com/catalystneuro/neuroconv/pull/369)
+
+* Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
+
+* Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
+    groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+
+* `CellExplorerSortingInterface` now supports extracting sampling frequency from the new data format. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata including the sorting sampling frequency [PR #491](https://github.com/catalystneuro/neuroconv/pull/491) and [PR #502](https://github.com/catalystneuro/neuroconv/pull/502)
+* Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
+  and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
+  * `CellExplorerSortingInterface` now supports adding channel metadata to the nwbfile with `write_ecephys_metadata=True` as a conversion option [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
+
+* Added `MiniscopeImagingInterface` for Miniscope imaging data stream. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the microscope device metadata,
+  and the imaging data as `OnePhotonSeries`. [PR #468](https://github.com/catalystneuro/neuroconv/pull/468)
+
+* Added `MiniscopeConverter` for combining the conversion of Miniscope imaging and behavioral data streams. [PR #498](https://github.com/catalystneuro/neuroconv/pull/498)
+
+### Improvements
+
+* Avoid redundant timestamp creation in `add_eletrical_series` for recording objects without time vector. [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
+
+* Avoid modifying the passed `metadata` structure via `deep_dict_update` in `make_nwbfile_from_metadata`.  [PR #476](https://github.com/catalystneuro/neuroconv/pull/476)
+
+### Testing
+
+* Added gin test for `CellExplorerRecordingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
+    groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488).
+  * Added gin test for `CellExplorerSortingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
+  rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
+  groups, location and brain area [PR #494](https://github.com/catalystneuro/neuroconv/pull/494).
+
+
+
+
+# v0.3.0 (June 7, 2023)
 
 ### Back-compatibility break
 * `ExtractorInterface` classes now access their extractor with the classmethod `cls.get_extractor()` instead of the attribute `self.Extractor`. [PR #324](https://github.com/catalystneuro/neuroconv/pull/324)
@@ -8,6 +338,8 @@
 * The previous conversion option `es_key` has been moved to the `__init__` of all `BaseRecordingExtractorInterface` classes. It is no longer possible to use this argument in the `run_conversion` method. [PR #318](https://github.com/catalystneuro/neuroconv/pull/318)
 * Change `BaseDataInterface.get_conversion_options_schema` from `classmethod` to object method. [PR #353](https://github.com/catalystneuro/neuroconv/pull/353)
 * Removed `utils.json_schema.get_schema_for_NWBFile` and moved base metadata schema to external json file. Added constraints to Subject metadata to match DANDI. [PR #376](https://github.com/catalystneuro/neuroconv/pull/376)
+* Duplicate video file paths in the VideoInterface and AudioInterface are no longer silently resolved; please explicitly remove duplicates when initializing the interfaces. [PR #403](https://github.com/catalystneuro/neuroconv/pull/403)
+* Duplicate audio file paths in the AudioInterface are no longer silently resolved; please explicitly remove duplicates when initializing the interfaces. [PR #402](https://github.com/catalystneuro/neuroconv/pull/402)
 
 ### Features
 * The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
@@ -30,20 +362,49 @@
 * Adds `MockRecordingInterface` as a general testing mechanism for ecephys interfaces [PR #395](https://github.com/catalystneuro/neuroconv/pull/395).
 * `metadata` returned by `DataInterface.get_metadata()` is now a `DeepDict` object, making it easier to add and adjust metadata. [PR #404](https://github.com/catalystneuro/neuroconv/pull/404).
 * The `OpenEphysLegacyRecordingInterface` is now extracts the `session_start_time` in `get_metadata()` from `Neo` (`OpenEphysRawIO`) and does not depend on `pyopenephys` anymore. [PR #410](https://github.com/catalystneuro/neuroconv/pull/410)
-* Added basic temporal alignment methods to ecephys, ophys, and icephys DataInterfaces. These are `get_timestamps`, `align_starting_time`, `align_timestamps`, and `align_by_interpolation`. Added tests that serve as a first demonstration of the intended uses in a variety of cases. [PR #237](https://github.com/catalystneuro/neuroconv/pull/237) [PR #283](https://github.com/catalystneuro/neuroconv/pull/283) [PR #400](https://github.com/catalystneuro/neuroconv/pull/400)
 * Added `expand_paths`. [PR #377](https://github.com/catalystneuro/neuroconv/pull/377)
+* Added basic temporal alignment methods to ecephys, ophys, and icephys DataInterfaces. These are `get_timestamps`, `align_starting_time`, `align_timestamps`, and `align_by_interpolation`. Added tests that serve as a first demonstration of the intended uses in a variety of cases. [PR #237](https://github.com/catalystneuro/neuroconv/pull/237) [PR #283](https://github.com/catalystneuro/neuroconv/pull/283) [PR #400](https://github.com/catalystneuro/neuroconv/pull/400)
+* Added basic temporal alignment methods to the SLEAPInterface. Added holistic per-interface, per-method unit testing for ecephys and ophys interfaces. [PR #401](https://github.com/catalystneuro/neuroconv/pull/401)
+* Added `expand_paths`. [PR #377](https://github.com/catalystneuro/neuroconv/pull/377), [PR #448](https://github.com/catalystneuro/neuroconv/pull/448)
+* Added `.get_electrode_table_json()` to the `BaseRecordingExtractorInterface` as a convenience helper for the GUIDE project. [PR #431](https://github.com/catalystneuro/neuroconv/pull/431)
+* Added `BrukerTiffImagingInterface` to support Bruker TIF imaging data. This format consists of individual TIFFs (each file contains a single frame) in OME-TIF format (.ome.tif files) and metadata in XML format (.xml file). [PR #390](https://github.com/catalystneuro/neuroconv/pull/390)
+* Added `MicroManagerTiffImagingInterface` to support Micro-Manager TIF imaging data. This format consists of multipage TIFFs in OME-TIF format (.ome.tif files) and configuration settings in JSON format ('DisplaySettings.json' file). [PR #423](https://github.com/catalystneuro/neuroconv/pull/423)
+* Added a `TemporallyAlignedDataInterface` definition for convenience when creating a custom interface for pre-aligned data. [PR #434](https://github.com/catalystneuro/neuroconv/pull/434)
+* Added `write_as`, `units_name`, `units_description` to `BaseSortingExtractorInterface` `run_conversion` method to be able to modify them in conversion options. [PR #438](https://github.com/catalystneuro/neuroconv/pull/438)
+* Added basic temporal alignment methods to the VideoInterface. These are `align_starting_time` is split into `align_starting_times` (list of times, one per video file) and `align_global_starting_time` (shift all by a scalar amount). `align_by_interpolation` is not yet implemented for this interface. [PR #283](https://github.com/catalystneuro/neuroconv/pull/283)
+* Added stream control for the `OpenEphysBinaryRecordingInterface`. [PR #445](https://github.com/catalystneuro/neuroconv/pull/445)
+* Added the `BaseTemporalAlignmentInterface` to serve as the new base class for all new temporal alignment methods. [PR #442](https://github.com/catalystneuro/neuroconv/pull/442)
+* Added direct imports for all base classes from the outer level; you may now call `from neuroconv import BaseDataInterface, BaseTemporalAlignmentInterface, BaseExtractorInterface`. [PR #442](https://github.com/catalystneuro/neuroconv/pull/442)
+* Added basic temporal alignment methods to the AudioInterface. `align_starting_time` is split into `align_starting_times` (list of times, one per audio file) and `align_global_starting_time` (shift all by a scalar amount). `align_by_interpolation` and other timestamp-based approaches is not yet implemented for this interface. [PR #402](https://github.com/catalystneuro/neuroconv/pull/402)
+* Changed the order of recording properties extraction in `NeuroscopeRecordingInterface` and `NeuroScopeLFPInterface` to make them consistent with each other [PR #466](https://github.com/catalystneuro/neuroconv/pull/466)
+* The `ScanImageImagingInterface` has been updated to read metadata from more recent versions of ScanImage [PR #457](https://github.com/catalystneuro/neuroconv/pull/457)
+* Refactored `add_two_photon_series()` to `add_photon_series()` and added `photon_series_type` optional argument which can be either `"OnePhotonSeries"` or `"TwoPhotonSeries"`.
+  Changed `get_default_ophys_metadata()` to add `Device` and `ImagingPlane` metadata which are both used by imaging and segmentation.
+  Added `photon_series_type` to `get_nwb_imaging_metadata()` to fill metadata for `OnePhotonSeries` or `TwoPhotonSeries`. [PR #462](https://github.com/catalystneuro/neuroconv/pull/462)
+* Split `align_timestamps` and `align_starting_times` into `align_segment_timestamps` and `align_segment_starting_times` for API consistency for multi-segment `RecordingInterface`s. [PR #463](https://github.com/catalystneuro/neuroconv/pull/463)
+* Rename `align_timestamps` and `align_segmentt_timestamps` into `set_aligned_timestamps` and `set_aligned_segment_timestamps` to more clearly indicate their usage and behavior. [PR #470](https://github.com/catalystneuro/neuroconv/pull/470)
+
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
-* Deactivate `MaxOneRecordingInterface` metadata tests. [PR #371]((https://github.com/catalystneuro/neuroconv/pull/371)
+* Deactivate `MaxOneRecordingInterface` metadata tests [PR #371]((https://github.com/catalystneuro/neuroconv/pull/371)
+* Integrated the DataInterface testing mixin to the SLEAP Interface. [PR #401](https://github.com/catalystneuro/neuroconv/pull/401)
 * Added holistic per-interface, per-method unit testing for ecephys and ophys interfaces. [PR #283](https://github.com/catalystneuro/neuroconv/pull/283)
 * Live service tests now run in a separate non-required GitHub action. [PR #420]((https://github.com/catalystneuro/neuroconv/pull/420)
-
+* Integrated the `DataInterfaceMixin` class of tests to the `VideoInterface`. [PR #403](https://github.com/catalystneuro/neuroconv/pull/403)
+* Add `generate_path_expander_demo_ibl` and associated test for `LocalPathExpander` [PR #456](https://github.com/catalystneuro/neuroconv/pull/456)
+* Improved testing of all interface alignment methods via the new `TemporalAlignmentMixin` class. [PR #459](https://github.com/catalystneuro/neuroconv/pull/459)
 
 ### Fixes
 * `BlackrockRecordingInterface` now writes all ElectricalSeries to "acquisition" unless changed using the `write_as` flag in `run_conversion`. [PR #315](https://github.com/catalystneuro/neuroconv/pull/315)
 * Excluding Python versions 3.8 and 3.9 for the `EdfRecordingInterface` on M1 macs due to installation problems. [PR #319](https://github.com/catalystneuro/neuroconv/pull/319)
 * Extend type array condition in `get_schema_from_hdmf_class` for dataset types (excludes that are DataIO). [PR #418](https://github.com/catalystneuro/neuroconv/pull/418)
+* The `base_directory` argument to all `PathExpander` classes can now accept string inputs as well as `Path` inputs. [PR #427](https://github.com/catalystneuro/neuroconv/pull/427)
+* Fixed the temporal alignment methods for the `RecordingInterfaces` which has multiple segments. [PR #411](https://github.com/catalystneuro/neuroconv/pull/411)
+* Fixes to the temporal alignment methods for the `SortingInterface`, both single and multi-segment and recordingless. [PR #413](https://github.com/catalystneuro/neuroconv/pull/413)
+* Fixes to the temporal alignment methods for the certain formats of the `RecordingInterface`. [PR #459](https://github.com/catalystneuro/neuroconv/pull/459)
+* Fixes the naming of LFP interfaces to be `ElectricalSeriesLFP` instead of `ElectricalSeriesLF`. [PR #467](https://github.com/catalystneuro/neuroconv/pull/467)
+* Fixed an issue with incorrect modality-specific extra requirements being associated with certain behavioral formats. [PR #469](https://github.com/catalystneuro/neuroconv/pull/469)
 
 ### Documentation and tutorial enhancements
 * The instructions to build the documentation were moved to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
@@ -53,6 +414,8 @@
 * Moved instructions to build the documentation from README.md to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
 * Add `Spike2RecordingInterface` to conversion gallery. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)
 * Remove authors from module docstrings [PR #354](https://github.com/catalystneuro/neuroconv/pull/354)
+* Add examples for `LocalPathExpander` usage [PR #456](https://github.com/catalystneuro/neuroconv/pull/456)
+* Add better docstrings to the aux functions of the Neuroscope interface [PR #485](https://github.com/catalystneuro/neuroconv/pull/485)
 
 ### Pending deprecation
 * Change name from `CedRecordingInterface` to `Spike2RecordingInterface`. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)

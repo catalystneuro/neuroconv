@@ -1,2 +1,4 @@
-dlc2nwb>=0.3
-tables  # imported by package but not included in pip setup (is included in setup.cfg)
+tables<3.9.2;sys_platform=="darwin"
+tables;sys_platform=="linux" or sys_platform=="win32"
+ndx-pose==0.1.1
+neuroconv[video]

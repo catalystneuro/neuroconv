@@ -1,11 +1,41 @@
-"""Tool functions for performing imports."""
-import importlib.util
+"""Tool functions related to imports."""
+
 import sys
+from importlib import import_module
+from importlib.metadata import version as importlib_version
+from importlib.util import find_spec
 from platform import processor, python_version
 from types import ModuleType
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from packaging import version
+
+
+def get_package_version(name: str) -> version.Version:
+    """
+    Retrieve the version of a package.
+
+    Parameters
+    ----------
+    name : str
+        Name of package.
+
+    Returns
+    -------
+    version : Version
+        The package version as an object from packaging.version.Version.
+    """
+    package_version = importlib_version(name)
+    return version.parse(package_version)
+
+
+def is_package_installed(package_name: str) -> bool:
+    """
+    Check if the given package is installed on the system.
+
+    Used for lazy imports.
+    """
+    return find_spec(name=package_name) is not None
 
 
 def get_package(
@@ -35,11 +65,20 @@ def get_package(
         use the 'excluded_platforms_and_python_versions' keyword argument instead.
         Allows all Python versions by default.
     excluded_platforms_and_python_versions : dict, optional
-        mapping string platform names to a list of string versions. In case some combinations of platforms or Python
-        versions are not allowed for the given package, specify this dictionary to raise a more specific error to
-        that issue. For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
-        informative error when running on MacOS with Python version 3.7. Allows all platforms and Python versions by
-        default.
+        Mapping of string platform names to a list of string versions.
+        Valid platform strings are: ["linux", "win32", "darwin"] or any other variant used by sys.platform
+
+        In case some combinations of platforms or Python versions are not allowed for the given package,
+        specify this dictionary to raise a more specific error to that issue.
+
+        For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
+        informative error when running on macOS with Python version 3.7.
+
+        This also applies to specific architectures of platforms, such as
+        `excluded_platforms_and_python_versions = dict(darwin=dict(arm=["3.7"]))` to exclude a specific Python
+        version for M1 Macs.
+
+        Allows all platforms and Python versions by default.
 
     Raises
     ------
@@ -80,10 +119,27 @@ def get_package(
     if package_name in sys.modules:
         return sys.modules[package_name]
 
-    if importlib.util.find_spec(package_name) is not None:
-        return importlib.import_module(name=package_name)
+    if is_package_installed(package_name=package_name) is not None:
+        return import_module(name=package_name)
 
     raise ModuleNotFoundError(
         f"\nThe required package'{package_name}' is not installed!\n"
         f"To install this package, please run\n\n\t{installation_instructions}\n"
     )
+
+
+def get_format_summaries() -> Dict[str, Dict[str, Union[str, Tuple[str, ...], None]]]:
+    """Simple helper function for compiling high level summaries of all format interfaces and converters."""
+    # Local scope import to avoid circularity
+    from ..converters import converter_list
+    from ..datainterfaces import interface_list
+
+    summary_attribute_keys = ["display_name", "keywords", "associated_suffixes", "info"]
+
+    combined_list = interface_list + converter_list
+    summaries = {
+        interface.__name__: {key: getattr(interface, key) for key in summary_attribute_keys}
+        for interface in combined_list
+    }
+
+    return summaries

@@ -1,0 +1,6 @@
+FROM python:3.11.7-slim
+LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
+LABEL org.opencontainers.image.description="A docker image for the most recent daily build of the main branch."
+ADD ./ neuroconv
+RUN cd neuroconv && pip install .[full]
+CMD ["python -m"]

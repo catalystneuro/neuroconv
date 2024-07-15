@@ -45,19 +45,19 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
     parameterized_lfp_list = [
         param(
             data_interface=AxonaLFPDataInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
+            interface_kwargs=dict(file_path=DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg"),
         ),
         param(
             data_interface=NeuroScopeLFPInterface,
             interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
-                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+                file_path=(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+                xml_file_path=(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
             ),
         ),
         param(
             data_interface=SpikeGLXRecordingInterface,
             interface_kwargs=dict(
-                file_path=str(
+                file_path=(
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
                 )
             ),
@@ -90,10 +90,10 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            if expected_write_module == "raw":
+            if expected_write_module == "raw":  # This is for SpikeGLX only
                 nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
             else:
-                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLF"]
+                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):

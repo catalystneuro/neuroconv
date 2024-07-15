@@ -1,6 +1,17 @@
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra --doctest-glob='*.rst'"
+testpaths = [
+  "docs/conversion_examples_gallery/",
+  "tests"
+]
+doctest_optionflags = "ELLIPSIS"
+
+
+
 [tool.black]
 line-length = 120
-target-version = ['py37']
+target-version = ['py38', 'py39', 'py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -19,16 +30,24 @@ extend-exclude = '''
 )/
 '''
 
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
-testpaths = [
-"docs/conversion_examples_gallery/",
-"tests"
-]
-doctest_optionflags = "ELLIPSIS"
 
-[tool.isort]
-profile = "black"
-reverse_relative = true
-known_first_party = ["neuroconv"]
+
+[tool.ruff]
+exclude = [
+  "*/__init__.py"
+]
+
+[tool.ruff.lint]
+select = ["F401", "I"]  # TODO: eventually, expand to other 'F' linting
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+relative-imports-order = "closest-to-furthest"
+known-first-party = ["neuroconv"]
+
+
+
+[tool.codespell]
+skip = '.git*,*.pdf,*.css'
+check-hidden = true
+ignore-words-list = 'assertin'

@@ -1,0 +1,49 @@
+{
+    "title": "TimeSeriesBaseModel",
+    "type": "object",
+    "properties": {
+        "name": {
+            "title": "Name",
+            "description": "The name of this TimeSeries dataset.",
+            "type": "string",
+            "pattern": "^[^/]*$"
+        },
+        "description": {
+            "title": "Description",
+            "description": "Description of this TimeSeries dataset.",
+            "default": "No description.",
+            "type": "string"
+        },
+        "unit": {
+            "title": "Unit",
+            "description": "The base unit of measurement (should be SI unit).",
+            "type": "string"
+        },
+        "resolution": {
+            "title": "Resolution",
+            "description": "The smallest meaningful difference (in specified unit) between values in data.",
+            "default": -1.0,
+            "type": "number"
+        },
+        "comments": {
+            "title": "Comments",
+            "description": "Human-readable comments about this TimeSeries dataset.",
+            "default": "No comments.",
+            "type": "string"
+        },
+        "continuity": {
+            "title": "Continuity",
+            "description": "\nDescribe the continuity of the data: can be 'continuous', 'instantaneous', or 'step'.\n\nSome examples of each are:\n- A voltage trace would be 'continuous', because samples are recorded from a continuous process.\n- An array of lick times would be 'instantaneous', because the data represents distinct moments in time.\n- Times of image presentations would be  'step' because the picture remains the same until the next time-point.\n\nThis field is optional, but is useful in providing information about the underlying data.\nIt may inform the way this data is interpreted, the way it is visualized, and what analysis methods are applicable.\n",
+            "enum": [
+                "continuous",
+                "instantaneous",
+                "step"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "unit"
+    ]
+}
