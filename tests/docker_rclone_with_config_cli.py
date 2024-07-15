@@ -66,7 +66,7 @@ class TestRcloneWithConfig(TestCase):
 
         output = deploy_process(command="docker pull rclone/rclone:latest", catch_output=True)
         print(output)
-        
+
         command = (
             "docker run -t "
             f"--volume {self.test_folder}:{self.test_folder} "
