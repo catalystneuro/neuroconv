@@ -1021,7 +1021,6 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
 
     def test_preserve_int_property(self):
-        """Add a property only available in a second sorting."""
         print(self.sorting_1.get_unit_ids())
         self.sorting_1.set_property(key="added_property", values=[1, 2, 3, 4])
 
