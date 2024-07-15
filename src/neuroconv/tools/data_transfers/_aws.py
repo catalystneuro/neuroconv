@@ -45,6 +45,7 @@ def estimate_total_conversion_runtime(
 ):
     """
     Estimate how long the combined process of data transfer, conversion, and upload is expected to take.
+
     Parameters
     ----------
     total_mb: float
@@ -60,6 +61,7 @@ def estimate_total_conversion_runtime(
         Estimate of the final average compression ratio for datasets in the file. Can vary widely.
     """
     c = 1 / compression_ratio  # compressed_size = total_size * c
+
     return total_mb * (1 / transfer_rate_mb + 1 / conversion_rate_mb + c / upload_rate_mb)
 
 
