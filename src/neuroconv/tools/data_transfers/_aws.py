@@ -1,7 +1,6 @@
 """Collection of helper functions for assessing and performing automated data transfers related to AWS."""
 
 import json
-import os
 from datetime import datetime
 from uuid import uuid4
 
@@ -37,16 +36,15 @@ def estimate_s3_conversion_cost(
     return cost_mb_s * total_mb_s
 
 
-def estimate_s3_conversion_cost(
+def estimate_total_conversion_runtime(
     total_mb: float,
     transfer_rate_mb: float = 20.0,
     conversion_rate_mb: float = 17.0,
-    upload_rate_mb: float = 40.0,
+    upload_rate_mb: float = 40,
     compression_ratio: float = 1.7,
 ):
     """
-    Estimate potential cost of performing an entire conversion on S3 using full automation.
-
+    Estimate how long the combined process of data transfer, conversion, and upload is expected to take.
     Parameters
     ----------
     total_mb: float
@@ -57,35 +55,36 @@ def estimate_s3_conversion_cost(
         Estimate of the conversion rate for the data. Can vary widely depending on conversion options and type of data.
         Figure of 17MB/s is based on extensive compression of high-volume, high-resolution ecephys.
     upload_rate_mb : float, default: 40.0
-        Estimate of the upload rate of a single file to the DANDI Archive.
+        Estimate of the upload rate of a single file to the DANDI archive.
     compression_ratio : float, default: 1.7
         Estimate of the final average compression ratio for datasets in the file. Can vary widely.
     """
     c = 1 / compression_ratio  # compressed_size = total_size * c
-    total_mb_s = total_mb**2 / 2 * (1 / transfer_rate_mb + (2 * c + 1) / conversion_rate_mb + 2 * c**2 / upload_rate_mb)
-    cost_gb_m = 0.08 / 1e3  # $0.08 / GB Month
-    cost_mb_s = cost_gb_m / (1e3 * 2.628e6)  # assuming 30 day month; unsure how amazon weights shorter months?
-    return cost_mb_s * total_mb_s
+    return total_mb * (1 / transfer_rate_mb + 1 / conversion_rate_mb + c / upload_rate_mb)
 
 
 def submit_aws_batch_job(
     job_name: str,
     docker_container: str,
+    # rclone_config_file_path: Optional[str] = None,
+    region: str = "us-east-2",
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
 ) -> None:
-    assert (
-        "RCLONE_CREDENTIALS" in os.environ
-    ), "You must set your rclone credentials as the environment variable 'RCLONE_CREDENTIALS' to submit this job!"
-    assert (
-        "DANDI_API_KEY" in os.environ
-    ), "You must set your DANDI API key as the environment variable 'DANDI_API_KEY' to submit this job!"
+    # assert (
+    #     "DANDI_API_KEY" in os.environ
+    # ), "You must set your DANDI API key as the environment variable 'DANDI_API_KEY' to submit this job!"
+    #
+    # default_rclone_config_file_path = pathlib.Path.home() / ".config" / "rclone" / "rclone.conf"
+    # rclone_config_file_path = rclone_config_file_path or default_rclone_config_file_path
+    # if not rclone_config_file_path.exists():
+    #     raise ValueError("You must configure rclone on your local system to submit this job!")
+    # with open(file=rclone_config_file_path, mode="r") as io:
+    #     rclone_config_file_stream = io.read()
 
     import boto3
-
-    region = "us-east-2"  # TODO, maybe control AWS region? Technically not required if user has it set in credentials
 
     dynamodb_client = boto3.client("dynamodb", region)
     dynamodb_resource = boto3.resource("dynamodb", region)
@@ -195,19 +194,20 @@ def submit_aws_batch_job(
             jobDefinition=job_definition,
             jobName=job_name,
             containerOverrides=dict(
-                environment=[  # These are environment variables
+                # Set environment variables
+                environment=[
                     dict(  # The burden is on the calling script to update the table status to finished
                         name="STATUS_TRACKER_TABLE_NAME",
                         value=status_tracker_table_name,
                     ),
-                    dict(  # For rclone transfers
-                        name="RCLONE_CREDENTIALS",
-                        value=os.environ["RCLONE_CREDENTIALS"],
-                    ),
-                    dict(  # For rclone transfers
-                        name="DANDI_API_KEY",
-                        value=os.environ["DANDI_API_KEY"],
-                    ),
+                    # dict(  # For rclone transfers
+                    #     name="RCLONE_CREDENTIALS",
+                    #     value=os.environ["RCLONE_CREDENTIALS"],
+                    # ),
+                    # dict(  # For rclone transfers
+                    #     name="DANDI_API_KEY",
+                    #     value=os.environ["DANDI_API_KEY"],
+                    # ),
                 ]
             ),
         )
