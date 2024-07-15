@@ -19,6 +19,9 @@ with open(root / "requirements-testing.txt") as f:
 
 extras_require = defaultdict(list)
 
+extras_require["aws"].append("boto3")
+extras_require["full"].extend(extras_require["aws"])
+
 extras_require["dandi"].append("dandi>=0.58.1")
 extras_require["full"].extend(extras_require["dandi"])
 
