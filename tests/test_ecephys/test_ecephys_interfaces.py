@@ -96,6 +96,7 @@ class TestSortingInterface(unittest.TestCase):
 
         source_data = dict(TestSortingInterface=dict())
         cls.test_sorting_interface = TempConverter(source_data)
+        cls.TestSortingInterface = TestSortingInterface
 
     @classmethod
     def tearDownClass(cls):
@@ -176,3 +177,20 @@ class TestSortingInterface(unittest.TestCase):
             self.assertIsNone(nwbfile.units)
             self.assertIn("processed_units", ecephys.data_interfaces)
             self.assertEqual(ecephys["processed_units"].description, units_description)
+
+    def test_convert_int(self):
+
+        test_sorting_interface = self.TestSortingInterface()
+
+        metadata = test_sorting_interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        print(f"{test_sorting_interface.sorting_extractor.get_unit_ids()}")
+
+        test_sorting_interface.sorting_extractor.set_property("new_prop", [2, 3, 4])
+
+        nwbfile = test_sorting_interface.create_nwbfile(metadata=metadata, cast_int_to_float=True)
+        self.assertListEqual(list(nwbfile.units["new_prop"]), [2., 3., 4.])
+
+        nwbfile = test_sorting_interface.create_nwbfile(metadata=metadata, cast_int_to_float=False)
+        self.assertListEqual(list(nwbfile.units["new_prop"]), [2, 3, 4])

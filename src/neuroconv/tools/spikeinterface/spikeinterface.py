@@ -1166,8 +1166,6 @@ def add_units_table(
     for property in properties_to_add_by_columns - {"unit_name"}:
         cols_args = data_to_add[property]
         data = cols_args["data"]
-        if np.issubdtype(data.dtype, np.integer):
-            data = data.astype("float")
 
         # Find first matching data-type
         sample_data = data[0]
@@ -1189,7 +1187,8 @@ def add_units_table(
             dtype = data.dtype
             extended_data = np.empty(shape=len(units_table.id[:]), dtype=dtype)
             extended_data[indexes_for_new_data] = data
-            extended_data[indexes_for_default_values] = default_value
+            if len(indexes_for_default_values):
+                extended_data[indexes_for_default_values] = default_value
 
             if np.issubdtype(extended_data.dtype, np.object_):
                 extended_data = extended_data.astype("str", copy=False)

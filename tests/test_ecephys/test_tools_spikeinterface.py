@@ -1020,6 +1020,16 @@ class TestAddUnitsTable(TestCase):
         expected_properties_in_units_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
         self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
 
+    def test_preserve_int_property(self):
+        """Add a property only available in a second sorting."""
+        print(self.sorting_1.get_unit_ids())
+        self.sorting_1.set_property(key="added_property", values=[1, 2, 3, 4])
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        properties_in_units_table = list(self.nwbfile.units["added_property"].data)
+        self.assertListEqual(properties_in_units_table, [1, 2, 3, 4])
+
     def test_units_table_extension_after_manual_unit_addition(self):
         """Add some rows to the units tables before using the add_units_table function"""
         values_dic = self.defaults
