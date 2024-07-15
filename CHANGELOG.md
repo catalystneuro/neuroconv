@@ -7,10 +7,9 @@
 * The usage of `compression_options` directly through the `neuroconv.tools.ophys` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #940](https://github.com/catalystneuro/neuroconv/pull/940)
 * Removed the option of running `interface.run_conversion` without `nwbfile_path` argument . [PR #951](https://github.com/catalystneuro/neuroconv/pull/951)
 
-
-
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
+* Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for performing cloud-based conversions on data that is accessible via `rclone`, and whose cost can be estimated with `neuroconv.tools.data_transfers.estimate_aws_batch_job_cost`. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
 
 ### Bug fixes
 * Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
