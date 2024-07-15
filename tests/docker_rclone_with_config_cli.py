@@ -64,7 +64,9 @@ class TestRcloneWithConfig(TestCase):
             f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress --config ./rclone.conf"
         )
 
-        deploy_process(command="docker pull rclone/rclone:latest")
+        output = deploy_process(command="docker pull rclone/rclone:latest", catch_output=True)
+        print(output)
+        
         command = (
             "docker run -t "
             f"--volume {self.test_folder}:{self.test_folder} "
@@ -74,7 +76,8 @@ class TestRcloneWithConfig(TestCase):
             "--entrypoint '' "
             "printf '$RCLONE_CONFIG' > ./rclone.conf && eval '$RCLONE_COMMAND'"
         )
-        deploy_process(command=command)
+        output = deploy_process(command=command, catch_output=True)
+        print(output)
 
         # The .conf file created inside the container should not be viewable outside the running container
         # (it was not saved to mounted location)
