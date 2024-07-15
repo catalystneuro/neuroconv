@@ -178,14 +178,12 @@ class TestSortingInterface(unittest.TestCase):
             self.assertIn("processed_units", ecephys.data_interfaces)
             self.assertEqual(ecephys["processed_units"].description, units_description)
 
-    def test_convert_int(self):
+    def test_convert_int_to_float(self):
 
         test_sorting_interface = self.TestSortingInterface()
 
         metadata = test_sorting_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-
-        print(f"{test_sorting_interface.sorting_extractor.get_unit_ids()}")
 
         test_sorting_interface.sorting_extractor.set_property("new_prop", [2, 3, 4])
 
