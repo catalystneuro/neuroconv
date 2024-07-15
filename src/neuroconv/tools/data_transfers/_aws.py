@@ -39,25 +39,52 @@ def estimate_s3_conversion_cost(
 def submit_aws_batch_job(
     job_name: str,
     docker_container: str,
-    # rclone_config_file_path: Optional[str] = None,
+    command: Optional[str] = None,
+    job_dependencies: Optional[List[Dict[str, str]]] = None,
     region: str = "us-east-2",
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
-) -> None:
-    # assert (
-    #     "DANDI_API_KEY" in os.environ
-    # ), "You must set your DANDI API key as the environment variable 'DANDI_API_KEY' to submit this job!"
-    #
-    # default_rclone_config_file_path = pathlib.Path.home() / ".config" / "rclone" / "rclone.conf"
-    # rclone_config_file_path = rclone_config_file_path or default_rclone_config_file_path
-    # if not rclone_config_file_path.exists():
-    #     raise ValueError("You must configure rclone on your local system to submit this job!")
-    # with open(file=rclone_config_file_path, mode="r") as io:
-    #     rclone_config_file_stream = io.read()
+) -> Dict[str, str]:
+    """
+    Submit a job to AWS Batch for processing.
 
+    Parameters
+    ----------
+    job_name : str
+        The name of the job to submit.
+    docker_container : str
+        The name of the Docker container to use for the job.
+    command : str, optional
+        The command to run in the Docker container.
+        Current syntax only supports a single line; consecutive actions should be chained with the '&&' operator.
+    job_dependencies : list of dict
+        A list of job dependencies for this job to trigger. Structured as follows:
+        [
+            {"jobId": "job_id_1", "type": "N_TO_N"},
+            {"jobId": "job_id_2", "type": "SEQUENTIAL"},
+            ...
+        ]
+    region : str, default: "us-east-2"
+        The AWS region to use for the job.
+    status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
+        The name of the DynamoDB table to use for tracking job status.
+    iam_role_name : str, default: "neuroconv_batch_role"
+        The name of the IAM role to use for the job.
+    compute_environment_name : str, default: "neuroconv_batch_environment"
+        The name of the compute environment to use for the job.
+    job_queue_name : str, default: "neuroconv_batch_queue"
+        The name of the job queue to use for the job.
+
+    Returns
+    -------
+    job_submission_info : dict
+        A dictionary containing the job ID and other relevant information.
+    """
     import boto3
+
+    job_dependencies = job_dependencies or []
 
     dynamodb_client = boto3.client("dynamodb", region)
     dynamodb_resource = boto3.resource("dynamodb", region)
@@ -156,37 +183,37 @@ def submit_aws_batch_job(
             ),
         )
     else:
-        # TODO: would also need to check that memory/vcpu values resolve with previously defined name
+        # TODO: do I also need to check that memory/vcpu values resolve with previously defined name?
         pass
 
     # Submit job and update status tracker
     currently_running_jobs = batch_client.list_jobs(jobQueue=job_queue_name)
-    if job_name not in currently_running_jobs:
-        batch_client.submit_job(
-            jobQueue=job_queue_name,
-            jobDefinition=job_definition,
-            jobName=job_name,
-            containerOverrides=dict(
-                # Set environment variables
-                environment=[
-                    dict(  # The burden is on the calling script to update the table status to finished
-                        name="STATUS_TRACKER_TABLE_NAME",
-                        value=status_tracker_table_name,
-                    ),
-                    # dict(  # For rclone transfers
-                    #     name="RCLONE_CREDENTIALS",
-                    #     value=os.environ["RCLONE_CREDENTIALS"],
-                    # ),
-                    # dict(  # For rclone transfers
-                    #     name="DANDI_API_KEY",
-                    #     value=os.environ["DANDI_API_KEY"],
-                    # ),
-                ]
-            ),
-        )
-        table.put_item(Item=dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted"))
-    else:
+    if job_name in currently_running_jobs:
         raise ValueError(
             f"There is already a job named '{job_name}' running in the queue! "
             "If you are submitting multiple jobs, each will need a unique name."
         )
+
+    # Set environment variables to the docker container
+    # as well as optional command to run
+    container_overrides = dict(
+        # Set environment variables
+        environment=[
+            dict(  # The burden is on the calling script to update the table status to finished
+                name="STATUS_TRACKER_TABLE_NAME",
+                value=status_tracker_table_name,
+            ),
+        ]
+    )
+    if command is not None:
+        container_overrides["command"] = [command]
+    job_submission_info = batch_client.submit_job(
+        jobQueue=job_queue_name,
+        dependsOn=job_dependencies,
+        jobDefinition=job_definition,
+        jobName=job_name,
+        containerOverrides=container_overrides,
+    )
+    table.put_item(Item=dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted"))
+
+    return job_submission_info
