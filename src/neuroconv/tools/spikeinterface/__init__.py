@@ -3,6 +3,8 @@ from .spikeinterface import (
     add_electrical_series,
     add_electrode_groups,
     add_electrodes,
+    add_recording,
+    add_sorting,
     add_units_table,
     check_if_recording_traces_fit_into_memory,
     get_nwb_metadata,

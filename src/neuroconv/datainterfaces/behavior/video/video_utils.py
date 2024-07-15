@@ -1,4 +1,5 @@
-from typing import Iterable, Optional, Tuple
+import math
+from typing import Optional, Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator
@@ -8,7 +9,9 @@ from ....tools import get_package
 from ....utils import FilePathType
 
 
-def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = None) -> list:
+def get_video_timestamps(
+    file_path: FilePathType, max_frames: Optional[int] = None, display_progress: bool = True
+) -> list:
     """Extract the timestamps of the video located in file_path
 
     Parameters
@@ -25,7 +28,7 @@ def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = No
     """
 
     with VideoCaptureContext(str(file_path)) as video_context:
-        timestamps = video_context.get_video_timestamps(max_frames=max_frames)
+        timestamps = video_context.get_video_timestamps(max_frames=max_frames, display_progress=display_progress)
 
     return timestamps
 
@@ -42,14 +45,20 @@ class VideoCaptureContext:
         self._frame_count = None
         self._video_open_msg = "The video file is not open!"
 
-    def get_video_timestamps(self, max_frames=None):
+    def get_video_timestamps(self, max_frames: Optional[int] = None, display_progress: bool = True):
         """Return numpy array of the timestamps(s) for a video file."""
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         timestamps = []
         total_frames = self.get_video_frame_count()
         frames_to_extract = min(total_frames, max_frames) if max_frames else total_frames
-        for _ in tqdm(range(frames_to_extract), desc="retrieving timestamps"):
+
+        iterator = (
+            tqdm(range(frames_to_extract), desc="retrieving timestamps")
+            if display_progress
+            else range(frames_to_extract)
+        )
+        for _ in iterator:
             success, _ = self.vc.read()
             if not success:
                 break
@@ -206,13 +215,13 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
     @staticmethod
     def _scale_shape_to_size(size_mb, shape, size, max_shape):
         """Given the shape and size of array, return shape that will fit size_mb."""
-        k = np.floor((size_mb / size) ** (1 / len(shape)))
+        k = math.floor((size_mb / size) ** (1 / len(shape)))
         return tuple([min(max(int(x), shape[j]), max_shape[j]) for j, x in enumerate(k * np.array(shape))])
 
     def _get_frame_details(self):
         """Get frame shape and size in MB"""
         frame_shape = (1, *self.video_capture_ob.get_frame_shape())
-        min_frame_size_mb = (np.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
+        min_frame_size_mb = (math.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
         return min_frame_size_mb, frame_shape
 
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:

@@ -1,12 +1,13 @@
+import math
 from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
-from nwbinspector.tools import make_minimal_nwbfile
-from nwbinspector.utils import is_module_installed
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
+from pynwb.testing.mock.file import mock_NWBFile
 
+from ..importing import is_package_installed
 from ...utils import ArrayType, FolderPathType
 
 
@@ -84,7 +85,7 @@ def generate_mock_ttl_signal(
 
     if np.issubdtype(dtype, np.unsignedinteger):
         # If data type is an unsigned integer, increment the signed default values by the midpoint of the unsigned range
-        shift = np.floor(np.iinfo(dtype).max / 2).astype(int)
+        shift = math.floor(np.iinfo(dtype).max / 2)
         baseline_mean_int16_default += shift
         signal_mean_int16_default += shift
 
@@ -143,7 +144,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     folder_path = Path(folder_path)
 
     if regenerate_reference_images:
-        assert is_module_installed("plotly") and is_module_installed("kaleido"), (
+        assert is_package_installed("plotly") and is_package_installed("kaleido"), (
             "To regenerate the reference images, " "you must install both plotly and kaleido!"
         )
         import plotly.graph_objects as go
@@ -156,7 +157,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     unit = "Volts"
     rate = 1000.0  # For non-default series to produce less data
 
-    nwbfile = make_minimal_nwbfile()
+    nwbfile = mock_NWBFile()
 
     # Test Case 1: Default
     default_ttl_signal = generate_mock_ttl_signal()
@@ -271,7 +272,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
         if regenerate_reference_images:
             fig.add_trace(
                 go.Scatter(y=time_series_data, text=time_series_name),
-                row=np.floor(plot_index / num_cols).astype(int) + 1,
+                row=math.floor(plot_index / num_cols) + 1,
                 col=int(plot_index % num_cols) + 1,
             )
             plot_index += 1

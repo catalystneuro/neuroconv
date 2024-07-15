@@ -1,11 +1,12 @@
 """
-This module is meant for the tests to be run as stand-alone so as to emulate a fresh import.
+This module is meant to be run stand-alone to emulate a fresh import, not detected automatically via pytest.
 
-Run them by using:
-pytest tests/import_structure.py::TestImportStructure::test_name
+Run them by calling: pytest tests/imports.py::TestImportStructure::{test_name}
 """
 
 from unittest import TestCase
+
+from neuroconv import BaseDataInterface
 
 
 def _strip_magic_module_attributes(ls: list) -> list:
@@ -30,16 +31,22 @@ class TestImportStructure(TestCase):
         current_structure = _strip_magic_module_attributes(ls=neuroconv.__dict__)
         expected_structure = [
             # Sub-modules
+            "basedatainterface",
+            "basetemporalalignmentinterface",
+            "baseextractorinterface",
             "nwbconverter",
             "tools",  # Attached to namespace by NWBConverter import
             "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
             "NWBConverter",
             "ConverterPipe",
-            "basedatainterface",  # Imported by ConverterPipe as a type-hint
+            "BaseDataInterface",
+            "BaseTemporalAlignmentInterface",
+            "BaseExtractorInterface",
             "run_conversion_from_yaml",
+            "get_format_summaries",
         ]
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        assert sorted(current_structure) == sorted(expected_structure)
 
     def test_tools(self):
         """Python dir() calls (and __dict__ as well) update dynamically based on global imports."""
@@ -51,15 +58,20 @@ class TestImportStructure(TestCase):
             "yaml_conversion_specification",  # Attached to namespace  by top __init__ call of NWBConverter
             # Sub-modules
             "importing",  # Attached to namespace by importing get_package
+            "hdmf",
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             "path_expansion",
-            # Functions and classes imported on the __init__
-            "get_package",
             "processes",
+            # Functions and classes imported on the __init__
+            "get_format_summaries",
+            "get_package",
+            "get_package_version",
+            "is_package_installed",
             "deploy_process",
             "LocalPathExpander",
+            "get_module",
         ]
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        assert sorted(current_structure) == sorted(expected_structure)
 
     def test_datainterfaces(self):
         from neuroconv import datainterfaces
@@ -81,4 +93,12 @@ class TestImportStructure(TestCase):
             "interfaces_by_category",
         ] + interface_name_list
 
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        assert sorted(current_structure) == sorted(expected_structure)
+
+
+def test_datainterfaces_import():
+    """Minimal installation should be able to import interfaces from the .datainterfaces submodule."""
+    # Nothing special about SpikeGLX; just need to pick something to import to ensure a minimal install doesn't fail
+    from neuroconv.datainterfaces import SpikeGLXRecodingInterface
+
+    assert isinstance(SpikeGLXRecodingInterface, BaseDataInterface)

@@ -10,16 +10,31 @@ from ....utils import FolderPathType
 class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     """Abstract class that defines which interface class to use for a given Open Ephys recording."""
 
+    display_name = "OpenEphys Recording"
+    associated_suffixes = (".dat", ".oebin", ".npy")
+    info = "Interface for converting any OpenEphys recording data."
+
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to OpenEphys directory (.continuous or .dat files)."
+        return source_schema
 
     def __new__(
         cls,
         folder_path: FolderPathType,
-        stream_name: Optional[str] = "Signals CH",
+        stream_name: Optional[str] = None,
+        block_index: Optional[int] = None,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Abstract class that defines which interface class to use for a given Open Ephys recording.
+
         For "legacy" format (.continuous files) the interface redirects to OpenEphysLegacyRecordingInterface.
         For "binary" format (.dat files) the interface redirects to OpenEphysBinaryRecordingInterface.
 
@@ -27,11 +42,14 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory (.continuous or .dat files).
-        stream_name : str, default: "Signals CH"
+        stream_name : str, optional
             The name of the recording stream.
             When the recording stream is not specified the channel stream is chosen if available.
             When channel stream is not available the name of the stream must be specified.
+        block_index : int, optional, default: None
+            The index of the block to extract from the data.
         verbose : bool, default: True
+        es_key : str, default: "ElectricalSeries"
         """
         super().__new__(cls)
 
@@ -40,13 +58,18 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
             return OpenEphysLegacyRecordingInterface(
                 folder_path=folder_path,
                 stream_name=stream_name,
+                block_index=block_index,
                 verbose=verbose,
+                es_key=es_key,
             )
 
         elif any(folder_path.rglob("*.dat")):
             return OpenEphysBinaryRecordingInterface(
                 folder_path=folder_path,
+                stream_name=stream_name,
+                block_index=block_index,
                 verbose=verbose,
+                es_key=es_key,
             )
 
         else:

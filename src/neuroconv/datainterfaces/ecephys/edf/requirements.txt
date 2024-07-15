@@ -1,1 +1,1 @@
-pyedflib>=0.1.30
+pyedflib>=0.1.36

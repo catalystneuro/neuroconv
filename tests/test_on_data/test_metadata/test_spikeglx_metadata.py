@@ -7,7 +7,6 @@ from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import (
-    get_device_metadata,
     get_session_start_time,
 )
 

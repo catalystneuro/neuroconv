@@ -18,60 +18,64 @@ env:
 
 jobs:
   run:
-    name: Dev Branch Testing with Python 3.9 and ubuntu-latest
+    name: Ubuntu tests with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: s-weigand/setup-conda@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
 
       - name: Global Setup
         run: |
           python -m pip install -U pip  # Official recommended way
-          pip install pytest-xdist
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-          pip install wheel # Needed for scan image
 
-
-
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full,test]
-
+      - name: Install full requirements
+        run: pip install --no-cache-dir .[full,test]
 
       - name: Dev gallery - ROIExtractors
-        run: pip install git+https://github.com/CatalystNeuro/roiextractors@master
+        run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
+      - name: Dev gallery - DANDI
+        run: pip install --no-cache-dir git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
-        run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+        run: pip install --no-cache-dir git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+      - name: Dev gallery - ProbeInterface
+        run: pip install --no-cache-dir git+https://github.com/spikeinterface/probeinterface@main
       - name: Dev gallery - SpikeInterface
-        run: pip install git+https://github.com/spikeinterface/spikeinterface@master
+        run: pip install --no-cache-dir "spikeinterface[test_core] @ git+https://github.com/spikeinterface/spikeinterface@main"
       - name: Dev gallery - NEO
-        run: pip install git+https://github.com/NeuralEnsemble/python-neo@master
+        run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
-        run: pip install git+https://github.com/hdmf-dev/hdmf@dev
+        run: pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf@dev
+      - name: Dev gallery - HDMF-ZARR
+        run : pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
-
+      - name: Display installed packages and their sources
+        run: |
+          pip list
 
       - name: Get ephy_testing_data current head hash
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
       - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ephys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-2024-03-27-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
@@ -80,27 +84,27 @@ jobs:
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
       - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-2023-07-26-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
 
 
-      - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
+      - if: steps.cache-ephys-datasets.outputs.cache-hit != 'true' || steps.cache-ophys-datasets.outputs.cache-hit != 'true' || steps.cache-behavior-datasets.outputs.cache-hit != 'true'
         name: Install and configure AWS CLI
         run: |
           pip install awscli
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - if: steps.cache-ephys-datasets.outputs.cache-hit == false
+      - if: steps.cache-ephys-datasets.outputs.cache-hit != 'true'
         name: Download ephys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
-      - if: steps.cache-ophys-datasets.outputs.cache-hit == false
+      - if: steps.cache-ophys-datasets.outputs.cache-hit != 'true'
         name: Download ophys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data ./ophys_testing_data
-      - if: steps.cache-behavior-datasets.outputs.cache-hit == false
+      - if: steps.cache-behavior-datasets.outputs.cache-hit != 'true'
         name: Download behavior dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 

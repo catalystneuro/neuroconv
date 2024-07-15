@@ -5,15 +5,15 @@ Defining the form of source with schemas
 
 The ``.__init__()`` of each ``DataInterface`` has a unique call signature, requiring the source data to be input in a
 specific way. Some require a ``file_path``, some a ``folder_path``, and some require additional arguments that are
-necessary to read the source data properly. The same is true for the ``.run_conversion()`` method, where some classes
-have unique additional optional arguments. To communicate these requirements and options with an ``NWBConverter`` and
+necessary to read the source data properly. The same is true for the ``.run_conversion()`` methods, where some classes
+have unique additional optional arguments. To communicate these requirements and options with an :py:class:`.NWBConverter` and
 with interfacing software, the expected form of the input is defined using the JSON Schema language.
+
 ``DataInterface`` classes define the method
-:py:func:`~neuroconv.datainterfaces.basedatainterface.BaseDataInterface.get_source_schema()`, which is
-responsible for returning the source schema as a JSON schema dictionary. By default, these dictionaries are
-automatically derived from the call signatures and type hints of a function, and express similar information,
-but can also be used to define and validate inputs that are nested dictionaries of arbitrary depth. For
-example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
+:py:func:`~neuroconv.datainterfaces.basedatainterface.BaseDataInterface.get_source_schema()`, which returns
+the source schema as a JSON schema dictionary. By default, these dictionaries are automatically derived from the call signatures
+and type hints of a function, and express similar information, but can also be used to define and validate inputs that are
+nested dictionaries of arbitrary depth. For example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
 .. code-block:: python
 
@@ -170,7 +170,7 @@ Metadata Schema
 Similar to input data, each ``DataInterface`` produces its own metadata schema reflecting
 the specificities of the dataset it interfaces with. The ``DataInterface``-specific metadata schema can be obtained
 via the ``.get_metadata_schema()`` method. Unlike ``.get_source_schema()``, the ``DataInterface`` needs to be
-initialized first.
+initialized before calling this method.
 
 .. code-block:: python
 
@@ -194,14 +194,14 @@ initialized first.
               "type": "array",
               "minItems": 1,
               "items": {
-                "$ref": "#/properties/Ecephys/properties/definitions/Device"
+                "$ref": "#/properties/Ecephys/definitions/Device"
               }
             },
             "ElectrodeGroup": {
               "type": "array",
               "minItems": 1,
               "items": {
-                "$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"
+                "$ref": "#/properties/Ecephys/definitions/ElectrodeGroup"
               }
             },
             "Electrodes": {
@@ -209,77 +209,7 @@ initialized first.
               "minItems": 0,
               "renderForm": false,
               "items": {
-                "$ref": "#/properties/Ecephys/properties/definitions/Electrodes"
-              }
-            },
-            "definitions": {
-              "Device": {
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "description": "the name of this device",
-                    "type": "string"
-                  },
-                  "description": {
-                    "description": "Description of the device (e.g., model, firmware version, processing software version, etc.)",
-                    "type": "string"
-                  },
-                  "manufacturer": {
-                    "description": "the name of the manufacturer of this device",
-                    "type": "string"
-                  }
-                },
-                "type": "object",
-                "additionalProperties": false
-              },
-              "ElectrodeGroup": {
-                "required": [
-                  "name",
-                  "description",
-                  "location",
-                  "device"
-                ],
-                "properties": {
-                  "name": {
-                    "description": "the name of this electrode group",
-                    "type": "string"
-                  },
-                  "description": {
-                    "description": "description of this electrode group",
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "description of location of this electrode group",
-                    "type": "string"
-                  },
-                  "device": {
-                    "description": "the device that was used to record from this electrode group",
-                    "type": "string",
-                    "target": "pynwb.device.Device"
-                  }
-                },
-                "type": "object",
-                "additionalProperties": false,
-                "tag": "pynwb.ecephys.ElectrodeGroup"
-              },
-              "Electrodes": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "description": "name of this electrodes column"
-                  },
-                  "description": {
-                    "type": "string",
-                    "description": "description of this electrodes column"
-                  }
-                }
+                "$ref": "#/properties/Ecephys/definitions/Electrodes"
               }
             },
             "ElectricalSeriesRaw": {
@@ -345,6 +275,76 @@ initialized first.
           "type": "object",
           "additionalProperties": false,
           "tag": "Ecephys"
+          },
+          "definitions": {
+            "Device": {
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "description": "the name of this device",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Description of the device (e.g., model, firmware version, processing software version, etc.)",
+                  "type": "string"
+                },
+                "manufacturer": {
+                  "description": "the name of the manufacturer of this device",
+                  "type": "string"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "ElectrodeGroup": {
+              "required": [
+                "name",
+                "description",
+                "location",
+                "device"
+              ],
+              "properties": {
+                "name": {
+                  "description": "the name of this electrode group",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "description of this electrode group",
+                  "type": "string"
+                },
+                "location": {
+                  "description": "description of location of this electrode group",
+                  "type": "string"
+                },
+                "device": {
+                  "description": "the device that was used to record from this electrode group",
+                  "type": "string",
+                  "target": "pynwb.device.Device"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false,
+              "tag": "pynwb.ecephys.ElectrodeGroup"
+            },
+            "Electrodes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "name of this electrodes column"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "description of this electrodes column"
+                }
+              }
+          }
         }
       },
       "type": "object",
@@ -356,7 +356,8 @@ initialized first.
       "version": "0.1.0"
     }
 
-Like with the source schema, metadata schema are combined across ``DataInterface`` s automatically in an
-``NWBConverter``, which can also be accessed using ``.get_metadata_schema()``, though the underlying schemas are
-merged directly with each other instead of being combined on a key basis. For more information on how these nested
+Like with the source schemas, :py:class:`.NWBConverter` merges together metadata schemas are combined across
+each of its ``DataInterface`` s automatically and the result can be obtained by calling the ``.get_metadata_schema()`` method
+of an instance of the custom :py:class:`.NWBConverter`. However, with metadata, the underlying schemas are
+merged directly with each other instead of being joined together. For more information on how these nested
 dictionaries automatically merge, refer to :py:func:`~neuroconv.utils.dict.dict_deep_update`.

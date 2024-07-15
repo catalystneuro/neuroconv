@@ -1,4 +1,5 @@
 import datetime
+import importlib
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -6,8 +7,10 @@ from shutil import rmtree
 from tempfile import mkdtemp
 from unittest import TestCase
 
+import numpy as np
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.converters import SpikeGLXConverterPipe
@@ -52,6 +55,12 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         for exclude_field in ["session_start_time", "identifier"]:
             test_metadata["NWBFile"].pop(exclude_field)
         expected_metadata = load_dict_from_file(file_path=Path(__file__).parent / "single_probe_metadata.json")
+        neuroconv_version = importlib.metadata.version("neuroconv")
+
+        # Exclude watermarks from testing assertions
+        del test_metadata["NWBFile"]["source_script"]
+        del test_metadata["NWBFile"]["source_script_file_name"]
+
         self.assertDictEqual(d1=test_metadata, d2=expected_metadata)
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter.nwb"
@@ -73,9 +82,87 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             data_interface_classes = dict(SpikeGLX=SpikeGLXConverterPipe)
 
         source_data = dict(SpikeGLX=dict(folder_path=str(SPIKEGLX_PATH / "Noise4Sam_g0")))
-        converter_pipe = TestConverter(source_data=source_data)
+        converter = TestConverter(source_data=source_data)
+
+        # Relevant to https://github.com/catalystneuro/neuroconv/issues/919
+        conversion_options_schema = converter.get_conversion_options_schema()
+        assert len(conversion_options_schema["properties"]["SpikeGLX"]["properties"]) != 0
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
-        converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
+        converter.run_conversion(nwbfile_path=nwbfile_path)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
+
+
+def test_electrode_table_writing(tmp_path):
+    converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+    metadata = converter.get_metadata()
+
+    nwbfile = mock_NWBFile()
+    converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    electrodes_table = nwbfile.electrodes
+
+    # Test NIDQ
+    electrical_series = nwbfile.acquisition["ElectricalSeriesNIDQ"]
+    nidq_electrodes_table_region = electrical_series.electrodes
+    region_indices = nidq_electrodes_table_region.data
+    recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
+
+    saved_channel_names = electrodes_table[region_indices]["channel_name"]
+    expected_channel_names_nidq = recording_extractor.get_property("channel_name")
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
+
+    # Test AP
+    electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
+    ap_electrodes_table_region = electrical_series.electrodes
+    region_indices = ap_electrodes_table_region.data
+    recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
+
+    saved_channel_names = electrodes_table[region_indices]["channel_name"]
+    expected_channel_names_ap = recording_extractor.get_property("channel_name")
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
+
+    # Test LF
+    electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
+    lf_electrodes_table_region = electrical_series.electrodes
+    region_indices = lf_electrodes_table_region.data
+    recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
+
+    saved_channel_names = electrodes_table[region_indices]["channel_name"]
+    expected_channel_names_lf = recording_extractor.get_property("channel_name")
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_lf)
+
+    # Write to file and read back in
+    temporary_folder = tmp_path / "test_folder"
+    temporary_folder.mkdir()
+    nwbfile_path = temporary_folder / "test_spikeglx_converter_electrode_table.nwb"
+    with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    # Test round trip with spikeinterface
+    from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
+
+    recording_extractor_ap = NwbRecordingExtractor(
+        file_path=nwbfile_path,
+        electrical_series_name="ElectricalSeriesAP",
+    )
+
+    channel_ids = recording_extractor_ap.get_channel_ids()
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_ap)
+
+    recording_extractor_lf = NwbRecordingExtractor(
+        file_path=nwbfile_path,
+        electrical_series_name="ElectricalSeriesLF",
+    )
+
+    channel_ids = recording_extractor_lf.get_channel_ids()
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
+
+    recording_extractor_nidq = NwbRecordingExtractor(
+        file_path=nwbfile_path,
+        electrical_series_name="ElectricalSeriesNIDQ",
+    )
+
+    channel_ids = recording_extractor_nidq.get_channel_ids()
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_nidq)

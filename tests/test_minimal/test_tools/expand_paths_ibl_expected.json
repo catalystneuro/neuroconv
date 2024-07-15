@@ -1,0 +1,405 @@
+[
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "6252a2f0-c10f-4e49-b085-75749ba29c35",
+                "session_start_time": "2022-03-22T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0017"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0019/2022-04-29/001/raw_video_data/_iblrig_leftCamera.raw.9041b63e-02e2-480e-aaa7-4f6b776a647f.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "9041b63e-02e2-480e-aaa7-4f6b776a647f",
+                "session_start_time": "2022-04-29T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0019"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0019/2022-05-03/001/raw_video_data/_iblrig_leftCamera.raw.05576d90-6fb7-4aba-99ae-7ba63cc50a9a.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "05576d90-6fb7-4aba-99ae-7ba63cc50a9a",
+                "session_start_time": "2022-05-03T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0019"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0020/2022-05-08/001/raw_video_data/_iblrig_leftCamera.raw.1bbb8002-3f34-4d46-8bbd-f46862869f2c.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "1bbb8002-3f34-4d46-8bbd-f46862869f2c",
+                "session_start_time": "2022-05-08T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0020/2022-05-09/001/raw_video_data/_iblrig_leftCamera.raw.6fd084e3-93cd-439a-a655-132f1e74138d.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "6fd084e3-93cd-439a-a655-132f1e74138d",
+                "session_start_time": "2022-05-09T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0020/2022-05-10/001/raw_video_data/_iblrig_leftCamera.raw.17c69b88-6aa1-4699-9837-f93b1083275d.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "17c69b88-6aa1-4699-9837-f93b1083275d",
+                "session_start_time": "2022-05-10T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0020/2022-05-11/001/raw_video_data/_iblrig_leftCamera.raw.d5e4ed1b-c8a4-402c-a64d-803f734a8569.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "d5e4ed1b-c8a4-402c-a64d-803f734a8569",
+                "session_start_time": "2022-05-11T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0021/2022-06-28/001/raw_video_data/_iblrig_leftCamera.raw.3060c6cb-4d3a-47b9-83c8-080aa55248ef.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "3060c6cb-4d3a-47b9-83c8-080aa55248ef",
+                "session_start_time": "2022-06-28T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0021"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0021/2022-06-30/002/raw_video_data/_iblrig_leftCamera.raw.4734f477-4d4c-447c-a21b-7ae184f8f010.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "4734f477-4d4c-447c-a21b-7ae184f8f010",
+                "session_start_time": "2022-06-30T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0021"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0021/2022-07-08/001/raw_video_data/_iblrig_leftCamera.raw.6fc48a3f-77e7-4a6b-ae71-32c79012a7b6.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "6fc48a3f-77e7-4a6b-ae71-32c79012a7b6",
+                "session_start_time": "2022-07-08T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0021"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0027/2022-08-19/001/raw_video_data/_iblrig_leftCamera.raw.e5fd349b-71e5-47b9-b0e1-12fad48d4f29.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "e5fd349b-71e5-47b9-b0e1-12fad48d4f29",
+                "session_start_time": "2022-08-19T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0027"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0027/2022-08-22/001/raw_video_data/_iblrig_leftCamera.raw.ede51706-c9bd-48f5-ad6b-cacbccd770f5.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "ede51706-c9bd-48f5-ad6b-cacbccd770f5",
+                "session_start_time": "2022-08-22T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0027"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_file": {
+                "file_path": "steinmetzlab/Subjects/NR_0027/2022-08-23/001/raw_video_data/_iblrig_leftCamera.raw.2c64c58e-45a2-4476-825d-da2b919c5204.mp4"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_id": "2c64c58e-45a2-4476-825d-da2b919c5204",
+                "session_start_time": "2022-08-23T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0027"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-03-22T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0017"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0019/2022-04-29/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-04-29T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0019"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0019/2022-05-03/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-05-03T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0019"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0020/2022-05-08/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-05-08T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0020/2022-05-09/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-05-09T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0020/2022-05-10/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-05-10T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0020/2022-05-11/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-05-11T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0020"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0021/2022-06-28/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-06-28T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0021"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0021/2022-06-30/002/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-06-30T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0021"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0021/2022-07-08/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-07-08T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0021"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0027/2022-08-19/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-08-19T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0027"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0027/2022-08-22/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-08-22T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0027"
+            }
+        }
+    },
+    {
+        "source_data": {
+            "ibl_video_directory": {
+                "folder_path": "steinmetzlab/Subjects/NR_0027/2022-08-23/001/raw_video_data"
+            }
+        },
+        "metadata": {
+            "NWBFile": {
+                "session_start_time": "2022-08-23T00:00:00"
+            },
+            "Subject": {
+                "subject_id": "NR_0027"
+            }
+        }
+    }
+]

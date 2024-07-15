@@ -9,6 +9,10 @@ Base Sorting
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
+AlphaOmega
+----------
+.. automodule:: neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface
+
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
@@ -37,6 +41,14 @@ KiloSort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
+MaxOne Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface
+
+MEArec Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.mearec.mearecdatainterface
+
 Neuralynx Recording & Sorting
 -----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
@@ -49,9 +61,15 @@ OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
 
+
 Phy Sorting
 -----------
 .. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
+
+Plexon Recording & Sorting
+--------------------------
+
+.. automodule:: neuroconv.datainterfaces.ecephys.plexon.plexondatainterface
 
 Spike2
 ------
@@ -63,7 +81,9 @@ Spikegadgets Recording
 
 SpikeGLX Recording
 ------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxconverter
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxnidqinterface
 
 
 Tucker-Davis Technologies (TDT) Recording
