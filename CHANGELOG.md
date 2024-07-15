@@ -9,7 +9,7 @@
 
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
-* Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for performing cloud-based conversions on data that is accessible via `rclone`, and runtime can be estimated with `neuroconv.tools.data_transfers.estimate_total_conversion_runtime`. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
+* Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for basic automated submission of AWS batch jobs. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
 
 ### Bug fixes
 * Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
