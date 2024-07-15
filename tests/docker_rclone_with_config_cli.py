@@ -64,12 +64,15 @@ class TestRcloneWithConfig(TestCase):
             f"rclone copy test_google_drive_remote:testing_rclone_with_config {self.test_folder} --verbose --progress --config ./rclone.conf"
         )
 
+        deploy_process(command="docker pull rclone/rclone:latest")
         command = (
             "docker run -t "
             f"--volume {self.test_folder}:{self.test_folder} "
             '-e RCLONE_CONFIG="$RCLONE_CONFIG" '
             '-e RCLONE_COMMAND="$RCLONE_COMMAND" '
-            "ghcr.io/catalystneuro/rclone_with_config:latest"
+            "rclone/rclone:latest "
+            "--entrypoint '' "
+            "printf '$RCLONE_CONFIG' > ./rclone.conf && eval '$RCLONE_COMMAND'"
         )
         deploy_process(command=command)
 
