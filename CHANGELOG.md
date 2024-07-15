@@ -10,7 +10,7 @@
 
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
-* Add `cast_int_to_float` arg to `BaseSortingInterface.add_to_nwbfile`, which controls whether interger-valued `SortingExtractor` properties are automatically recasted to `float` [PR #964](https://github.com/catalystneuro/neuroconv/pull/964).
+* Add `cast_int_to_float` arg to `BaseSortingInterface.add_to_nwbfile`, which controls whether interger-valued `SortingExtractor` properties are automatically recasted to `float`. [PR #964](https://github.com/catalystneuro/neuroconv/pull/964)
 
 ### Bug fixes
 * Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
