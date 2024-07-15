@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
   workflow_dispatch:
+  push:  # TODO: temporary
+
 
 jobs:
   run:
