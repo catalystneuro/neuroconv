@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading SpikeGL
 
 .. code-block:: bash
 
-    pip install neuroconv[spikeglx]
+    pip install "neuroconv[spikeglx]"
 
 
 

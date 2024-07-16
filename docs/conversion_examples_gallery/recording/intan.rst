@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Intan d
 
 .. code-block:: bash
 
-    pip install neuroconv[intan]
+    pip install "neuroconv[intan]"
 
 Convert Intan data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandatainterface.IntanRecordingInterface`.
 

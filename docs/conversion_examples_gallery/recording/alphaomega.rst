@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading AlphaOm
 
 .. code-block:: bash
 
-    pip install neuroconv[alphaomega]
+    pip install "neuroconv[alphaomega]"
 
 Convert AlphaOmega data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface.AlphaOmegaRecordingInterface`.
 

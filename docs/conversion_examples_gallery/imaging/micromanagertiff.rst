@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Micro-M
 
 .. code-block:: bash
 
-    pip install neuroconv[micromanagertiff]
+    pip install "neuroconv[micromanagertiff]"
 
 Convert Micro-Manager TIFF imaging data to NWB using
 :py:class:`~neuroconv.datainterfaces.ophys.micromanagertiff.micromanagertiffdatainterface.MicroManagerTiffImagingInterface`.
