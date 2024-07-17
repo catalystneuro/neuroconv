@@ -758,6 +758,44 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         },
         aligned_timestamp_names=[],
     )
+    conversion_options = dict(
+        medpc_name_to_info_dict={
+            "A": {"name": "left_nose_poke_times", "is_array": True},
+            "B": {"name": "left_reward_times", "is_array": True},
+            "C": {"name": "right_nose_poke_times", "is_array": True},
+            "D": {"name": "right_reward_times", "is_array": True},
+            "E": {"name": "duration_of_port_entry", "is_array": True},
+            "G": {"name": "port_entry_times", "is_array": True},
+        },
+        module_name="behavior",
+        module_description="Behavioral data from MedPC",
+        events=[
+            {
+                "name": "left_nose_poke_times",
+                "description": "Left nose poke times",
+            },
+            {
+                "name": "left_reward_times",
+                "description": "Left reward times",
+            },
+            {
+                "name": "right_nose_poke_times",
+                "description": "Right nose poke times",
+            },
+            {
+                "name": "right_reward_times",
+                "description": "Right reward times",
+            },
+        ],
+        interval_series=[
+            {
+                "name": "reward_port_intervals",
+                "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+                "onset_name": "port_entry_times",
+                "duration_name": "duration_of_port_entry",
+            },
+        ],
+    )
     save_directory = OUTPUT_PATH
     expected_metadata = {
         "start_date": "04/10/19",
@@ -788,43 +826,6 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
             "duration_name": "duration_of_port_entry",
         },
     ]
-
-    def setUpFreshInterface(self):
-        super().setUpFreshInterface()
-        self.interface.default_medpc_name_to_info_dict = {
-            "A": {"name": "left_nose_poke_times", "is_array": True},
-            "B": {"name": "left_reward_times", "is_array": True},
-            "C": {"name": "right_nose_poke_times", "is_array": True},
-            "D": {"name": "right_reward_times", "is_array": True},
-            "E": {"name": "duration_of_port_entry", "is_array": True},
-            "G": {"name": "port_entry_times", "is_array": True},
-        }
-        self.interface.default_events = [
-            {
-                "name": "left_nose_poke_times",
-                "description": "Left nose poke times",
-            },
-            {
-                "name": "left_reward_times",
-                "description": "Left reward times",
-            },
-            {
-                "name": "right_nose_poke_times",
-                "description": "Right nose poke times",
-            },
-            {
-                "name": "right_reward_times",
-                "description": "Right reward times",
-            },
-        ]
-        self.interface.default_interval_series = [
-            {
-                "name": "reward_port_intervals",
-                "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
-                "onset_name": "port_entry_times",
-                "duration_name": "duration_of_port_entry",
-            },
-        ]
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["MedPC"] == self.expected_metadata
@@ -883,6 +884,17 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
+
+    def test_interface_alignment(self):
+        medpc_name_to_info_dict = {
+            "A": {"name": "left_nose_poke_times", "is_array": True},
+            "B": {"name": "left_reward_times", "is_array": True},
+            "C": {"name": "right_nose_poke_times", "is_array": True},
+            "D": {"name": "right_reward_times", "is_array": True},
+            "E": {"name": "duration_of_port_entry", "is_array": True},
+            "G": {"name": "port_entry_times", "is_array": True},
+        }
+        super().test_interface_alignment(medpc_name_to_info_dict=medpc_name_to_info_dict)
 
 
 if __name__ == "__main__":

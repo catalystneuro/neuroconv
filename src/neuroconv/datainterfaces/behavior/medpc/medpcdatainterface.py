@@ -39,11 +39,6 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     display_name = "MedPC"
     info = "Interface for handling MedPC output files."
     associated_suffixes = ".txt"
-    default_medpc_name_to_info_dict = {}
-    default_events = []
-    default_interval_series = []
-    default_module_name = "behavior"
-    default_module_description = "Operant behavioral data from MedPC."
 
     def __init__(
         self,
@@ -181,9 +176,18 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             aligned_timestamps_dict[name] = original_timestamps + aligned_starting_time
         self.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict,
+        medpc_name_to_info_dict: Optional[dict] = None,
+        module_name: Optional[str] = None,
+        module_description: Optional[str] = None,
+        events: Optional[list[dict]] = None,
+        interval_series: Optional[list[dict]] = None,
+    ) -> None:
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
-        medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", self.default_medpc_name_to_info_dict)
+        medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", medpc_name_to_info_dict)
         info_name_to_medpc_name = {
             info_dict["name"]: medpc_name for medpc_name, info_dict in medpc_name_to_info_dict.items()
         }
@@ -201,15 +205,15 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             session_dict[name] = aligned_timestamps
 
         # Add behavior data to nwbfile
-        module_name = metadata["MedPC"].get("module_name", self.default_module_name)
-        module_description = metadata["MedPC"].get("module_description", self.default_module_description)
+        module_name = metadata["MedPC"].get("module_name", module_name)
+        module_description = metadata["MedPC"].get("module_description", module_description)
         behavior_module = nwb_helpers.get_module(
             nwbfile=nwbfile,
             name=module_name,
             description=module_description,
         )
 
-        event_dicts = metadata["MedPC"].get("Events", self.default_events)
+        event_dicts = metadata["MedPC"].get("Events", events)
         for event_dict in event_dicts:
             name = event_dict["name"]
             description = event_dict["description"]
@@ -221,7 +225,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
                     timestamps=event_data,
                 )
                 behavior_module.add(event)
-        interval_dicts = metadata["MedPC"].get("IntervalSeries", self.default_interval_series)
+        interval_dicts = metadata["MedPC"].get("IntervalSeries", interval_series)
         for interval_dict in interval_dicts:
             name = interval_dict["name"]
             description = interval_dict["description"]
