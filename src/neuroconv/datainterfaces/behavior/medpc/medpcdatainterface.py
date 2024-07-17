@@ -180,12 +180,10 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        medpc_name_to_info_dict: Optional[dict] = None,
-        events: Optional[list[dict]] = None,
-        interval_series: Optional[list[dict]] = None,
     ) -> None:
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
-        medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", medpc_name_to_info_dict)
+        medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", None)
+        assert medpc_name_to_info_dict is not None, "medpc_name_to_info_dict must be provided in metadata"
         info_name_to_medpc_name = {
             info_dict["name"]: medpc_name for medpc_name, info_dict in medpc_name_to_info_dict.items()
         }
@@ -211,7 +209,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             description=module_description,
         )
 
-        event_dicts = metadata["MedPC"].get("Events", events)
+        event_dicts = metadata["MedPC"].get("Events", [])
         for event_dict in event_dicts:
             name = event_dict["name"]
             description = event_dict["description"]
@@ -223,7 +221,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
                     timestamps=event_data,
                 )
                 behavior_module.add(event)
-        interval_dicts = metadata["MedPC"].get("IntervalSeries", interval_series)
+        interval_dicts = metadata["MedPC"].get("IntervalSeries", [])
         for interval_dict in interval_dicts:
             name = interval_dict["name"]
             description = interval_dict["description"]

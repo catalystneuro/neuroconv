@@ -908,6 +908,135 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_no_metadata_mutation(self, metadata: dict):
+        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
+
+        metadata_in = deepcopy(metadata)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+
+        assert metadata == metadata_in
+
+    def check_run_conversion_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+    def check_configure_backend_for_equivalent_nwbfiles(
+        self, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
+
+    def check_run_conversion_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            backend_configuration=backend_configuration,
+            **self.conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
+
+    def test_all_conversion_checks(self, metadata: dict):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+
+                self.check_no_metadata_mutation(metadata=metadata)
+
+                self.check_configure_backend_for_equivalent_nwbfiles(metadata=metadata)
+
+                self.check_run_conversion_in_nwbconverter_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # TODO: enable when all H5DataIO prewraps are gone
+                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
     def check_interface_get_original_timestamps(self, medpc_name_to_info_dict: dict):
         """
         Just to ensure each interface can call .get_original_timestamps() without an error raising.

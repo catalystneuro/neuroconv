@@ -774,42 +774,6 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         },
         aligned_timestamp_names=[],
     )
-    conversion_options = dict(
-        medpc_name_to_info_dict={
-            "A": {"name": "left_nose_poke_times", "is_array": True},
-            "B": {"name": "left_reward_times", "is_array": True},
-            "C": {"name": "right_nose_poke_times", "is_array": True},
-            "D": {"name": "right_reward_times", "is_array": True},
-            "E": {"name": "duration_of_port_entry", "is_array": True},
-            "G": {"name": "port_entry_times", "is_array": True},
-        },
-        events=[
-            {
-                "name": "left_nose_poke_times",
-                "description": "Left nose poke times",
-            },
-            {
-                "name": "left_reward_times",
-                "description": "Left reward times",
-            },
-            {
-                "name": "right_nose_poke_times",
-                "description": "Right nose poke times",
-            },
-            {
-                "name": "right_reward_times",
-                "description": "Right reward times",
-            },
-        ],
-        interval_series=[
-            {
-                "name": "reward_port_intervals",
-                "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
-                "onset_name": "port_entry_times",
-                "duration_name": "duration_of_port_entry",
-            },
-        ],
-    )
     save_directory = OUTPUT_PATH
     expected_metadata = {
         "start_date": "04/10/19",
@@ -862,42 +826,49 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
                 assert interval_series.description == expected_description
 
     def test_all_conversion_checks(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.setUpFreshInterface()
-
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-
-                self.check_no_metadata_mutation()
-
-                self.check_configure_backend_for_equivalent_nwbfiles()
-
-                self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
-                    nwbfile_path=self.nwbfile_path, backend="hdf5"
-                )
-
-                self.check_run_conversion_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_with_backend_configuration(nwbfile_path=self.nwbfile_path, backend="hdf5")
-
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-
-                # TODO: enable when all H5DataIO prewraps are gone
-                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
-                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
-
-                # Any extra custom checks to run
-                self.run_custom_checks()
+        metadata = {
+            "NWBFile": {"session_start_time": datetime(2019, 4, 10, 12, 36, 13).astimezone()},
+            "MedPC": {
+                "start_date": "04/10/19",
+                "start_time": "12:36:13",
+                "subject": "95.259",
+                "box": "1",
+                "MSN": "FOOD_FR1 TTL Left",
+                "module_name": "behavior",
+                "module_description": "Behavioral data from MedPC output files.",
+                "medpc_name_to_info_dict": {
+                    "A": {"name": "left_nose_poke_times", "is_array": True},
+                    "B": {"name": "left_reward_times", "is_array": True},
+                    "C": {"name": "right_nose_poke_times", "is_array": True},
+                    "D": {"name": "right_reward_times", "is_array": True},
+                    "E": {"name": "duration_of_port_entry", "is_array": True},
+                    "G": {"name": "port_entry_times", "is_array": True},
+                },
+                "Events": [
+                    {
+                        "name": "left_nose_poke_times",
+                        "description": "Left nose poke times",
+                    },
+                    {
+                        "name": "right_nose_poke_times",
+                        "description": "Right nose poke times",
+                    },
+                    {
+                        "name": "left_reward_times",
+                        "description": "Left reward times",
+                    },
+                ],
+                "IntervalSeries": [
+                    {
+                        "name": "reward_port_intervals",
+                        "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+                        "onset_name": "port_entry_times",
+                        "duration_name": "duration_of_port_entry",
+                    },
+                ],
+            },
+        }
+        super().test_all_conversion_checks(metadata=metadata)
 
     def test_interface_alignment(self):
         medpc_name_to_info_dict = {
