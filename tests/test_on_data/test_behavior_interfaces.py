@@ -783,8 +783,6 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
             "E": {"name": "duration_of_port_entry", "is_array": True},
             "G": {"name": "port_entry_times", "is_array": True},
         },
-        module_name="behavior",
-        module_description="Behavioral data from MedPC",
         events=[
             {
                 "name": "left_nose_poke_times",

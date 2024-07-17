@@ -181,8 +181,6 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: dict,
         medpc_name_to_info_dict: Optional[dict] = None,
-        module_name: Optional[str] = None,
-        module_description: Optional[str] = None,
         events: Optional[list[dict]] = None,
         interval_series: Optional[list[dict]] = None,
     ) -> None:
@@ -205,8 +203,8 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             session_dict[name] = aligned_timestamps
 
         # Add behavior data to nwbfile
-        module_name = metadata["MedPC"].get("module_name", module_name)
-        module_description = metadata["MedPC"].get("module_description", module_description)
+        module_name = metadata["MedPC"].get("module_name", "behavior")
+        module_description = metadata["MedPC"].get("module_description", "Behavioral data from MedPC output files.")
         behavior_module = nwb_helpers.get_module(
             nwbfile=nwbfile,
             name=module_name,
