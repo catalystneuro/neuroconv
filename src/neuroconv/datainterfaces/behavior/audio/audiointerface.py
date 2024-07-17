@@ -4,23 +4,19 @@ from typing import List, Literal, Optional
 
 import numpy as np
 import scipy
-from pynwb import NWBFile, TimeSeries
+from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
-from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import (
-    DeepDict,
-    FilePathType,
     get_base_schema,
-    get_schema_from_hdmf_class,
 )
 
 
 def _check_audio_names_are_unique(metadata: dict):
     neurodata_names = [neurodata["name"] for neurodata in metadata]
     neurodata_names_are_unique = len(set(neurodata_names)) == len(neurodata_names)
-    assert neurodata_names_are_unique, f"Some of the names for Audio metadata are not unique."
+    assert neurodata_names_are_unique, "Some of the names for Audio metadata are not unique."
 
 
 class AudioInterface(BaseTemporalAlignmentInterface):
@@ -168,7 +164,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
+        compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
         overwrite: bool = False,
         verbose: bool = True,
     ):
@@ -185,8 +181,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
-        compression_options : dict, optional
-            Dictionary of options for compressing the data for H5DataIO.
         overwrite : bool, default: False
         verbose : bool, default: True
 
@@ -228,7 +222,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 write_as=write_as,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
-                compression_options=compression_options,
+                compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
             )
 
         return nwbfile

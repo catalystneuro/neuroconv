@@ -16,7 +16,7 @@ For instance, to install the dependencies for SpikeGLX, run:
 
 .. code-block::
 
-    pip install neuroconv[spikeglx]
+    pip install "neuroconv[spikeglx]"
 
 .. note::
 
