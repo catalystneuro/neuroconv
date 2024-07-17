@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from neuroconv.datainterfaces.behavior.medpc.medpc_helpers import (
-    _get_medpc_variables,
     _get_session_lines,
+    get_medpc_variables,
     read_medpc_file,
 )
 
@@ -88,7 +88,7 @@ C:
 
 
 def test_get_medpc_variables(medpc_file_path):
-    variables = _get_medpc_variables(medpc_file_path, ["Start Date", "End Date", "Subject"])
+    variables = get_medpc_variables(medpc_file_path, ["Start Date", "End Date", "Subject"])
     assert variables == {
         "Start Date": ["04/09/19", "04/11/19", "04/12/19"],
         "End Date": ["04/09/19", "04/11/19", "04/12/19"],
