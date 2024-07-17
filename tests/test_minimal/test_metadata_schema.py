@@ -117,7 +117,7 @@ def test_invalid_ophys_metadata():
         ),
         dict(
             message="'name' is a required property",
-            path=f"$.Ophys.DFOverF.DFChan1Plane1.raw",
+            path="$.Ophys.DFOverF.DFChan1Plane1.raw",
         ),
         dict(
             message="'name' is a required property",
@@ -163,15 +163,15 @@ def test_invalid_ophys_plane_metadata():
     expected_errors = [
         dict(
             message="{'name': 'Fluorescence'} does not have enough properties",
-            path=f"$.Ophys.Fluorescence",
+            path="$.Ophys.Fluorescence",
         ),
         dict(
             message="{'name': 'DfOverF'} does not have enough properties",
-            path=f"$.Ophys.DFOverF",
+            path="$.Ophys.DFOverF",
         ),
         dict(
             message="{'name': 'SegmentationImages'} does not have enough properties",
-            path=f"$.Ophys.SegmentationImages",
+            path="$.Ophys.SegmentationImages",
         ),
     ]
 

@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -336,6 +335,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
 
     def run_custom_checks(self):
         self.check_custom_timestamps(nwbfile_path=self.nwbfile_path)
+        self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
 
     def check_custom_timestamps(self, nwbfile_path: str):
         # TODO: Peel out into separate test class and replace this part with check_read_nwb
@@ -361,6 +361,22 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
             for pose_estimation in pose_estimation_series_in_nwb.values():
                 pose_timestamps = pose_estimation.timestamps
                 np.testing.assert_array_equal(pose_timestamps, self._custom_timestamps_case_1)
+
+    def check_renaming_instance(self, nwbfile_path: str):
+        custom_container_name = "TestPoseEstimation"
+
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, container_name=custom_container_name
+        )
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            assert "PoseEstimation" not in nwbfile.processing["behavior"].data_interfaces
+            assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
 
     def check_read_nwb(self, nwbfile_path: str):
         # TODO: move this to the upstream mixin

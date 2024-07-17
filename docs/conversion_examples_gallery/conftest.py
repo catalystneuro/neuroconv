@@ -1,7 +1,13 @@
 from pathlib import Path
+
 import pytest
 
-from tests.test_on_data.setup_paths import ECEPHY_DATA_PATH, BEHAVIOR_DATA_PATH, OPHYS_DATA_PATH, TEXT_DATA_PATH
+from tests.test_on_data.setup_paths import (
+    BEHAVIOR_DATA_PATH,
+    ECEPHY_DATA_PATH,
+    OPHYS_DATA_PATH,
+    TEXT_DATA_PATH,
+)
 
 
 @pytest.fixture(autouse=True)

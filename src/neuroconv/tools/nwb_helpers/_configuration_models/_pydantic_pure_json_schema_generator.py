@@ -1,6 +1,3 @@
-import typing
-
-from pydantic import BaseModel, Field
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
 from pydantic_core import PydanticOmit
 from pydantic_core.core_schema import CoreSchema

@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Biocam 
 
 .. code-block:: bash
 
-    pip install neuroconv[biocam]
+    pip install "neuroconv[biocam]"
 
 Convert Biocam data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.biocam.biocamdatainterface.BiocamRecordingInterface`.
 

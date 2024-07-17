@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
-from hdmf.backends.hdf5 import H5DataIO
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -230,7 +229,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             assert len(timestamps) == len(
                 pose_estimation_data
             ), f"The length of timestamps ({len(timestamps)}) and pose estimation data ({len(pose_estimation_data)}) must be equal."
-            pose_estimation_series_kwargs = dict(timestamps=H5DataIO(data=timestamps, compression="gzip"))
+            pose_estimation_series_kwargs = dict(timestamps=timestamps)
 
         pose_estimation_series = []
         for keypoint_name in self.keypoint_names:
