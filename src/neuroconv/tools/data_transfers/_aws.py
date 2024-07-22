@@ -52,6 +52,7 @@ def submit_aws_batch_job(
     job_definition_name: Optional[str] = None,
     minimum_worker_ram_in_gb: float = 4.0,
     minimum_worker_cpus: int = 4,
+    submission_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
@@ -93,6 +94,9 @@ def submit_aws_batch_job(
     minimum_worker_cpus : int, default: 4
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
+    submission_id : str, optional
+        The unique ID to pair with this job submission when tracking the status via DynamoDB.
+        Defaults to a sampled UUID4.
 
     Returns
     -------
@@ -103,8 +107,6 @@ def submit_aws_batch_job(
         info["table_submission_info"] is the initial row data inserted into the DynamoDB status tracking table.
     """
     import boto3
-
-    job_dependencies = job_dependencies or []
 
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -249,8 +251,8 @@ def submit_aws_batch_job(
             "If you are submitting multiple jobs, each will need a unique name."
         )
 
-    # Set environment variables to the docker container
-    # as well as optional command to run
+    # Set environment variables to the docker container as well as optional commands to run
+    job_dependencies = job_dependencies or []
     container_overrides = dict(
         # Set environment variables
         environment=[
@@ -271,7 +273,8 @@ def submit_aws_batch_job(
     )
 
     # Update DynamoDB status tracking table
-    table_submission_info = dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted")
+    submission_id = submission_id or str(uuid4())
+    table_submission_info = dict(id=submission_id, job_name=job_name, submitted_on=datetime.now(), status="submitted")
     table.put_item(Item=table_submission_info)
 
     info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
