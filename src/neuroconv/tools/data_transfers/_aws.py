@@ -140,7 +140,8 @@ def submit_aws_batch_job(
         assume_role_policy = dict(
             Version="2012-10-17",
             Statement=[
-                dict(Effect="Allow", Principal=dict(Service="ecs-tasks.amazonaws.com"), Action="sts:AssumeRole")
+                dict(Effect="Allow", Principal=dict(Service="ecs-tasks.amazonaws.com"), Action="sts:AssumeRole"),
+                dict(Effect="Allow", Action=["iam:GetRole", "iam:PassRole"], Resource=f"arn:aws:iam::account-id:role/{iam_role_name}",
             ],
         )
 
