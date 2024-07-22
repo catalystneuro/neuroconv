@@ -274,7 +274,7 @@ def submit_aws_batch_job(
 
     # Update DynamoDB status tracking table
     submission_id = submission_id or str(uuid4())
-    table_submission_info = dict(id=submission_id, job_name=job_name, submitted_on=datetime.now(), status="submitted")
+    table_submission_info = dict(id=submission_id, job_name=job_name, submitted_on=datetime.now().isoformat(), status="submitted")
     table.put_item(Item=table_submission_info)
 
     info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
