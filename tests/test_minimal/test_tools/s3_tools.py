@@ -51,24 +51,24 @@ def test_estimate_total_conversion_runtime():
 
 def test_submit_aws_batch_job():
     job_name = "test_submit_aws_batch_job"
-    docker_container = "ubuntu:latest"
+    docker_image = "ubuntu:latest"
     command = "echo 'Testing NeuroConv AWS Batch submission."
 
     submit_aws_batch_job(
         job_name=job_name,
-        docker_container=docker_container,
+        docker_image=docker_image,
         command=command,
     )
 
 
 def test_submit_aws_batch_job_with_dependencies():
     job_name_1 = "test_submit_aws_batch_job_with_dependencies_1"
-    docker_container = "ubuntu:latest"
+    docker_image = "ubuntu:latest"
     command_1 = "echo 'Testing NeuroConv AWS Batch submission."
 
     job_submission_info = submit_aws_batch_job(
         job_name=job_name_1,
-        docker_container=docker_container,
+        docker_image=docker_image,
         command=command_1,
     )
 
@@ -77,7 +77,7 @@ def test_submit_aws_batch_job_with_dependencies():
     job_dependencies = [{"jobId": job_submission_info["jobId"], "type": "SEQUENTIAL"}]
     submit_aws_batch_job(
         job_name=job_name_2,
-        docker_container=docker_container,
+        docker_image=docker_image,
         command=command_2,
         job_dependencies=job_dependencies,
     )
