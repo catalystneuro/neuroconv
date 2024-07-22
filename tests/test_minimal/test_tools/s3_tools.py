@@ -66,11 +66,12 @@ def test_submit_aws_batch_job_with_dependencies():
     docker_image = "ubuntu:latest"
     command_1 = "echo 'Testing NeuroConv AWS Batch submission."
 
-    job_submission_info = submit_aws_batch_job(
+    info = submit_aws_batch_job(
         job_name=job_name_1,
         docker_image=docker_image,
         command=command_1,
     )
+    job_submission_info = info["job_submission_info"]
 
     job_name_2 = "test_submit_aws_batch_job_with_dependencies_1"
     command_2 = "echo 'Testing NeuroConv AWS Batch submission with dependencies."
