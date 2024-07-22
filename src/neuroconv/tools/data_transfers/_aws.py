@@ -1,7 +1,9 @@
 """Collection of helper functions for assessing and performing automated data transfers related to AWS."""
 
 import json
+import os
 from datetime import datetime
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 
@@ -37,8 +39,9 @@ def estimate_s3_conversion_cost(
 
 
 def submit_aws_batch_job(
+    *,
     job_name: str,
-    docker_container: str,
+    docker_image: str,
     command: Optional[str] = None,
     job_dependencies: Optional[List[Dict[str, str]]] = None,
     region: str = "us-east-2",
@@ -46,6 +49,10 @@ def submit_aws_batch_job(
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
+    job_definition_name: Optional[str] = None,
+    minimum_worker_ram_in_gb: float = 4.0,
+    minimum_worker_cpus: int = 4,
+    submission_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
@@ -54,8 +61,8 @@ def submit_aws_batch_job(
     ----------
     job_name : str
         The name of the job to submit.
-    docker_container : str
-        The name of the Docker container to use for the job.
+    docker_image : str
+        The name of the Docker image to use for the job.
     command : str, optional
         The command to run in the Docker container.
         Current syntax only supports a single line; consecutive actions should be chained with the '&&' operator.
@@ -76,22 +83,64 @@ def submit_aws_batch_job(
         The name of the compute environment to use for the job.
     job_queue_name : str, default: "neuroconv_batch_queue"
         The name of the job queue to use for the job.
+    job_definition_name : str, optional
+        The name of the job definition to use for the job.
+        Defaults to f"neuroconv_batch_{ name of docker image }",
+        but replaces any colons from tags in the docker image name with underscores.
+    minimum_worker_ram_in_gb : int, default: 4.0
+        The minimum amount of base worker memory required to run this job.
+        Determines the EC2 instance type selected by the automatic 'best fit' selector.
+        Recommended to be several GB to allow comfortable buffer space for data chunk iterators.
+    minimum_worker_cpus : int, default: 4
+        The minimum number of CPUs required to run this job.
+        A minimum of 4 is required, even if only one will be used in the actual process.
+    submission_id : str, optional
+        The unique ID to pair with this job submission when tracking the status via DynamoDB.
+        Defaults to a sampled UUID4.
 
     Returns
     -------
-    job_submission_info : dict
-        A dictionary containing the job ID and other relevant information.
+    info : dict
+        A dictionary containing information about this AWS Batch job.
+
+        info["job_submission_info"] is the return value of `boto3.client.submit_job` which contains the job ID.
+        info["table_submission_info"] is the initial row data inserted into the DynamoDB status tracking table.
     """
     import boto3
 
-    job_dependencies = job_dependencies or []
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if aws_access_key_id is None or aws_secret_access_key is None:
+        raise EnvironmentError(
+            "'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY' must both be set in the environment to use this function."
+        )
 
-    dynamodb_client = boto3.client("dynamodb", region)
-    dynamodb_resource = boto3.resource("dynamodb", region)
-    iam_client = boto3.client("iam", region)
-    batch_client = boto3.client("batch", region)
+    dynamodb_client = boto3.client(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    dynamodb_resource = boto3.resource(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    iam_client = boto3.client(
+        service_name="iam",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    batch_client = boto3.client(
+        service_name="batch",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
-    # It is extremely useful to have a status tracker that is separate from the job environment
+    # It is very useful to have a status tracker that is separate from the job environment
     # Technically detailed logs of inner workings are given in the CloudWatch, but that can only really be
     # analyzed from the AWS web console
     current_tables = dynamodb_client.list_tables()["TableNames"]
@@ -111,7 +160,7 @@ def submit_aws_batch_job(
         assume_role_policy = dict(
             Version="2012-10-17",
             Statement=[
-                dict(Effect="Allow", Principal=dict(Service="ecs-tasks.amazonaws.com"), Action="sts:AssumeRole")
+                dict(Effect="Allow", Principal=dict(Service="ecs-tasks.amazonaws.com"), Action="sts:AssumeRole"),
             ],
         )
 
@@ -138,8 +187,8 @@ def submit_aws_batch_job(
             computeResources={
                 "type": "EC2",
                 "allocationStrategy": "BEST_FIT",
-                "minvCpus": 0,  # TODO, control
-                "maxvCpus": 256,  # TODO, control
+                "minvCpus": 0,
+                "maxvCpus": 256,
                 "subnets": ["subnet-0be50d51", "subnet-3fd16f77", "subnet-0092132b"],
                 "instanceRole": "ecsInstanceRole",
                 "securityGroupIds": ["sg-851667c7"],
@@ -160,18 +209,26 @@ def submit_aws_batch_job(
         )
 
     # Ensure job definition exists
-    job_definition = f"neuroconv_batch_{docker_container}"  # Keep unique by incorporating name of container
+    # By default, keep name unique by incorporating the name of the container
+    job_definition_docker_name = docker_image.replace(":", "_")
+    job_definition_name = job_definition_name or f"neuroconv_batch_{job_definition_docker_name}"
     current_job_definitions = [
-        definition["jobDefinitionName"] for definition in batch_client.describe_job_queues()["jobDefinitions"]
+        definition["jobDefinitionName"] for definition in batch_client.describe_job_definitions()["jobDefinitions"]
     ]
-    if job_definition not in current_job_definitions:
+    resource_requirements = [
+        {
+            "value": str(int(minimum_worker_ram_in_gb * 1e3 / 1.024**2)),
+            "type": "MEMORY",
+        },  # boto3 expects memory in round MiB
+        {"value": str(minimum_worker_cpus), "type": "VCPU"},
+    ]
+    if job_definition_name not in current_job_definitions:
         batch_client.register_job_definition(
-            jobDefinitionName=job_definition,
+            jobDefinitionName=job_definition_name,
             type="container",
             containerProperties=dict(
-                image=docker_container,
-                memory=256,  # TODO, control
-                vcpus=16,  # TODO, control
+                image=docker_image,
+                resourceRequirements=resource_requirements,
                 jobRoleArn=role["Role"]["Arn"],
                 executionRoleArn=role["Role"]["Arn"],
                 environment=[
@@ -183,7 +240,7 @@ def submit_aws_batch_job(
             ),
         )
     else:
-        # TODO: do I also need to check that memory/vcpu values resolve with previously defined name?
+        # Should we also check that memory/vcpu values resolve with any previously defined job definitions in this event?
         pass
 
     # Submit job and update status tracker
@@ -194,8 +251,8 @@ def submit_aws_batch_job(
             "If you are submitting multiple jobs, each will need a unique name."
         )
 
-    # Set environment variables to the docker container
-    # as well as optional command to run
+    # Set environment variables to the docker container as well as optional commands to run
+    job_dependencies = job_dependencies or []
     container_overrides = dict(
         # Set environment variables
         environment=[
@@ -210,10 +267,52 @@ def submit_aws_batch_job(
     job_submission_info = batch_client.submit_job(
         jobQueue=job_queue_name,
         dependsOn=job_dependencies,
-        jobDefinition=job_definition,
+        jobDefinition=job_definition_name,
         jobName=job_name,
         containerOverrides=container_overrides,
     )
-    table.put_item(Item=dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted"))
 
-    return job_submission_info
+    # Update DynamoDB status tracking table
+    submission_id = submission_id or str(uuid4())
+    table_submission_info = dict(
+        id=submission_id, job_name=job_name, submitted_on=datetime.now().isoformat(), status="submitted"
+    )
+    table.put_item(Item=table_submission_info)
+
+    info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
+    return info
+
+
+def update_table_status(
+    *, submission_id: str, status: str, status_tracker_table_name: str = "neuroconv_batch_status_tracker"
+) -> None:
+    """
+    Helper function for updating a status value on a DynamoDB table tracking the status of EC2 jobs.
+
+    Intended for use by the running job to indicate its completion.
+
+    Parameters
+    ----------
+    submission_id : str
+        The random hash that was assigned on submission of this job to the status tracker table.
+    status : str
+        The new status value to update.
+    status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
+        The name of the DynamoDB table to use for tracking job status.
+    """
+    import boto3
+
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+
+    dynamodb_resource = boto3.resource(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    table = dynamodb_resource.Table(name=status_tracker_table_name)
+
+    item = table.update_item(Key={"id": submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": status}})
+
+    return

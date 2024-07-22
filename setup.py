@@ -19,6 +19,9 @@ with open(root / "requirements-testing.txt") as f:
 
 extras_require = defaultdict(list)
 
+extras_require["aws"].append("boto3")
+extras_require["full"].extend(extras_require["aws"])
+
 extras_require["dandi"].append("dandi>=0.58.1")
 extras_require["full"].extend(extras_require["dandi"])
 
@@ -65,7 +68,7 @@ if sys.platform == "darwin" and platform.processor() == "arm":
 
 setup(
     name="neuroconv",
-    version="0.4.12",
+    version="0.5.1",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
