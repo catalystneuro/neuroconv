@@ -191,7 +191,7 @@ def submit_aws_batch_job(
     # Ensure job definition exists
     job_definition = f"neuroconv_batch_{docker_container}"  # Keep unique by incorporating name of container
     current_job_definitions = [
-        definition["jobDefinitionName"] for definition in batch_client.describe_job_queues()["jobDefinitions"]
+        definition["jobDefinitionName"] for definition in batch_client.describe_job_definitions()["jobDefinitions"]
     ]
     if job_definition not in current_job_definitions:
         batch_client.register_job_definition(
