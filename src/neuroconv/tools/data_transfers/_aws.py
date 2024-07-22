@@ -274,7 +274,9 @@ def submit_aws_batch_job(
     return info
 
 
-def update_table_status(*, submission_id: str, status: str, status_tracker_table_name: str = "neuroconv_batch_status_tracker") -> None:
+def update_table_status(
+    *, submission_id: str, status: str, status_tracker_table_name: str = "neuroconv_batch_status_tracker"
+) -> None:
     """
     Helper function for updating a status value on a DynamoDB table tracking the status of EC2 jobs.
 
@@ -290,7 +292,7 @@ def update_table_status(*, submission_id: str, status: str, status_tracker_table
         The name of the DynamoDB table to use for tracking job status.
     """
     import boto3
-    
+
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
