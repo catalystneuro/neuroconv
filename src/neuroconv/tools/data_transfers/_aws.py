@@ -216,7 +216,7 @@ def submit_aws_batch_job(
         {"value": str(minimum_worker_ram_in_gb * 1e3 / 1.024**2), "type": "MEMORY"},  # boto3 expects memory in MiB
         {"value": str(minimum_worker_cpus), "type": "VCPU"},
     ]
-    if job_definition not in current_job_definitions:
+    if job_definition_name not in current_job_definitions:
         batch_client.register_job_definition(
             jobDefinitionName=job_definition_name,
             type="container",
