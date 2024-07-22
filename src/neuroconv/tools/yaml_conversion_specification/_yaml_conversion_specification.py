@@ -21,7 +21,7 @@ from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_f
 @click.option(
     "--data-folder-path",
     help="Path to folder where the source data may be found.",
-    type=click.Path(writable=True),
+    type=click.Path(writable=False),
 )
 @click.option(
     "--output-folder-path",
@@ -45,8 +45,10 @@ def run_conversion_from_yaml_cli(
     """
     Run the tool function 'run_conversion_from_yaml' via the command line.
 
-    specification-file-path :
-    Path to the .yml specification file.
+    Parameters
+    ----------
+    specification_file_path  : str
+        Path to the .yml specification file.
     """
     run_conversion_from_yaml(
         specification_file_path=specification_file_path,
@@ -173,7 +175,7 @@ def deploy_conversion_from_yaml_and_upload_to_dandi(  # the 'and upload to DANDI
     transfer_commands: str,
     transfer_config_file_path: FilePath,
 ):
-    job_name = Path(specification_file_path).stem + "-" + str(uuid4())
+    job_name = Path(specification_file_path).stem + "_" + str(uuid4())
     with open(file=specification_file_path) as file:
         yaml_as_string = "".join(file.readlines())  # Loaded as raw string, not as dict
 
