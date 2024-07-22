@@ -35,7 +35,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: ghcr.io/catalystneuro/neuroconv:dev,ghcr.io/catalystneuro/neuroconv:${{ steps.date.outputs.date_tag }}
+          tags: ghcr.io/catalystneuro/neuroconv:dev
           context: .
           file: dockerfiles/neuroconv_dev_dockerfile
           provenance: false
