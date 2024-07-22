@@ -40,7 +40,7 @@ def estimate_s3_conversion_cost(
 
 def submit_aws_batch_job(
     job_name: str,
-    docker_container: str,
+    docker_image: str,
     command: Optional[str] = None,
     job_dependencies: Optional[List[Dict[str, str]]] = None,
     region: str = "us-east-2",
@@ -48,6 +48,9 @@ def submit_aws_batch_job(
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
+    job_definition_name : Optional[str] = None,
+    minimum_worker_ram_in_gb : float = 4.0,
+    minimum_worker_cpus : int = 4,
 ) -> Dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
@@ -56,8 +59,8 @@ def submit_aws_batch_job(
     ----------
     job_name : str
         The name of the job to submit.
-    docker_container : str
-        The name of the Docker container to use for the job.
+    docker_image : str
+        The name of the Docker image to use for the job.
     command : str, optional
         The command to run in the Docker container.
         Current syntax only supports a single line; consecutive actions should be chained with the '&&' operator.
@@ -78,11 +81,24 @@ def submit_aws_batch_job(
         The name of the compute environment to use for the job.
     job_queue_name : str, default: "neuroconv_batch_queue"
         The name of the job queue to use for the job.
+    job_definition_name : str, optional
+        The name of the job definition to use for the job.
+        Defaults to f"neuroconv_batch_{ name of docker image }",
+        but replaces any colons from tags in the docker image name with underscores.
+    minimum_worker_ram_in_gb : int, default: 4.0
+        The minimum amount of base worker memory required to run this job.
+        Determines the EC2 instance type selected by the automatic 'best fit' selector.
+    minimum_worker_cpus : int, default: 4
+        The minimum number of CPUs required to run this job.
+        A minimum of 4 is required, even if only one will be used in the actual process.
 
     Returns
     -------
-    job_submission_info : dict
-        A dictionary containing the job ID and other relevant information.
+    info : dict
+        A dictionary containing information about this AWS Batch job.
+
+        info["job_submission_info"] is the return value of `boto3.client.submit_job` which contains the job ID.
+        info["table_submission_info"] is the initial row data inserted into the DynamoDB status tracking table.
     """
     import boto3
 
@@ -120,7 +136,7 @@ def submit_aws_batch_job(
         aws_secret_access_key=aws_secret_access_key,
     )
 
-    # It is extremely useful to have a status tracker that is separate from the job environment
+    # It is very useful to have a status tracker that is separate from the job environment
     # Technically detailed logs of inner workings are given in the CloudWatch, but that can only really be
     # analyzed from the AWS web console
     current_tables = dynamodb_client.list_tables()["TableNames"]
@@ -167,8 +183,8 @@ def submit_aws_batch_job(
             computeResources={
                 "type": "EC2",
                 "allocationStrategy": "BEST_FIT",
-                "minvCpus": 0,  # TODO, control
-                "maxvCpus": 256,  # TODO, control
+                "minvCpus": 0,
+                "maxvCpus": 256,
                 "subnets": ["subnet-0be50d51", "subnet-3fd16f77", "subnet-0092132b"],
                 "instanceRole": "ecsInstanceRole",
                 "securityGroupIds": ["sg-851667c7"],
@@ -189,18 +205,29 @@ def submit_aws_batch_job(
         )
 
     # Ensure job definition exists
-    job_definition = f"neuroconv_batch_{docker_container}"  # Keep unique by incorporating name of container
+    # By default, keep name unique by incorporating the name of the container
+    job_definition_docker_name = docker_image.replace(":", "_")
+    job_definition_name = job_definition_name or f"neuroconv_batch_{job_definition_docker_name}"
     current_job_definitions = [
         definition["jobDefinitionName"] for definition in batch_client.describe_job_definitions()["jobDefinitions"]
     ]
+    resource_requirements = [
+        {
+            'value': str(minimum_worker_ram_in_gb * 1e3 / 1.024**2),  # boto3 expects memory in MiB
+            'type': 'MEMORY'
+        },
+        {
+            'value': str(minimum_worker_cpus),
+            'type': 'VCPU'
+        },
+    ]
     if job_definition not in current_job_definitions:
         batch_client.register_job_definition(
-            jobDefinitionName=job_definition,
+            jobDefinitionName=job_definition_name,
             type="container",
             containerProperties=dict(
-                image=docker_container,
-                memory=256,  # TODO, control
-                vcpus=16,  # TODO, control
+                image=docker_image,
+                resourceRequirements=resource_requirements,
                 jobRoleArn=role["Role"]["Arn"],
                 executionRoleArn=role["Role"]["Arn"],
                 environment=[
@@ -212,7 +239,7 @@ def submit_aws_batch_job(
             ),
         )
     else:
-        # TODO: do I also need to check that memory/vcpu values resolve with previously defined name?
+        # Should we also check that memory/vcpu values resolve with any previously defined job definitions in this event?
         pass
 
     # Submit job and update status tracker
@@ -243,6 +270,10 @@ def submit_aws_batch_job(
         jobName=job_name,
         containerOverrides=container_overrides,
     )
-    table.put_item(Item=dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted"))
 
-    return job_submission_info
+    # Update DynamoDB status tracking table
+    table_submission_info = dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted")
+    table.put_item(Item=table_submission_info)
+
+    info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
+    return info
