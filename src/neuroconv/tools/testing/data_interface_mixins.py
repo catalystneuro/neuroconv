@@ -907,6 +907,239 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
                 self.check_nwbfile_temporal_alignment()
 
 
+class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_no_metadata_mutation(self, metadata: dict):
+        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
+
+        metadata_in = deepcopy(metadata)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+
+        assert metadata == metadata_in
+
+    def check_run_conversion_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+    def check_configure_backend_for_equivalent_nwbfiles(
+        self, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
+
+    def check_run_conversion_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            backend_configuration=backend_configuration,
+            **self.conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
+
+    def test_all_conversion_checks(self, metadata: dict):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+
+                self.check_no_metadata_mutation(metadata=metadata)
+
+                self.check_configure_backend_for_equivalent_nwbfiles(metadata=metadata)
+
+                self.check_run_conversion_in_nwbconverter_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # TODO: enable when all H5DataIO prewraps are gone
+                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
+    def check_interface_get_original_timestamps(self, medpc_name_to_info_dict: dict):
+        """
+        Just to ensure each interface can call .get_original_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        original_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=medpc_name_to_info_dict
+        )
+        for name in self.interface.source_data["aligned_timestamp_names"]:
+            original_timestamps = original_timestamps_dict[name]
+            assert len(original_timestamps) != 0, f"Timestamps for {name} are empty."
+
+    def check_interface_get_timestamps(self):
+        """
+        Just to ensure each interface can call .get_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        timestamps_dict = self.interface.get_timestamps()
+        for timestamps in timestamps_dict.values():
+            assert len(timestamps) != 0
+
+    def check_interface_set_aligned_timestamps(self, medpc_name_to_info_dict: dict):
+        """Ensure that internal mechanisms for the timestamps getter/setter work as expected."""
+        self.setUpFreshInterface()
+        unaligned_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=medpc_name_to_info_dict
+        )
+
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_timestamps_dict = {}
+        for name, unaligned_timestamps in unaligned_timestamps_dict.items():
+            aligned_timestamps = (
+                unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+            )
+            aligned_timestamps_dict[name] = aligned_timestamps
+        self.interface.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
+
+        retrieved_aligned_timestamps = self.interface.get_timestamps()
+        for name, aligned_timestamps in aligned_timestamps_dict.items():
+            assert_array_equal(retrieved_aligned_timestamps[name], aligned_timestamps)
+
+    def check_shift_timestamps_by_start_time(self, medpc_name_to_info_dict: dict):
+        """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
+        self.setUpFreshInterface()
+        unaligned_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=medpc_name_to_info_dict
+        )
+
+        aligned_starting_time = 1.23
+        self.interface.set_aligned_starting_time(
+            aligned_starting_time=aligned_starting_time,
+            medpc_name_to_info_dict=medpc_name_to_info_dict,
+        )
+
+        aligned_timestamps = self.interface.get_timestamps()
+        expected_timestamps_dict = {
+            name: unaligned_timestamps + aligned_starting_time
+            for name, unaligned_timestamps in unaligned_timestamps_dict.items()
+        }
+        for name, expected_timestamps in expected_timestamps_dict.items():
+            assert_array_equal(aligned_timestamps[name], expected_timestamps)
+
+    def check_interface_original_timestamps_inmutability(self, medpc_name_to_info_dict: dict):
+        """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
+        self.setUpFreshInterface()
+        pre_alignment_original_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=medpc_name_to_info_dict
+        )
+
+        aligned_timestamps_dict = {
+            name: pre_alignment_og_timestamps + 1.23
+            for name, pre_alignment_og_timestamps in pre_alignment_original_timestamps_dict.items()
+        }
+        self.interface.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
+
+        post_alignment_original_timestamps_dict = self.interface.get_original_timestamps(
+            medpc_name_to_info_dict=medpc_name_to_info_dict
+        )
+        for name, post_alignment_original_timestamps_dict in post_alignment_original_timestamps_dict.items():
+            assert_array_equal(post_alignment_original_timestamps_dict, pre_alignment_original_timestamps_dict[name])
+
+    def test_interface_alignment(self, medpc_name_to_info_dict: dict):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+
+                self.check_interface_get_original_timestamps(medpc_name_to_info_dict=medpc_name_to_info_dict)
+                self.check_interface_get_timestamps()
+                self.check_interface_set_aligned_timestamps(medpc_name_to_info_dict=medpc_name_to_info_dict)
+                self.check_shift_timestamps_by_start_time(medpc_name_to_info_dict=medpc_name_to_info_dict)
+                self.check_interface_original_timestamps_inmutability(medpc_name_to_info_dict=medpc_name_to_info_dict)
+
+                self.check_nwbfile_temporal_alignment()
+
+
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
