@@ -89,6 +89,7 @@ def submit_aws_batch_job(
     minimum_worker_ram_in_gb : int, default: 4.0
         The minimum amount of base worker memory required to run this job.
         Determines the EC2 instance type selected by the automatic 'best fit' selector.
+        Recommended to be several GB to allow comfortable buffer space for data chunk iterators.
     minimum_worker_cpus : int, default: 4
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
