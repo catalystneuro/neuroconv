@@ -265,7 +265,7 @@ def submit_aws_batch_job(
     job_submission_info = batch_client.submit_job(
         jobQueue=job_queue_name,
         dependsOn=job_dependencies,
-        jobDefinition=job_definition,
+        jobDefinition=job_definition_name,
         jobName=job_name,
         containerOverrides=container_overrides,
     )
