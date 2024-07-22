@@ -6,7 +6,11 @@ from pathlib import Path
 from time import sleep, time
 from typing import Dict, List, Tuple, Union
 
+from pydantic import DirectoryPath
 from tqdm import tqdm
+
+from ..importing import is_package_installed
+from ..processes import deploy_process
 
 
 def get_globus_dataset_content_sizes(

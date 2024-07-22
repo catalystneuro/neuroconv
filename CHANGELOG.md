@@ -1,5 +1,13 @@
 # Upcoming
 
+### Features
+* Added MedPCInterface for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
+* Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for basic automated submission of AWS batch jobs. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
+
+
+
+## v0.5.0 (July 17, 2024)
+
 ### Deprecations
 * The usage of `compression_options` directly through the `neuroconv.tools.audio` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #939](https://github.com/catalystneuro/neuroconv/pull/939)
 * The usage of `compression` and `compression_opts` directly through the `FicTracDataInterface` is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #941](https://github.com/catalystneuro/neuroconv/pull/941)
@@ -9,7 +17,6 @@
 
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
-* Added helper function `neuroconv.tools.yaml_conversion_specification.deploy_conversion_from_yaml_and_upload_to_dandi` for performing cloud-based conversions on data that is accessible via `rclone`, and total runtime can be estimated with `neuroconv.tools.data_transfers.estimate_total_conversion_runtime`. [PR #393](https://github.com/catalystneuro/neuroconv/pull/393)
 
 ### Bug fixes
 * Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
@@ -44,7 +51,6 @@
 
 ### Bug fixes
 * Fixed bug causing overwrite of NWB GUIDE watermark. [PR #890](https://github.com/catalystneuro/neuroconv/pull/890)
-
 
 
 ## v0.4.9 (June 5, 2024)
