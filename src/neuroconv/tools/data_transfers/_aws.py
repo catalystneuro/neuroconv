@@ -97,25 +97,25 @@ def submit_aws_batch_job(
 
     dynamodb_client = boto3.client(
         service_name="dynamodb",
-        region=region,
+        region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
     dynamodb_resource = boto3.resource(
         service_name="dynamodb",
-        region=region,
+        region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
     iam_client = boto3.client(
         service_name="iam",
-        region=region,
+        region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
     batch_client = boto3.client(
         service_name="batch",
-        region=region,
+        region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
