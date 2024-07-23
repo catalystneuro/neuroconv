@@ -1,5 +1,8 @@
 # Upcoming
 
+
+## v0.5.0 (July 17, 2024)
+
 ### Deprecations
 * The usage of `compression_options` directly through the `neuroconv.tools.audio` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #939](https://github.com/catalystneuro/neuroconv/pull/939)
 * The usage of `compression` and `compression_opts` directly through the `FicTracDataInterface` is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #941](https://github.com/catalystneuro/neuroconv/pull/941)
@@ -7,10 +10,9 @@
 * The usage of `compression_options` directly through the `neuroconv.tools.ophys` submodule is now deprecated - users should refer to the new `configure_backend` method for a general approach for setting compression. [PR #940](https://github.com/catalystneuro/neuroconv/pull/940)
 * Removed the option of running `interface.run_conversion` without `nwbfile_path` argument . [PR #951](https://github.com/catalystneuro/neuroconv/pull/951)
 
-
-
 ### Features
 * Added docker image and tests for an automated Rclone configuration (with file stream passed via an environment variable). [PR #902](https://github.com/catalystneuro/neuroconv/pull/902)
+* Added MedPCInterface for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 
 ### Bug fixes
 * Fixed the conversion option schema of a `SpikeGLXConverter` when used inside another `NWBConverter`. [PR #922](https://github.com/catalystneuro/neuroconv/pull/922)
@@ -45,7 +47,6 @@
 
 ### Bug fixes
 * Fixed bug causing overwrite of NWB GUIDE watermark. [PR #890](https://github.com/catalystneuro/neuroconv/pull/890)
-
 
 
 ## v0.4.9 (June 5, 2024)
