@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading neurosc
 
 .. code-block:: bash
 
-    pip install neuroconv[neuroscope]
+    pip install "neuroconv[neuroscope]"
 
 Convert NeuroScope sorting data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeSortingInterface`.

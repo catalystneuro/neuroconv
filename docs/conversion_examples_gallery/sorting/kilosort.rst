@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading kilosor
 
 .. code-block:: bash
 
-    pip install neuroconv[kilosort]
+    pip install "neuroconv[kilosort]"
 
 Convert KiloSort data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface.KiloSortSortingInterface`.

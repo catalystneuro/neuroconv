@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Spikega
 
 .. code-block:: bash
 
-    pip install neuroconv[spikegadgets]
+    pip install "neuroconv[spikegadgets]"
 
 Convert spikegadgets data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface.SpikeGadgetsRecordingInterface`.

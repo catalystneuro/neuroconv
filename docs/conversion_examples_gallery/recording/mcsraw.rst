@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading MCSRaw 
 
 .. code-block:: bash
 
-    pip install neuroconv[mcsraw]
+    pip install "neuroconv[mcsraw]"
 
 Convert MCSRaw data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.mcsraw.mcsrawdatainterface.MCSRawRecordingInterface`.
 

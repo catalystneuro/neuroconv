@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading suite2p
 
 .. code-block:: bash
 
-    pip install neuroconv[suite2p]
+    pip install "neuroconv[suite2p]"
 
 Convert suite2p segmentation data to NWB using
 :py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`.

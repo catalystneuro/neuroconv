@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading `FicTra
 
 .. code-block:: bash
 
-    pip install neuroconv[fictrac]
+    pip install "neuroconv[fictrac]"
 
 Convert FicTrac spherical motion and fictive animal path data in a FicTrac ``.dat`` file to NWB using :py:class:`~neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface.FicTracDataInterface`.
 
