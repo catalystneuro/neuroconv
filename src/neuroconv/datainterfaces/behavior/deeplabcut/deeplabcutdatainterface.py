@@ -11,7 +11,6 @@ from ....utils import FilePathType
 from ._dlc_utils import add_subject_to_nwbfile
 
 
-
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 

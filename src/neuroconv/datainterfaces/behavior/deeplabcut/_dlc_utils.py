@@ -59,6 +59,7 @@ def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=Tr
     n_frames = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = reader.get(cv2.CAP_PROP_FPS)
 
+    warnings.warn("Inferring timestamps from video. This might take a while (to speed up, set timestamps)")
     for _ in range(n_frames):
         _ = reader.read()
         timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
@@ -107,16 +108,23 @@ def _infer_nan_timestamps(timestamps):
     return timestamps
 
 
-def _ensure_individuals_in_header(df, dummy_name):
+def _ensure_individuals_in_header(df, individual_name):
     if "individuals" not in df.columns.names:
         # Single animal project -> add individual row to
         # the header of single animal projects.
-        temp = pd.concat({dummy_name: df}, names=["individuals"], axis=1)
+        temp = pd.concat({individual_name: df}, names=["individuals"], axis=1)
         df = temp.reorder_levels(["scorer", "individuals", "bodyparts", "coords"], axis=1)
     return df
 
 
-def _get_pes_args(*, config_file: Path, h5file: Path, individual_name: str, timestamps_available: bool =False, infer_timestamps: bool =True):
+def _get_pes_args(
+    *,
+    config_file: Path,
+    h5file: Path,
+    individual_name: str,
+    timestamps_available: bool = False,
+    infer_timestamps: bool = True,
+):
     config_file = Path(config_file)
     h5file = Path(h5file)
 
@@ -186,12 +194,11 @@ def _write_pes_to_nwbfile(
     exclude_nans,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ):
-
     pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
 
     pose_estimation_series = []
-    for kpt, xyp in df_animal.groupby(level="bodyparts", axis=1, sort=False):
-        data = xyp.to_numpy()
+    for keypoint in df_animal.columns.get_level_values("bodyparts").unique():
+        data = df_animal.xs(keypoint, level="bodyparts", axis=1).to_numpy()
 
         if exclude_nans:
             # exclude_nans is inverse infer_timestamps. if not infer, there may be nans
@@ -201,8 +208,8 @@ def _write_pes_to_nwbfile(
             timestamps_cleaned = timestamps
 
         pes = PoseEstimationSeries(
-            name=f"{animal}_{kpt}",
-            description=f"Keypoint {kpt} from individual {animal}.",
+            name=f"{animal}_{keypoint}" if animal else keypoint,
+            description=f"Keypoint {keypoint} from individual {animal}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
@@ -278,12 +285,15 @@ def add_subject_to_nwbfile(
     """
     timestamps_available = timestamps is not None
     scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(
-        config_file=config_file, h5file=h5file, individual_name=individual_name, timestamps_available=timestamps_available
+        config_file=config_file,
+        h5file=h5file,
+        individual_name=individual_name,
+        timestamps_available=timestamps_available,
     )
     if timestamps is None:
         timestamps = dlc_timestamps
 
-    df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
+    df_animal = df.xs(individual_name, level="individuals", axis=1)
 
     return _write_pes_to_nwbfile(
         nwbfile,
