@@ -7,6 +7,7 @@ from typing import List, Optional, Union
 import numpy as np
 import pandas as pd
 import yaml
+from ndx_pose import PoseEstimation, PoseEstimationSeries
 from pynwb import NWBFile
 from ruamel.yaml import YAML
 
@@ -192,7 +193,6 @@ def _write_pes_to_nwbfile(
     exclude_nans,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ):
-    from ndx_pose import PoseEstimation, PoseEstimationSeries
 
     pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
 
