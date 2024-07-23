@@ -114,7 +114,7 @@ def _ensure_individuals_in_header(df, dummy_name):
     return df
 
 
-def _get_pes_args(config_file, h5file, individual_name, timestamps_available=False, infer_timestamps=True):
+def _get_pes_args(*, config_file: Path, h5file: Path, individual_name: str, timestamps_available: bool =False, infer_timestamps: bool =True):
     config_file = Path(config_file)
     h5file = Path(h5file)
 
