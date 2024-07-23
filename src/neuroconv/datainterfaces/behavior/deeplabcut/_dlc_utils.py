@@ -277,7 +277,7 @@ def add_subject_to_nwbfile(
     """
     timestamps_available = timestamps is not None
     scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(
-        config_file, h5file, individual_name, timestamps_available
+        config_file=config_file, h5file=h5file, individual_name=individual_name, timestamps_available=timestamps_available
     )
     if timestamps is None:
         timestamps = dlc_timestamps

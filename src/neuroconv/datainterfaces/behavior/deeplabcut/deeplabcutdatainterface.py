@@ -7,6 +7,9 @@ from pynwb.file import NWBFile
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....utils import FilePathType
 
+from ndx_pose import PoseEstimationSeries, PoseEstimation
+
+
 
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
