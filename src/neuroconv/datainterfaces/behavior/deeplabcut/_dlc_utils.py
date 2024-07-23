@@ -3,12 +3,11 @@ import pickle
 import warnings
 from pathlib import Path
 from typing import List, Optional, Union
-from ndx_pose import PoseEstimation, PoseEstimationSeries
-
 
 import numpy as np
 import pandas as pd
 import yaml
+from ndx_pose import PoseEstimation, PoseEstimationSeries
 from pynwb import NWBFile
 from ruamel.yaml import YAML
 

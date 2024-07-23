@@ -4,11 +4,9 @@ from typing import List, Optional, Union
 import numpy as np
 from pynwb.file import NWBFile
 
+from ._dlc_utils import add_subject_to_nwbfile
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....utils import FilePathType
-
-# from ndx_pose import PoseEstimationSeries, PoseEstimation
-from ._dlc_utils import add_subject_to_nwbfile
 
 
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
