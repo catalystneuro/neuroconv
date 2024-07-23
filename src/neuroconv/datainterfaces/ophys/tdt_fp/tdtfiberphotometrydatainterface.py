@@ -24,7 +24,6 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             folder_path=folder_path,
             verbose=verbose,
         )
-        import ndx_fiber_photometry
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
