@@ -1,5 +1,6 @@
 # Upcoming
 
+* Fixed bug with empty `NWBInterface` out of `DeeplabcutInterface` conversion; sped up `DeeplabcutInterface` conversion when timestamps are specified. [PR #967](https://github.com/catalystneuro/neuroconv/pull/967)
 
 ## v0.5.0 (July 17, 2024)
 
