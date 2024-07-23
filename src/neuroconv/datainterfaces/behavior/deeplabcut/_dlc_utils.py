@@ -282,7 +282,6 @@ def add_subject_to_nwbfile(
     )
     if timestamps is None:
         timestamps = dlc_timestamps
-    print("...neck!")
 
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
 
