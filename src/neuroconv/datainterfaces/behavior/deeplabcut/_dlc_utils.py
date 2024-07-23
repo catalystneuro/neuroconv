@@ -276,7 +276,6 @@ def add_subject_to_nwbfile(
         nwbfile with pes written in the behavior module
     """
     timestamps_available = timestamps is not None
-    print("bottle...")
     scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(
         config_file, h5file, individual_name, timestamps_available
     )
