@@ -2,16 +2,14 @@ import os
 import sys
 from importlib import import_module
 from pathlib import Path
-from typing import Literal, Optional
-from uuid import uuid4
+from typing import Optional
 
 import click
 from dandi.metadata import _get_pynwb_metadata
 from dandi.organize import create_unique_filenames_from_metadata
 from jsonschema import RefResolver, validate
-from pydantic import FilePath
 
-from ..data_transfers import automatic_dandi_upload, submit_aws_batch_job
+from ..data_transfers import automatic_dandi_upload
 from ...nwbconverter import NWBConverter
 from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_from_file
 
@@ -29,27 +27,22 @@ from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_f
     help="Path to folder where you want to save the output NWBFile.",
     type=click.Path(writable=True),
 )
-@click.option(
-    "--upload-to-dandiset",
-    help="Do you want to upload the result to DANDI? Specify the dandiset ID if so. "
-    "Also ensure you have your DANDI_API_KEY set as an environment variable.",
-)
 @click.option("--overwrite", help="Overwrite an existing NWBFile at the location.", is_flag=True)
+@click.option(
+    "--upload-to-dandiset-id",
+    help=(
+        "Do you want to upload the result to DANDI? If so, specify the six-digit Dandiset ID. "
+        "Also ensure you have your DANDI_API_KEY set as an environment variable."
+    ),
+)
 def run_conversion_from_yaml_cli(
     specification_file_path: str,
     data_folder_path: Optional[str] = None,
     output_folder_path: Optional[str] = None,
-    upload_to_dandiset: Optional[str] = None,
     overwrite: bool = False,
+    upload_to_dandiset: Optional[str] = None,
 ):
-    """
-    Run the tool function 'run_conversion_from_yaml' via the command line.
-
-    Parameters
-    ----------
-    specification_file_path  : str
-        Path to the .yml specification file.
-    """
+    """Run the tool function 'run_conversion_from_yaml' via the command line."""
     run_conversion_from_yaml(
         specification_file_path=specification_file_path,
         data_folder_path=data_folder_path,
@@ -63,8 +56,8 @@ def run_conversion_from_yaml(
     specification_file_path: FilePathType,
     data_folder_path: Optional[FolderPathType] = None,
     output_folder_path: Optional[FolderPathType] = None,
-    upload_to_dandiset: Optional[str] = None,
     overwrite: bool = False,
+    upload_to_dandiset: Optional[str] = None,
 ):
     """
     Run conversion to NWB given a yaml specification file.
@@ -82,11 +75,15 @@ def run_conversion_from_yaml(
     overwrite : bool, default: False
         If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
         If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
+    upload_to_dandiset : str, optional
+        If you wish to upload the resulting NWB file to a particular Dandiset, specify the six-digit ID here.
+        When using this feature, the `DANDI_API_KEY` environment variable must be set.
     """
     # This check is technically a part of the automatic dandi upload, but good to check as early as possible
     # to avoid wasting time.
     if upload_to_dandiset:
-        assert os.getenv("DANDI_API_KEY"), (
+        dandi_api_token = os.getenv("DANDI_API_KEY")
+        assert dandi_api_token is not None, (
             "Unable to find environment variable 'DANDI_API_KEY'. "
             "Please retrieve your token from DANDI and set this environment variable."
         )
@@ -163,38 +160,5 @@ def run_conversion_from_yaml(
                 named_dandi_metadata["path"].rename(str(output_folder_path / dandi_filename))
 
     if upload_to_dandiset:
-        staging = int(upload_to_dandiset) < 100000  # temporary heuristic
+        staging = int(upload_to_dandiset) >= 200_000
         automatic_dandi_upload(dandiset_id=upload_to_dandiset, nwb_folder_path=output_folder_path, staging=staging)
-
-
-def deploy_conversion_from_yaml_and_upload_to_dandi(  # the 'and upload to DANDI' part should ultimately be embedded in the YAML syntax
-    specification_file_path: FilePath,
-    efs_name: str,
-    dandiset_id: str,
-    transfer_method: Literal["rclone"],
-    transfer_commands: str,
-    transfer_config_file_path: FilePath,
-):
-    job_name = Path(specification_file_path).stem + "_" + str(uuid4())
-    with open(file=specification_file_path) as file:
-        yaml_as_string = "".join(file.readlines())  # Loaded as raw string, not as dict
-
-    if transfer_method == "rclone":
-        docker_container = "ghcr.io/catalystneuro/neuroconv:with_rclone"
-        with open(file=transfer_config_file_path) as file:
-            config_as_string = "".join(file.readlines())  # TODO - check newlines are OK cross-platform
-        environment_variables = [
-            dict(name="CONFIG_STREAM", value=config_as_string),
-            dict(name="RCLONE_COMMANDS", value=transfer_commands),
-            dict(name="YAML_STREAM", value=yaml_as_string),
-            dict(name="DANDI_API_KEY", value=os.environ["DANDI_API_KEY"]),
-            dict(name="DANDISET_ID", value=dandiset_id),
-        ]
-    else:
-        raise NotImplementedError(f"The transfer method {transfer_method} is not yet supported!")
-    submit_aws_batch_job(
-        job_name=job_name,
-        docker_container=docker_container,
-        efs_name=efs_name,
-        environment_variables=environment_variables,
-    )  # TODO - setup something here with status tracker table - might have to be on YAML level
