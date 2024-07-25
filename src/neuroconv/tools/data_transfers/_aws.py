@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 from uuid import uuid4
+from warnings import warn
 
 from pydantic import FilePath
 
@@ -361,7 +362,7 @@ def update_table_status(
 
     table.update_item(Key={"id": submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": status}})
 
-    return
+    return None
 
 
 def delete_efs_volume(efs_volume_name: str) -> None:
@@ -387,7 +388,16 @@ def delete_efs_volume(efs_volume_name: str) -> None:
     all_efs_volumes = efs_client.describe_file_systems()
     all_efs_volumes_by_name = {efs_volume["Name"]: efs_volume for efs_volume in all_efs_volumes["FileSystems"]}
 
-    efs_volume = all_efs_volumes_by_name[efs_volume_name]
+    efs_volume = all_efs_volumes_by_name.get(efs_volume_name, None)
+    if efs_volume is None:
+        warn(
+            message=(
+                f"The specified EFS volume '{efs_volume_name}' was not found, and so there is nothing to delete. "
+                "Please manually check your current EFS volumes to ensure none are hanging."
+            ),
+            stacklevel=2,
+        )
+
     file_system_id = efs_volume["FileSystemId"]
     efs_client.delete_file_system(FileSystemId=file_system_id)
 
@@ -512,8 +522,6 @@ def deploy_conversion_on_ec2(
         efs_volume_name=efs_volume_name,
         environment_variables=[
             dict(name="NEUROCONV_YAML", value=specification_file_content),
-            dict(name="NEUROCONV_DATA_PATH", value=""),
-            dict(name="NEUROCONV_OUTPUT_PATH", value=""),
             dict(name="DANDI_API_KEY", value=dandi_api_token),
             dict(name="DANDISET_ID", value=dandiset_id),
             dict(name="AWS_ACCESS_KEY_ID", value=aws_access_key_id),
