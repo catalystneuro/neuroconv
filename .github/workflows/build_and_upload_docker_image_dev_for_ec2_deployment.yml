@@ -1,9 +1,8 @@
-name: Build and Upload Docker Image of latest with YAML variable to GHCR
+name: Build and Upload Docker Image of Current Dev Branch to GHCR
 
 on:
-  workflow_run:
-    workflows: [build_and_upload_docker_image_latest_release]
-    types: [completed]
+  schedule:
+    - cron: "0 16 * * 1"  # Weekly at noon EST on Monday
   workflow_dispatch:
 
 concurrency:  # Cancel previous workflows on the same pull request
@@ -12,7 +11,7 @@ concurrency:  # Cancel previous workflows on the same pull request
 
 jobs:
   release-image:
-    name: Build and Upload Docker Image of latest with YAML variable to GHCR
+    name: Build and Upload Docker Image of Current Dev Branch to GHCR
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,11 +26,16 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
           password: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
-      - name: Build and push YAML variable image based on latest
+      - name: Get current date
+        id: date
+        run: |
+          date_tag="$(date +'%Y-%m-%d')"
+          echo "date_tag=$date_tag" >> $GITHUB_OUTPUT
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: ghcr.io/catalystneuro/neuroconv:yaml_variable
+          tags: ghcr.io/catalystneuro/neuroconv:dev,ghcr.io/catalystneuro/neuroconv:${{ steps.date.outputs.date_tag }}
           context: .
-          file: dockerfiles/neuroconv_latest_yaml_variable
+          file: dockerfiles/neuroconv_dev_for_ec2_deployment
           provenance: false

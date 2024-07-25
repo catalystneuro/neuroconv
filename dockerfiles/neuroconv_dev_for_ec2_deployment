@@ -1,0 +1,6 @@
+FROM python:3.11.7-slim
+LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
+LABEL org.opencontainers.image.description="A docker image extending the dev branch of the NeuroConv package with modifications related to deployment on EC2 Batch."
+ADD ./ neuroconv
+RUN cd neuroconv && pip install .[full]
+CMD printf "$NEUROCONV_YAML" > run.yml && python -m neuroconv_ec2 run.yml --data-folder-path "$NEUROCONV_DATA_PATH" --output-folder-path "$NEUROCONV_OUTPUT_PATH" --overwrite --upload-to-dandiset-id "$DANDISET_ID" --update-tracking-table "$TRACKING_TABLE" --tracking-table-submission-id "$SUBMISSION_ID" --efs-volume-name-to-cleanup "$EFS_VOLUME"

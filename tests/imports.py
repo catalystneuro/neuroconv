@@ -54,9 +54,9 @@ class TestImportStructure(TestCase):
 
         current_structure = _strip_magic_module_attributes(ls=tools.__dict__)
         expected_structure = [
-            # Sub-Packages
-            "yaml_conversion_specification",  # Attached to namespace  by top __init__ call of NWBConverter
             # Sub-modules
+            "yaml_conversion_specification",  # Attached to namespace  by top __init__ call of NWBConverter
+            "data_transfers",  # Attached indirectly by 'yaml_conversion_specification'
             "importing",  # Attached to namespace by importing get_package
             "hdmf",
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
