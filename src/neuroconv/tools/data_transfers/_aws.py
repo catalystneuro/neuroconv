@@ -323,10 +323,10 @@ def submit_aws_batch_job(
 
 def update_table_status(
     *,
-    region: str = "us-east-2",
+    status_tracker_table_name: str,
     submission_id: str,
     status: str,
-    status_tracker_table_name: str = "neuroconv_batch_status_tracker",
+    region: str = "us-east-2",
 ) -> None:
     """
     Helper function for updating a status value on a DynamoDB table tracking the status of EC2 jobs.
@@ -335,16 +335,16 @@ def update_table_status(
 
     Parameters
     ----------
-    region : str, default: "us-east-2"
-        The AWS region to use for the job.
-        us-east-2 (Ohio) is the location of the DANDI Archive, and we recommend all operations be run in that region to
-        remove cross-region transfer costs.
+    status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
+        The name of the DynamoDB table to use for tracking job status.
     submission_id : str
         The random hash that was assigned on submission of this job to the status tracker table.
     status : str
         The new status value to update.
-    status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
-        The name of the DynamoDB table to use for tracking job status.
+    region : str, default: "us-east-2"
+        The AWS region to use for the job.
+        us-east-2 (Ohio) is the location of the DANDI Archive, and we recommend all operations be run in that region to
+        remove cross-region transfer costs.
     """
     import boto3
 
@@ -364,6 +364,36 @@ def update_table_status(
     return
 
 
+def delete_efs_volume(efs_volume_name: str) -> None:
+    """
+    Delete an EFS volume of a particular name.
+
+    Parameters
+    ----------
+    efs_volume_name : str
+        The name of the EFS volume to delete.
+    """
+    import boto3
+
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+
+    efs_client = boto3.client(
+        service_name="efs",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    all_efs_volumes = efs_client.describe_file_systems()
+    all_efs_volumes_by_name = {efs_volume["Name"]: efs_volume for efs_volume in all_efs_volumes["FileSystems"]}
+
+    efs_volume = all_efs_volumes_by_name[efs_volume_name]
+    file_system_id = efs_volume["FileSystemId"]
+    efs_client.delete_file_system(FileSystemId=file_system_id)
+
+    return None
+
+
 def deploy_conversion_on_ec2(
     specification_file_path: FilePath,
     transfer_commands: str,
@@ -373,6 +403,8 @@ def deploy_conversion_on_ec2(
     transfer_method: Literal["rclone"] = "rclone",
     transfer_config_file_path: Optional[FilePath] = None,
     efs_volume_creation_options: Optional[dict] = None,
+    status_tracker_table_name: str = "neuroconv_batch_status_tracker",
+    cleanup_efs_volume: bool = True,
 ) -> None:
     """
     Helper function for deploying a YAML-based NeuroConv data conversion in the cloud on AWS EC2 Batch.
@@ -402,6 +434,12 @@ def deploy_conversion_on_ec2(
         The dictionary of keyword arguments to pass to `boto3.client.EFS.create_file_system` when the volmume does not
         already exist.
         These are ignored if the volume already exists.
+    status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
+        The name of the DynamoDB table to use for tracking job status.
+    cleanup_efs_volume : bool, default: True
+        Whether or not to schedule the deletion of the associated `efs_volume_name` when the deployment is complete.
+        This is recommended to avoid unnecessary costs from leaving unused resources hanging indefinitely.
+        It is also recommended to manually ensure periodically that this cleanup was successful.
     """
     import boto3
 
@@ -460,6 +498,7 @@ def deploy_conversion_on_ec2(
             dict(name="RCLONE_CONFIG", value=rclone_config_file_content),
             dict(name="RCLONE_COMMANDS", value=transfer_commands),
         ],
+        status_tracker_table_name=status_tracker_table_name,
     )
 
     # Job 2: Run YAML specification on transferred data and upload to DANDI
@@ -469,7 +508,7 @@ def deploy_conversion_on_ec2(
     submit_aws_batch_job(
         conversion_job_name=Path(specification_file_path).stem + "_conversion_" + unique_job_reference,
         job_dependencies=[{"jobId": transfer_job_submission_info["jobId"], "type": "SEQUENTIAL"}],
-        docker_container="ghcr.io/catalystneuro/neuroconv:yaml_variable",
+        docker_container="ghcr.io/catalystneuro/neuroconv_for_ec2_deployment:dev",
         efs_volume_name=efs_volume_name,
         environment_variables=[
             dict(name="NEUROCONV_YAML", value=specification_file_content),
@@ -477,6 +516,11 @@ def deploy_conversion_on_ec2(
             dict(name="NEUROCONV_OUTPUT_PATH", value=""),
             dict(name="DANDI_API_KEY", value=dandi_api_token),
             dict(name="DANDISET_ID", value=dandiset_id),
+            dict(name="AWS_ACCESS_KEY_ID", value=aws_access_key_id),
+            dict(name="AWS_SECRET_ACCESS_KEY", value=aws_secret_access_key),
+            dict(name="TRACKING_TABLE", value=status_tracker_table_name),
+            dict(name="SUBMISSION_ID", value=transfer_job_submission_info["table_submission_info"]["id"]),
+            dict(name="EFS_VOLUME", value=efs_volume_name),
         ],
     )
 

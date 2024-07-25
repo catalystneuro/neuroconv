@@ -1,4 +1,4 @@
-name: Build and Upload Docker Image of Rclone With Config to GHCR
+name: Build and Upload Docker Image of Latest Release for EC2 Deployment to GHCR
 
 on:
   schedule:
@@ -11,11 +11,22 @@ concurrency:  # Cancel previous workflows on the same pull request
 
 jobs:
   release-image:
-    name: Build and Upload Docker Image of Rclone With Config to GHCR
+    name: Build and Upload Docker Image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Parse the version from the GitHub latest release tag
+        id: parsed_version
+        run: |
+          git fetch --prune --unshallow --tags
+          tags="$(git tag --list)"
+          version_tag=${tags: -6 : 6}
+          echo "version_tag=$version_tag" >> $GITHUB_OUTPUT
+      - name: Printout parsed version for GitHub Action log
+        run: echo ${{ steps.parsed_version.outputs.version_tag }}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -31,7 +42,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: ghcr.io/catalystneuro/rclone_with_config:latest
+          tags: ghcr.io/catalystneuro/neuroconv_for_ec2_deployment:dev
           context: .
-          file: dockerfiles/rclone_with_config
+          file: dockerfiles/neuroconv_release_for_ec2_deployment
           provenance: false

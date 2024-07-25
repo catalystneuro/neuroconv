@@ -85,7 +85,8 @@ setup(
     extras_require=extras_require,
     entry_points={
         "console_scripts": [
-            "neuroconv = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli",
+            "neuroconv = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification_cli:run_conversion_from_yaml_cli",
+            "neuroconv_ec2 = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification_cli:run_ec2_conversion_from_yaml_cli",
         ],
     },
     license="BSD-3-Clause",

@@ -17,6 +17,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Parse the version from the GitHub latest release tag
         id: parsed_version
         run: |
@@ -26,6 +27,7 @@ jobs:
           echo "version_tag=$version_tag" >> $GITHUB_OUTPUT
       - name: Printout parsed version for GitHub Action log
         run: echo ${{ steps.parsed_version.outputs.version_tag }}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -36,11 +38,12 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
           password: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
           tags: ghcr.io/catalystneuro/neuroconv:latest,ghcr.io/catalystneuro/neuroconv:${{ steps.parsed_version.outputs.version_tag }}
           context: .
-          file: dockerfiles/neuroconv_latest_release_dockerfile
+          file: dockerfiles/neuroconv_release_dockerfile
           provenance: false
