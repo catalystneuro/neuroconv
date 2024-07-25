@@ -18,6 +18,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     """
 
     keywords = ["fiber photometry"]
+    display_name = "TDTFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from TDT."
+    associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     def __init__(self, folder_path: FilePathType, verbose: bool = True):
         super().__init__(
