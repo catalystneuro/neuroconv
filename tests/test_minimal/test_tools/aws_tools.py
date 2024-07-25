@@ -96,7 +96,7 @@ def test_submit_aws_batch_job_with_dependencies():
     )
 
 
-class TestRcloneWithConfig(TestCase):
+class TestDeployConversionOnEC2(TestCase):
     """
     In order to run this test in CI successfully, whoever sets the Rclone credentials must use the following setup.
 
@@ -106,7 +106,7 @@ class TestRcloneWithConfig(TestCase):
     4) Locally, run `rclone config`, then copy the relevant token values into GitHub Action secrets
     """
 
-    test_folder = OUTPUT_PATH / "rclone_tests"
+    test_folder = OUTPUT_PATH / "deploy_conversion_on_ec2_tests"
 
     # Save the .conf file in a separate folder to avoid the potential of the container using the locally mounted file
     adjacent_folder = OUTPUT_PATH / "rclone_conf"
@@ -139,15 +139,20 @@ class TestRcloneWithConfig(TestCase):
         path_to_test_yml_files = Path(__file__).parent.parent / "test_on_data" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
+        transfer_commands = (
+            "rclone copy test_google_drive_remote:test_neuroconv_ec2_batch_deployment {self.test_folder} "
+            "--verbose --progress --config ./rclone.conf"
+        )
+
         date_tag = datetime.now().strftime("%y%m%d")
         efs_volume_name = f"neuroconv_ci_tests_{date_tag}"
 
         deploy_conversion_on_ec2(
             specification_file_path=yaml_file_path,
-            transfer_commands="rclone copy ",
+            transfer_commands=transfer_commands,
             transfer_config_file_path=self.test_config_file,
             efs_volume_name=efs_volume_name,
             dandiset_id="200560",
         )
 
-        # assert that EFS volume was cleaned up after some extendedd wait time
+        # assert that EFS volume was cleaned up after some extended wait time
