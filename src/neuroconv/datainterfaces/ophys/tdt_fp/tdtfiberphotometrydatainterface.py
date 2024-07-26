@@ -31,18 +31,38 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+        tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
+        metadata["NWBFile"]["session_start_time"] = tdt_photometry.info.start_date.isoformat()
         return metadata
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
-    def load(self):
+    def load(self, t2: Optional[float] = None, evtype: list[str] = ["all"]):
+        """Load the TDT data from the folder path.
+
+        Parameters
+        ----------
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), by default None
+        evtype : list[str], optional
+            List of strings, specifies what type of data stores to retrieve from the tank.
+            Can contain 'all' (default), 'epocs', 'snips', 'streams', or 'scalars'. Ex. ['epocs', 'snips']
+
+        Returns
+        -------
+        tdt.StructType
+            TDT data object
+        """
         tdt = get_package("tdt", installation_instructions="pip install tdt")
         folder_path = Path(self.source_data["folder_path"])
         assert folder_path.is_dir(), f"Folder path {folder_path} does not exist."
         with open(os.devnull, "w") as f, redirect_stdout(f):
-            tdt_photometry = tdt.read_block(str(folder_path))
+            if t2 is None:
+                tdt_photometry = tdt.read_block(str(folder_path), evtype=evtype)
+            else:
+                tdt_photometry = tdt.read_block(str(folder_path), t2=t2, evtype=evtype)
         return tdt_photometry
 
     def get_original_timestamps(self) -> dict[str, np.ndarray]:
@@ -62,7 +82,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.stream_name_to_timestamps = stream_name_to_aligned_timestamps
 
     def get_original_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
-        tdt_photometry = self.load()
+        tdt_photometry = self.load(t2=1.0)
         stream_name_to_starting_time_and_rate = {}
         for stream_name in tdt_photometry.streams:
             rate = tdt_photometry.streams[stream_name].fs
