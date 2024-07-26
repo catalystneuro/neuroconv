@@ -122,7 +122,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 )
 
         # Commanded Voltage Series
-        for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"]["CommandedVoltageSeries"]:
+        for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
             index = commanded_voltage_series_metadata["index"]
             if index is None:
                 data = self.tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data
