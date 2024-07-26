@@ -16,12 +16,6 @@
         "description": "a group representing shank s0",
         "location": "unknown",
         "device": "Neuropixel-Imec"
-      },
-      {
-        "name": "NIDQChannelGroup",
-        "description": "A group representing the NIDQ channels.",
-        "location": "unknown",
-        "device": "Neuropixel-Imec"
       }
     ],
     "ElectricalSeriesAPIMEC0": {
@@ -42,13 +36,17 @@
         "description": "The shape of the electrode"
       }
     ],
-    "ElectricalSeriesNIDQ": {
-      "name": "ElectricalSeriesNIDQ",
-      "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
+    "ElectricalSeriesAPIMEC1": {
+      "name": "ElectricalSeriesAPIMEC1",
+      "description": "Acquisition traces for the ElectricalSeriesAPIMEC1."
     },
     "ElectricalSeriesLFIMEC0": {
       "name": "ElectricalSeriesLFIMEC0",
       "description": "Acquisition traces for the ElectricalSeriesLFIMEC0."
+    },
+    "ElectricalSeriesLFIMEC1": {
+      "name": "ElectricalSeriesLFIMEC1",
+      "description": "Acquisition traces for the ElectricalSeriesLFIMEC1."
     }
   }
 }

@@ -1,5 +1,10 @@
 # Upcoming
 
+### Bug fixes
+
+* Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
+
+
 
 ## v0.5.0 (July 17, 2024)
 
