@@ -81,6 +81,22 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     ) -> None:
         self.stream_name_to_starting_time_and_rate = stream_name_to_aligned_starting_time_and_rate
 
+    def get_events(self) -> dict:
+        """
+        Useful for extracting events (e.g. camera TTL pulses) from the TDT files.
+
+        Returns:
+            dict: Dictionary of events.
+        """
+        events = {}
+        for stream_name in self.tdt_photometry.epocs.keys():
+            events[stream_name] = {
+                "onset": self.tdt_photometry.epocs[stream_name].onset,
+                "offset": self.tdt_photometry.epocs[stream_name].offset,
+                "data": self.tdt_photometry.epocs[stream_name].data,
+            }
+        return events
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
