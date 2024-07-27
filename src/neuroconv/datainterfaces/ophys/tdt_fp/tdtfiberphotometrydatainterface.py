@@ -39,7 +39,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
-    def load(self, t1: float, t2: float = 0.0, evtype: list[str] = ["all"]):
+    def load(self, t1: float = 0.0, t2: float = 0.0, evtype: list[str] = ["all"]):
         """Load the TDT data from the folder path.
 
         Parameters
@@ -132,11 +132,13 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "ExcitationSource",
             "Photodetector",
             "BandOpticalFilter",
+            "EdgeOpticalFilter",
             "DichroicMirror",
             "Indicator",
         ]
         for device_type in device_types:
-            for device_metadata in metadata["Ophys"]["FiberPhotometry"][device_type + "s"]:
+            devices_metadata = metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", [])
+            for device_metadata in devices_metadata:
                 add_fiber_photometry_device(
                     nwbfile=nwbfile,
                     device_metadata=device_metadata,
