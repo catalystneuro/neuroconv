@@ -200,12 +200,14 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         for row_metadata in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["rows"]:
             row_data = dict()
+            # Required fields
             row_data["location"] = row_metadata["location"]
             row_data["indicator"] = nwbfile.devices[row_metadata["indicator"]]
             row_data["optical_fiber"] = nwbfile.devices[row_metadata["optical_fiber"]]
             row_data["excitation_source"] = nwbfile.devices[row_metadata["excitation_source"]]
             row_data["photodetector"] = nwbfile.devices[row_metadata["photodetector"]]
             row_data["dichroic_mirror"] = nwbfile.devices[row_metadata["dichroic_mirror"]]
+            # Optional fields
             if row_metadata.get("coordinates"):
                 row_data["coordinates"] = row_metadata["coordinates"]
             if row_metadata.get("commanded_voltage_series"):
