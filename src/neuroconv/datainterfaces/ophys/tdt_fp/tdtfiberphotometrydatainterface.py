@@ -175,26 +175,20 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         for row_metadata in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["rows"]:
             row_data = dict()
-            if row_metadata.get("location"):
-                row_data["location"] = row_metadata["location"]
+            row_data["location"] = row_metadata["location"]
+            row_data["indicator"] = nwbfile.devices[row_metadata["indicator"]]
+            row_data["optical_fiber"] = nwbfile.devices[row_metadata["optical_fiber"]]
+            row_data["excitation_source"] = nwbfile.devices[row_metadata["excitation_source"]]
+            row_data["photodetector"] = nwbfile.devices[row_metadata["photodetector"]]
+            row_data["dichroic_mirror"] = nwbfile.devices[row_metadata["dichroic_mirror"]]
             if row_metadata.get("coordinates"):
                 row_data["coordinates"] = row_metadata["coordinates"]
             if row_metadata.get("commanded_voltage_series"):
                 row_data["commanded_voltage_series"] = nwbfile.acquisition[row_metadata["commanded_voltage_series"]]
-            if row_metadata.get("indicator"):
-                row_data["indicator"] = nwbfile.devices[row_metadata["indicator"]]
-            if row_metadata.get("optical_fiber"):
-                row_data["optical_fiber"] = nwbfile.devices[row_metadata["optical_fiber"]]
-            if row_metadata.get("excitation_source"):
-                row_data["excitation_source"] = nwbfile.devices[row_metadata["excitation_source"]]
-            if row_metadata.get("photodetector"):
-                row_data["photodetector"] = nwbfile.devices[row_metadata["photodetector"]]
             if row_metadata.get("excitation_filter"):
                 row_data["excitation_filter"] = nwbfile.devices[row_metadata["excitation_filter"]]
             if row_metadata.get("emission_filter"):
                 row_data["emission_filter"] = nwbfile.devices[row_metadata["emission_filter"]]
-            if row_metadata.get("dichroic_mirror"):
-                row_data["dichroic_mirror"] = nwbfile.devices[row_metadata["dichroic_mirror"]]
             fiber_photometry_table.add_row(**row_data)
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",
