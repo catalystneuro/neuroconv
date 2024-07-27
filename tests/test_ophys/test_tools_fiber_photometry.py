@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -61,7 +63,10 @@ from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
                 "manufacturer": "Doric Lenses",
                 "model": "4 ports Fluorescence Mini Cube - GCaMP",
                 "cut_wavelength_in_nm": 475.0,
-                "filter_type": "Longpassv",
+                "slope_in_percent_cut_wavelength": 1.0,
+                "slope_starting_transmission_in_percent": 10.0,
+                "slope_ending_transmission_in_percent": 80.0,
+                "filter_type": "Longpass",
             },
         ),
         (
@@ -89,3 +94,22 @@ from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
 def test_add_fiber_photometry_device(device_type, device_metadata):
     nwbfile = mock_NWBFile()
     add_fiber_photometry_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
+
+
+def test_add_fiber_photometry_device_invalid_device_type():
+    nwbfile = mock_NWBFile()
+    valid_device_types = [
+        "OpticalFiber",
+        "ExcitationSource",
+        "Photodetector",
+        "BandOpticalFilter",
+        "EdgeOpticalFilter",
+        "DichroicMirror",
+        "Indicator",
+    ]
+    with pytest.raises(AssertionError, match=re.escape(f"device_type must be one of {valid_device_types}")):
+        add_fiber_photometry_device(
+            nwbfile=nwbfile,
+            device_metadata={},
+            device_type="invalid_device_type",
+        )
