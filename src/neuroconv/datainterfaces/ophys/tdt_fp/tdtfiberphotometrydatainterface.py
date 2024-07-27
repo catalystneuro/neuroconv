@@ -65,13 +65,13 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return tdt_photometry
 
     def get_original_timestamps(self) -> dict[str, np.ndarray]:
-        self.tdt_photometry = self.load()
+        tdt_photometry = self.load()
         stream_name_to_timestamps = {}
-        for stream_name in self.tdt_photometry.streams:
-            rate = self.tdt_photometry.streams[stream_name].fs
+        for stream_name in tdt_photometry.streams:
+            rate = tdt_photometry.streams[stream_name].fs
             starting_time = 0.0
             timestamps = np.arange(
-                starting_time, self.tdt_photometry.streams[stream_name].data.shape[-1] / rate, 1 / rate
+                starting_time, tdt_photometry.streams[stream_name].data.shape[-1] / rate, 1 / rate
             )
             stream_name_to_timestamps[stream_name] = timestamps
         return stream_name_to_timestamps
@@ -83,11 +83,11 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.stream_name_to_timestamps = stream_name_to_aligned_timestamps
 
     def get_original_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
-        self.tdt_photometry = self.load()
+        tdt_photometry = self.load()
         stream_name_to_starting_time_and_rate = {}
-        for stream_name in self.tdt_photometry.streams:
-            rate = self.tdt_photometry.streams[stream_name].fs
-            starting_time = self.tdt_photometry.streams[stream_name].start_time
+        for stream_name in tdt_photometry.streams:
+            rate = tdt_photometry.streams[stream_name].fs
+            starting_time = tdt_photometry.streams[stream_name].start_time
             stream_name_to_starting_time_and_rate[stream_name] = (starting_time, rate)
         return stream_name_to_starting_time_and_rate
 
@@ -107,11 +107,12 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             dict: Dictionary of events.
         """
         events = {}
-        for stream_name in self.tdt_photometry.epocs.keys():
+        tdt_photometry = self.load(evtype=["epocs"])
+        for stream_name in tdt_photometry.epocs.keys():
             events[stream_name] = {
-                "onset": self.tdt_photometry.epocs[stream_name].onset,
-                "offset": self.tdt_photometry.epocs[stream_name].offset,
-                "data": self.tdt_photometry.epocs[stream_name].data,
+                "onset": tdt_photometry.epocs[stream_name].onset,
+                "offset": tdt_photometry.epocs[stream_name].offset,
+                "data": tdt_photometry.epocs[stream_name].data,
             }
         return events
 
@@ -129,6 +130,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             FiberPhotometryResponseSeries,
             FiberPhotometryTable,
         )
+
+        # Load Data
+        tdt_photometry = self.load(t1=t1, t2=t2)
 
         # timing_source is used to avoid loading the data twice if alignment is NOT used.
         # It is also used to determine whether or not to use the aligned timestamps or starting time and rate.
@@ -164,9 +168,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
             index = commanded_voltage_series_metadata["index"]
             if index is None:
-                data = self.tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data
+                data = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data
             else:
-                data = self.tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data[index, :]
+                data = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data[index, :]
             if timing_source == "aligned_timestamps":
                 timestamps = stream_name_to_timestamps[commanded_voltage_series_metadata["stream_name"]]
                 timing_kwargs = dict(timestamps=timestamps)
@@ -177,7 +181,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 timing_kwargs = dict(starting_time=starting_time, rate=rate)
             else:
                 starting_time = 0.0
-                rate = self.tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].fs
+                rate = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].fs
                 timing_kwargs = dict(starting_time=starting_time, rate=rate)
             commanded_voltage_series = CommandedVoltageSeries(
                 name=commanded_voltage_series_metadata["name"],
@@ -229,8 +233,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 first_starting_time, first_rate = stream_name_to_starting_time_and_rate[first_stream_name]
                 timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
             else:
-                first_rate = self.tdt_photometry.streams[first_stream_name].fs
-                first_starting_time = self.tdt_photometry.streams[first_stream_name].start_time
+                first_rate = tdt_photometry.streams[first_stream_name].fs
+                first_starting_time = tdt_photometry.streams[first_stream_name].start_time
                 timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
             # Get the data for each series in the stream
             data_traces = []
@@ -249,15 +253,15 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     ), f"All streams in the same FiberPhotometryResponseSeries must have the same starting time and rate. But stream {stream_name} has different starting time and rate than {first_stream_name}."
                 else:
                     assert (
-                        self.tdt_photometry.streams[stream_name].fs == first_rate
+                        tdt_photometry.streams[stream_name].fs == first_rate
                     ), f"All streams in the same FiberPhotometryResponseSeries must have the same sampling rate. But stream {stream_name} has a different sampling rate than {first_stream_name}."
                 if stream_index is None:
-                    data_trace = self.tdt_photometry.streams[stream_name].data
+                    data_trace = tdt_photometry.streams[stream_name].data
                     # Transpose the data if it is in the wrong shape
                     if data_trace.ndim == 2 and data_trace.shape[0] < data_trace.shape[1]:
                         data_trace = data_trace.T
                 else:
-                    data_trace = self.tdt_photometry.streams[stream_name].data[stream_index, :]
+                    data_trace = tdt_photometry.streams[stream_name].data[stream_index, :]
                 data_traces.append(data_trace)
             data = np.column_stack(data_traces)
 
