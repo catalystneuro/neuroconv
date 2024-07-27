@@ -1,7 +1,7 @@
 import os
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pynwb.file import NWBFile
@@ -39,13 +39,15 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
-    def load(self, t2: Optional[float] = None, evtype: list[str] = ["all"]):
+    def load(self, t1: float, t2: float = 0.0, evtype: list[str] = ["all"]):
         """Load the TDT data from the folder path.
 
         Parameters
         ----------
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
         t2 : float, optional
-            Retrieve data ending at t2 (in seconds), by default None
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
         evtype : list[str], optional
             List of strings, specifies what type of data stores to retrieve from the tank.
             Can contain 'all' (default), 'epocs', 'snips', 'streams', or 'scalars'. Ex. ['epocs', 'snips']
@@ -59,10 +61,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         folder_path = Path(self.source_data["folder_path"])
         assert folder_path.is_dir(), f"Folder path {folder_path} does not exist."
         with open(os.devnull, "w") as f, redirect_stdout(f):
-            if t2 is None:
-                tdt_photometry = tdt.read_block(str(folder_path), evtype=evtype)
-            else:
-                tdt_photometry = tdt.read_block(str(folder_path), t2=t2, evtype=evtype)
+            tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
         return tdt_photometry
 
     def get_original_timestamps(self) -> dict[str, np.ndarray]:
@@ -82,7 +81,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.stream_name_to_timestamps = stream_name_to_aligned_timestamps
 
     def get_original_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
-        tdt_photometry = self.load(t2=1.0)
+        tdt_photometry = self.load()
         stream_name_to_starting_time_and_rate = {}
         for stream_name in tdt_photometry.streams:
             rate = tdt_photometry.streams[stream_name].fs
@@ -102,7 +101,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        t2: Optional[float] = None,
+        t1: float = 0.0,
+        t2: float = 0.0,
         timing_source: Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"] = "original",
     ):
         from ndx_fiber_photometry import (
