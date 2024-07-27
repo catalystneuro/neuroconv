@@ -113,7 +113,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
 
         # Load Data
-        tdt_photometry = self.load()
+        tdt_photometry = self.load(t1=t1, t2=t2)
 
         # timing_source is used to avoid loading the data twice if alignment is NOT used.
         # It is also used to determine whether or not to use the aligned timestamps or starting time and rate.
