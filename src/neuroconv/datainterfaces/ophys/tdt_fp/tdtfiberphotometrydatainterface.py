@@ -1,7 +1,7 @@
 import os
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pynwb.file import NWBFile
@@ -27,23 +27,41 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             folder_path=folder_path,
             verbose=verbose,
         )
-        self.tdt_photometry = self.load()
+        import ndx_fiber_photometry  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        metadata["NWBFile"]["session_start_time"] = self.tdt_photometry.info.start_date.isoformat()
+        tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
+        metadata["NWBFile"]["session_start_time"] = tdt_photometry.info.start_date.isoformat()
         return metadata
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
-    def load(self):
+    def load(self, t1: float = 0.0, t2: float = 0.0, evtype: list[str] = ["all"]):
+        """Load the TDT data from the folder path.
+
+        Parameters
+        ----------
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
+        evtype : list[str], optional
+            List of strings, specifies what type of data stores to retrieve from the tank.
+            Can contain 'all' (default), 'epocs', 'snips', 'streams', or 'scalars'. Ex. ['epocs', 'snips']
+
+        Returns
+        -------
+        tdt.StructType
+            TDT data object
+        """
         tdt = get_package("tdt", installation_instructions="pip install tdt")
         folder_path = Path(self.source_data["folder_path"])
         assert folder_path.is_dir(), f"Folder path {folder_path} does not exist."
         with open(os.devnull, "w") as f, redirect_stdout(f):
-            tdt_photometry = tdt.read_block(str(folder_path))
+            tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
         return tdt_photometry
 
     def get_original_timestamps(self) -> dict[str, np.ndarray]:
@@ -101,7 +119,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        t2: Optional[float] = None,
+        t1: float = 0.0,
+        t2: float = 0.0,
         timing_source: Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"] = "original",
     ):
         from ndx_fiber_photometry import (
@@ -128,11 +147,13 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "ExcitationSource",
             "Photodetector",
             "BandOpticalFilter",
+            "EdgeOpticalFilter",
             "DichroicMirror",
             "Indicator",
         ]
         for device_type in device_types:
-            for device_metadata in metadata["Ophys"]["FiberPhotometry"][device_type + "s"]:
+            devices_metadata = metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", [])
+            for device_metadata in devices_metadata:
                 add_fiber_photometry_device(
                     nwbfile=nwbfile,
                     device_metadata=device_metadata,
