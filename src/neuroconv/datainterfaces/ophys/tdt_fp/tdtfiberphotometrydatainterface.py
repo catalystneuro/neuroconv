@@ -70,9 +70,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         for stream_name in tdt_photometry.streams:
             rate = tdt_photometry.streams[stream_name].fs
             starting_time = 0.0
-            timestamps = np.arange(
-                starting_time, tdt_photometry.streams[stream_name].data.shape[-1] / rate, 1 / rate
-            )
+            timestamps = np.arange(starting_time, tdt_photometry.streams[stream_name].data.shape[-1] / rate, 1 / rate)
             stream_name_to_timestamps[stream_name] = timestamps
         return stream_name_to_timestamps
 
