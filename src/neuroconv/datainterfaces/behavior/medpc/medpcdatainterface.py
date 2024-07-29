@@ -35,7 +35,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     behavior module.
     """
 
-    keywords = ["behavior"]
+    keywords = ("behavior",)
     display_name = "MedPC"
     info = "Interface for handling MedPC output files."
     associated_suffixes = (".txt",)
