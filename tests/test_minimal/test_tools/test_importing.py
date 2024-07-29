@@ -13,7 +13,7 @@ def test_guide_attributes():
             assert value is not None, f"{name} is missing GUIDE related attribute {key}."
             if key == "keywords":
                 assert isinstance(
-                    value, (list, tuple)
+                    value, tuple
                 ), f"{name} incorrectly specified GUIDE-related attribute 'keywords' (must be list or tuple)."
             elif key == "display_name":
                 assert isinstance(
@@ -25,7 +25,7 @@ def test_guide_attributes():
                 ), f"{name} incorrectly specified GUIDE-related attribute 'info' (must be str)."
             elif key == "associated_suffixes":
                 assert isinstance(
-                    value, (list, tuple)
+                    value, tuple
                 ), f"{name} incorrectly specified GUIDE-related attribute 'associated_suffixes' (must be list or tuple)."
             if isinstance(value, (list, tuple)):
                 assert len(value) > 0, f"{name} is missing entries in GUIDE related attribute {key}."
