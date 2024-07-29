@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from .openephys_utils import get_session_start_time, read_settings_xml
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
 
@@ -61,6 +60,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
+        from neuroconv.datainterfaces.ecephys.openephys.openephys_utils import (
+            read_settings_xml,
+        )
+
         self._xml_root = read_settings_xml(folder_path)
 
         available_streams = self.get_stream_names(folder_path=folder_path)
@@ -84,6 +87,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             self.subset_channels = [0, 1]
 
     def get_metadata(self) -> dict:
+        from neuroconv.datainterfaces.ecephys.openephys.openephys_utils import (
+            get_session_start_time,
+        )
+
         metadata = super().get_metadata()
 
         session_start_time = get_session_start_time(element=self._xml_root)
