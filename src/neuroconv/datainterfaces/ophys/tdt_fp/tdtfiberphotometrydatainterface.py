@@ -196,24 +196,21 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             name=metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["name"],
             description=metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["description"],
         )
+        required_fields = [
+            "location",
+            "indicator",
+            "optical_fiber",
+            "excitation_source",
+            "photodetector",
+            "dichroic_mirror",
+        ]
+        optional_fields = ["coordinates", "commanded_voltage_series", "excitation_filter", "emission_filter"]
         for row_metadata in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["rows"]:
-            row_data = dict()
-            # Required fields
-            row_data["location"] = row_metadata["location"]
-            row_data["indicator"] = nwbfile.devices[row_metadata["indicator"]]
-            row_data["optical_fiber"] = nwbfile.devices[row_metadata["optical_fiber"]]
-            row_data["excitation_source"] = nwbfile.devices[row_metadata["excitation_source"]]
-            row_data["photodetector"] = nwbfile.devices[row_metadata["photodetector"]]
-            row_data["dichroic_mirror"] = nwbfile.devices[row_metadata["dichroic_mirror"]]
-            # Optional fields
-            if row_metadata.get("coordinates"):
-                row_data["coordinates"] = row_metadata["coordinates"]
-            if row_metadata.get("commanded_voltage_series"):
-                row_data["commanded_voltage_series"] = nwbfile.acquisition[row_metadata["commanded_voltage_series"]]
-            if row_metadata.get("excitation_filter"):
-                row_data["excitation_filter"] = nwbfile.devices[row_metadata["excitation_filter"]]
-            if row_metadata.get("emission_filter"):
-                row_data["emission_filter"] = nwbfile.devices[row_metadata["emission_filter"]]
+            row_data = {field: nwbfile.devices[row_metadata[field]] for field in required_fields}
+            for field in optional_fields:
+                if field not in row_metadata:
+                    continue
+                row_data[field] = nwbfile.devices[row_metadata[field]]
             fiber_photometry_table.add_row(**row_data)
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",
