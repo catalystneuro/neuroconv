@@ -38,7 +38,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     keywords = ["behavior"]
     display_name = "MedPC"
     info = "Interface for handling MedPC output files."
-    associated_suffixes = ".txt"
+    associated_suffixes = (".txt",)
 
     def __init__(
         self,
