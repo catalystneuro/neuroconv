@@ -9,7 +9,7 @@ Install NeuroConv with the additional dependencies necessary for reading MaxOne 
 
 .. code-block:: bash
 
-    pip install neuroconv[maxwell]
+    pip install "neuroconv[maxwell]"
 
 Convert MaxOne data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface.MaxOneRecordingInterface`.
 

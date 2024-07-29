@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading ScanIma
 
 .. code-block:: bash
 
-    pip install neuroconv[scanimage]
+    pip install "neuroconv[scanimage]"
 
 Convert single plane single file imaging data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

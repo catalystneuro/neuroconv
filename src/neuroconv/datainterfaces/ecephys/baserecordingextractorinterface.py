@@ -1,5 +1,4 @@
-import json
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -9,7 +8,6 @@ from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
-    NWBMetaDataEncoder,
     get_base_schema,
     get_schema_from_hdmf_class,
 )
@@ -37,7 +35,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         super().__init__(**source_data)
         self.recording_extractor = self.get_extractor()(**source_data)
         property_names = self.recording_extractor.get_property_keys()
-        # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.100.7 is released
+        # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.101.0 is released
         if "channel_name" not in property_names and "channel_names" in property_names:
             channel_names = self.recording_extractor.get_property("channel_names")
             self.recording_extractor.set_property("channel_name", channel_names)

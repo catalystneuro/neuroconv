@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
 
 .. code-block:: bash
 
-    pip install neuroconv[miniscope]
+    pip install "neuroconv[miniscope]"
 
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` combines the two data streams

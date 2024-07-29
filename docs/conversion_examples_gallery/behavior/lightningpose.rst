@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Lightni
 
 .. code-block:: bash
 
-    pip install neuroconv[lightningpose]
+    pip install "neuroconv[lightningpose]"
 
 Convert LightningPose pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.lightningpose.lightningposeconverter.LightningPoseConverter`.
 

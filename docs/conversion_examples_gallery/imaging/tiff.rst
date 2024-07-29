@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading TIFF da
 
 .. code-block:: bash
 
-    pip install neuroconv[tiff]
+    pip install "neuroconv[tiff]"
 
 Convert TIFF imaging data to NWB using
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
