@@ -3,6 +3,6 @@ pytest-cov
 ndx-events>=0.2.0  # for special tests to ensure load_namespaces is set to allow NWBFile load at all timess
 parameterized>=0.8.1
 ndx-miniscope
-spikeinterface[qualitymetrics]==0.101.0rc0
+spikeinterface[qualitymetrics]==0.101.0
 zarr<2.18.0  # Error with Blosc (read-only during decode) in numcodecs on May 7; check later if resolved
 pytest-xdist
