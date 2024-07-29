@@ -19,7 +19,7 @@ def main():
         "/Volumes/T7/CatalystNeuro/NWB/Lerner/raw_data/FP Experiments/Photometry/Punishment Sensitive/Late RI60/Photo_249_391-200721-120136"
     )
     editable_metadata_path = Path(
-        "/Users/pauladkisson/Documents/CatalystNeuro/NWB/neuroconv/src/neuroconv/datainterfaces/ophys/tdt_fp/metadata.yaml"
+        "/Users/pauladkisson/Documents/CatalystNeuro/NWB/neuroconv/tests/test_on_data/fiber_photometry_metadata.yaml"
     )
 
     interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=True)

@@ -1393,7 +1393,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
             )
             aligned_stream_name_to_timestamps[stream_name] = aligned_timestamps
-        self.interface.set_aligned_timestamps(aligned_timestamps_dict=aligned_stream_name_to_timestamps)
+        self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
 
         retrieved_aligned_stream_name_to_timestamps = self.interface.get_timestamps()
         for stream_name, aligned_timestamps in aligned_stream_name_to_timestamps.items():
@@ -1422,11 +1422,11 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         self.setUpFreshInterface()
         pre_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps()
 
-        aligned_timestamps_dict = {
+        aligned_stream_name_to_timestamps = {
             name: pre_alignment_timestamps + 1.23
             for name, pre_alignment_timestamps in pre_alignment_stream_name_to_timestamps.items()
         }
-        self.interface.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
+        self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
 
         post_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps()
         for name, post_alignment_timestamps in post_alignment_stream_name_to_timestamps.items():

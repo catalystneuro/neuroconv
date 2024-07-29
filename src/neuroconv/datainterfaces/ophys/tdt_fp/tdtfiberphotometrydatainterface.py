@@ -75,10 +75,17 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return stream_name_to_timestamps
 
     def get_timestamps(self) -> dict[str, np.ndarray]:
-        return self.stream_name_to_timestamps
+        return getattr(self, "stream_name_to_timestamps", self.get_original_timestamps())
 
     def set_aligned_timestamps(self, stream_name_to_aligned_timestamps: dict[str, np.ndarray]) -> None:
         self.stream_name_to_timestamps = stream_name_to_aligned_timestamps
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        stream_name_to_timestamps = self.get_timestamps()
+        aligned_stream_name_to_timestamps = {
+            name: timestamps + aligned_starting_time for name, timestamps in stream_name_to_timestamps.items()
+        }
+        self.set_aligned_timestamps(aligned_stream_name_to_timestamps)
 
     def get_original_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
         tdt_photometry = self.load()
@@ -204,13 +211,26 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "photodetector",
             "dichroic_mirror",
         ]
-        optional_fields = ["coordinates", "commanded_voltage_series", "excitation_filter", "emission_filter"]
+        device_fields = [
+            "optical_fiber",
+            "excitation_source",
+            "photodetector",
+            "dichroic_mirror",
+            "indicator",
+            "excitation_filter",
+            "emission_filter",
+        ]
         for row_metadata in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["rows"]:
-            row_data = {field: nwbfile.devices[row_metadata[field]] for field in required_fields}
-            for field in optional_fields:
-                if field not in row_metadata:
-                    continue
-                row_data[field] = nwbfile.devices[row_metadata[field]]
+            for field in required_fields:
+                assert (
+                    field in row_metadata
+                ), f"FiberPhotometryTable metadata row {row_metadata['name']} is missing required field {field}."
+            row_data = {field: nwbfile.devices[row_metadata[field]] for field in device_fields if field in row_metadata}
+            row_data["location"] = row_metadata["location"]
+            if "coordinates" in row_metadata:
+                row_data["coordinates"] = row_metadata["coordinates"]
+            if "commanded_voltage_series" in row_metadata:
+                row_data["commanded_voltage_series"] = nwbfile.acquisition[row_metadata["commanded_voltage_series"]]
             fiber_photometry_table.add_row(**row_data)
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",
