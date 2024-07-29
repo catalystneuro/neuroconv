@@ -1271,8 +1271,6 @@ class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):
         # import submodules to unlock extensions
-        import spikeinterface.postprocessing
-        import spikeinterface.qualitymetrics
         from spikeinterface import create_sorting_analyzer
 
         cls.num_units = 4
