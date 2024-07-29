@@ -85,7 +85,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_name_to_starting_time_and_rate = {}
         for stream_name in tdt_photometry.streams:
             rate = tdt_photometry.streams[stream_name].fs
-            starting_time = 0.0
+            starting_time = tdt_photometry.streams[stream_name].start_time
             stream_name_to_starting_time_and_rate[stream_name] = (starting_time, rate)
         return stream_name_to_starting_time_and_rate
 
@@ -96,6 +96,23 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self, stream_name_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]]
     ) -> None:
         self.stream_name_to_starting_time_and_rate = stream_name_to_aligned_starting_time_and_rate
+
+    def get_events(self) -> dict:
+        """
+        Useful for extracting events (e.g. camera TTL pulses) from the TDT files.
+
+        Returns:
+            dict: Dictionary of events.
+        """
+        events = {}
+        tdt_photometry = self.load(evtype=["epocs"])
+        for stream_name in tdt_photometry.epocs.keys():
+            events[stream_name] = {
+                "onset": tdt_photometry.epocs[stream_name].onset,
+                "offset": tdt_photometry.epocs[stream_name].offset,
+                "data": tdt_photometry.epocs[stream_name].data,
+            }
+        return events
 
     def add_to_nwbfile(
         self,
@@ -146,7 +163,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 )
 
         # Commanded Voltage Series
-        for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"]["CommandedVoltageSeries"]:
+        for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
             index = commanded_voltage_series_metadata["index"]
             if index is None:
                 data = tdt_photometry.streams[commanded_voltage_series_metadata["stream_name"]].data
@@ -180,18 +197,24 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             description=metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["description"],
         )
         for row_metadata in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["rows"]:
-            fiber_photometry_table.add_row(
-                location=row_metadata["location"],
-                coordinates=row_metadata["coordinates"],
-                commanded_voltage_series=nwbfile.acquisition[row_metadata["commanded_voltage_series"]],
-                indicator=nwbfile.devices[row_metadata["indicator"]],
-                optical_fiber=nwbfile.devices[row_metadata["optical_fiber"]],
-                excitation_source=nwbfile.devices[row_metadata["excitation_source"]],
-                photodetector=nwbfile.devices[row_metadata["photodetector"]],
-                excitation_filter=nwbfile.devices[row_metadata["excitation_filter"]],
-                emission_filter=nwbfile.devices[row_metadata["emission_filter"]],
-                dichroic_mirror=nwbfile.devices[row_metadata["dichroic_mirror"]],
-            )
+            row_data = dict()
+            # Required fields
+            row_data["location"] = row_metadata["location"]
+            row_data["indicator"] = nwbfile.devices[row_metadata["indicator"]]
+            row_data["optical_fiber"] = nwbfile.devices[row_metadata["optical_fiber"]]
+            row_data["excitation_source"] = nwbfile.devices[row_metadata["excitation_source"]]
+            row_data["photodetector"] = nwbfile.devices[row_metadata["photodetector"]]
+            row_data["dichroic_mirror"] = nwbfile.devices[row_metadata["dichroic_mirror"]]
+            # Optional fields
+            if row_metadata.get("coordinates"):
+                row_data["coordinates"] = row_metadata["coordinates"]
+            if row_metadata.get("commanded_voltage_series"):
+                row_data["commanded_voltage_series"] = nwbfile.acquisition[row_metadata["commanded_voltage_series"]]
+            if row_metadata.get("excitation_filter"):
+                row_data["excitation_filter"] = nwbfile.devices[row_metadata["excitation_filter"]]
+            if row_metadata.get("emission_filter"):
+                row_data["emission_filter"] = nwbfile.devices[row_metadata["emission_filter"]]
+            fiber_photometry_table.add_row(**row_data)
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",
             fiber_photometry_table=fiber_photometry_table,
@@ -199,20 +222,21 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         nwbfile.add_lab_meta_data(fiber_photometry_table_metadata)
 
         # Fiber Photometry Response Series
-        first_stream_name = metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"][0]["stream_names"][0]
-        if timing_source == "aligned_timestamps":
-            first_timestamps = stream_name_to_timestamps[first_stream_name]
-            timing_kwargs = dict(timestamps=first_timestamps)
-        elif timing_source == "aligned_starting_time_and_rate":
-            first_starting_time, first_rate = stream_name_to_starting_time_and_rate[first_stream_name]
-            timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
-        else:
-            first_rate = tdt_photometry.streams[first_stream_name].fs
-            first_starting_time = 0.0
-            timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
-        for fiber_photometry_response_series_metadata in metadata["Ophys"]["FiberPhotometry"][
-            "FiberPhotometryResponseSeries"
-        ]:
+        all_series_metadata = metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]
+        for fiber_photometry_response_series_metadata in all_series_metadata:
+            # Get the timing information from the first series in the stream
+            first_stream_name = fiber_photometry_response_series_metadata["stream_names"][0]
+            if timing_source == "aligned_timestamps":
+                first_timestamps = stream_name_to_timestamps[first_stream_name]
+                timing_kwargs = dict(timestamps=first_timestamps)
+            elif timing_source == "aligned_starting_time_and_rate":
+                first_starting_time, first_rate = stream_name_to_starting_time_and_rate[first_stream_name]
+                timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
+            else:
+                first_rate = tdt_photometry.streams[first_stream_name].fs
+                first_starting_time = tdt_photometry.streams[first_stream_name].start_time
+                timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
+            # Get the data for each series in the stream
             data_traces = []
             for stream_name, stream_index in zip(
                 fiber_photometry_response_series_metadata["stream_names"],
@@ -233,6 +257,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     ), f"All streams in the same FiberPhotometryResponseSeries must have the same sampling rate. But stream {stream_name} has a different sampling rate than {first_stream_name}."
                 if stream_index is None:
                     data_trace = tdt_photometry.streams[stream_name].data
+                    # Transpose the data if it is in the wrong shape
+                    if data_trace.ndim == 2 and data_trace.shape[0] < data_trace.shape[1]:
+                        data_trace = data_trace.T
                 else:
                     data_trace = tdt_photometry.streams[stream_name].data[stream_index, :]
                 data_traces.append(data_trace)
