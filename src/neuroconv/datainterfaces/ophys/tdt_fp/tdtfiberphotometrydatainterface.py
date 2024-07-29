@@ -224,46 +224,26 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # Fiber Photometry Response Series
         all_series_metadata = metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]
         for fiber_photometry_response_series_metadata in all_series_metadata:
-            # Get the timing information from the first series in the stream
-            first_stream_name = fiber_photometry_response_series_metadata["stream_names"][0]
+            stream_name = fiber_photometry_response_series_metadata["stream_name"]
+            stream_indices = fiber_photometry_response_series_metadata["stream_indices"]
+
+            # Get the timing information
             if timing_source == "aligned_timestamps":
-                first_timestamps = stream_name_to_timestamps[first_stream_name]
-                timing_kwargs = dict(timestamps=first_timestamps)
+                timestamps = stream_name_to_timestamps[stream_name]
+                timing_kwargs = dict(timestamps=timestamps)
             elif timing_source == "aligned_starting_time_and_rate":
-                first_starting_time, first_rate = stream_name_to_starting_time_and_rate[first_stream_name]
-                timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
+                starting_time, rate = stream_name_to_starting_time_and_rate[stream_name]
+                timing_kwargs = dict(starting_time=starting_time, rate=rate)
             else:
-                first_rate = tdt_photometry.streams[first_stream_name].fs
-                first_starting_time = tdt_photometry.streams[first_stream_name].start_time
-                timing_kwargs = dict(starting_time=first_starting_time, rate=first_rate)
-            # Get the data for each series in the stream
-            data_traces = []
-            for stream_name, stream_index in zip(
-                fiber_photometry_response_series_metadata["stream_names"],
-                fiber_photometry_response_series_metadata["stream_indices"],
-            ):
-                if timing_source == "aligned_timestamps":
-                    assert np.array_equal(
-                        stream_name_to_timestamps[stream_name], first_timestamps
-                    ), f"All streams in the same FiberPhotometryResponseSeries must have the same timestamps. But stream {stream_name} has different timestamps than {first_stream_name}."
-                elif timing_source == "aligned_starting_time_and_rate":
-                    assert stream_name_to_starting_time_and_rate[stream_name] == (
-                        first_starting_time,
-                        first_rate,
-                    ), f"All streams in the same FiberPhotometryResponseSeries must have the same starting time and rate. But stream {stream_name} has different starting time and rate than {first_stream_name}."
-                else:
-                    assert (
-                        tdt_photometry.streams[stream_name].fs == first_rate
-                    ), f"All streams in the same FiberPhotometryResponseSeries must have the same sampling rate. But stream {stream_name} has a different sampling rate than {first_stream_name}."
-                if stream_index is None:
-                    data_trace = tdt_photometry.streams[stream_name].data
-                    # Transpose the data if it is in the wrong shape
-                    if data_trace.ndim == 2 and data_trace.shape[0] < data_trace.shape[1]:
-                        data_trace = data_trace.T
-                else:
-                    data_trace = tdt_photometry.streams[stream_name].data[stream_index, :]
-                data_traces.append(data_trace)
-            data = np.column_stack(data_traces)
+                rate = tdt_photometry.streams[stream_name].fs
+                starting_time = tdt_photometry.streams[stream_name].start_time
+                timing_kwargs = dict(starting_time=starting_time, rate=rate)
+
+            # Get the data
+            data = tdt_photometry.streams[stream_name].data[stream_indices, :]
+            # Transpose the data if it is in the wrong shape
+            if data.ndim == 2 and data.shape[0] < data.shape[1]:
+                data = data.T
 
             fiber_photometry_table_region = fiber_photometry_table.create_fiber_photometry_table_region(
                 description=fiber_photometry_response_series_metadata["fiber_photometry_table_region_description"],

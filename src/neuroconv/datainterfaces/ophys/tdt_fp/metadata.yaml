@@ -142,10 +142,31 @@ Ophys:
           emission_filter: emission_filter
           dichroic_mirror: dichroic_mirror
     FiberPhotometryResponseSeries:
-      - name: fiber_photometry_response_series
-        description: The fluorescence from the DMS calcium signal, DMS isosbestic control, DLS calcium signal, and DLS isosbestic control.
-        stream_names: ["Dv2A", "Dv1A", "Dv4B", "Dv3B"]
-        stream_indices: [null, null, null, null]
+      - name: dms_calcium_signal
+        description: The fluorescence from the DMS calcium signal.
+        stream_name: Dv2A
+        stream_indices: null
         unit: a.u.
-        fiber_photometry_table_region: [0, 1, 2, 3]
-        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DMS calcium signal, DMS isosbestic control, DLS calcium signal, and DLS isosbestic control.
+        fiber_photometry_table_region: [0]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DMS calcium signal.
+      - name: dms_isosbestic_control
+        description: The fluorescence from the DMS isosbestic control.
+        stream_name: Dv1A
+        stream_indices: null
+        unit: a.u.
+        fiber_photometry_table_region: [1]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DMS isosbestic control.
+      - name: dls_calcium_signal
+        description: The fluorescence from the DLS calcium signal.
+        stream_name: Dv4B
+        stream_indices: null
+        unit: a.u.
+        fiber_photometry_table_region: [2]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DLS calcium signal.
+      - name: dls_isosbestic_control
+        description: The fluorescence from the DLS isosbestic control.
+        stream_name: Dv4B
+        stream_indices: null
+        unit: a.u.
+        fiber_photometry_table_region: [3]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DLS isosbestic control.
