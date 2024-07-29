@@ -1,5 +1,8 @@
 # Upcoming
 
+### Features
+* Added `TDTFiberPhotometryInterface` data interface, for converting fiber photometry data from TDT file formats. [PR #920](https://github.com/catalystneuro/neuroconv/pull/920)
+
 
 ## v0.5.0 (July 17, 2024)
 
