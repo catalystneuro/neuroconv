@@ -94,6 +94,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
 
         session_start_time = get_session_start_time(element=self._xml_root)
-
-        metadata["NWBFile"].update(session_start_time=session_start_time)
+        if session_start_time is not None:
+            metadata["NWBFile"].update(session_start_time=session_start_time)
         return metadata

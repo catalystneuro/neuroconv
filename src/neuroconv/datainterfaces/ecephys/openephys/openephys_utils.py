@@ -1,14 +1,18 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Union
+from warnings import warn
 
 from lxml import etree
 
 from neuroconv.utils import FolderPathType
 
 
-def get_session_start_time(element: etree.Element) -> datetime:
+def get_session_start_time(element: etree.Element) -> Union[datetime, None]:
     """
     Get the session start time from the settings.xml file.
+    Returns the session start time as a datetime object.
+    When the session start time is not found in the XML, a warning is issued and None is returned.
 
     Parameters
     ----------
@@ -17,7 +21,8 @@ def get_session_start_time(element: etree.Element) -> datetime:
     """
     date_str = element.findtext("./INFO/DATE")
     if date_str is None:
-        raise ValueError("Could not fetch session start time from settings.xml file.")
+        warn(message="Could not fetch session start time from settings.xml file.", category=UserWarning)
+        return None
 
     session_start_time = datetime.strptime(date_str, "%d %b %Y %H:%M:%S")
     return session_start_time
