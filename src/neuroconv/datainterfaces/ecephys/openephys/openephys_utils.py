@@ -34,10 +34,16 @@ def read_settings_xml(folder_path: FolderPathType) -> etree.Element:
         The path to the folder containing the settings.xml file.
     """
     folder_path = Path(folder_path)
-    file_path = next(folder_path.rglob("settings.xml"), None)
-    if file_path is None:
-        raise FileNotFoundError(f"The settings.xml file not found in '{folder_path}'.")
-    if ".xml" not in file_path.suffixes:
+
+    xml_file_paths = list(folder_path.rglob("settings.xml"))
+    if not len(xml_file_paths) == 1:
+        raise ValueError(
+            f"Unable to identify the OpenEphys folder structure! "
+            f"Please check that your `folder_path` contains a settings.xml file and sub-folders of the "
+            "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
+        )
+    xml_file_path = xml_file_paths[0]
+    if ".xml" not in xml_file_paths[0].suffixes:
         raise ValueError("The file is not an XML file.")
-    tree = etree.parse(str(file_path))
+    tree = etree.parse(str(xml_file_path))
     return tree.getroot()
