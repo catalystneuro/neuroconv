@@ -242,7 +242,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         all_series_metadata = metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]
         for fiber_photometry_response_series_metadata in all_series_metadata:
             stream_name = fiber_photometry_response_series_metadata["stream_name"]
-            stream_indices = fiber_photometry_response_series_metadata["stream_indices"]
+            stream_indices = fiber_photometry_response_series_metadata.get("stream_indices", None)
 
             # Get the timing information
             if timing_source == "aligned_timestamps":
@@ -257,10 +257,12 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 timing_kwargs = dict(starting_time=starting_time, rate=rate)
 
             # Get the data
-            data = tdt_photometry.streams[stream_name].data[stream_indices, :]
-            # Transpose the data if it is in the wrong shape
-            if data.ndim == 2 and data.shape[0] < data.shape[1]:
-                data = data.T
+            data = tdt_photometry.streams[stream_name].data
+            if stream_indices and data.ndim == 2:
+                data = tdt_photometry.streams[stream_name].data[stream_indices, :]
+                # Transpose the data if it is in the wrong shape
+                if data.shape[0] < data.shape[1]:
+                    data = data.T
 
             fiber_photometry_table_region = fiber_photometry_table.create_fiber_photometry_table_region(
                 description=fiber_photometry_response_series_metadata["fiber_photometry_table_region_description"],
