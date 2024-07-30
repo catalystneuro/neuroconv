@@ -5,7 +5,7 @@ from warnings import warn
 
 from lxml import etree
 
-from neuroconv.utils import FolderPathType
+from ....utils import FolderPathType
 
 
 def get_session_start_time(element: etree.Element) -> Union[datetime, None]:
