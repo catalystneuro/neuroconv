@@ -1,5 +1,10 @@
 # Upcoming
 
+### Improvements
+
+* The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
+
+
 
 ## v0.5.0 (July 17, 2024)
 
