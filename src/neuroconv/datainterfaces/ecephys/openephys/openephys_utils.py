@@ -48,7 +48,5 @@ def read_settings_xml(folder_path: FolderPathType) -> etree.Element:
             "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
         )
     xml_file_path = xml_file_paths[0]
-    if ".xml" not in xml_file_paths[0].suffixes:
-        raise ValueError("The file is not an XML file.")
     tree = etree.parse(str(xml_file_path))
     return tree.getroot()
