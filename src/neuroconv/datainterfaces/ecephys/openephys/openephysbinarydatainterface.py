@@ -60,9 +60,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
-        from .openephys_utils import read_settings_xml
+        from ._openephys_utils import _read_settings_xml
 
-        self._xml_root = read_settings_xml(folder_path)
+        self._xml_root = _read_settings_xml(folder_path)
 
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
@@ -85,11 +85,11 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             self.subset_channels = [0, 1]
 
     def get_metadata(self) -> dict:
-        from .openephys_utils import get_session_start_time
+        from ._openephys_utils import _get_session_start_time
 
         metadata = super().get_metadata()
 
-        session_start_time = get_session_start_time(element=self._xml_root)
+        session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:
             metadata["NWBFile"].update(session_start_time=session_start_time)
         return metadata

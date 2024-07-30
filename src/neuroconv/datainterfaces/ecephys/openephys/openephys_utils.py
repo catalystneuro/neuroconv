@@ -8,7 +8,7 @@ from lxml import etree
 from ....utils import FolderPathType
 
 
-def get_session_start_time(element: etree.Element) -> Union[datetime, None]:
+def _get_session_start_time(element: etree.Element) -> Union[datetime, None]:
     """
     Get the session start time from the settings.xml file.
     Returns the session start time as a datetime object.
@@ -28,7 +28,7 @@ def get_session_start_time(element: etree.Element) -> Union[datetime, None]:
     return session_start_time
 
 
-def read_settings_xml(folder_path: FolderPathType) -> etree.Element:
+def _read_settings_xml(folder_path: FolderPathType) -> etree.Element:
     """
     Read the settings.xml file from an OpenEphys binary recording folder.
     Returns the root element of the XML tree.
