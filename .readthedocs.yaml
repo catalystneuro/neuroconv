@@ -17,7 +17,6 @@ sphinx:
 # Python requirements required to build your docs
 python:
   install:
-    - requirements: requirements-minimal.txt
     - method: pip
       path: .
       extra_requirements:
