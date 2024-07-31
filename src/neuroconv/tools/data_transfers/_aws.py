@@ -284,7 +284,11 @@ def submit_aws_batch_job(
 
 
 def update_table_status(
-    *, submission_id: str, status: str, status_tracker_table_name: str = "neuroconv_batch_status_tracker", region: str = "us-east-2",
+    *,
+    submission_id: str,
+    status: str,
+    status_tracker_table_name: str = "neuroconv_batch_status_tracker",
+    region: str = "us-east-2",
 ) -> None:
     """
     Helper function for updating a status value on a DynamoDB table tracking the status of EC2 jobs.
