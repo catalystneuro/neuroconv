@@ -284,7 +284,7 @@ def submit_aws_batch_job(
 
 
 def update_table_status(
-    *, submission_id: str, status: str, status_tracker_table_name: str = "neuroconv_batch_status_tracker"
+    *, submission_id: str, status: str, status_tracker_table_name: str = "neuroconv_batch_status_tracker", region: str = "us-east-2",
 ) -> None:
     """
     Helper function for updating a status value on a DynamoDB table tracking the status of EC2 jobs.
@@ -299,6 +299,8 @@ def update_table_status(
         The new status value to update.
     status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
         The name of the DynamoDB table to use for tracking job status.
+    region : str, default: "us-east-2"
+        The AWS region to use for the job.
     """
     import boto3
 
