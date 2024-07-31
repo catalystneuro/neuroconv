@@ -3,6 +3,7 @@
 ### Improvements
 
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
+* The `DeeplabcutInterface` now skips inferring timestamps from movie when timestamps are specified, running faster. [PR #967](https://github.com/catalystneuro/neuroconv/pull/967)
 
 
 
