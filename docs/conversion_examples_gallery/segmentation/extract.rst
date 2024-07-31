@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading EXTRACT
 
 .. code-block:: bash
 
-    pip install neuroconv[extract]
+    pip install "neuroconv[extract]"
 
 Convert EXTRACT segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.extract.extractdatainterface.ExtractSegmentationInterface`.
 
