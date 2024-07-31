@@ -1,22 +1,7 @@
-from contextlib import redirect_stdout
-from io import StringIO
 from typing import List, Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
-
-
-def _open_with_pyopenephys(folder_path: FolderPathType):
-    """
-    Defined here to reduce duplication; used twice in the interface below.
-
-    The pyopenephys package has a couple of annoyances, one of which is blanket print statements on file load.
-    """
-    import pyopenephys
-
-    with redirect_stdout(StringIO()):
-        pyopenephys_file = pyopenephys.File(foldername=folder_path)
-    return pyopenephys_file
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
@@ -75,23 +60,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
-        try:
-            _open_with_pyopenephys(folder_path=folder_path)
-        except Exception as error:
-            # Type of error might depend on pyopenephys version and/or platform
-            error_case_1 = (
-                type(error) is Exception
-                and str(error) == "Only 'binary' and 'openephys' format are supported by pyopenephys"
-            )
-            error_case_2 = type(error) is OSError and "Unique settings file not found in" in str(error)
-            if error_case_1 or error_case_2:  # Raise a more informative error instead.
-                raise ValueError(
-                    "Unable to identify the OpenEphys folder structure! "
-                    "Please check that your `folder_path` contains sub-folders of the "
-                    "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
-                )
-            else:
-                raise error
+        from ._openephys_utils import _read_settings_xml
+
+        self._xml_root = _read_settings_xml(folder_path)
 
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
@@ -114,10 +85,11 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             self.subset_channels = [0, 1]
 
     def get_metadata(self) -> dict:
+        from ._openephys_utils import _get_session_start_time
+
         metadata = super().get_metadata()
 
-        pyopenephys_file = _open_with_pyopenephys(folder_path=self.source_data["folder_path"])
-        session_start_time = pyopenephys_file.experiments[0].datetime
-
-        metadata["NWBFile"].update(session_start_time=session_start_time)
+        session_start_time = _get_session_start_time(element=self._xml_root)
+        if session_start_time is not None:
+            metadata["NWBFile"].update(session_start_time=session_start_time)
         return metadata
