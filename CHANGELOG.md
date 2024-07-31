@@ -4,6 +4,8 @@
 
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
 
+### Dependencies
+* Updated `spikeinterface` to `v0.101.0` to use `SortingAnalyzer` instead of `WaveformExtractor` (discontinued) in the `spikeinterface` tools
 
 
 ## v0.5.0 (July 17, 2024)
@@ -109,9 +111,6 @@
 
 ### Testing
 * Add general test for metadata in-place modification by interfaces. [PR #815](https://github.com/catalystneuro/neuroconv/pull/815)
-
-### Dependencies
-* Updated `spikeinterface` to `v0.101.0` to use `SortingAnalyzer` instead of `WaveformExtractor` in the `spikeinterface` tools
 
 
 
