@@ -7,7 +7,6 @@ These tests will be formalized into the testing structure in the future and this
 import shutil
 from datetime import datetime
 from pathlib import Path
-
 from zoneinfo import ZoneInfo
 
 from neuroconv.datainterfaces import TDTFiberPhotometryInterface
