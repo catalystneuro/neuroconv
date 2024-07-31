@@ -13,6 +13,7 @@ def read_requirements(file):
     with open(root / file) as f:
         return f.readlines()
 
+
 extras_require = defaultdict(list)
 extras_require["full"] = ["dandi>=0.58.1", "hdf5plugin"]
 
