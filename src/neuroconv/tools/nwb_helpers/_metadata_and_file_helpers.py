@@ -341,14 +341,17 @@ def configure_and_write_nwbfile(
     """
     Write an NWBFile to a file using a specific backend or backend configuration.
 
-    You must provide either a ``backend`` or a ``backend_configuration``. If both are provided, they must match.
+    A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
+    the specified backend, provide only ``backend``. To use a custom backend configuration, provide
+    ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
 
     Parameters
     ----------
     nwbfile: NWBFile
     output_filepath: str
     backend: {"hdf5"}, optional
-        The type of backend used to create the file. If no ``backend`` is specified, the ``backend_configuration`` is used.
+        The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
+        specified backend. If no ``backend`` is specified, the ``backend_configuration`` is used.
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
