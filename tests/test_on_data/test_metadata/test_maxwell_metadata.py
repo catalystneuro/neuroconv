@@ -4,10 +4,10 @@ from pathlib import Path
 from platform import system
 from shutil import rmtree
 from tempfile import mkdtemp
+from zoneinfo import ZoneInfo
 
 import pytest
 from hdmf.testing import TestCase
-from zoneinfo import ZoneInfo
 
 from neuroconv.datainterfaces import MaxOneRecordingInterface
 
