@@ -64,8 +64,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
         return tdt_photometry
 
-    def get_original_timestamps(self) -> dict[str, np.ndarray]:
-        tdt_photometry = self.load()
+    def get_original_timestamps(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, np.ndarray]:
+        tdt_photometry = self.load(t1=t1, t2=t2)
         stream_name_to_timestamps = {}
         for stream_name in tdt_photometry.streams:
             rate = tdt_photometry.streams[stream_name].fs
@@ -74,14 +74,19 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             stream_name_to_timestamps[stream_name] = timestamps
         return stream_name_to_timestamps
 
-    def get_timestamps(self) -> dict[str, np.ndarray]:
-        return getattr(self, "stream_name_to_timestamps", self.get_original_timestamps())
+    def get_timestamps(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, np.ndarray]:
+        stream_to_timestamps = getattr(self, "stream_name_to_timestamps", self.get_original_timestamps(t1=t1, t2=t2))
+        stream_to_timestamps = {name: timestamps[timestamps >= t1] for name, timestamps in stream_to_timestamps.items()}
+        if t2 == 0.0:
+            return stream_to_timestamps
+        stream_to_timestamps = {name: timestamps[timestamps <= t2] for name, timestamps in stream_to_timestamps.items()}
+        return stream_to_timestamps
 
     def set_aligned_timestamps(self, stream_name_to_aligned_timestamps: dict[str, np.ndarray]) -> None:
         self.stream_name_to_timestamps = stream_name_to_aligned_timestamps
 
-    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
-        stream_name_to_timestamps = self.get_timestamps()
+    def set_aligned_starting_time(self, aligned_starting_time: float, t1: float = 0.0, t2: float = 0.0) -> None:
+        stream_name_to_timestamps = self.get_timestamps(t1=t1, t2=t2)
         aligned_stream_name_to_timestamps = {
             name: timestamps + aligned_starting_time for name, timestamps in stream_name_to_timestamps.items()
         }

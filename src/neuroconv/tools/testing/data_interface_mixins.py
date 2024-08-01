@@ -5,6 +5,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from typing import List, Literal, Optional, Type, Union
 
 import numpy as np
@@ -1366,7 +1367,9 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         Also, that it always returns non-empty.
         """
         self.setUpFreshInterface()
-        stream_name_to_timestamps = self.interface.get_original_timestamps()
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
         for stream_name, timestamps in stream_name_to_timestamps.items():
             assert len(timestamps) != 0, f"Timestamps for {stream_name} are empty."
 
@@ -1377,14 +1380,18 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         Also, that it always returns non-empty.
         """
         self.setUpFreshInterface()
-        stream_name_to_timestamps = self.interface.get_timestamps()
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
         for stream_name, timestamps in stream_name_to_timestamps.items():
             assert len(timestamps) != 0, f"Timestamps for {stream_name} are empty."
 
     def check_interface_set_aligned_timestamps(self):
         """Ensure that internal mechanisms for the timestamps getter/setter work as expected."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
         self.setUpFreshInterface()
-        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps()
+        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
 
         random_number_generator = np.random.default_rng(seed=0)
         aligned_stream_name_to_timestamps = {}
@@ -1395,20 +1402,22 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
             aligned_stream_name_to_timestamps[stream_name] = aligned_timestamps
         self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
 
-        retrieved_aligned_stream_name_to_timestamps = self.interface.get_timestamps()
+        retrieved_aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
         for stream_name, aligned_timestamps in aligned_stream_name_to_timestamps.items():
             retrieved_aligned_timestamps = retrieved_aligned_stream_name_to_timestamps[stream_name]
             assert_array_equal(retrieved_aligned_timestamps, aligned_timestamps)
 
     def check_shift_timestamps_by_start_time(self):
         """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
         self.setUpFreshInterface()
-        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps()
+        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
 
         aligned_starting_time = 1.23
-        self.interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+        self.interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time, t1=t1, t2=t2)
 
-        aligned_stream_name_to_timestamps = self.interface.get_timestamps()
+        aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
         expected_timestamps_dict = {
             name: unaligned_timestamps + aligned_starting_time
             for name, unaligned_timestamps in unaligned_stream_name_to_timestamps.items()
@@ -1419,8 +1428,10 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
 
     def check_interface_original_timestamps_inmutability(self):
         """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
         self.setUpFreshInterface()
-        pre_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps()
+        pre_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
 
         aligned_stream_name_to_timestamps = {
             name: pre_alignment_timestamps + 1.23
@@ -1428,7 +1439,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         }
         self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
 
-        post_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps()
+        post_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
         for name, post_alignment_timestamps in post_alignment_stream_name_to_timestamps.items():
             pre_alignment_timestamps = pre_alignment_stream_name_to_timestamps[name]
             assert_array_equal(post_alignment_timestamps, pre_alignment_timestamps)
@@ -1442,10 +1453,20 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.case = num
                 self.test_kwargs = kwargs
 
+                print("check_interface_get_original_timestamps")
+                sleep(1)
                 self.check_interface_get_original_timestamps()
+                print("check_interface_get_timestamps")
+                sleep(1)
                 self.check_interface_get_timestamps()
+                print("check_interface_set_aligned_timestamps")
+                sleep(1)
                 self.check_interface_set_aligned_timestamps()
+                print("check_shift_timestamps_by_start_time")
+                sleep(1)
                 self.check_shift_timestamps_by_start_time()
+                print("check_interface_original_timestamps_inmutability")
+                sleep(1)
                 self.check_interface_original_timestamps_inmutability()
 
                 self.check_nwbfile_temporal_alignment()

@@ -92,8 +92,9 @@ except ImportError:
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Photo_249_391-200721-120136"),
+        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Photo_249_391-200721-120136_stubbed"),
     )
+    conversion_options = dict(t2=1.0)
     save_directory = OUTPUT_PATH
     expected_session_start_time = datetime(2020, 7, 21, 10, 2, 24, 999999).isoformat()
     expected_devices = [
