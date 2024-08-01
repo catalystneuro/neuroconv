@@ -380,3 +380,13 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             assert tdt_photometry.streams["Dv1A"].data.shape[0] == 1018
         elif t1 == 0.5:
             assert tdt_photometry.streams["Dv1A"].data.shape[0] == 509
+
+    def test_load_invalid_evtype(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        with self.assertRaises(AssertionError):
+            interface.load(t2=1.0, evtype=["invalid"])
+
+    def test_load_invalid_folder_path(self):
+        interface = self.data_interface_cls(folder_path="invalid")
+        with self.assertRaises(AssertionError):
+            interface.load(t2=1.0)
