@@ -16,6 +16,8 @@ try:
 except ImportError:
     from setup_paths import OUTPUT_PATH
 
+from parameterized import parameterized
+
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
     data_interface_cls = TDTFiberPhotometryInterface
@@ -347,3 +349,34 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             assert (
                 len(event["data"]) == expected_len
             ), f"Stream {stream_name} has data length {len(event['data'])} but expected {expected_len}"
+
+    @parameterized.expand(
+        [
+            ("t0", dict(t1=0.0)),
+            ("t0.5", dict(t1=0.5)),
+            ("evtype_epocs", dict(evtype=["epocs"])),
+            ("evtype_streams", dict(evtype=["streams"])),
+            ("evtype_snips", dict(evtype=["snips"])),
+            ("evtype_scalars", dict(evtype=["scalars"])),
+        ]
+    )
+    def test_load(self, _, kwargs):
+        t2 = 1.0  # t2 must be <=1 for stubbed data
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        tdt_photometry = interface.load(t2=t2, **kwargs)
+
+        assert list(tdt_photometry.keys()) == ["epocs", "snips", "streams", "scalars", "info", "time_ranges"]
+        evtype = kwargs.get("evtype", None)
+        if evtype == ["epocs"]:
+            assert list(tdt_photometry["epocs"].keys()) == ["LNnR", "PrtR", "RNPS", "LNRW"]
+        elif evtype == ["streams"]:
+            assert list(tdt_photometry["streams"].keys()) == ["Dv1A", "Dv2A", "Dv3B", "Dv4B", "Fi1d", "Fi1r"]
+        elif evtype == ["snips"]:
+            assert list(tdt_photometry["snips"].keys()) == []
+        elif evtype == ["scalars"]:
+            assert list(tdt_photometry["scalars"].keys()) == []
+        t1 = kwargs.get("t1", None)
+        if t1 == 0.0:
+            assert tdt_photometry.streams["Dv1A"].data.shape[0] == 1018
+        elif t1 == 0.5:
+            assert tdt_photometry.streams["Dv1A"].data.shape[0] == 509
