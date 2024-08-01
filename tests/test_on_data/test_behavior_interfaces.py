@@ -20,6 +20,7 @@ from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     FicTracDataInterface,
     LightningPoseDataInterface,
+    MedPCInterface,
     MiniscopeBehaviorInterface,
     NeuralynxNvtInterface,
     SLEAPInterface,
@@ -28,6 +29,7 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
     DeepLabCutInterfaceMixin,
+    MedPCInterfaceMixin,
     TemporalAlignmentMixin,
     VideoInterfaceMixin,
 )
@@ -752,6 +754,132 @@ class TestVideoConversions(TestCase):
             nwbfile = io.read()
             assert self.image_series_name in nwbfile.acquisition
             assert nwbfile.acquisition[self.image_series_name].data.shape[0] == 10
+
+
+class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
+    data_interface_cls = MedPCInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "medpc" / "example_medpc_file_06_06_2024.txt"),
+        session_conditions={
+            "Start Date": "04/10/19",
+            "Start Time": "12:36:13",
+        },
+        start_variable="Start Date",
+        metadata_medpc_name_to_info_dict={
+            "Start Date": {"name": "start_date", "is_array": False},
+            "Start Time": {"name": "start_time", "is_array": False},
+            "Subject": {"name": "subject", "is_array": False},
+            "Box": {"name": "box", "is_array": False},
+            "MSN": {"name": "MSN", "is_array": False},
+        },
+        aligned_timestamp_names=[],
+    )
+    save_directory = OUTPUT_PATH
+    expected_metadata = {
+        "start_date": "04/10/19",
+        "start_time": "12:36:13",
+        "subject": "95.259",
+        "box": "1",
+        "MSN": "FOOD_FR1 TTL Left",
+    }
+    expected_events = [
+        {
+            "name": "left_nose_poke_times",
+            "description": "Left nose poke times",
+        },
+        {
+            "name": "right_nose_poke_times",
+            "description": "Right nose poke times",
+        },
+        {
+            "name": "left_reward_times",
+            "description": "Left reward times",
+        },
+    ]
+    expected_interval_series = [
+        {
+            "name": "reward_port_intervals",
+            "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+            "onset_name": "port_entry_times",
+            "duration_name": "duration_of_port_entry",
+        },
+    ]
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["MedPC"] == self.expected_metadata
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            for event_dict in self.expected_events:
+                expected_name = event_dict["name"]
+                expected_description = event_dict["description"]
+                assert expected_name in nwbfile.processing["behavior"].data_interfaces
+                event = nwbfile.processing["behavior"].data_interfaces[expected_name]
+                assert event.description == expected_description
+
+            for interval_dict in self.expected_interval_series:
+                expected_name = interval_dict["name"]
+                expected_description = interval_dict["description"]
+                assert expected_name in nwbfile.processing["behavior"]["behavioral_epochs"].interval_series
+                interval_series = nwbfile.processing["behavior"]["behavioral_epochs"].interval_series[expected_name]
+                assert interval_series.description == expected_description
+
+    def test_all_conversion_checks(self):
+        metadata = {
+            "NWBFile": {"session_start_time": datetime(2019, 4, 10, 12, 36, 13).astimezone()},
+            "MedPC": {
+                "start_date": "04/10/19",
+                "start_time": "12:36:13",
+                "subject": "95.259",
+                "box": "1",
+                "MSN": "FOOD_FR1 TTL Left",
+                "module_name": "behavior",
+                "module_description": "Behavioral data from MedPC output files.",
+                "medpc_name_to_info_dict": {
+                    "A": {"name": "left_nose_poke_times", "is_array": True},
+                    "B": {"name": "left_reward_times", "is_array": True},
+                    "C": {"name": "right_nose_poke_times", "is_array": True},
+                    "D": {"name": "right_reward_times", "is_array": True},
+                    "E": {"name": "duration_of_port_entry", "is_array": True},
+                    "G": {"name": "port_entry_times", "is_array": True},
+                },
+                "Events": [
+                    {
+                        "name": "left_nose_poke_times",
+                        "description": "Left nose poke times",
+                    },
+                    {
+                        "name": "right_nose_poke_times",
+                        "description": "Right nose poke times",
+                    },
+                    {
+                        "name": "left_reward_times",
+                        "description": "Left reward times",
+                    },
+                ],
+                "IntervalSeries": [
+                    {
+                        "name": "reward_port_intervals",
+                        "description": "Interval of time spent in reward port (1 is entry, -1 is exit)",
+                        "onset_name": "port_entry_times",
+                        "duration_name": "duration_of_port_entry",
+                    },
+                ],
+            },
+        }
+        super().test_all_conversion_checks(metadata=metadata)
+
+    def test_interface_alignment(self):
+        medpc_name_to_info_dict = {
+            "A": {"name": "left_nose_poke_times", "is_array": True},
+            "B": {"name": "left_reward_times", "is_array": True},
+            "C": {"name": "right_nose_poke_times", "is_array": True},
+            "D": {"name": "right_reward_times", "is_array": True},
+            "E": {"name": "duration_of_port_entry", "is_array": True},
+            "G": {"name": "port_entry_times", "is_array": True},
+        }
+        super().test_interface_alignment(medpc_name_to_info_dict=medpc_name_to_info_dict)
 
 
 if __name__ == "__main__":
