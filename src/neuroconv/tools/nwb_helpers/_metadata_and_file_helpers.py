@@ -339,7 +339,7 @@ def configure_and_write_nwbfile(
     backend_configuration: Optional[BackendConfiguration] = None,
 ) -> None:
     """
-    Write an NWBFile to a file using a specific backend or backend configuration.
+    Write an NWB file using a specific backend or backend configuration.
 
     A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
     the specified backend, provide only ``backend``. To use a custom backend configuration, provide
