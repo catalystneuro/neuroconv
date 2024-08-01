@@ -329,3 +329,21 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             ]
             assert starting_time == retrieved_starting_time
             assert rate == retrieved_rate
+
+    def test_get_events(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        stream_name_to_expected_len = {"PrtR": 49, "RNPS": 11, "LNRW": 50, "LNnR": 1457}
+
+        events = interface.get_events()
+
+        for stream_name, event in events.items():
+            expected_len = stream_name_to_expected_len[stream_name]
+            assert (
+                len(event["onset"]) == expected_len
+            ), f"Stream {stream_name} has onset length {len(event['onset'])} but expected {expected_len}"
+            assert (
+                len(event["offset"]) == expected_len
+            ), f"Stream {stream_name} has offset length {len(event['offset'])} but expected {expected_len}"
+            assert (
+                len(event["data"]) == expected_len
+            ), f"Stream {stream_name} has data length {len(event['data'])} but expected {expected_len}"
