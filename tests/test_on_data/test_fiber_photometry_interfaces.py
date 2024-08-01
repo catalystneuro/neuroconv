@@ -48,6 +48,54 @@ except ImportError:
 #         unit: a.u.
 #         fiber_photometry_table_region: [3]
 #         fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DLS isosbestic control.
+# FiberPhotometryTable:
+#       name: fiber_photometry_table
+#       description: Fiber optic implants (Doric Lenses; 400 um, 0.48 NA) were placed above DMS (AP 0.8, ML 1.5, DV 2.8) and DLS (AP 0.1, ML 2.8, DV 3.5). The DMS implant was placed in the hemisphere receiving a medial SNc viral injection, while the DLS implant was placed in the hemisphere receiving a lateral SNc viral injection. Calcium signals from dopamine terminals in DMS and DLS were recorded during RI30, on the first and last days of RI60/RR20 training as well as on both footshock probes for each mouse. All recordings were done using a fiber photometry rig with optical components from Doric lenses controlled by a real-time processor from Tucker Davis Technologies (TDT; RZ5P). TDT Synapse software was used for data acquisition.
+#       rows:
+#         - name: 0
+#           location: DMS
+#           coordinates: [0.8, 1.5, 2.8]
+#           commanded_voltage_series: commanded_voltage_series_dms_calcium_signal
+#           indicator: dms_green_fluorophore
+#           optical_fiber: optical_fiber
+#           excitation_source: excitation_source_calcium_signal
+#           photodetector: photodetector
+#           excitation_filter: excitation_filter
+#           emission_filter: emission_filter
+#           dichroic_mirror: dichroic_mirror
+#         - name: 1
+#           location: DMS
+#           coordinates: [0.8, 1.5, 2.8]
+#           commanded_voltage_series: commanded_voltage_series_dms_isosbestic_control
+#           indicator: dms_green_fluorophore
+#           optical_fiber: optical_fiber
+#           excitation_source: excitation_source_isosbestic_control
+#           photodetector: photodetector
+#           excitation_filter: isosbestic_excitation_filter
+#           emission_filter: emission_filter
+#           dichroic_mirror: dichroic_mirror
+#         - name: 2
+#           location: DLS
+#           coordinates: [0.1, 2.8, 3.5]
+#           commanded_voltage_series: commanded_voltage_series_dls_calcium_signal
+#           indicator: dls_green_fluorophore
+#           optical_fiber: optical_fiber
+#           excitation_source: excitation_source_calcium_signal
+#           photodetector: photodetector
+#           excitation_filter: excitation_filter
+#           emission_filter: emission_filter
+#           dichroic_mirror: dichroic_mirror
+#         - name: 3
+#           location: DLS
+#           coordinates: [0.1, 2.8, 3.5]
+#           commanded_voltage_series: commanded_voltage_series_dls_isosbestic_control
+#           indicator: dls_green_fluorophore
+#           optical_fiber: optical_fiber
+#           excitation_source: excitation_source_isosbestic_control
+#           photodetector: photodetector
+#           excitation_filter: isosbestic_excitation_filter
+#           emission_filter: emission_filter
+#           dichroic_mirror: dichroic_mirror
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
@@ -198,6 +246,60 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "fiber_photometry_table_region_description": "The region of the FiberPhotometryTable corresponding to the DLS isosbestic control.",
         },
     ]
+    expected_fiber_photometry_table = {
+        "name": "fiber_photometry_table",
+        "description": "Fiber optic implants (Doric Lenses; 400 um, 0.48 NA) were placed above DMS (AP 0.8, ML 1.5, DV 2.8) and DLS (AP 0.1, ML 2.8, DV 3.5). The DMS implant was placed in the hemisphere receiving a medial SNc viral injection, while the DLS implant was placed in the hemisphere receiving a lateral SNc viral injection. Calcium signals from dopamine terminals in DMS and DLS were recorded during RI30, on the first and last days of RI60/RR20 training as well as on both footshock probes for each mouse. All recordings were done using a fiber photometry rig with optical components from Doric lenses controlled by a real-time processor from Tucker Davis Technologies (TDT; RZ5P). TDT Synapse software was used for data acquisition.",
+        "rows": [
+            {
+                "location": "DMS",
+                "coordinates": [0.8, 1.5, 2.8],
+                "commanded_voltage_series": "commanded_voltage_series_dms_calcium_signal",
+                "indicator": "dms_green_fluorophore",
+                "optical_fiber": "optical_fiber",
+                "excitation_source": "excitation_source_calcium_signal",
+                "photodetector": "photodetector",
+                "excitation_filter": "excitation_filter",
+                "emission_filter": "emission_filter",
+                "dichroic_mirror": "dichroic_mirror",
+            },
+            {
+                "location": "DMS",
+                "coordinates": [0.8, 1.5, 2.8],
+                "commanded_voltage_series": "commanded_voltage_series_dms_isosbestic_control",
+                "indicator": "dms_green_fluorophore",
+                "optical_fiber": "optical_fiber",
+                "excitation_source": "excitation_source_isosbestic_control",
+                "photodetector": "photodetector",
+                "excitation_filter": "isosbestic_excitation_filter",
+                "emission_filter": "emission_filter",
+                "dichroic_mirror": "dichroic_mirror",
+            },
+            {
+                "location": "DLS",
+                "coordinates": [0.1, 2.8, 3.5],
+                "commanded_voltage_series": "commanded_voltage_series_dls_calcium_signal",
+                "indicator": "dls_green_fluorophore",
+                "optical_fiber": "optical_fiber",
+                "excitation_source": "excitation_source_calcium_signal",
+                "photodetector": "photodetector",
+                "excitation_filter": "excitation_filter",
+                "emission_filter": "emission_filter",
+                "dichroic_mirror": "dichroic_mirror",
+            },
+            {
+                "location": "DLS",
+                "coordinates": [0.1, 2.8, 3.5],
+                "commanded_voltage_series": "commanded_voltage_series_dls_isosbestic_control",
+                "indicator": "dls_green_fluorophore",
+                "optical_fiber": "optical_fiber",
+                "excitation_source": "excitation_source_isosbestic_control",
+                "photodetector": "photodetector",
+                "excitation_filter": "isosbestic_excitation_filter",
+                "emission_filter": "emission_filter",
+                "dichroic_mirror": "dichroic_mirror",
+            },
+        ],
+    }
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
@@ -244,6 +346,26 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                 assert (
                     fp.fiber_photometry_table_region.description == fp_dict["fiber_photometry_table_region_description"]
                 ), f"FiberPhotometryResponseSeries {expected_name} region description is {fp.fiber_photometry_table_region.description} but expected {fp_dict['fiber_photometry_table_region_description']}"
+
+            fiber_photometry_table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+            assert fiber_photometry_table.name == self.expected_fiber_photometry_table["name"]
+            assert fiber_photometry_table.description == self.expected_fiber_photometry_table["description"]
+            for i, row_dict in enumerate(self.expected_fiber_photometry_table["rows"]):
+                expected_location = row_dict.pop("location")
+                location_index = fiber_photometry_table.colnames.index("location")
+                expected_coordinates = row_dict.pop("coordinates")
+                coordinates_index = fiber_photometry_table.colnames.index("coordinates")
+                assert (
+                    expected_location == fiber_photometry_table.columns[location_index][i]
+                ), f"FiberPhotometryTable row {i} location is {fiber_photometry_table.columns['location'][i]} but expected {expected_location}"
+                assert np.all(
+                    expected_coordinates == fiber_photometry_table.columns[coordinates_index][i]
+                ), f"FiberPhotometryTable row {i} coordinates is {fiber_photometry_table.columns['coordinates'][i]} but expected {expected_coordinates}"
+                for key, expected_value in row_dict.items():
+                    key_index = fiber_photometry_table.colnames.index(key)
+                    assert (
+                        expected_value == fiber_photometry_table.columns[key_index].data[i].name
+                    ), f"FiberPhotometryTable row {i} attribute {key} is {fiber_photometry_table.columns[key_index].data[i].name} but expected {expected_value}"
 
     def test_all_conversion_checks(self):
         metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
