@@ -17,7 +17,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     Data Interface for converting fiber photometry data from TDT.
     """
 
-    keywords = ["fiber photometry"]
+    keywords = ("fiber photometry",)
     display_name = "TDTFiberPhotometry"
     info = "Data Interface for converting fiber photometry data from TDT."
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
