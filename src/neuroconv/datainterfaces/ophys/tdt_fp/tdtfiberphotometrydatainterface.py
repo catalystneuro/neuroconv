@@ -268,7 +268,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
             # Get the data
             data = tdt_photometry.streams[stream_name].data
-            if stream_indices and data.ndim == 2:
+            if stream_indices is not None:
                 data = tdt_photometry.streams[stream_name].data[stream_indices, :]
                 # Transpose the data if it is in the wrong shape
                 if data.shape[0] < data.shape[1]:
