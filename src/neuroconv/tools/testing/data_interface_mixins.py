@@ -5,7 +5,6 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from time import sleep
 from typing import List, Literal, Optional, Type, Union
 
 import numpy as np
@@ -1453,20 +1452,9 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.case = num
                 self.test_kwargs = kwargs
 
-                print("check_interface_get_original_timestamps")
-                sleep(1)
                 self.check_interface_get_original_timestamps()
-                print("check_interface_get_timestamps")
-                sleep(1)
                 self.check_interface_get_timestamps()
-                print("check_interface_set_aligned_timestamps")
-                sleep(1)
                 self.check_interface_set_aligned_timestamps()
-                print("check_shift_timestamps_by_start_time")
-                sleep(1)
                 self.check_shift_timestamps_by_start_time()
-                print("check_interface_original_timestamps_inmutability")
-                sleep(1)
                 self.check_interface_original_timestamps_inmutability()
-
                 self.check_nwbfile_temporal_alignment()
