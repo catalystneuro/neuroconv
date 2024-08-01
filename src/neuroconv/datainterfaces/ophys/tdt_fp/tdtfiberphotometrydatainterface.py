@@ -92,10 +92,10 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         }
         self.set_aligned_timestamps(aligned_stream_name_to_timestamps)
 
-    def get_original_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
-        tdt_photometry = self.load()
+    def get_original_starting_time_and_rate(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, tuple[float, float]]:
+        tdt_photometry = self.load(t1=t1, t2=t2)
         stream_name_to_starting_time_and_rate = {}
-        for stream_name in tdt_photometry.streams:
+        for stream_name in tdt_photometry.streams.keys():
             rate = tdt_photometry.streams[stream_name].fs
             starting_time = tdt_photometry.streams[stream_name].start_time
             stream_name_to_starting_time_and_rate[stream_name] = (starting_time, rate)

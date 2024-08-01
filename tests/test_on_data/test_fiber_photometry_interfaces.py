@@ -293,3 +293,39 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         metadata = dict_deep_update(metadata, editable_metadata)
 
         super().test_all_conversion_checks(metadata=metadata)
+
+    def test_get_original_starting_time_and_rate(self):
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        stream_name_to_starting_time_and_rate = interface.get_original_starting_time_and_rate(t1=t1, t2=t2)
+
+        for stream_name, (starting_time, rate) in stream_name_to_starting_time_and_rate.items():
+            assert starting_time == 0.0
+            if stream_name in {"Dv1A", "Dv2A", "Dv3B", "Dv4B"}:
+                assert rate == 1017.2526245117188
+            else:
+                assert rate == 6103.515625
+
+    def test_set_get_aligned_starting_time_and_rate(self):
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        unaligned_stream_name_to_starting_time_and_rate = interface.get_original_starting_time_and_rate(t1=t1, t2=t2)
+
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_stream_name_to_starting_time_and_rate = {}
+        for stream_name, (starting_time, rate) in unaligned_stream_name_to_starting_time_and_rate.items():
+            aligned_starting_time_and_rate = (starting_time + 1.23, rate + random_number_generator.random())
+            aligned_stream_name_to_starting_time_and_rate[stream_name] = aligned_starting_time_and_rate
+        interface.set_aligned_starting_time_and_rate(
+            stream_name_to_aligned_starting_time_and_rate=aligned_stream_name_to_starting_time_and_rate
+        )
+
+        retrieved_aligned_stream_name_to_starting_time_and_rate = interface.get_starting_time_and_rate()
+        for stream_name, (starting_time, rate) in aligned_stream_name_to_starting_time_and_rate.items():
+            retrieved_starting_time, retrieved_rate = retrieved_aligned_stream_name_to_starting_time_and_rate[
+                stream_name
+            ]
+            assert starting_time == retrieved_starting_time
+            assert rate == retrieved_rate
