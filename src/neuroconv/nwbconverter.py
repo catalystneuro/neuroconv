@@ -3,6 +3,7 @@
 import json
 import warnings
 from collections import Counter
+from inspect import signature
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
@@ -160,9 +161,13 @@ class NWBConverter:
         conversion_options = conversion_options or dict()
         for interface_key, data_interface in self.data_interface_objects.items():
             if isinstance(data_interface, NWBConverter):
-                data_interface.add_to_nwbfile(
-                    nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options.get(interface_key, dict())
-                )
+                subconverter_kwargs = dict(nwbfile=nwbfile, metadata=metadata)
+
+                subconverter_keyword_arguments = list(signature(data_interface.add_to_nwbfile).parameters.keys())
+                if "conversion_options" in subconverter_keyword_arguments:
+                    subconverter_kwargs["conversion_options"] = conversion_options.get(interface_key, None)
+
+                data_interface.add_to_nwbfile(**subconverter_kwargs)
             else:
                 data_interface.add_to_nwbfile(
                     nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_key, dict())
