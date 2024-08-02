@@ -14,15 +14,27 @@ from neuroconv.utils import DeepDict, FilePathType
 
 class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     """
-    Data Interface for converting fiber photometry data from TDT.
+    Data Interface for converting fiber photometry data from a TDT output folder.
+
+    The output folder from TDT consists of a variety of TDT-specific file types (e.g. Tbk, Tdx, tev, tin, tsq).
+    This data is read by the tdt.read_block function, and then parsed into the ndx-fiber-photometry format.
     """
 
     keywords = ("fiber photometry",)
     display_name = "TDTFiberPhotometry"
-    info = "Data Interface for converting fiber photometry data from TDT."
+    info = "Data Interface for converting fiber photometry data from TDT files."
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     def __init__(self, folder_path: FilePathType, verbose: bool = True):
+        """Initialize the TDTFiberPhotometryInterface.
+
+        Parameters
+        ----------
+        folder_path : FilePathType
+            The path to the folder containing the TDT data.
+        verbose : bool, optional
+            Whether to print status messages, default = True.
+        """
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
@@ -40,7 +52,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata_schema
 
     def load(self, t1: float = 0.0, t2: float = 0.0, evtype: list[str] = ["all"]):
-        """Load the TDT data from the folder path.
+        """
+        Load the TDT data from the folder path.
 
         Parameters
         ----------
@@ -70,6 +83,21 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return tdt_photometry
 
     def get_original_timestamps(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, np.ndarray]:
+        """
+        Get the original timestamps for the data.
+
+        Parameters
+        ----------
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Dictionary of stream names to timestamps.
+        """
         tdt_photometry = self.load(t1=t1, t2=t2)
         stream_name_to_timestamps = {}
         for stream_name in tdt_photometry.streams:
@@ -80,6 +108,21 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return stream_name_to_timestamps
 
     def get_timestamps(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, np.ndarray]:
+        """
+        Get the timestamps for the data.
+
+        Parameters
+        ----------
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Dictionary of stream names to timestamps.
+        """
         stream_to_timestamps = getattr(self, "stream_name_to_timestamps", self.get_original_timestamps(t1=t1, t2=t2))
         stream_to_timestamps = {name: timestamps[timestamps >= t1] for name, timestamps in stream_to_timestamps.items()}
         if t2 == 0.0:
@@ -88,9 +131,29 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return stream_to_timestamps
 
     def set_aligned_timestamps(self, stream_name_to_aligned_timestamps: dict[str, np.ndarray]) -> None:
+        """
+        Set the aligned timestamps for the data.
+
+        Parameters
+        ----------
+        stream_name_to_aligned_timestamps : dict[str, np.ndarray]
+            Dictionary of stream names to aligned timestamps.
+        """
         self.stream_name_to_timestamps = stream_name_to_aligned_timestamps
 
     def set_aligned_starting_time(self, aligned_starting_time: float, t1: float = 0.0, t2: float = 0.0) -> None:
+        """
+        Set the aligned starting time and adjust the timestamps appropriately.
+
+        Parameters
+        ----------
+        aligned_starting_time : float
+            The aligned starting time.
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
+        """
         stream_name_to_timestamps = self.get_timestamps(t1=t1, t2=t2)
         aligned_stream_name_to_timestamps = {
             name: timestamps + aligned_starting_time for name, timestamps in stream_name_to_timestamps.items()
@@ -98,6 +161,21 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.set_aligned_timestamps(aligned_stream_name_to_timestamps)
 
     def get_original_starting_time_and_rate(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, tuple[float, float]]:
+        """
+        Get the original starting time and rate for the data.
+
+        Parameters
+        ----------
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
+
+        Returns
+        -------
+        dict[str, tuple[float, float]]
+            Dictionary of stream names to starting time and rate.
+        """
         tdt_photometry = self.load(t1=t1, t2=t2)
         stream_name_to_starting_time_and_rate = {}
         for stream_name in tdt_photometry.streams.keys():
@@ -107,27 +185,48 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return stream_name_to_starting_time_and_rate
 
     def get_starting_time_and_rate(self) -> tuple[float, float]:
+        """
+        Get the starting time and rate for the data.
+
+        Returns
+        -------
+        dict[str, tuple[float, float]]
+            Dictionary of stream names to starting time and rate.
+        """
         return self.stream_name_to_starting_time_and_rate
 
     def set_aligned_starting_time_and_rate(
         self, stream_name_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]]
     ) -> None:
+        """
+        Set the aligned starting time and rate for the data.
+
+        Parameters
+        ----------
+        stream_name_to_aligned_starting_time_and_rate : dict[str, tuple[float, float]]
+            Dictionary of stream names to aligned starting time and rate.
+        """
         self.stream_name_to_starting_time_and_rate = stream_name_to_aligned_starting_time_and_rate
 
-    def get_events(self) -> dict:
+    def get_events(self) -> dict[str, dict[str, np.ndarray]]:
         """
-        Useful for extracting events (e.g. camera TTL pulses) from the TDT files.
+        Get a dictionary of events from the TDT files (e.g. camera TTL pulses).
 
-        Returns:
-            dict: Dictionary of events.
+        The events dictionary maps from the names of each epoc in the TDT data to an event dictionary.
+        Each event dictionary maps from "onset", "offset", and "data" to the corresponding arrays.
+
+        Returns
+        -------
+        dict[str, dict[str, np.ndarray]]
+            Dictionary of events.
         """
         events = {}
         tdt_photometry = self.load(evtype=["epocs"])
-        for stream_name in tdt_photometry.epocs.keys():
-            events[stream_name] = {
-                "onset": tdt_photometry.epocs[stream_name].onset,
-                "offset": tdt_photometry.epocs[stream_name].offset,
-                "data": tdt_photometry.epocs[stream_name].data,
+        for epoc_name in tdt_photometry.epocs.keys():
+            events[epoc_name] = {
+                "onset": tdt_photometry.epocs[epoc_name].onset,
+                "offset": tdt_photometry.epocs[epoc_name].offset,
+                "data": tdt_photometry.epocs[epoc_name].data,
             }
         return events
 
@@ -139,6 +238,27 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         t2: float = 0.0,
         timing_source: Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"] = "original",
     ):
+        """
+        Add the data to an NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The in-memory object to add the data to.
+        metadata : dict
+            Metadata dictionary with information used to create the NWBFile.
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
+        timing_source : Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"], optional
+            Source of timing information for the data, default = "original".
+
+        Raises
+        ------
+        AssertionError
+            If the timing_source is not one of "original", "aligned_timestamps", or "aligned_starting_time_and_rate".
+        """
         from ndx_fiber_photometry import (
             CommandedVoltageSeries,
             FiberPhotometry,
