@@ -5,23 +5,28 @@
   "Ecephys": {
     "Device": [
       {
-        "name": "Neuropixel-Imec",
+        "name": "NeuropixelImec0",
         "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
+        "manufacturer": "Imec"
+      },
+      {
+        "name": "NIDQBoard",
+        "description": "no description",
         "manufacturer": "Imec"
       }
     ],
     "ElectrodeGroup": [
       {
-        "name": "imec0_s0",
-        "description": "a group representing shank imec0_s0",
+        "name": "Imec0Shank0",
+        "description": "A group representing probe/shank 'Imec0Shank0'.",
         "location": "unknown",
-        "device": "Neuropixel-Imec"
+        "device": "NeuropixelImec0"
       },
       {
         "name": "NIDQChannelGroup",
         "description": "A group representing the NIDQ channels.",
         "location": "unknown",
-        "device": "Neuropixel-Imec"
+        "device": "NIDQBoard"
       }
     ],
     "ElectricalSeriesAPImec0": {

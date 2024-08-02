@@ -73,6 +73,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
 
         # Device metadata
         device = get_device_metadata(self.meta)
+        device["name"] = "NIDQBoard"
 
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]

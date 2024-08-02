@@ -38,11 +38,15 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
             assert "ElectricalSeriesLFImec0" in nwbfile.acquisition
             assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
+            assert len(nwbfile.acquisition) == 3
 
-            assert "Neuropixel-Imec" in nwbfile.devices
+            assert "NeuropixelImec0" in nwbfile.devices
+            assert "NIDQBoard" in nwbfile.devices
+            assert len(nwbfile.devices) == 2
 
             assert "NIDQChannelGroup" in nwbfile.electrode_groups
-            assert "imec0_s0" in nwbfile.electrode_groups
+            assert "Imec0Shank0" in nwbfile.electrode_groups
+            assert len(nwbfile.electrode_groups) == 2
 
     def test_single_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
@@ -57,7 +61,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         del test_metadata["NWBFile"]["source_script"]
         del test_metadata["NWBFile"]["source_script_file_name"]
 
-        self.assertDictEqual(d1=test_metadata, d2=expected_metadata)
+        assert test_metadata == expected_metadata
 
         nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -113,20 +117,19 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
         assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
         assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
-
         assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
+        assert len(nwbfile.acquisition) == 8
 
-        assert "Neuropixel-Imec" in nwbfile.devices
+        assert "NeuropixelImec0" in nwbfile.devices
+        assert "NeuropixelImec1" in nwbfile.devices
+        assert len(nwbfile.devices) == 2
 
-        # TODO: fix devices
-        # assert "Neuropixel-Imec0" in nwbfile.devices
-        # assert "Neuropixel-Imec0" in nwbfile.devices
-
-        assert "imec0_s0" in nwbfile.electrode_groups
-        assert "imec1_s0" in nwbfile.electrode_groups
+        assert "Imec0Shank0" in nwbfile.electrode_groups
+        assert "Imec1Shank0" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 2
 
     def test_multi_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(
@@ -143,7 +146,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         del test_metadata["NWBFile"]["source_script"]
         del test_metadata["NWBFile"]["source_script_file_name"]
 
-        self.assertDictEqual(d1=test_metadata, d2=expected_metadata)
+        assert test_metadata == expected_metadata
 
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
