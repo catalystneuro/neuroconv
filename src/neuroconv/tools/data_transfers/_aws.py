@@ -73,7 +73,7 @@ def submit_aws_batch_job(
             {"jobId": "job_id_2", "type": "SEQUENTIAL"},
             ...
         ]
-        
+
         Refer to the boto3 API documentation for latest syntax.
     region : str, default: "us-east-2"
         The AWS region to use for the job.
