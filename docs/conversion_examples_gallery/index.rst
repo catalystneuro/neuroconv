@@ -83,6 +83,14 @@ Segmentation
     EXTRACT <segmentation/extract>
     Suite2P <segmentation/suite2p>
 
+Fiber Photometry
+~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    TDT Fiber Photometry <fiberphotometry/tdt_fp>
+
 Behavior
 --------
 
