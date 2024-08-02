@@ -50,7 +50,7 @@ def submit_aws_batch_job(
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
     job_definition_name: Optional[str] = None,
-    minimum_worker_ram_in_gb: float = 4.0,
+    minimum_worker_ram_in_gib: int = 4,
     minimum_worker_cpus: int = 4,
     submission_id: Optional[str] = None,
 ) -> Dict[str, str]:
@@ -73,6 +73,8 @@ def submit_aws_batch_job(
             {"jobId": "job_id_2", "type": "SEQUENTIAL"},
             ...
         ]
+        
+        Refer to the boto3 API documentation for latest syntax.
     region : str, default: "us-east-2"
         The AWS region to use for the job.
     status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
@@ -87,10 +89,10 @@ def submit_aws_batch_job(
         The name of the job definition to use for the job.
         Defaults to f"neuroconv_batch_{ name of docker image }",
         but replaces any colons from tags in the docker image name with underscores.
-    minimum_worker_ram_in_gb : int, default: 4.0
+    minimum_worker_ram_in_gib : int, default: 4
         The minimum amount of base worker memory required to run this job.
         Determines the EC2 instance type selected by the automatic 'best fit' selector.
-        Recommended to be several GB to allow comfortable buffer space for data chunk iterators.
+        Recommended to be several GiB to allow comfortable buffer space for data chunk iterators.
     minimum_worker_cpus : int, default: 4
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
@@ -217,7 +219,7 @@ def submit_aws_batch_job(
     ]
     resource_requirements = [
         {
-            "value": str(int(minimum_worker_ram_in_gb * 1e3 / 1.024**2)),
+            "value": str(int(minimum_worker_ram_in_gib * 1024)),
             "type": "MEMORY",
         },  # boto3 expects memory in round MiB
         {"value": str(minimum_worker_cpus), "type": "VCPU"},
