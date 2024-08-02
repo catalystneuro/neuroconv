@@ -35,14 +35,14 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
             assert nwbfile.session_start_time == expected_session_start_time
 
-            assert "ElectricalSeriesAPIMEC0" in nwbfile.acquisition
-            assert "ElectricalSeriesLFIMEC0" in nwbfile.acquisition
+            assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
+            assert "ElectricalSeriesLFImec0" in nwbfile.acquisition
             assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
 
             assert "Neuropixel-Imec" in nwbfile.devices
 
             assert "NIDQChannelGroup" in nwbfile.electrode_groups
-            assert "s0" in nwbfile.electrode_groups
+            assert "imec0_s0" in nwbfile.electrode_groups
 
     def test_single_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
@@ -51,7 +51,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         test_metadata = deepcopy(metadata)
         for exclude_field in ["session_start_time", "identifier"]:
             test_metadata["NWBFile"].pop(exclude_field)
-        expected_metadata = load_dict_from_file(file_path=Path(__file__).parent / "single_probe_metadata.json")
+        expected_metadata = load_dict_from_file(file_path=Path(__file__).parent / "spikeglx_single_probe_metadata.json")
 
         # Exclude watermarks from testing assertions
         del test_metadata["NWBFile"]["source_script"]
@@ -108,19 +108,25 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
 
         assert nwbfile.session_start_time == expected_session_start_time
 
-        assert "ElectricalSeriesAPIMEC00" in nwbfile.acquisition
-        assert "ElectricalSeriesAPIMEC01" in nwbfile.acquisition
-        assert "ElectricalSeriesAPIMEC10" in nwbfile.acquisition
-        assert "ElectricalSeriesAPIMEC11" in nwbfile.acquisition
+        # TODO: improve name of segments using 'Segment{index}' for clarity
+        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
 
-        assert "ElectricalSeriesLFIMEC00" in nwbfile.acquisition
-        assert "ElectricalSeriesLFIMEC01" in nwbfile.acquisition
-        assert "ElectricalSeriesLFIMEC10" in nwbfile.acquisition
-        assert "ElectricalSeriesLFIMEC11" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
 
         assert "Neuropixel-Imec" in nwbfile.devices
 
-        assert "s0" in nwbfile.electrode_groups
+        # TODO: fix devices
+        # assert "Neuropixel-Imec0" in nwbfile.devices
+        # assert "Neuropixel-Imec0" in nwbfile.devices
+
+        assert "imec0_s0" in nwbfile.electrode_groups
+        assert "imec1_s0" in nwbfile.electrode_groups
 
     def test_multi_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(
@@ -131,7 +137,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         test_metadata = deepcopy(metadata)
         for exclude_field in ["session_start_time", "identifier"]:
             test_metadata["NWBFile"].pop(exclude_field)
-        expected_metadata = load_dict_from_file(file_path=Path(__file__).parent / "multi_probe_metadata.json")
+        expected_metadata = load_dict_from_file(file_path=Path(__file__).parent / "spikeglx_multi_probe_metadata.json")
 
         # Exclude watermarks from testing assertions
         del test_metadata["NWBFile"]["source_script"]
@@ -168,7 +174,7 @@ def test_electrode_table_writing(tmp_path):
     np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
 
     # Test AP
-    electrical_series = nwbfile.acquisition["ElectricalSeriesAPIMEC0"]
+    electrical_series = nwbfile.acquisition["ElectricalSeriesAPImec0"]
     ap_electrodes_table_region = electrical_series.electrodes
     region_indices = ap_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
@@ -178,7 +184,7 @@ def test_electrode_table_writing(tmp_path):
     np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
     # Test LF
-    electrical_series = nwbfile.acquisition["ElectricalSeriesLFIMEC0"]
+    electrical_series = nwbfile.acquisition["ElectricalSeriesLFImec0"]
     lf_electrodes_table_region = electrical_series.electrodes
     region_indices = lf_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
@@ -197,7 +203,7 @@ def test_electrode_table_writing(tmp_path):
     # Test round trip with spikeinterface
     recording_extractor_ap = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesAPIMEC0",
+        electrical_series_name="ElectricalSeriesAPImec0",
     )
 
     channel_ids = recording_extractor_ap.get_channel_ids()
@@ -205,7 +211,7 @@ def test_electrode_table_writing(tmp_path):
 
     recording_extractor_lf = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesLFIMEC0",
+        electrical_series_name="ElectricalSeriesLFImec0",
     )
 
     channel_ids = recording_extractor_lf.get_channel_ids()

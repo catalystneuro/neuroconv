@@ -12,15 +12,21 @@
     ],
     "ElectrodeGroup": [
       {
-        "name": "s0",
-        "description": "a group representing shank s0",
+        "name": "imec0_s0",
+        "description": "a group representing shank imec0_s0",
+        "location": "unknown",
+        "device": "Neuropixel-Imec"
+      },
+      {
+        "name": "NIDQChannelGroup",
+        "description": "A group representing the NIDQ channels.",
         "location": "unknown",
         "device": "Neuropixel-Imec"
       }
     ],
-    "ElectricalSeriesAPIMEC0": {
-      "name": "ElectricalSeriesAPIMEC0",
-      "description": "Acquisition traces for the ElectricalSeriesAPIMEC0."
+    "ElectricalSeriesAPImec0": {
+      "name": "ElectricalSeriesAPImec0",
+      "description": "Acquisition traces for the ElectricalSeriesAPImec0."
     },
     "Electrodes": [
       {
@@ -36,17 +42,13 @@
         "description": "The shape of the electrode"
       }
     ],
-    "ElectricalSeriesAPIMEC1": {
-      "name": "ElectricalSeriesAPIMEC1",
-      "description": "Acquisition traces for the ElectricalSeriesAPIMEC1."
+    "ElectricalSeriesNIDQ": {
+      "name": "ElectricalSeriesNIDQ",
+      "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
     },
-    "ElectricalSeriesLFIMEC0": {
-      "name": "ElectricalSeriesLFIMEC0",
-      "description": "Acquisition traces for the ElectricalSeriesLFIMEC0."
-    },
-    "ElectricalSeriesLFIMEC1": {
-      "name": "ElectricalSeriesLFIMEC1",
-      "description": "Acquisition traces for the ElectricalSeriesLFIMEC1."
+    "ElectricalSeriesLFImec0": {
+      "name": "ElectricalSeriesLFImec0",
+      "description": "Acquisition traces for the ElectricalSeriesLFImec0."
     }
   }
 }
