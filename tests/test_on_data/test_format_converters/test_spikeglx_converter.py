@@ -120,8 +120,6 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
 
         assert "Neuropixel-Imec" in nwbfile.devices
 
-        assert "s0" in nwbfile.electrode_groups
-
     def test_multi_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(
             folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0" / "5-19-2022-CI0_g0"

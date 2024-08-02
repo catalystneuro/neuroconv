@@ -6,7 +6,6 @@ from typing import Optional
 import numpy as np
 
 from .spikeglx_utils import (
-    add_recording_extractor_properties,
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
     get_session_start_time,
@@ -60,12 +59,43 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             stream_id=self.stream_id,
             verbose=verbose,
             es_key=es_key,
+            all_annotations=True,
         )
         self.source_data["file_path"] = str(file_path)
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
-        # Set electrodes properties
-        add_recording_extractor_properties(self.recording_extractor)
+        # Setting "group_name" should create the electrode groups based on the probe
+        # Note that SpikeGLX interface defaults to create groups by shank which we don't want in this case
+        recording = self.recording_extractor
+        probe_name = recording.get_annotation("stream_name").split(".")[0]
+        self.es_key = self.es_key + f"{probe_name.upper()}"
+        number_of_channels = recording.get_num_channels()
+        recording.set_property(key="group_name", values=[probe_name] * number_of_channels)
+
+        # Also add a probe port as a property to the recording to make explicit where the probe is in the imec card
+        probe_info = recording.get_annotation("probes_info")[0]
+        self.probe_port = probe_info["port"]
+        probe_slot = probe_info["slot"]
+        recording.set_property(key="probe_port", values=[self.probe_port] * number_of_channels)
+        recording.set_property(key="probe_slot", values=[probe_slot] * number_of_channels)
+
+        # This is the probe represented as a numpy structured array
+        contact_vector = recording.get_property("contact_vector")
+        shank_ids = contact_vector["shank_ids"]
+
+        # Add the contact ids
+        contact_ids = contact_vector["contact_ids"]
+        recording.set_property(key="contact_ids", values=contact_ids)
+
+        # Add the contact shapes
+        contact_shapes = contact_vector["contact_shapes"]
+        recording.set_property(key="contact_shapes", values=contact_shapes)
+
+        # This is true for neuropixel 2.0 but I rather just checked directly if the metadata is available
+        self.probe_has_shanks = not all([id == "" for id in shank_ids])
+        if self.probe_has_shanks:
+            shank_ids = contact_vector["shank_ids"]
+            recording.set_property(key="shank_ids", values=shank_ids)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
@@ -75,13 +105,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Device metadata
         device = get_device_metadata(self.meta)
+        device["name"] = device["name"] + f" In Port {self.probe_port}"
 
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
         electrode_groups = [
             dict(
                 name=group_name,
-                description=f"a group representing shank {group_name}",
+                description=f"a group representing probe {group_name}",
                 location="unknown",
                 device=device["name"],
             )
@@ -91,10 +122,17 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
-            dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
-            dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
+            dict(name="group_name", description="Probe that contact corresponding to the electrode is a part of."),
+            dict(name="contact_ids", description="The contact id of the electrode"),
             dict(name="contact_shapes", description="The shape of the electrode"),
+            dict(name="probe_port", description="The port in the imec card where the probe is connected"),
+            dict(name="probe_slot", description="The probe slot in the PXIe-1071"),
         ]
+
+        if self.probe_has_shanks:
+            metadata["Ecephys"]["Electrodes"].append(
+                dict(name="shank_ids", description="The shank id of the electrode")
+            )
 
         return metadata
 

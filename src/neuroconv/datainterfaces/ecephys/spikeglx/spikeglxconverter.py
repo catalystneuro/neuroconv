@@ -79,6 +79,8 @@ class SpikeGLXConverterPipe(ConverterPipe):
             if "nidq" in stream:
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
+
+            probes_info = interface.recording_extractor.get_annotation("probes_info")
             data_interfaces.update({str(stream): interface})  # Without str() casting, is a numpy string
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
