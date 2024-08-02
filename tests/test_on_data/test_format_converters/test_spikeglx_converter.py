@@ -61,6 +61,10 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         del test_metadata["NWBFile"]["source_script"]
         del test_metadata["NWBFile"]["source_script_file_name"]
 
+        import json
+
+        print(json.dumps(test_metadata, indent=2))
+
         assert test_metadata == expected_metadata
 
         nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"

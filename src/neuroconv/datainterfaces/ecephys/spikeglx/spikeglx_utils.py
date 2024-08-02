@@ -116,9 +116,9 @@ def get_device_metadata(meta) -> dict:
     if "imDatBsc_pn" in meta:
         metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
 
-    description_string = "no description"
+    description_string = "A Neuropixel probe of unknown subtype."
     if metadata_dict:
         description_string = json.dumps(metadata_dict)
-    device_metadata = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
+    device_metadata = dict(name="NeuropixelImec", description=description_string, manufacturer="Imec")
 
     return device_metadata

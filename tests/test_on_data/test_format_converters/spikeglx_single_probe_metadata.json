@@ -11,8 +11,8 @@
       },
       {
         "name": "NIDQBoard",
-        "description": "no description",
-        "manufacturer": "Imec"
+        "description": "A NIDQ board used in conjunction with SpikeGLX.",
+        "manufacturer": "National Instruments."
       }
     ],
     "ElectrodeGroup": [
