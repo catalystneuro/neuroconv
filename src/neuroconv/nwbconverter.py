@@ -163,9 +163,14 @@ class NWBConverter:
             if isinstance(data_interface, NWBConverter):
                 subconverter_kwargs = dict(nwbfile=nwbfile, metadata=metadata)
 
+                # Certain subconverters fully expose control over their interfaces conversion options
+                # (such as iterator options, including progress bar details)
                 subconverter_keyword_arguments = list(signature(data_interface.add_to_nwbfile).parameters.keys())
                 if "conversion_options" in subconverter_keyword_arguments:
                     subconverter_kwargs["conversion_options"] = conversion_options.get(interface_key, None)
+                # Others do not, and instead expose simplified global keywords similar to a classic interface
+                else:
+                    subconverter_kwargs.update(conversion_options.get(interface_key, dict()))
 
                 data_interface.add_to_nwbfile(**subconverter_kwargs)
             else:
