@@ -49,13 +49,17 @@ def test_mock_metadata():
     expected_ecephys_metadata = {
         "Ecephys": {
             "Device": [
-                {"description": "no description", "manufacturer": "Imec", "name": "Neuropixel-Imec"},
+                {
+                    "name": "NIDQBoard",
+                    "description": "A NIDQ board used in conjunction with SpikeGLX.",
+                    "manufacturer": "National Instruments",
+                },
             ],
             "ElectrodeGroup": [
                 {
                     "name": "NIDQChannelGroup",
                     "description": "A group representing the NIDQ channels.",
-                    "device": "Neuropixel-Imec",
+                    "device": "NIDQBoard",
                     "location": "unknown",
                 },
             ],
@@ -68,7 +72,7 @@ def test_mock_metadata():
             },
         }
     }
-    print(metadata["Ecephys"])
+
     assert metadata["Ecephys"] == expected_ecephys_metadata["Ecephys"]
 
     expected_start_time = datetime(2020, 11, 3, 10, 35, 10)
@@ -88,7 +92,13 @@ def test_mock_run_conversion(tmpdir: pathlib.Path):
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
 
-        assert "Neuropixel-Imec" in nwbfile.devices
+        assert "NIDQBoard" in nwbfile.devices
+        assert len(nwbfile.devices) == 1
+
         assert "NIDQChannelGroup" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 1
+
         assert list(nwbfile.electrodes.id[:]) == [0, 1, 2, 3, 4, 5, 6, 7]
+
         assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
+        assert len(nwbfile.acquisition) == 1

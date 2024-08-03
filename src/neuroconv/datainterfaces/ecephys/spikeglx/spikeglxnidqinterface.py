@@ -75,7 +75,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         device = dict(
             name="NIDQBoard",
             description="A NIDQ board used in conjunction with SpikeGLX.",
-            manufacturer="National Instruments.",
+            manufacturer="National Instruments",
         )
 
         # Add groups metadata
