@@ -1,4 +1,4 @@
-from neuroconv.tools.data_transfers import submit_aws_batch_job
+from neuroconv.tools.aws import submit_aws_batch_job
 
 
 def test_submit_aws_batch_job():
