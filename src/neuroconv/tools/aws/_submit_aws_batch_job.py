@@ -426,8 +426,8 @@ def _ensure_job_definition_exists(
 
     job_definition_name = f"neuroconv_batch"
     job_definition_name += f"_{parsed_docker_image_name}-image"
-    job_definition_name += "_{minimum_worker_ram_in_gib}-GiB-RAM"
-    job_definition_name += "_{minimum_worker_cpus}-CPU"
+    job_definition_name += f"_{minimum_worker_ram_in_gib}-GiB-RAM"
+    job_definition_name += f"_{minimum_worker_cpus}-CPU"
     if docker_tag is None or docker_tag == "latest":
         date = datetime.now().strftime("%Y-%m-%d")
         job_definition_name += f"_created-on-{date}"

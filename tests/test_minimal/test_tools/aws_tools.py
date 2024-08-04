@@ -12,6 +12,9 @@ def test_submit_aws_batch_job():
         command=command,
     )
 
+    # TODO: check job ID from boto3
+    # TODO: check status on table, should be 'Job submitted...'
+
 
 def test_submit_aws_batch_job_with_dependencies():
     job_name_1 = "test_submit_aws_batch_job_with_dependencies_1"
@@ -25,6 +28,9 @@ def test_submit_aws_batch_job_with_dependencies():
     )
     job_submission_info = info["job_submission_info"]
 
+    # TODO: check job ID from boto3
+    # TODO: check status on table, should be 'Job submitted...'
+
     job_name_2 = "test_submit_aws_batch_job_with_dependencies_1"
     command_2 = "echo 'Testing NeuroConv AWS Batch submission with dependencies."
     job_dependencies = [{"jobId": job_submission_info["jobId"], "type": "SEQUENTIAL"}]
@@ -34,3 +40,6 @@ def test_submit_aws_batch_job_with_dependencies():
         command=command_2,
         job_dependencies=job_dependencies,
     )
+
+    # TODO: check job ID from boto3
+    # TODO: check status on table, should be 'Job submitted...'
