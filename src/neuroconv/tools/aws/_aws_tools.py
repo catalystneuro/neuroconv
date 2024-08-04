@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 
@@ -13,8 +13,8 @@ def submit_aws_batch_job(
     job_name: str,
     docker_image: str,
     command: Optional[str] = None,
+    environment_variables: Optional[Dict[str, str]] = None,
     job_dependencies: Optional[List[Dict[str, str]]] = None,
-    region: Optional[str] = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
@@ -23,6 +23,7 @@ def submit_aws_batch_job(
     minimum_worker_ram_in_gib: int = 4,
     minimum_worker_cpus: int = 4,
     submission_id: Optional[str] = None,
+    region: Optional[str] = None,
 ) -> Dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
@@ -36,6 +37,8 @@ def submit_aws_batch_job(
     command : str, optional
         The command to run in the Docker container.
         Current syntax only supports a single line; consecutive actions should be chained with the '&&' operator.
+    environment_variables : dict, optional
+        A dictionary of environment variables to pass to the Docker container.
     job_dependencies : list of dict
         A list of job dependencies for this job to trigger. Structured as follows:
         [
@@ -45,10 +48,6 @@ def submit_aws_batch_job(
         ]
 
         Refer to the boto3 API documentation for latest syntax.
-    region : str, optional
-        The AWS region to use for the job.
-        If not provided, we will attempt to load the region from your local AWS configuration.
-        If that file is not found on your system, we will default to "us-east-2", the location of the DANDI Archive.
     status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
         The name of the DynamoDB table to use for tracking job status.
     iam_role_name : str, default: "neuroconv_batch_role"
@@ -70,7 +69,11 @@ def submit_aws_batch_job(
         A minimum of 4 is required, even if only one will be used in the actual process.
     submission_id : str, optional
         The unique ID to pair with this job submission when tracking the status via DynamoDB.
-        Defaults to a sampled UUID4.
+        Defaults to a random UUID4.
+    region : str, optional
+        The AWS region to use for the job.
+        If not provided, we will attempt to load the region from your local AWS configuration.
+        If that file is not found on your system, we will default to "us-east-2", the location of the DANDI Archive.
 
     Returns
     -------
@@ -82,6 +85,7 @@ def submit_aws_batch_job(
     """
     import boto3
 
+    # Ensure all client parameters are set
     region = region or _attempt_to_load_region_from_config() or "us-east-2"
 
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
@@ -90,27 +94,49 @@ def submit_aws_batch_job(
         aws_access_key_id, aws_secret_access_key = _attempt_to_load_aws_credentials_from_config()
     if aws_access_key_id is None or aws_secret_access_key is None:
         raise EnvironmentError(
-            "To use this submodule, both 'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY' must either be set in the "
+            "To use this function, both 'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY' must either be set in the "
             "local environment or set in the default AWS configuration file."
         )
 
-    table = _create_or_get_status_tracker_table(status_tracker_table_name=status_tracker_table_name, region=region)
-    role_info = _create_or_get_iam_role(iam_role_name=iam_role_name)
-
+    # Initialize all clients
+    dynamodb_client = boto3.client(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    dynamodb_resource = boto3.resource(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    iam_client = boto3.client(
+        service_name="iam",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
     batch_client = boto3.client(
         service_name="batch",
         region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
+
+    # Get the tracking table and IAM role
+    table = _create_or_get_status_tracker_table(
+        status_tracker_table_name=status_tracker_table_name,
+        dynamodb_client=dynamodb_client,
+        dynamodb_resource=dynamodb_resource,
+    )
+    role_info = _create_or_get_iam_role(iam_role_name=iam_role_name, iam_client=iam_client)
+
+    # Ensure all job submission requirements are met
     _ensure_compute_environment_exists(compute_environment_name=compute_environment_name, batch_client=batch_client)
     _ensure_job_queue_exists(job_queue_name=job_queue_name, batch_client=batch_client)
-
-    # TODO: might be better to hash this?
-    job_definition_docker_name = docker_image.replace(":", "_")
-    job_definition_name = job_definition_name or f"neuroconv_batch_{job_definition_docker_name}"
     _ensure_job_definition_exists(
-        job_definition_name=job_definition_name,
+        docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
         minimum_worker_cpus=minimum_worker_cpus,
         role_info=role_info,
@@ -127,15 +153,9 @@ def submit_aws_batch_job(
 
     # Set environment variables to the docker container as well as optional commands to run
     job_dependencies = job_dependencies or []
-    container_overrides = dict(
-        # Set environment variables
-        environment=[
-            dict(  # The burden is on the calling script to update the table status to finished
-                name="STATUS_TRACKER_TABLE_NAME",
-                value=status_tracker_table_name,
-            ),
-        ]
-    )
+    container_overrides = dict()
+    if environment_variables is not None:
+        container_overrides["environment"] = [{key: value} for key, value in environment_variables.items()]
     if command is not None:
         container_overrides["command"] = [command]
     job_submission_info = batch_client.submit_job(
@@ -146,10 +166,14 @@ def submit_aws_batch_job(
         containerOverrides=container_overrides,
     )
 
-    # Update DynamoDB status tracking table
+    # Update status tracking table
     submission_id = submission_id or str(uuid4())
     table_submission_info = dict(
-        id=submission_id, job_name=job_name, submitted_on=datetime.now().isoformat(), status="submitted"
+        id=submission_id,
+        job_id=job_submission_info["jobId"],
+        job_name=job_name,
+        submitted_on=datetime.now().isoformat(),
+        status="Job submitted...",
     )
     table.put_item(Item=table_submission_info)
 
@@ -236,7 +260,8 @@ def _attempt_to_load_aws_credentials_from_config(file_path: str) -> Tuple[Option
 def _create_or_get_status_tracker_table(
     *,
     status_tracker_table_name: str,
-    region: str,
+    dynamodb_client: "boto3.client.dynamodb",
+    dynamodb_resource: "boto3.resources.dynamodb",
 ) -> "boto3.resources.dynamodb.Table":
     """
     Create or get the DynamoDB table for tracking the status of jobs submitted to AWS Batch.
@@ -248,24 +273,13 @@ def _create_or_get_status_tracker_table(
 
     Parameters
     ----------
-    status_tracker_table_name : str
+    status_tracker_table_name : str, default: "neuroconv_batch_status_tracker"
+        The name of the DynamoDB table to use for tracking job status.
+    dynamodb_client : boto3.client.dynamodb
+        The DynamoDB client to use for the job.
+    dynamodb_resource : boto3.resources.dynamodb
+        The DynamoDB resource to use for the job.
     """
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
-
-    dynamodb_client = boto3.client(
-        service_name="dynamodb",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-    dynamodb_resource = boto3.resource(
-        service_name="dynamodb",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
     current_tables = dynamodb_client.list_tables()["TableNames"]
     if status_tracker_table_name not in current_tables:
         table = dynamodb_resource.create_table(
@@ -280,7 +294,7 @@ def _create_or_get_status_tracker_table(
     return table
 
 
-def _create_or_get_iam_role(iam_role_name: str) -> dict:
+def _create_or_get_iam_role(*, iam_role_name: str, iam_client: "boto3.client.iam") -> dict:
     """
     Create or get the IAM role policy for the AWS Batch job.
 
@@ -288,17 +302,9 @@ def _create_or_get_iam_role(iam_role_name: str) -> dict:
     ----------
     iam_role_name : str
         The name of the IAM role to use for the job.
+    iam_client : boto3.client.iam
+        The IAM client to use for the job.
     """
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
-
-    iam_client = boto3.client(
-        service_name="iam",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
     current_roles = [role["RoleName"] for role in iam_client.list_roles()["Roles"]]
     if iam_role_name not in current_roles:
         assume_role_policy = dict(
@@ -323,7 +329,17 @@ def _create_or_get_iam_role(iam_role_name: str) -> dict:
     return role_info
 
 
-def _ensure_compute_environment_exists(compute_environment_name: str, batch_client: "botocore.client.Batch") -> None:
+def _ensure_compute_environment_exists(*, compute_environment_name: str, batch_client: "boto3.client.Batch") -> None:
+    """
+    Ensure that the compute environment exists in AWS Batch.
+
+    Parameters
+    ----------
+    compute_environment_name : str
+        The name of the compute environment to use for the job.
+    batch_client : boto3.client.Batch
+        The AWS Batch client to use for the job.
+    """
     current_compute_environments = [
         environment["computeEnvironmentName"]
         for environment in batch_client.describe_compute_environments()["computeEnvironments"]
@@ -335,7 +351,7 @@ def _ensure_compute_environment_exists(compute_environment_name: str, batch_clie
             state="ENABLED",
             computeResources={
                 "type": "EC2",
-                "allocationStrategy": "BEST_FIT",
+                "allocationStrategy": "BEST_FIT",  # Note: not currently supporting spot due to interruptibility
                 "minvCpus": 0,
                 "maxvCpus": 256,
                 "subnets": ["subnet-0be50d51", "subnet-3fd16f77", "subnet-0092132b"],
@@ -348,7 +364,17 @@ def _ensure_compute_environment_exists(compute_environment_name: str, batch_clie
     return None
 
 
-def _ensure_job_queue_exists(job_queue_name: str, batch_client: "botocore.client.Batch") -> None:
+def _ensure_job_queue_exists(*, job_queue_name: str, batch_client: "boto3.client.Batch") -> None:
+    """
+    Ensure that the job queue exists in AWS Batch.
+
+    Parameters
+    ----------
+    job_queue_name : str
+        The name of the job queue to use for the job.
+    batch_client : boto3.client.Batch
+        The AWS Batch client to use for the job.
+    """
     current_job_queues = [queue["jobQueueName"] for queue in batch_client.describe_job_queues()["jobQueues"]]
     if job_queue_name not in current_job_queues:
         batch_client.create_job_queue(
@@ -364,41 +390,73 @@ def _ensure_job_queue_exists(job_queue_name: str, batch_client: "botocore.client
 
 
 def _ensure_job_definition_exists(
-    job_definition_name: str,
+    *,
+    docker_image: str,
     minimum_worker_ram_in_gib: int,
     minimum_worker_cpus: int,
     role_info: dict,
-    batch_client: "botocore.client.Batch",
+    batch_client: "boto3.client.Batch",
 ) -> None:
+    """
+    Ensure that the job definition exists in AWS Batch.
+
+    Automatically generates a job definition name using the docker image, its tags, and worker configuration.
+    The creation date is also appended if the docker image was not tagged or was tagged as 'latest'.
+
+    Parameters
+    ----------
+    docker_image : str
+        The name of the Docker image to use for the job.
+    minimum_worker_ram_in_gib : int
+        The minimum amount of base worker memory required to run this job.
+        Determines the EC2 instance type selected by the automatic 'best fit' selector.
+        Recommended to be several GiB to allow comfortable buffer space for data chunk iterators.
+    minimum_worker_cpus : int
+        The minimum number of CPUs required to run this job.
+        A minimum of 4 is required, even if only one will be used in the actual process.
+    role_info : dict
+        The IAM role information for the job.
+    batch_client : boto3.client.Batch
+        The AWS Batch client to use for the job.
+    """
+    # Images don't strictly need tags - 'latest' is always used by default
+    docker_tags = docker_image.split(":")[1:]
+    docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
+    parsed_docker_image_name = docker_image.replace(":", "-")  # AWS Batch does not allow colons in job definition names
+
+    job_definition_name = f"neuroconv_batch"
+    job_definition_name += f"_{parsed_docker_image_name}-image"
+    job_definition_name += "_{minimum_worker_ram_in_gib}-GiB-RAM"
+    job_definition_name += "_{minimum_worker_cpus}-CPU"
+    if docker_tag is None or docker_tag == "latest":
+        date = datetime.now().strftime("%Y-%m-%d")
+        job_definition_name += f"_created-on-{date}"
+
     current_job_definitions = [
         definition["jobDefinitionName"] for definition in batch_client.describe_job_definitions()["jobDefinitions"]
     ]
-    resource_requirements = [
-        {
-            "value": str(int(minimum_worker_ram_in_gib * 1024)),  # boto3 expects memory in round MiB
-            "type": "MEMORY",
-        },
-        {"value": str(minimum_worker_cpus), "type": "VCPU"},
-    ]
     if job_definition_name not in current_job_definitions:
+        resource_requirements = [
+            {
+                "value": str(int(minimum_worker_ram_in_gib * 1024)),  # boto3 expects memory in round MiB
+                "type": "MEMORY",
+            },
+            {"value": str(minimum_worker_cpus), "type": "VCPU"},
+        ]
+
+        minimum_time_to_kill_in_days = 1  # Note: eventually consider exposing this for very long jobs?
+        minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
+
         batch_client.register_job_definition(
             jobDefinitionName=job_definition_name,
             type="container",
+            timeout=dict(attemptDurationSeconds=minimum_time_to_kill_in_seconds),
             containerProperties=dict(
                 image=docker_image,
                 resourceRequirements=resource_requirements,
                 jobRoleArn=role_info["Role"]["Arn"],
                 executionRoleArn=role_info["Role"]["Arn"],
-                environment=[
-                    dict(
-                        name="AWS_DEFAULT_REGION",
-                        value=region,
-                    )
-                ],
             ),
         )
-    else:
-        # Should we also check that memory/vcpu values resolve with any previously defined job definitions in this event?
-        pass
 
     return None
