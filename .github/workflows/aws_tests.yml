@@ -39,4 +39,4 @@ jobs:
         run: pip install .[aws,test]
 
       - name: Run subset of tests that use S3 live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/s3_tools.py
+        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools.py
