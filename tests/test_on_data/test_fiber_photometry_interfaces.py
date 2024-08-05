@@ -22,7 +22,7 @@ from parameterized import parameterized
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Photo_249_391-200721-120136_stubbed"),
+        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
     )
     conversion_options = dict(t2=1.0)
     save_directory = OUTPUT_PATH
