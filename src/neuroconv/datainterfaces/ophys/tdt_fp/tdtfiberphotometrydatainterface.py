@@ -1,9 +1,11 @@
 import os
 from contextlib import redirect_stdout
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
+import pytz
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -44,7 +46,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
-        metadata["NWBFile"]["session_start_time"] = tdt_photometry.info.start_date.isoformat()
+        start_timestamp = tdt_photometry.info.start_date.timestamp()
+        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=pytz.utc)
+        metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
         return metadata
 
     def get_metadata_schema(self) -> dict:
