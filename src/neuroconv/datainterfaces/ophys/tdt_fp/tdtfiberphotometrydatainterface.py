@@ -184,16 +184,25 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             stream_name_to_starting_time_and_rate[stream_name] = (starting_time, rate)
         return stream_name_to_starting_time_and_rate
 
-    def get_starting_time_and_rate(self) -> tuple[float, float]:
+    def get_starting_time_and_rate(self, t1: float = 0.0, t2: float = 0.0) -> tuple[float, float]:
         """
         Get the starting time and rate for the data.
+
+        Parameters
+        ----------
+        t1 : float, optional
+            Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
+        t2 : float, optional
+            Retrieve data ending at t2 (in seconds), default = 0 for end of recording.
 
         Returns
         -------
         dict[str, tuple[float, float]]
             Dictionary of stream names to starting time and rate.
         """
-        return self.stream_name_to_starting_time_and_rate
+        return getattr(
+            self, "stream_name_to_starting_time_and_rate", self.get_original_starting_time_and_rate(t1=t1, t2=t2)
+        )
 
     def set_aligned_starting_time_and_rate(
         self, stream_name_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]]
@@ -272,9 +281,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # timing_source is used to avoid loading the data twice if alignment is NOT used.
         # It is also used to determine whether or not to use the aligned timestamps or starting time and rate.
         if timing_source == "aligned_timestamps":
-            stream_name_to_timestamps = self.get_timestamps()
+            stream_name_to_timestamps = self.get_timestamps(t1=t1, t2=t2)
         elif timing_source == "aligned_starting_time_and_rate":
-            stream_name_to_starting_time_and_rate = self.get_starting_time_and_rate()
+            stream_name_to_starting_time_and_rate = self.get_starting_time_and_rate(t1=t1, t2=t2)
         else:
             assert (
                 timing_source == "original"

@@ -288,12 +288,20 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                         expected_value == fiber_photometry_table.columns[key_index].data[i].name
                     ), f"FiberPhotometryTable row {i} attribute {key} is {fiber_photometry_table.columns[key_index].data[i].name} but expected {expected_value}"
 
-    def test_all_conversion_checks(self):
+    @parameterized.expand(
+        [
+            ("timing_source_original", "original"),
+            ("timing_source_timestamps", "aligned_timestamps"),
+            ("timing_source_rate", "aligned_starting_time_and_rate"),
+        ]
+    )
+    def test_all_conversion_checks(self, _, timing_source):
         metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
         editable_metadata = load_dict_from_file(metadata_file_path)
         metadata = self.data_interface_cls(**self.interface_kwargs).get_metadata()
         metadata = dict_deep_update(metadata, editable_metadata)
 
+        self.conversion_options["timing_source"] = timing_source
         super().test_all_conversion_checks(metadata=metadata)
 
     def test_get_original_starting_time_and_rate(self):
@@ -309,7 +317,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             else:
                 assert rate == 6103.515625
 
-    def test_set_get_aligned_starting_time_and_rate(self):
+    def test_set_aligned_starting_time_and_rate(self):
         t1 = self.conversion_options.get("t1", 0.0)
         t2 = self.conversion_options.get("t2", 0.0)
         interface = self.data_interface_cls(**self.interface_kwargs)
@@ -324,7 +332,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             stream_name_to_aligned_starting_time_and_rate=aligned_stream_name_to_starting_time_and_rate
         )
 
-        retrieved_aligned_stream_name_to_starting_time_and_rate = interface.get_starting_time_and_rate()
+        retrieved_aligned_stream_name_to_starting_time_and_rate = interface.get_starting_time_and_rate(t1=t1, t2=t2)
         for stream_name, (starting_time, rate) in aligned_stream_name_to_starting_time_and_rate.items():
             retrieved_starting_time, retrieved_rate = retrieved_aligned_stream_name_to_starting_time_and_rate[
                 stream_name
