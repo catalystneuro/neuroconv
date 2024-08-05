@@ -58,8 +58,7 @@ def submit_aws_batch_job(
         The name of the job queue to use for the job.
     job_definition_name : str, optional
         The name of the job definition to use for the job.
-        Defaults to f"neuroconv_batch_{ name of docker image }",
-        but replaces any colons from tags in the docker image name with underscores.
+        If unspecified, a name starting with 'neuroconv_batch_' will be generated.
     minimum_worker_ram_in_gib : int, default: 4
         The minimum amount of base worker memory required to run this job.
         Determines the EC2 instance type selected by the automatic 'best fit' selector.
@@ -135,7 +134,14 @@ def submit_aws_batch_job(
     # Ensure all job submission requirements are met
     _ensure_compute_environment_exists(compute_environment_name=compute_environment_name, batch_client=batch_client)
     _ensure_job_queue_exists(job_queue_name=job_queue_name, batch_client=batch_client)
+
+    job_definition_name = job_definition_name or _generate_job_definition_name(
+        docker_image=docker_image,
+        minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
+        minimum_worker_cpus=minimum_worker_cpus,
+    )
     _ensure_job_definition_exists(
+        job_definition_name=job_definition_name,
         docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
         minimum_worker_cpus=minimum_worker_cpus,
@@ -187,11 +193,6 @@ def _attempt_to_load_region_from_config() -> Optional[str]:
 
     Returns `None` if any issue is encountered.
 
-    Parameters
-    ----------
-    file_path : str
-        The path to the configuration file.
-
     Returns
     -------
     region : str or None
@@ -207,7 +208,7 @@ def _attempt_to_load_region_from_config() -> Optional[str]:
     if not default_config_file_path.exists():
         return None
 
-    with open(file=file_path, mode="r") as io:
+    with open(file=default_config_file_path, mode="r") as io:
         all_lines = io.readlines()
     lines_with_region = [line for line in all_lines if "region" == line[:7]]
 
@@ -219,14 +220,9 @@ def _attempt_to_load_region_from_config() -> Optional[str]:
     return region
 
 
-def _attempt_to_load_aws_credentials_from_config(file_path: str) -> Tuple[Optional[str], Optional[str]]:
+def _attempt_to_load_aws_credentials_from_config() -> Tuple[Optional[str], Optional[str]]:
     """
     Attempts to load the AWS credentials from a configuration file.
-
-    Parameters
-    ----------
-    file_path : str
-        The path to the configuration file.
 
     Returns
     -------
@@ -238,15 +234,15 @@ def _attempt_to_load_aws_credentials_from_config(file_path: str) -> Tuple[Option
         - No line starts with either key.
         - Multiple lines start with either key.
     """
-    default_config_file_path = Path.home() / ".aws" / "config"
+    default_credentials_file_path = Path.home() / ".aws" / "credentials"
 
-    if not default_config_file_path.exists():
+    if not default_credentials_file_path.exists():
         return (None, None)
 
-    with open(file=file_path, mode="r") as io:
+    with open(file=default_credentials_file_path, mode="r") as io:
         all_lines = io.readlines()
-    lines_with_access_key_id = [line for line in all_lines if "aws_access_key_id" == line[:16]]
-    lines_with_secret_access_key = [line for line in all_lines if "aws_secret_access_key" == line[:20]]
+    lines_with_access_key_id = [line for line in all_lines if "aws_access_key_id" == line[:17]]
+    lines_with_secret_access_key = [line for line in all_lines if "aws_secret_access_key" == line[:21]]
 
     if len(lines_with_access_key_id) != 1 or len(lines_with_secret_access_key) != 1:
         return (None, None)
@@ -389,8 +385,47 @@ def _ensure_job_queue_exists(*, job_queue_name: str, batch_client: "boto3.client
     return None
 
 
+def _generate_job_definition_name(
+    *,
+    docker_image: str,
+    minimum_worker_ram_in_gib: int,
+    minimum_worker_cpus: int,
+) -> str:
+    """
+    Generate a job definition name for the AWS Batch job.
+
+    Note that Docker images don't strictly require a tag to be pulled or used - 'latest' is always used by default.
+
+    Parameters
+    ----------
+    docker_image : str
+        The name of the Docker image to use for the job.
+    minimum_worker_ram_in_gib : int
+        The minimum amount of base worker memory required to run this job.
+        Determines the EC2 instance type selected by the automatic 'best fit' selector.
+        Recommended to be several GiB to allow comfortable buffer space for data chunk iterators.
+    minimum_worker_cpus : int
+        The minimum number of CPUs required to run this job.
+        A minimum of 4 is required, even if only one will be used in the actual process.
+    """
+    docker_tags = docker_image.split(":")[1:]
+    docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
+    parsed_docker_image_name = docker_image.replace(":", "-")  # AWS Batch does not allow colons in job definition names
+
+    job_definition_name = f"neuroconv_batch"
+    job_definition_name += f"_{parsed_docker_image_name}-image"
+    job_definition_name += f"_{minimum_worker_ram_in_gib}-GiB-RAM"
+    job_definition_name += f"_{minimum_worker_cpus}-CPU"
+    if docker_tag is None or docker_tag == "latest":
+        date = datetime.now().strftime("%Y-%m-%d")
+        job_definition_name += f"_created-on-{date}"
+
+    return job_definition_name
+
+
 def _ensure_job_definition_exists(
     *,
+    job_definition_name: str,
     docker_image: str,
     minimum_worker_ram_in_gib: int,
     minimum_worker_cpus: int,
@@ -405,6 +440,8 @@ def _ensure_job_definition_exists(
 
     Parameters
     ----------
+    job_definition_name : str
+        The name of the job definition to use for the job.
     docker_image : str
         The name of the Docker image to use for the job.
     minimum_worker_ram_in_gib : int
@@ -419,19 +456,6 @@ def _ensure_job_definition_exists(
     batch_client : boto3.client.Batch
         The AWS Batch client to use for the job.
     """
-    # Images don't strictly need tags - 'latest' is always used by default
-    docker_tags = docker_image.split(":")[1:]
-    docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
-    parsed_docker_image_name = docker_image.replace(":", "-")  # AWS Batch does not allow colons in job definition names
-
-    job_definition_name = f"neuroconv_batch"
-    job_definition_name += f"_{parsed_docker_image_name}-image"
-    job_definition_name += f"_{minimum_worker_ram_in_gib}-GiB-RAM"
-    job_definition_name += f"_{minimum_worker_cpus}-CPU"
-    if docker_tag is None or docker_tag == "latest":
-        date = datetime.now().strftime("%Y-%m-%d")
-        job_definition_name += f"_created-on-{date}"
-
     current_job_definitions = [
         definition["jobDefinitionName"] for definition in batch_client.describe_job_definitions()["jobDefinitions"]
     ]
