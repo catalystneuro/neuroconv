@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -12,7 +13,7 @@ def submit_aws_batch_job(
     *,
     job_name: str,
     docker_image: str,
-    command: Optional[str] = None,
+    commands: Optional[List[str]] = None,
     environment_variables: Optional[Dict[str, str]] = None,
     job_dependencies: Optional[List[Dict[str, str]]] = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
@@ -24,7 +25,7 @@ def submit_aws_batch_job(
     minimum_worker_cpus: int = 4,
     submission_id: Optional[str] = None,
     region: Optional[str] = None,
-) -> Dict[str, str]:
+) -> Dict[str, str]:  # pragma: no cover
     """
     Submit a job to AWS Batch for processing.
 
@@ -34,9 +35,10 @@ def submit_aws_batch_job(
         The name of the job to submit.
     docker_image : str
         The name of the Docker image to use for the job.
-    command : str, optional
-        The command to run in the Docker container.
+    commands : str, optional
+        The list of commands to run in the Docker container. Normal spaces are separate entries in the list.
         Current syntax only supports a single line; consecutive actions should be chained with the '&&' operator.
+        E.g., `commands=["echo", "'Hello, World!'"]`.
     environment_variables : dict, optional
         A dictionary of environment variables to pass to the Docker container.
     job_dependencies : list of dict
@@ -133,14 +135,16 @@ def submit_aws_batch_job(
 
     # Ensure all job submission requirements are met
     _ensure_compute_environment_exists(compute_environment_name=compute_environment_name, batch_client=batch_client)
-    _ensure_job_queue_exists(job_queue_name=job_queue_name, batch_client=batch_client)
+    _ensure_job_queue_exists(
+        job_queue_name=job_queue_name, compute_environment_name=compute_environment_name, batch_client=batch_client
+    )
 
     job_definition_name = job_definition_name or _generate_job_definition_name(
         docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
         minimum_worker_cpus=minimum_worker_cpus,
     )
-    _ensure_job_definition_exists(
+    job_definition_arn = _ensure_job_definition_exists_and_get_arn(
         job_definition_name=job_definition_name,
         docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
@@ -162,13 +166,13 @@ def submit_aws_batch_job(
     container_overrides = dict()
     if environment_variables is not None:
         container_overrides["environment"] = [{key: value} for key, value in environment_variables.items()]
-    if command is not None:
-        container_overrides["command"] = [command]
+    if commands is not None:
+        container_overrides["command"] = commands
     job_submission_info = batch_client.submit_job(
-        jobQueue=job_queue_name,
-        dependsOn=job_dependencies,
-        jobDefinition=job_definition_name,
         jobName=job_name,
+        dependsOn=job_dependencies,
+        jobDefinition=job_definition_arn,
+        jobQueue=job_queue_name,
         containerOverrides=container_overrides,
     )
 
@@ -187,7 +191,7 @@ def submit_aws_batch_job(
     return info
 
 
-def _attempt_to_load_region_from_config() -> Optional[str]:
+def _attempt_to_load_region_from_config() -> Optional[str]:  # pragma: no cover
     """
     Attempts to load the AWS region from the default configuration file.
 
@@ -220,7 +224,7 @@ def _attempt_to_load_region_from_config() -> Optional[str]:
     return region
 
 
-def _attempt_to_load_aws_credentials_from_config() -> Tuple[Optional[str], Optional[str]]:
+def _attempt_to_load_aws_credentials_from_config() -> Tuple[Optional[str], Optional[str]]:  # pragma: no cover
     """
     Attempts to load the AWS credentials from a configuration file.
 
@@ -258,7 +262,7 @@ def _create_or_get_status_tracker_table(
     status_tracker_table_name: str,
     dynamodb_client: "boto3.client.dynamodb",
     dynamodb_resource: "boto3.resources.dynamodb",
-) -> "boto3.resources.dynamodb.Table":
+) -> "boto3.resources.dynamodb.Table":  # pragma: no cover
     """
     Create or get the DynamoDB table for tracking the status of jobs submitted to AWS Batch.
 
@@ -290,7 +294,7 @@ def _create_or_get_status_tracker_table(
     return table
 
 
-def _create_or_get_iam_role(*, iam_role_name: str, iam_client: "boto3.client.iam") -> dict:
+def _create_or_get_iam_role(*, iam_role_name: str, iam_client: "boto3.client.iam") -> dict:  # pragma: no cover
     """
     Create or get the IAM role policy for the AWS Batch job.
 
@@ -300,32 +304,43 @@ def _create_or_get_iam_role(*, iam_role_name: str, iam_client: "boto3.client.iam
         The name of the IAM role to use for the job.
     iam_client : boto3.client.iam
         The IAM client to use for the job.
-    """
-    current_roles = [role["RoleName"] for role in iam_client.list_roles()["Roles"]]
-    if iam_role_name not in current_roles:
-        assume_role_policy = dict(
-            Version="2012-10-17",
-            Statement=[
-                dict(Effect="Allow", Principal=dict(Service="ecs-tasks.amazonaws.com"), Action="sts:AssumeRole"),
-            ],
-        )
 
-        role_info = iam_client.create_role(
-            RoleName=iam_role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy)
-        )
-        iam_client.attach_role_policy(
-            RoleName=role["Role"]["RoleName"], PolicyArn="arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
-        )
-        iam_client.attach_role_policy(
-            RoleName=role["Role"]["RoleName"], PolicyArn="arn:aws:iam::aws:policy/CloudWatchFullAccess"
-        )
-    else:
+    Returns
+    -------
+    role_info : dict
+        All associated information about the IAM role (including set policies).
+    """
+    # Normally try/except structures are not recommended
+    # But making a targeted request for a named entity here incurs less AWS costs than listing all entities
+    try:
         role_info = iam_client.get_role(RoleName=iam_role_name)
+        return role_info
+    except Exception as exception:
+        if "NoSuchEntity" not in str(exception):
+            raise exception
+
+    assume_role_policy = dict(
+        Version="2012-10-17",
+        Statement=[
+            dict(Effect="Allow", Principal=dict(Service="ecs-tasks.amazonaws.com"), Action="sts:AssumeRole"),
+        ],
+    )
+
+    # iam_client.create_role() is synchronous and so there is no need to wait in this function
+    role_info = iam_client.create_role(RoleName=iam_role_name, AssumeRolePolicyDocument=json.dumps(assume_role_policy))
+    iam_client.attach_role_policy(
+        RoleName=role_info["Role"]["RoleName"], PolicyArn="arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+    )
+    iam_client.attach_role_policy(
+        RoleName=role_info["Role"]["RoleName"], PolicyArn="arn:aws:iam::aws:policy/CloudWatchFullAccess"
+    )
 
     return role_info
 
 
-def _ensure_compute_environment_exists(*, compute_environment_name: str, batch_client: "boto3.client.Batch") -> None:
+def _ensure_compute_environment_exists(
+    *, compute_environment_name: str, batch_client: "boto3.client.Batch", max_retries: int = 12
+) -> None:  # pragma: no cover
     """
     Ensure that the compute environment exists in AWS Batch.
 
@@ -335,32 +350,78 @@ def _ensure_compute_environment_exists(*, compute_environment_name: str, batch_c
         The name of the compute environment to use for the job.
     batch_client : boto3.client.Batch
         The AWS Batch client to use for the job.
+    max_retries : int, default: 12
+        If the compute environment does not already exist, then this is the maximum number of times to synchronously
+        check for its successful creation before erroring.
+        This is essential for a clean setup of the entire pipeline, or else later steps might error because they tried
+        to launch before the compute environment was ready.
     """
-    current_compute_environments = [
-        environment["computeEnvironmentName"]
-        for environment in batch_client.describe_compute_environments()["computeEnvironments"]
-    ]
-    if compute_environment_name not in current_compute_environments:
-        batch_client.create_compute_environment(
-            computeEnvironmentName=compute_environment_name,
-            type="MANAGED",
-            state="ENABLED",
-            computeResources={
-                "type": "EC2",
-                "allocationStrategy": "BEST_FIT",  # Note: not currently supporting spot due to interruptibility
-                "minvCpus": 0,
-                "maxvCpus": 256,
-                "subnets": ["subnet-0be50d51", "subnet-3fd16f77", "subnet-0092132b"],
-                "instanceRole": "ecsInstanceRole",
-                "securityGroupIds": ["sg-851667c7"],
-                "instanceTypes": ["optimal"],
-            },
+    compute_environment_request = batch_client.describe_compute_environments(
+        computeEnvironments=[compute_environment_name]
+    )
+    compute_environment_response = compute_environment_request["computeEnvironments"]
+
+    if len(compute_environment_response) == 1:
+        return compute_environment_response[0]
+
+    if len(compute_environment_response) > 1:
+        raise ValueError(
+            f"Multiple compute environments with the name '{compute_environment_name}' were found! "
+            "Please ensure that only one compute environment has this name."
+        )
+
+    # batch_client.create_compute_environment() is not synchronous and so we need to wait a bit afterwards
+    batch_client.create_compute_environment(
+        computeEnvironmentName=compute_environment_name,
+        type="MANAGED",
+        state="ENABLED",
+        computeResources={
+            "type": "EC2",
+            "allocationStrategy": "BEST_FIT",  # Note: not currently supporting spot due to interruptibility
+            "instanceTypes": ["optimal"],
+            "minvCpus": 1,
+            "maxvCpus": 8,  # Not: not currently exposing control over this since these are mostly I/O intensive
+            "instanceRole": "ecsInstanceRole",
+            # Security groups and subnets last updated on 8/4/2024
+            "securityGroupIds": ["sg-001699e5b7496b226"],
+            "subnets": [
+                "subnet-0890a93aedb42e73e",  # us-east-2a
+                "subnet-0e20bbcfb951b5387",  # us-east-2b
+                "subnet-0680e07980538b786",  # us-east-2c
+            ],
+        },
+    )
+
+    compute_environment_request = batch_client.describe_compute_environments(
+        computeEnvironments=[compute_environment_name]
+    )
+    compute_environment_response = compute_environment_request["computeEnvironments"]
+    compute_environment_status = (
+        compute_environment_response[0]["status"] if len(compute_environment_response) == 1 else ""
+    )
+    retry_count = 0
+    while compute_environment_status != "VALID" and retry_count <= max_retries:
+        retry_count += 1
+        time.sleep(10)
+        compute_environment_request = batch_client.describe_compute_environments(
+            computeEnvironments=[compute_environment_name]
+        )
+        compute_environment_response = compute_environment_request["computeEnvironments"]
+        compute_environment_status = (
+            compute_environment_response[0]["status"] if len(compute_environment_response) == 1 else ""
+        )
+
+    if len(job_definition_response) != 1 and compute_environment_status != "VALID":
+        raise ValueError(
+            f"Compute environment '{compute_environment_name}' failed to launch after {max_retries} retries."
         )
 
     return None
 
 
-def _ensure_job_queue_exists(*, job_queue_name: str, batch_client: "boto3.client.Batch") -> None:
+def _ensure_job_queue_exists(
+    *, job_queue_name: str, compute_environment_name: str, batch_client: "boto3.client.Batch", max_retries: int = 12
+) -> None:  # pragma: no cover
     """
     Ensure that the job queue exists in AWS Batch.
 
@@ -368,19 +429,65 @@ def _ensure_job_queue_exists(*, job_queue_name: str, batch_client: "boto3.client
     ----------
     job_queue_name : str
         The name of the job queue to use for the job.
+    compute_environment_name : str
+        The name of the compute environment to associate with the job queue.
     batch_client : boto3.client.Batch
         The AWS Batch client to use for the job.
+    max_retries : int, default: 12
+        If the job queue does not already exist, then this is the maximum number of times to synchronously
+        check for its successful creation before erroring.
+        This is essential for a clean setup of the entire pipeline, or else later steps might error because they tried
+        to launch before the job queue was ready.
     """
-    current_job_queues = [queue["jobQueueName"] for queue in batch_client.describe_job_queues()["jobQueues"]]
-    if job_queue_name not in current_job_queues:
-        batch_client.create_job_queue(
-            jobQueueName=job_queue_name,
-            state="ENABLED",
-            priority=1,
-            computeEnvironmentOrder=[
-                dict(order=100, computeEnvironment="dynamodb_import_environment"),
-            ],
+    job_queue_request = batch_client.describe_job_queues(jobQueues=[job_queue_name])
+    job_queue_response = job_queue_request["jobQueues"]
+
+    if len(job_queue_response) == 1:
+        return job_queue_response[0]
+
+    if len(job_queue_response) > 1:
+        raise ValueError(
+            f"Multiple job queues with the name '{job_queue_name}' were found! "
+            "Please ensure that only one job queue has this name."
         )
+
+    # Note: jobs submitted to EC2 Batch can occasionally get stuck in 'runnable' status due to bad configuration of
+    # worker memory/CPU or general resource contention.
+    # Eventually consider exposing this for very long jobs?
+    minimum_time_to_kill_in_days = 1
+    minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
+
+    # batch_client.create_job_queue() is not synchronous and so we need to wait a bit afterwards
+    batch_client.create_job_queue(
+        jobQueueName=job_queue_name,
+        state="ENABLED",
+        priority=1,
+        computeEnvironmentOrder=[
+            dict(order=1, computeEnvironment=compute_environment_name),
+        ],
+        jobStateTimeLimitActions=[
+            dict(
+                reason="Avoid zombie jobs.",
+                state="RUNNABLE",
+                maxTimeSeconds=minimum_time_to_kill_in_seconds,
+                action="CANCEL",
+            ),
+        ],
+    )
+
+    job_queue_request = batch_client.describe_job_queues(jobQueues=[job_queue_name])
+    job_queue_response = job_queue_request["jobQueues"]
+    job_queue_status = job_queue_response[0]["status"] if len(job_queue_response) == 1 else ""
+    retry_count = 0
+    while job_queue_status != "VALID" and retry_count <= max_retries:
+        retry_count += 1
+        time.sleep(10)
+        job_queue_request = batch_client.describe_job_queues(jobQueues=[job_queue_name])
+        job_queue_response = job_queue_request["jobQueues"]
+        job_queue_status = job_queue_response[0]["status"] if len(job_queue_response) == 1 else ""
+
+    if len(job_definition_response) != 1 and job_queue_status != "VALID":
+        raise ValueError(f"Job queue '{job_queue_status}' failed to launch after {max_retries} retries.")
 
     return None
 
@@ -390,7 +497,7 @@ def _generate_job_definition_name(
     docker_image: str,
     minimum_worker_ram_in_gib: int,
     minimum_worker_cpus: int,
-) -> str:
+) -> str:  # pragma: no cover
     """
     Generate a job definition name for the AWS Batch job.
 
@@ -423,7 +530,7 @@ def _generate_job_definition_name(
     return job_definition_name
 
 
-def _ensure_job_definition_exists(
+def _ensure_job_definition_exists_and_get_arn(
     *,
     job_definition_name: str,
     docker_image: str,
@@ -431,12 +538,18 @@ def _ensure_job_definition_exists(
     minimum_worker_cpus: int,
     role_info: dict,
     batch_client: "boto3.client.Batch",
-) -> None:
+    max_retries: int = 12,
+) -> str:  # pragma: no cover
     """
-    Ensure that the job definition exists in AWS Batch.
+    Ensure that the job definition exists in AWS Batch and return the official ARN.
 
     Automatically generates a job definition name using the docker image, its tags, and worker configuration.
     The creation date is also appended if the docker image was not tagged or was tagged as 'latest'.
+
+    Note that registering a job definition does not require either a compute environment or a job queue to exist.
+
+    Also note that registration is strict; once created, a job definition is tagged with ':< revision index >' and
+    any subsequent changes create a new revision index (and technically a new definition as well).
 
     Parameters
     ----------
@@ -455,32 +568,73 @@ def _ensure_job_definition_exists(
         The IAM role information for the job.
     batch_client : boto3.client.Batch
         The AWS Batch client to use for the job.
+    max_retries : int, default: 12
+        If the job definition does not already exist, then this is the maximum number of times to synchronously
+        check for its successful creation before erroring.
+        This is essential for a clean setup of the entire pipeline, or else later steps might error because they tried
+        to launch before the job definition was ready.
+
+    Returns
+    -------
+    job_definition_arn : str
+        The full ARN of the job definition.
     """
-    current_job_definitions = [
-        definition["jobDefinitionName"] for definition in batch_client.describe_job_definitions()["jobDefinitions"]
+    revision = 1
+    job_definition_with_revision = f"{job_definition_name}:{revision}"
+    job_definition_request = batch_client.describe_job_definitions(jobDefinitions=[job_definition_with_revision])
+    job_definition_response = job_definition_request["jobDefinitions"]
+
+    # Increment revision until we either find one that is active or we fail to find one that exists
+    while len(job_definition_response) == 1:
+        if job_definition_response[0]["status"] == "ACTIVE":
+            return job_definition_response[0]["jobDefinitionArn"]
+        else:
+            revision += 1
+
+            job_definition_with_revision = f"{job_definition_name}:{revision}"
+            job_definition_request = batch_client.describe_job_definitions(
+                jobDefinitions=[job_definition_with_revision]
+            )
+            job_definition_response = job_definition_request["jobDefinitions"]
+
+    resource_requirements = [
+        {
+            "value": str(int(minimum_worker_ram_in_gib * 1024)),  # boto3 expects memory in round MiB
+            "type": "MEMORY",
+        },
+        {"value": str(minimum_worker_cpus), "type": "VCPU"},
     ]
-    if job_definition_name not in current_job_definitions:
-        resource_requirements = [
-            {
-                "value": str(int(minimum_worker_ram_in_gib * 1024)),  # boto3 expects memory in round MiB
-                "type": "MEMORY",
-            },
-            {"value": str(minimum_worker_cpus), "type": "VCPU"},
-        ]
 
-        minimum_time_to_kill_in_days = 1  # Note: eventually consider exposing this for very long jobs?
-        minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
+    minimum_time_to_kill_in_days = 1  # Note: eventually consider exposing this for very long jobs?
+    minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
 
-        batch_client.register_job_definition(
-            jobDefinitionName=job_definition_name,
-            type="container",
-            timeout=dict(attemptDurationSeconds=minimum_time_to_kill_in_seconds),
-            containerProperties=dict(
-                image=docker_image,
-                resourceRequirements=resource_requirements,
-                jobRoleArn=role_info["Role"]["Arn"],
-                executionRoleArn=role_info["Role"]["Arn"],
-            ),
+    # batch_client.register_job_definition() is not synchronous and so we need to wait a bit afterwards
+    batch_client.register_job_definition(
+        jobDefinitionName=job_definition_name,
+        type="container",
+        timeout=dict(attemptDurationSeconds=minimum_time_to_kill_in_seconds),
+        containerProperties=dict(
+            image=docker_image,
+            resourceRequirements=resource_requirements,
+            jobRoleArn=role_info["Role"]["Arn"],
+            executionRoleArn=role_info["Role"]["Arn"],
+        ),
+    )
+
+    job_definition_request = batch_client.describe_job_definitions(jobDefinitions=[job_definition_with_revision])
+    job_definition_response = job_definition_request["jobDefinitions"]
+    job_definition_status = job_definition_response[0]["status"] if len(job_definition_response) == 1 else ""
+    retry_count = 0
+    while job_definition_status != "ACTIVE" and retry_count <= max_retries:
+        retry_count += 1
+        time.sleep(10)
+        job_definition_request = batch_client.describe_job_definitions(jobDefinitions=[job_definition_with_revision])
+        job_definition_response = job_definition_request["jobDefinitions"]
+        job_definition_status = job_definition_response[0]["status"] if len(job_definition_response) == 1 else ""
+
+    if len(job_definition_response) != 1 or job_definition_status != "ACTIVE":
+        raise ValueError(
+            f"Job definition '{job_definition_with_revision}' failed to launch after {max_retries} retries."
         )
 
-    return None
+    return job_definition_response[0]["jobDefinitionArn"]

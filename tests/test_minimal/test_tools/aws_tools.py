@@ -26,13 +26,9 @@ def test_submit_aws_batch_job():
 
     job_name = "test_submit_aws_batch_job"
     docker_image = "ubuntu:latest"
-    command = "echo 'Testing NeuroConv AWS Batch submission."
+    commands = ["echo", "'Testing NeuroConv AWS Batch submission.'"]
 
-    info = submit_aws_batch_job(
-        job_name=job_name,
-        docker_image=docker_image,
-        command=command,
-    )
+    info = submit_aws_batch_job(job_name=job_name, docker_image=docker_image, commands=commands)
 
     # Wait for AWS to process the job
     time.sleep(60)
@@ -42,7 +38,7 @@ def test_submit_aws_batch_job():
     all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
     assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    jobs = jobs_response["jobs"]
+    jobs = all_jobs_response["jobs"]
     assert len(jobs) == 1
 
     job = jobs[0]
@@ -53,17 +49,18 @@ def test_submit_aws_batch_job():
 
     status_tracker_table_name = "neuroconv_batch_status_tracker"
     table = dynamodb_resource.Table(name=status_tracker_table_name)
-    submission_id = info["table_submission_info"]["submission_id"]
+    table_submission_id = info["table_submission_info"]["id"]
 
-    table_item_response = table.get_item(Key={"id": submission_id})
+    table_item_response = table.get_item(Key={"id": table_submission_id})
     assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
     table_item = table_item_response["Item"]
     assert table_item["job_name"] == job_name
+    assert table_item["job_id"] == job_id
     assert table_item["status"] == "Job submitted..."
 
     table.update_item(
-        Key={"id": submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
+        Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
     )
 
 
@@ -89,6 +86,7 @@ def test_submit_aws_batch_job_with_dependencies():
     docker_image = "ubuntu:latest"
     command_1 = "echo 'Testing NeuroConv AWS Batch submission."
 
+    # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
     job_info_1 = submit_aws_batch_job(
         job_name=job_name_1,
         docker_image=docker_image,
@@ -114,7 +112,7 @@ def test_submit_aws_batch_job_with_dependencies():
     all_jobs_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
     assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    jobs_by_id = {job["jobId"]: job for job in jobs_response["jobs"]}
+    jobs_by_id = {job["jobId"]: job for job in all_jobs_response["jobs"]}
     assert len(jobs_by_id) == 2
 
     job_1 = jobs_by_id[job_id_1]
