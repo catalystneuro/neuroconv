@@ -1400,6 +1400,8 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
             )
             aligned_stream_name_to_timestamps[stream_name] = aligned_timestamps
         self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
+        t1 += 1.23 if t1 != 0.0 else 0.0
+        t2 += 2.23 if t2 != 0.0 else 0.0
 
         retrieved_aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
         for stream_name, aligned_timestamps in aligned_stream_name_to_timestamps.items():
@@ -1415,6 +1417,8 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
 
         aligned_starting_time = 1.23
         self.interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time, t1=t1, t2=t2)
+        t1 += aligned_starting_time if t1 != 0.0 else 0.0
+        t2 += aligned_starting_time if t2 != 0.0 else 0.0
 
         aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
         expected_timestamps_dict = {

@@ -100,7 +100,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """
         tdt_photometry = self.load(t1=t1, t2=t2)
         stream_name_to_timestamps = {}
-        for stream_name in tdt_photometry.streams:
+        for stream_name in tdt_photometry.streams.keys():
             rate = tdt_photometry.streams[stream_name].fs
             starting_time = 0.0
             timestamps = np.arange(starting_time, tdt_photometry.streams[stream_name].data.shape[-1] / rate, 1 / rate)
@@ -123,7 +123,11 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         dict[str, np.ndarray]
             Dictionary of stream names to timestamps.
         """
-        stream_to_timestamps = getattr(self, "stream_name_to_timestamps", self.get_original_timestamps(t1=t1, t2=t2))
+        stream_to_timestamps = getattr(self, "stream_name_to_timestamps", None)
+        if (
+            stream_to_timestamps is None
+        ):  # Can't use getattr default bc it will call get_original_timestamps even if stream_name_to_timestamps is set
+            stream_to_timestamps = self.get_original_timestamps(t1=t1, t2=t2)
         stream_to_timestamps = {name: timestamps[timestamps >= t1] for name, timestamps in stream_to_timestamps.items()}
         if t2 == 0.0:
             return stream_to_timestamps
@@ -200,9 +204,12 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         dict[str, tuple[float, float]]
             Dictionary of stream names to starting time and rate.
         """
-        return getattr(
-            self, "stream_name_to_starting_time_and_rate", self.get_original_starting_time_and_rate(t1=t1, t2=t2)
-        )
+        stream_name_to_starting_time_and_rate = getattr(self, "stream_name_to_starting_time_and_rate", None)
+        if (
+            stream_name_to_starting_time_and_rate is None
+        ):  # Can't use getattr default bc it will call get_original_starting_time_and_rate even if stream_name_to_timestamps is set
+            stream_name_to_starting_time_and_rate = self.get_original_starting_time_and_rate(t1=t1, t2=t2)
+        return stream_name_to_starting_time_and_rate
 
     def set_aligned_starting_time_and_rate(
         self, stream_name_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]]
