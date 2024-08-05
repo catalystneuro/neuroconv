@@ -4,6 +4,9 @@
 * Added MedPCInterface for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 * Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for basic automated submission of AWS batch jobs. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
 
+### Bug fixes
+* Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
+
 ### Improvements
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
 * Swap the majority of package setup and build steps to `pyproject.toml` instead of `setup.py`. [PR #955](https://github.com/catalystneuro/neuroconv/pull/955)
