@@ -1,6 +1,7 @@
 # Upcoming
 
 ### Bug fixes
+* Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
 * Fixed an issue when passing conversion options to a sub-converter (like the popular `SpikeGLXConverterPipe`) nested inside another `NWBConverter`. [PR #979](https://github.com/catalystneuro/neuroconv/pull/979)
 
 ### Improvements

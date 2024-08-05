@@ -76,12 +76,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Device metadata
         device = get_device_metadata(self.meta)
 
+        # Should follow pattern 'Imec0', 'Imec1', etc.
+        probe_name = self.stream_id[:5].capitalize()
+        device["name"] = f"Neuropixel{probe_name}"
+
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
         electrode_groups = [
             dict(
                 name=group_name,
-                description=f"a group representing shank {group_name}",
+                description=f"A group representing probe/shank '{group_name}'.",
                 location="unknown",
                 device=device["name"],
             )
