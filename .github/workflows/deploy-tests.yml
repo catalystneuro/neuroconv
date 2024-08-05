@@ -1,7 +1,7 @@
 name: Deploy tests
 
 on:
-#  pull_request:  # TODO: re-enable
+  pull_request:
   merge_group:
   workflow_dispatch:
 
