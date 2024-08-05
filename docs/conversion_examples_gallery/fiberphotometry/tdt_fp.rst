@@ -204,7 +204,7 @@ Convert TDT Fiber Photometry data to NWB using
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
 
     >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Photo_249_391-200721-120136_stubbed"
-    >>> editable_metadata_path = "path/to/neuroconv" / "tests" / "test_on_data" / "fiber_photometry_metadata.yaml"
+    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_on_data" / "fiber_photometry_metadata.yaml"
 
     >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=True)
     >>> metadata = interface.get_metadata()
@@ -213,6 +213,5 @@ Convert TDT Fiber Photometry data to NWB using
     >>> metadata = dict_deep_update(metadata, editable_metadata)
 
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> nwbfile_path = output_dir_path / "test_tdtfp.nwb"
+    >>> nwbfile_path = OUTPUT_PATH
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
