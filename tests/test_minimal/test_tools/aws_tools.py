@@ -93,10 +93,11 @@ def test_submit_aws_batch_job_with_dependencies():
         docker_image=docker_image,
         commands=commands_1,
     )
+    job_submission_info_1 = job_info_1["job_submission_info"]
 
     job_name_2 = "test_submit_aws_batch_job_with_dependencies_1"
     commands_2 = ["echo", "'Testing NeuroConv AWS Batch submission with dependencies.'"]
-    job_dependencies = [{"jobId": job_submission_info["jobId"], "type": "SEQUENTIAL"}]
+    job_dependencies = [{"jobId": job_submission_info_1["jobId"], "type": "SEQUENTIAL"}]
     job_info_2 = submit_aws_batch_job(
         job_name=job_name_2,
         docker_image=docker_image,
@@ -131,25 +132,27 @@ def test_submit_aws_batch_job_with_dependencies():
     status_tracker_table_name = "neuroconv_batch_status_tracker"
     table = dynamodb_resource.Table(name=status_tracker_table_name)
 
-    submission_id_1 = job_info_1["table_submission_info"]["submission_id"]
-    table_item_response_1 = table.get_item(Key={"id": submission_id_1})
+    table_submission_id_1 = job_info_1["table_submission_info"]["id"]
+    table_item_response_1 = table.get_item(Key={"id": table_submission_id_1})
     assert table_item_response_1["ResponseMetadata"]["HTTPStatusCode"] == 200
 
     table_item_1 = table_item_response_1["Item"]
-    assert table_item_1["job_name"] == job_name
+    assert table_item_1["job_name"] == job_name_1
+    assert table_item_1["job_id"] == job_id_1
     assert table_item_1["status"] == "Job submitted..."
 
-    submission_id_2 = job_info_2["table_submission_info"]["submission_id"]
-    table_item_response_2 = table.get_item(Key={"id": submission_id_2})
+    table_submission_id_2 = job_info_2["table_submission_info"]["id"]
+    table_item_response_2 = table.get_item(Key={"id": table_submission_id_2})
     assert table_item_response_2["ResponseMetadata"]["HTTPStatusCode"] == 200
 
     table_item_2 = table_item_response_2["Item"]
-    assert table_item_2["job_name"] == job_name
+    assert table_item_2["job_name"] == job_name_2
+    assert table_item_2["job_id"] == job_id_2
     assert table_item_2["status"] == "Job submitted..."
 
     table.update_item(
-        Key={"id": submission_id_1}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
+        Key={"id": table_submission_id_1}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
     )
     table.update_item(
-        Key={"id": submission_id_2}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
+        Key={"id": table_submission_id_2}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
     )
