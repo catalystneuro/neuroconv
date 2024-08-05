@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
@@ -226,9 +227,14 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
 
     def check_read_nwb(self, nwbfile_path: str):
+        expected_devices = deepcopy(self.expected_devices)
+        expected_commanded_voltage_series = deepcopy(self.expected_commanded_voltage_series)
+        expected_fiber_photometry_response_series = deepcopy(self.expected_fiber_photometry_response_series)
+        expected_fiber_photometry_table = deepcopy(self.expected_fiber_photometry_table)
+
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
-            for device_dict in self.expected_devices:
+            for device_dict in expected_devices:
                 expected_name = device_dict.pop("name")
                 assert expected_name in nwbfile.devices
                 device = nwbfile.devices[expected_name]
@@ -242,7 +248,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                             getattr(device, key) == expected_value
                         ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
 
-            for cvs_dict in self.expected_commanded_voltage_series:
+            for cvs_dict in expected_commanded_voltage_series:
                 expected_name = cvs_dict.pop("name")
                 assert expected_name in nwbfile.acquisition
                 cvs = nwbfile.acquisition[expected_name]
@@ -251,7 +257,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                         getattr(cvs, key) == expected_value
                     ), f"CommandedVoltageSeries {expected_name} attribute {key} is {getattr(cvs, key)} but expected {expected_value}"
 
-            for fp_dict in self.expected_fiber_photometry_response_series:
+            for fp_dict in expected_fiber_photometry_response_series:
                 expected_name = fp_dict.pop("name")
                 assert expected_name in nwbfile.acquisition
                 fp = nwbfile.acquisition[expected_name]
@@ -269,9 +275,9 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                 ), f"FiberPhotometryResponseSeries {expected_name} region description is {fp.fiber_photometry_table_region.description} but expected {fp_dict['fiber_photometry_table_region_description']}"
 
             fiber_photometry_table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-            assert fiber_photometry_table.name == self.expected_fiber_photometry_table["name"]
-            assert fiber_photometry_table.description == self.expected_fiber_photometry_table["description"]
-            for i, row_dict in enumerate(self.expected_fiber_photometry_table["rows"]):
+            assert fiber_photometry_table.name == expected_fiber_photometry_table["name"]
+            assert fiber_photometry_table.description == expected_fiber_photometry_table["description"]
+            for i, row_dict in enumerate(expected_fiber_photometry_table["rows"]):
                 expected_location = row_dict.pop("location")
                 location_index = fiber_photometry_table.colnames.index("location")
                 expected_coordinates = row_dict.pop("coordinates")
