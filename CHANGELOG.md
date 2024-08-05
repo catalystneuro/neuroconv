@@ -3,6 +3,9 @@
 ### Features
 * Added `TDTFiberPhotometryInterface` data interface, for converting fiber photometry data from TDT file formats. [PR #920](https://github.com/catalystneuro/neuroconv/pull/920)
 
+### Bug fixes
+* Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
+
 ### Improvements
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
 * Swap the majority of package setup and build steps to `pyproject.toml` instead of `setup.py`. [PR #955](https://github.com/catalystneuro/neuroconv/pull/955)
