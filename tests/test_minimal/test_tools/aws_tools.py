@@ -7,6 +7,7 @@ from neuroconv.tools.aws import submit_aws_batch_job
 
 
 def test_submit_aws_batch_job():
+    region = "us-east-2"
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
 
@@ -18,7 +19,7 @@ def test_submit_aws_batch_job():
     )
     batch_client = boto3.client(
         service_name="batch",
-        region_name="us-east-2",
+        region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
@@ -67,6 +68,23 @@ def test_submit_aws_batch_job():
 
 
 def test_submit_aws_batch_job_with_dependencies():
+    region = "us-east-2"
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+
+    dynamodb_resource = boto3.resource(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    batch_client = boto3.client(
+        service_name="batch",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
     job_name_1 = "test_submit_aws_batch_job_with_dependencies_1"
     docker_image = "ubuntu:latest"
     command_1 = "echo 'Testing NeuroConv AWS Batch submission."
