@@ -28,6 +28,7 @@ def test_submit_aws_batch_job():
     docker_image = "ubuntu:latest"
     commands = ["echo", "'Testing NeuroConv AWS Batch submission.'"]
 
+    # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
     info = submit_aws_batch_job(job_name=job_name, docker_image=docker_image, commands=commands)
 
     # Wait for AWS to process the job
@@ -84,22 +85,22 @@ def test_submit_aws_batch_job_with_dependencies():
 
     job_name_1 = "test_submit_aws_batch_job_with_dependencies_1"
     docker_image = "ubuntu:latest"
-    command_1 = "echo 'Testing NeuroConv AWS Batch submission."
+    commands_1 = ["echo", "'Testing NeuroConv AWS Batch submission.'"]
 
     # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
     job_info_1 = submit_aws_batch_job(
         job_name=job_name_1,
         docker_image=docker_image,
-        command=command_1,
+        commands=commands_1,
     )
 
     job_name_2 = "test_submit_aws_batch_job_with_dependencies_1"
-    command_2 = "echo 'Testing NeuroConv AWS Batch submission with dependencies."
+    commands_2 = ["echo", "'Testing NeuroConv AWS Batch submission with dependencies.'"]
     job_dependencies = [{"jobId": job_submission_info["jobId"], "type": "SEQUENTIAL"}]
     job_info_2 = submit_aws_batch_job(
         job_name=job_name_2,
         docker_image=docker_image,
-        command=command_2,
+        commands=commands_2,
         job_dependencies=job_dependencies,
     )
 
