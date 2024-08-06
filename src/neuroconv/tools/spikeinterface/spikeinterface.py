@@ -342,6 +342,8 @@ def add_electrodes(
     exclude: tuple
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
+    property_to_null_values: dict
+        A dictionary mapping channel properties to default values to use when the property is not present
     """
     assert isinstance(
         nwbfile, pynwb.NWBFile
