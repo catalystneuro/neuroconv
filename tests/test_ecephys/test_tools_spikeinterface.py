@@ -766,6 +766,38 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
+    def test_row_matching_by_channel_name_with_new_property(self):
+        """
+        Adding new electrodes to an already existing electrode table should match
+        properties and information by channel name.
+        """
+        values_dic = self.defaults
+        self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
+
+        values_dic.update(id=20, channel_name="c")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=21, channel_name="d")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=22, channel_name="f")
+        self.nwbfile.add_electrode(**values_dic)
+
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
+        self.recording_1.set_property(key="property", values=property_values)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        # Remaining ids are filled positionally.
+        expected_ids = [20, 21, 22, 3, 4]
+        # Properties are matched by channel name.
+        expected_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
+
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+        self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
+
     def test_adding_ragged_array_properties(self):
 
         ragged_array_values1 = [[1, 2], [3, 4], [5, 6], [7, 8]]
@@ -857,38 +889,6 @@ class TestAddElectrodes(TestCase):
         # We need a for loop because this is a non-homogenous ragged array
         for i, value in enumerate(written_values):
             np.testing.assert_array_equal(value, expected_values[i])
-
-    def test_row_matching_by_channel_name_with_new_property(self):
-        """
-        Adding new electrodes to an already existing electrode table should match
-        properties and information by channel name.
-        """
-        values_dic = self.defaults
-        self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
-
-        values_dic.update(id=20, channel_name="c")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=21, channel_name="d")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=22, channel_name="f")
-        self.nwbfile.add_electrode(**values_dic)
-
-        property_values = ["value_a", "value_b", "value_c", "value_d"]
-        self.recording_1.set_property(key="property", values=property_values)
-
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
-
-        # Remaining ids are filled positionally.
-        expected_ids = [20, 21, 22, 3, 4]
-        # Properties are matched by channel name.
-        expected_names = ["c", "d", "f", "a", "b"]
-        expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
-
-        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
-        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
-        self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
     def test_property_metadata_mismatch(self):
         """
