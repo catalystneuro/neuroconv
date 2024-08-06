@@ -12,12 +12,15 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
 
+    # Should follow pattern 'Imec0', 'Imec1', etc.
+    probe_name = recording_extractor.stream_id[:5].capitalize()
+
     if probe.get_shank_count() > 1:
-        group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
         shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
+        group_name = [f"{probe_name}{contact_id.split('e')[0]}" for contact_id in probe.contact_ids]
     else:
         shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
-        group_name = ["s0"] * len(channel_ids)
+        group_name = [f"{probe_name}Shank0"] * len(channel_ids)
 
     recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
@@ -113,9 +116,9 @@ def get_device_metadata(meta) -> dict:
     if "imDatBsc_pn" in meta:
         metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
 
-    description_string = "no description"
+    description_string = "A Neuropixel probe of unknown subtype."
     if metadata_dict:
         description_string = json.dumps(metadata_dict)
-    device_metadata = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
+    device_metadata = dict(name="NeuropixelImec", description=description_string, manufacturer="Imec")
 
     return device_metadata

@@ -1,0 +1,59 @@
+{
+  "NWBFile": {
+    "session_description": ""
+  },
+  "Ecephys": {
+    "Device": [
+      {
+        "name": "NeuropixelImec0",
+        "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
+        "manufacturer": "Imec"
+      },
+      {
+        "name": "NIDQBoard",
+        "description": "A NIDQ board used in conjunction with SpikeGLX.",
+        "manufacturer": "National Instruments"
+      }
+    ],
+    "ElectrodeGroup": [
+      {
+        "name": "Imec0Shank0",
+        "description": "A group representing probe/shank 'Imec0Shank0'.",
+        "location": "unknown",
+        "device": "NeuropixelImec0"
+      },
+      {
+        "name": "NIDQChannelGroup",
+        "description": "A group representing the NIDQ channels.",
+        "location": "unknown",
+        "device": "NIDQBoard"
+      }
+    ],
+    "ElectricalSeriesAPImec0": {
+      "name": "ElectricalSeriesAPImec0",
+      "description": "Acquisition traces for the ElectricalSeriesAPImec0."
+    },
+    "Electrodes": [
+      {
+        "name": "shank_electrode_number",
+        "description": "0-indexed channel within a shank."
+      },
+      {
+        "name": "group_name",
+        "description": "Name of the ElectrodeGroup this electrode is a part of."
+      },
+      {
+        "name": "contact_shapes",
+        "description": "The shape of the electrode"
+      }
+    ],
+    "ElectricalSeriesNIDQ": {
+      "name": "ElectricalSeriesNIDQ",
+      "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
+    },
+    "ElectricalSeriesLFImec0": {
+      "name": "ElectricalSeriesLFImec0",
+      "description": "Acquisition traces for the ElectricalSeriesLFImec0."
+    }
+  }
+}

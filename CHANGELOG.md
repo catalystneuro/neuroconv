@@ -1,11 +1,15 @@
 # Upcoming
 
-### Improvements
+### Bug fixes
+* Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
 
+### Improvements
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
 * Swap the majority of package setup and build steps to `pyproject.toml` instead of `setup.py`. [PR #955](https://github.com/catalystneuro/neuroconv/pull/955)
 * The `DeeplabcutInterface` now skips inferring timestamps from movie when timestamps are specified, running faster. [PR #967](https://github.com/catalystneuro/neuroconv/pull/967)
 
+### Dependencies
+* Updated `spikeinterface` to `v0.101.0` to use `SortingAnalyzer` instead of `WaveformExtractor` (discontinued) in the `spikeinterface` tools
 
 
 ## v0.5.0 (July 17, 2024)
