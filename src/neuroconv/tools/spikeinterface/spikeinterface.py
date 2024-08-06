@@ -233,6 +233,20 @@ def _get_electrodes_table_global_ids(nwbfile: pynwb.NWBFile) -> List[str]:
     return unique_keys
 
 
+def _get_electrode_table_indices_for_recording(recording: BaseRecording, nwbfile: pynwb.NWBFile) -> List[int]:
+    """
+    Documentation
+    """
+
+    channel_names = _get_channel_name(recording=recording)
+    group_names = _get_group_name(recording=recording)
+    channel_global_ids = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
+    table_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
+    electrode_table_indices = [table_global_ids.index(ch_id) for ch_id in channel_global_ids]
+
+    return electrode_table_indices
+
+
 def add_electrodes(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -398,7 +412,8 @@ def add_electrodes(
         nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
-    previous_table_size = len(nwbfile.electrodes.id[:]) - recording.get_num_channels()
+    electrode_table_size = len(nwbfile.electrodes.id[:])
+    previous_table_size = electrode_table_size - recording.get_num_channels()
 
     if "channel_name" in properties_to_add_by_columns:
         cols_args = data_to_add["channel_name"]
@@ -411,14 +426,10 @@ def add_electrodes(
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column("channel_name", **cols_args)
 
-    # Build  a channel name to electrode table index map
-    electrodes_df = nwbfile.electrodes.to_dataframe().reset_index()
-    channel_name_to_electrode_index = {
-        channel_name: electrodes_df.query(f"channel_name=='{channel_name}'").index[0] for channel_name in channel_names
-    }
-
-    indexes_for_new_data = [channel_name_to_electrode_index[channel_name] for channel_name in channel_names]
-    indexes_for_default_values = electrodes_df.index.difference(indexes_for_new_data).values
+    # To fill the new data, get their indices in the electrode table
+    all_indices = np.arange(electrode_table_size)
+    indices_for_new_data = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
+    indices_for_default_values = [index for index in all_indices if index not in indices_for_new_data]
 
     # Add properties as columns
     for property in properties_to_add_by_columns - {"channel_name"}:
@@ -436,18 +447,18 @@ def add_electrodes(
             dtype = np.ndarray
             extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
             for index, value in enumerate(data):
-                index_in_extended_data = indexes_for_new_data[index]
+                index_in_extended_data = indices_for_new_data[index]
                 extended_data[index_in_extended_data] = value.tolist()
 
-            for index in indexes_for_default_values:
+            for index in indices_for_default_values:
                 default_value = []
                 extended_data[index] = default_value
 
         else:
             dtype = data.dtype
             extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
-            extended_data[indexes_for_new_data] = data
-            extended_data[indexes_for_default_values] = default_value
+            extended_data[indices_for_new_data] = data
+            extended_data[indices_for_default_values] = default_value
 
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
@@ -673,12 +684,7 @@ def add_electrical_series(
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     # Create a region for the electrodes table
-    channel_names = _get_channel_name(recording=recording)
-    group_names = _get_group_name(recording=recording)
-    channel_global_ids = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
-    table_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
-    electrode_table_indices = [table_global_ids.index(ch_id) for ch_id in channel_global_ids]
-
+    electrode_table_indices = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
     electrode_table_region = nwbfile.create_electrode_table_region(
         region=electrode_table_indices,
         description="electrode_table_region",

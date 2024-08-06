@@ -766,6 +766,25 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
+    def test_adding_new_property_with_identifical_channels_but_different_groups(self):
+
+        recording1 = generate_recording(num_channels=3)
+        recording1 = recording1.rename_channels(new_channel_ids=["a", "b", "c"])
+        recording1.set_property(key="group_name", values=["group1"] * 3)
+        recording2 = generate_recording(num_channels=3)
+        recording2 = recording2.rename_channels(new_channel_ids=["a", "b", "c"])
+        recording2.set_property(key="group_name", values=["group2"] * 3)
+
+        recording2.set_property(key="added_property", values=["value"] * 3)
+
+        add_electrodes(recording=recording1, nwbfile=self.nwbfile)
+        add_electrodes(recording=recording2, nwbfile=self.nwbfile)
+
+        expected_property = ["", "", "", "value", "value", "value"]
+        property = self.nwbfile.electrodes["added_property"].data
+
+        assert np.array_equal(property, expected_property)
+
     def test_row_matching_by_channel_name_with_new_property(self):
         """
         Adding new electrodes to an already existing electrode table should match
