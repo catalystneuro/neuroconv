@@ -304,9 +304,9 @@ def _get_electrode_table_indices_for_recording(recording: BaseRecording, nwbfile
 def add_electrodes(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: dict | None = None,
+    metadata: Optional[dict] = None,
     exclude: tuple = (),
-    property_to_null_values: dict | None = None,
+    property_to_null_values: Optional[dict] = None,
 ):
     """
     Add channels from recording object as electrodes to nwbfile object.
