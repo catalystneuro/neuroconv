@@ -6,6 +6,10 @@
 * Swap the majority of package setup and build steps to `pyproject.toml` instead of `setup.py`. [PR #955](https://github.com/catalystneuro/neuroconv/pull/955)
 * The `DeeplabcutInterface` now skips inferring timestamps from movie when timestamps are specified, running faster. [PR #967](https://github.com/catalystneuro/neuroconv/pull/967)
 
+### Bug fixes
+* Write new properties to the electrode table use the global identifier channel_name, group [PR #984](https://github.com/catalystneuro/neuroconv/pull/984)
+
+
 
 
 ## v0.5.0 (July 17, 2024)
