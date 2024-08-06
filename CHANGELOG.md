@@ -12,6 +12,8 @@
 * Swap the majority of package setup and build steps to `pyproject.toml` instead of `setup.py`. [PR #955](https://github.com/catalystneuro/neuroconv/pull/955)
 * The `DeeplabcutInterface` now skips inferring timestamps from movie when timestamps are specified, running faster. [PR #967](https://github.com/catalystneuro/neuroconv/pull/967)
 
+### Dependencies
+* Updated `spikeinterface` to `v0.101.0` to use `SortingAnalyzer` instead of `WaveformExtractor` (discontinued) in the `spikeinterface` tools
 
 
 ## v0.5.0 (July 17, 2024)
