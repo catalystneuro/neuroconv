@@ -304,8 +304,9 @@ def _get_electrode_table_indices_for_recording(recording: BaseRecording, nwbfile
 def add_electrodes(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
+    metadata: dict | None = None,
     exclude: tuple = (),
+    property_to_null_values: dict | None = None,
 ):
     """
     Add channels from recording object as electrodes to nwbfile object.
@@ -345,6 +346,8 @@ def add_electrodes(
     assert isinstance(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
+
+    property_to_null_values = dict() if property_to_null_values is None else property_to_null_values
 
     # Test that metadata has the expected structure
     electrodes_metadata = list()
@@ -392,10 +395,6 @@ def add_electrodes(
         if index and isinstance(data[0], np.ndarray):
             index = data[0].ndim
 
-        # booleans are parsed as strings
-        if isinstance(data[0], (bool, np.bool_)):
-            data = data.astype(str)
-
         # Fill with provided custom descriptions
         description = property_descriptions.get(property, "no description")
         data_to_add[property] = dict(description=description, data=data, index=index)
@@ -442,15 +441,33 @@ def add_electrodes(
     properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
     properties_to_add_by_columns = extracted_properties.difference(properties_to_add_by_rows)
 
-    # Find default values for a subset of optional schema defined properties already in the electrode table
+    # Find default values from currently existing data to properties that will be added as rows
     properties_to_default_value = dict()
-    # Find default values for custom (not schema defined) properties / columns already in the electrode table
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", float: np.nan, complex: np.nan}
+
+    # We exclude schema properties because we ensure they are filled above
     for property in electrode_table_previous_properties.difference(schema_properties):
-        # Find a matching data type and get the default value
-        sample_data = nwbfile.electrodes[property].data[0]
-        matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
-        default_value = type_to_default_value[matching_type]
+        sample_data = nwbfile.electrodes[property][:][0]
+        # If numpy transform to python type
+        sample_data = sample_data.item() if isinstance(sample_data, np.generic) else sample_data
+        sample_data_type = type(sample_data)
+        default_value = type_to_default_value.get(sample_data_type, None)
+        if default_value is None:
+            default_value = property_to_null_values.get(property, None)
+            if default_value is None:
+                error_msg = (
+                    f"Could not find a sensible default value for property '{property}' "
+                    f"with dtype {sample_data_type}. Set it with the argument 'property_to_null_values' as in: \n"
+                    "property_to_null_values = {'property_name': default_value}"
+                )
+                raise ValueError(error_msg)
+            if type(default_value) != sample_data_type:
+                error_msg = (
+                    f"Default value for property '{property}' in property_to_null_values dict "
+                    f"has a different type than the currently existing data. Modify the recording property."
+                )
+                raise ValueError(error_msg)
+
         properties_to_default_value[property] = default_value
 
     # We only add new electrodes to the table
@@ -465,7 +482,8 @@ def add_electrodes(
         electrode_kwargs.update(**data_dict)
         nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
-    # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
+    # The channel_name column is special because we previous entries are filled with previous electrode table ids
+    # And needs to be present for global ids to be correctly matched
     electrode_table_size = len(nwbfile.electrodes.id[:])
     previous_table_size = electrode_table_size - recording.get_num_channels()
 
@@ -485,21 +503,22 @@ def add_electrodes(
     indices_for_new_data = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
     indices_for_default_values = [index for index in all_indices if index not in indices_for_new_data]
 
+    extending_column = len(indices_for_default_values) > 0
+
     # Add properties as columns
     for property in properties_to_add_by_columns - {"channel_name"}:
         cols_args = data_to_add[property]
         data = cols_args["data"]
-        if np.issubdtype(data.dtype, np.integer):
-            data = data.astype("float")
 
-        else:  # Find first matching data-type for custom column
-            sample_data = data[0]
-            matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
-            default_value = type_to_default_value[matching_type]
+        # This is the simple case, early return
+        if not extending_column:
+            nwbfile.add_electrode_column(property, **cols_args)
+            continue
 
-        if "index" in cols_args and cols_args["index"]:
+        adding_ragged_array = cols_args["index"]
+        if adding_ragged_array:
             dtype = np.ndarray
-            extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
+            extended_data = np.empty(shape=electrode_table_size, dtype=dtype)
             for index, value in enumerate(data):
                 index_in_extended_data = indices_for_new_data[index]
                 extended_data[index_in_extended_data] = value.tolist()
@@ -509,8 +528,29 @@ def add_electrodes(
                 extended_data[index] = default_value
 
         else:
+            sample_data = data[0]
+            # If numpy transform to python type
+            sample_data = sample_data.item() if isinstance(sample_data, np.generic) else sample_data
+            sample_data_type = type(sample_data)
+            default_value = type_to_default_value.get(sample_data_type, None)
+            if default_value is None:
+                default_value = property_to_null_values.get(property, None)
+                if default_value is None:
+                    error_msg = (
+                        f"Could not find a sensible default value for property '{property}' "
+                        f"with dtype {sample_data_type}. Set it with the argument 'property_to_null_values' as in: \n"
+                        "property_to_null_values = {'property_name': default_value}"
+                    )
+                    raise ValueError(error_msg)
+                if type(default_value) != sample_data_type:
+                    error_msg = (
+                        f"Default value for property '{property}' in property_to_null_values dict "
+                        f"has a different type than the currently existing data. Modify the recording property."
+                    )
+                    raise ValueError(error_msg)
+
             dtype = data.dtype
-            extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
+            extended_data = np.empty(shape=electrode_table_size, dtype=dtype)
             extended_data[indices_for_new_data] = data
             extended_data[indices_for_default_values] = default_value
 
