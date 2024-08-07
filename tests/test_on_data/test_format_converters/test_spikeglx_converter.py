@@ -96,6 +96,30 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
+    def test_single_probe_spikeglx_converter_in_converter_preview(self):
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(SpikeGLX=SpikeGLXConverterPipe)
+
+        source_data = dict(SpikeGLX=dict(folder_path=str(SPIKEGLX_PATH / "Noise4Sam_g0")))
+        converter = TestConverter(source_data=source_data)
+
+        conversion_options = dict(
+            SpikeGLX={"imec0.ap": {"stub_test": True}, "imec0.lf": {"stub_test": True}, "nidq": {"stub_test": True}}
+        )
+
+        nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter_preview.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition["ElectricalSeriesAPImec0"].data.shape == (100, 384)
+            assert nwbfile.acquisition["ElectricalSeriesLFImec0"].data.shape == (100, 384)
+            assert nwbfile.acquisition["ElectricalSeriesNIDQ"].data.shape == (100, 9)
+
 
 class TestMultiProbeSpikeGLXConverter(TestCase):
     maxDiff = None

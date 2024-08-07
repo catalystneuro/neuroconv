@@ -1,3 +1,6 @@
+# TODO: Remove add_to_nwbfile and run_conversion and let inheritance handle it
+
+import warnings
 from typing import Literal, Optional
 
 from pynwb import NWBFile
@@ -83,16 +86,39 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata,
-        stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_test: Optional[bool] = False,
+        stub_frames: Optional[int] = 100,
+        conversion_options: Optional[dict] = None,
     ):
+
+        # Put deprecation warnings for passing stub_test and stub_frames directly
+        if stub_test is not None:
+            warnings.warn(
+                "The 'stub_test' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_test' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_frames' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        conversion_options = conversion_options or dict()
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
+            interface_conversion_options = conversion_options.get(interface_name, dict())
+            interface_conversion_options["stub_test"] = stub_test
+            interface_conversion_options["stub_frames"] = stub_frames
+
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
-                stub_test=stub_test,
-                stub_frames=stub_frames,
+                **interface_conversion_options,
             )
 
     def run_conversion(
@@ -103,7 +129,26 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
+        conversion_options: Optional[dict] = None,
     ) -> None:
+
+        # Put deprecation warnings for passing stub_test and stub_frames directly
+        if stub_test is not None:
+            warnings.warn(
+                "The 'stub_test' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_test' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_frames' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -118,7 +163,13 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_frames=stub_frames)
+            self.add_to_nwbfile(
+                nwbfile=nwbfile_out,
+                metadata=metadata,
+                stub_test=stub_test,
+                stub_frames=stub_frames,
+                conversion_options=conversion_options,
+            )
 
 
 class BrukerTiffSinglePlaneConverter(NWBConverter):
@@ -175,16 +226,39 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata,
-        stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_test: Optional[bool] = False,
+        stub_frames: Optional[int] = 100,
+        conversion_options: Optional[dict] = None,
     ):
+
+        # Put deprecation warnings for passing stub_test and stub_frames directly
+        if stub_test is not None:
+            warnings.warn(
+                "The 'stub_test' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_test' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_frames' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        conversion_options = conversion_options or dict()
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
+            interface_conversion_options = conversion_options.get(interface_name, dict())
+            interface_conversion_options["stub_test"] = stub_test
+            interface_conversion_options["stub_frames"] = stub_frames
+
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
-                stub_test=stub_test,
-                stub_frames=stub_frames,
+                **interface_conversion_options,
             )
 
     def run_conversion(
@@ -193,9 +267,28 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_test: Optional[bool] = False,
+        stub_frames: Optional[int] = 100,
+        conversion_options: Optional[dict] = None,
     ) -> None:
+
+        # Put deprecation warnings for passing stub_test and stub_frames directly
+        if stub_test is not None:
+            warnings.warn(
+                "The 'stub_test' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_test' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' argument is deprecated and will be removed at some point after February 2025"
+                "Please set 'stub_frames' during the initialization of the BrukerTiffMultiPlaneConverter instance.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -210,4 +303,10 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_frames=stub_frames)
+            self.add_to_nwbfile(
+                nwbfile=nwbfile_out,
+                metadata=metadata,
+                stub_test=stub_test,
+                stub_frames=stub_frames,
+                conversion_options=conversion_options,
+            )

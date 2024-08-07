@@ -9,6 +9,7 @@
 
 ### Bug fixes
 * Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
+* Fixed an issue when passing conversion options to a sub-converter (like the popular `SpikeGLXConverterPipe`) nested inside another `NWBConverter`. [PR #979](https://github.com/catalystneuro/neuroconv/pull/979)
 
 ### Improvements
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)

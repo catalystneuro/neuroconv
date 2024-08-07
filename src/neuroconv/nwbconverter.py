@@ -158,9 +158,34 @@ class NWBConverter:
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
         conversion_options = conversion_options or dict()
-        for interface_name, data_interface in self.data_interface_objects.items():
+
+        sub_objects = self.data_interface_objects
+        data_interfaces = {
+            interface_key: interface
+            for interface_key, interface in sub_objects.items()
+            if isinstance(interface, BaseDataInterface)
+        }
+
+        for interface_key, data_interface in data_interfaces.items():
+            interface_conversion_options = conversion_options.get(interface_key, dict())
             data_interface.add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
+                nwbfile=nwbfile,
+                metadata=metadata,
+                **interface_conversion_options,
+            )
+
+        converters = {
+            converter_key: converter
+            for converter_key, converter in sub_objects.items()
+            if isinstance(converter, NWBConverter)
+        }
+
+        for converter_key, converter in converters.items():
+            converter_conversion_options_dict = conversion_options.get(converter_key, dict())
+            converter.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                conversion_options=converter_conversion_options_dict,
             )
 
     def run_conversion(
