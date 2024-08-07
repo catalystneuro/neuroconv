@@ -1338,6 +1338,65 @@ class TestAddUnitsTable(TestCase):
         for i, value in enumerate(written_values):
             np.testing.assert_array_equal(value, expected_values[i])
 
+    def test_missing_int_values(self):
+
+        sorting1 = generate_sorting(num_units=2, durations=[1.0])
+        sorting1 = sorting1.rename_units(new_unit_ids=["a", "b"])
+        sorting1.set_property(key="complete_int_property", values=[1, 2])
+        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+
+        expected_property = np.asarray([1, 2])
+        extracted_property = self.nwbfile.units["complete_int_property"].data
+        assert np.array_equal(extracted_property, expected_property)
+
+        sorting2 = generate_sorting(num_units=2, durations=[1.0])
+        sorting2 = sorting2.rename_units(new_unit_ids=["c", "d"])
+
+        sorting2.set_property(key="incomplete_int_property", values=[10, 11])
+        with self.assertRaises(ValueError):
+            add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+
+        null_values_for_properties = {"complete_int_property": -1, "incomplete_int_property": -3}
+        add_units_table(sorting=sorting2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties)
+
+        expected_complete_property = np.asarray([1, 2, -1, -1])
+        expected_incomplete_property = np.asarray([-3, -3, 10, 11])
+
+        extracted_complete_property = self.nwbfile.units["complete_int_property"].data
+        extracted_incomplete_property = self.nwbfile.units["incomplete_int_property"].data
+
+        assert np.array_equal(extracted_complete_property, expected_complete_property)
+        assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
+    def test_missing_bool_values(self):
+        sorting1 = generate_sorting(num_units=2, durations=[1.0])
+        sorting1 = sorting1.rename_units(new_unit_ids=["a", "b"])
+        sorting1.set_property(key="complete_bool_property", values=[True, False])
+        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+
+        expected_property = np.asarray([True, False])
+        extracted_property = self.nwbfile.units["complete_bool_property"].data.astype(bool)
+        assert np.array_equal(extracted_property, expected_property)
+
+        sorting2 = generate_sorting(num_units=2, durations=[1.0])
+        sorting2 = sorting2.rename_units(new_unit_ids=["c", "d"])
+
+        sorting2.set_property(key="incomplete_bool_property", values=[True, False])
+        with self.assertRaises(ValueError):
+            add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+
+        null_values_for_properties = {"complete_bool_property": False, "incomplete_bool_property": False}
+        add_units_table(sorting=sorting2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties)
+
+        expected_complete_property = np.asarray([True, False, False, False])
+        expected_incomplete_property = np.asarray([False, False, True, False])
+
+        extracted_complete_property = self.nwbfile.units["complete_bool_property"].data.astype(bool)
+        extracted_incomplete_property = self.nwbfile.units["incomplete_bool_property"].data.astype(bool)
+
+        assert np.array_equal(extracted_complete_property, expected_complete_property)
+        assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
 
 from packaging.version import Version
 
