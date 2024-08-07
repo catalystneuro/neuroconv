@@ -966,8 +966,10 @@ class TestAddElectrodes(TestCase):
         with self.assertRaises(ValueError):
             add_electrodes(recording=recording2, nwbfile=self.nwbfile)
 
-        property_to_null_values = {"complete_int_property": -1, "incomplete_int_property": -3}
-        add_electrodes(recording=recording2, nwbfile=self.nwbfile, property_to_null_values=property_to_null_values)
+        null_values_for_properties = {"complete_int_property": -1, "incomplete_int_property": -3}
+        add_electrodes(
+            recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
+        )
 
         expected_complete_property = np.asarray([1, 2, -1, -1])
         expected_incomplete_property = np.asarray([-3, -3, 10, 11])
@@ -995,8 +997,10 @@ class TestAddElectrodes(TestCase):
         with self.assertRaises(ValueError):
             add_electrodes(recording=recording2, nwbfile=self.nwbfile)
 
-        property_to_null_values = {"complete_bool_property": False, "incomplete_bool_property": False}
-        add_electrodes(recording=recording2, nwbfile=self.nwbfile, property_to_null_values=property_to_null_values)
+        null_values_for_properties = {"complete_bool_property": False, "incomplete_bool_property": False}
+        add_electrodes(
+            recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
+        )
 
         expected_complete_property = np.asarray([True, False, False, False])
         expected_incomplete_property = np.asarray([False, False, True, False])
