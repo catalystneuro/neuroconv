@@ -460,6 +460,7 @@ def add_electrodes(
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype("float")
+            default_value = np.nan
 
         else:  # Find first matching data-type for custom column
             sample_data = data[0]
@@ -481,10 +482,8 @@ def add_electrodes(
             dtype = data.dtype
             extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
             extended_data[indexes_for_new_data] = data
-            try:
-                extended_data[indexes_for_default_values] = default_value
-            except ValueError as e:
-                raise ValueError(f"{property=} {default_value=}") from e
+            extended_data[indexes_for_default_values] = default_value
+
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
