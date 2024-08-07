@@ -503,6 +503,7 @@ def add_electrodes(
 
     # Properties that were added before require null values to add by rows if data is missing
     properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
+    nul_values_for_rows = dict()
     for property in properties_requiring_null_values:
         sample_data = nwbfile.electrodes[property][:][0]
         null_value = _get_null_value_for_property(
@@ -510,7 +511,7 @@ def add_electrodes(
             sample_data=sample_data,
             null_values_for_properties=null_values_for_properties,
         )
-        null_values_for_properties[property] = null_value
+        nul_values_for_rows[property] = null_value
 
     # We only add new electrodes to the table
     existing_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
@@ -519,7 +520,7 @@ def add_electrodes(
 
     properties_with_data = properties_to_add_by_rows.intersection(data_to_add)
     for channel_index in channel_indices_to_add:
-        electrode_kwargs = dict(null_values_for_properties)
+        electrode_kwargs = nul_values_for_rows
         data_dict = {property: data_to_add[property]["data"][channel_index] for property in properties_with_data}
         electrode_kwargs.update(**data_dict)
         nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
