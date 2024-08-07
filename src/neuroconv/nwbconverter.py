@@ -3,7 +3,6 @@
 import json
 import warnings
 from collections import Counter
-from inspect import signature
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
@@ -159,24 +158,35 @@ class NWBConverter:
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
         conversion_options = conversion_options or dict()
-        for interface_key, data_interface in self.data_interface_objects.items():
-            if isinstance(data_interface, NWBConverter):
-                subconverter_kwargs = dict(nwbfile=nwbfile, metadata=metadata)
 
-                # Certain subconverters fully expose control over their interfaces conversion options
-                # (such as iterator options, including progress bar details)
-                subconverter_keyword_arguments = list(signature(data_interface.add_to_nwbfile).parameters.keys())
-                if "conversion_options" in subconverter_keyword_arguments:
-                    subconverter_kwargs["conversion_options"] = conversion_options.get(interface_key, None)
-                # Others do not, and instead expose simplified global keywords similar to a classic interface
-                else:
-                    subconverter_kwargs.update(conversion_options.get(interface_key, dict()))
+        sub_objects = self.data_interface_objects
+        data_interfaces = {
+            interface_key: interface
+            for interface_key, interface in sub_objects.items()
+            if isinstance(interface, BaseDataInterface)
+        }
 
-                data_interface.add_to_nwbfile(**subconverter_kwargs)
-            else:
-                data_interface.add_to_nwbfile(
-                    nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_key, dict())
-                )
+        for interface_key, data_interface in data_interfaces.items():
+            interface_conversion_options = conversion_options.get(interface_key, dict())
+            data_interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                **interface_conversion_options,
+            )
+
+        converters = {
+            converter_key: converter
+            for converter_key, converter in sub_objects.items()
+            if isinstance(converter, NWBConverter)
+        }
+
+        for converter_key, converter in converters.items():
+            converter_conversion_options_dict = conversion_options.get(converter_key, dict())
+            converter.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                conversion_options=converter_conversion_options_dict,
+            )
 
     def run_conversion(
         self,
