@@ -179,6 +179,96 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
 
+def _get_channel_name(recording: BaseRecording) -> np.ndarray:
+    """
+    Extract the canonical `channel_name` from the recording, which will be written
+    in the electrodes table.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        The recording object from which to extract the channel names.
+
+    Returns
+    -------
+    np.ndarray
+        An array containing the channel names. If the `channel_name` property is not
+        available, the channel IDs as strings will be returned.
+    """
+
+    # That uses either the `channel_name` property or the channel ids as string otherwise.
+    channel_names = recording.get_property("channel_name")
+    if channel_names is None:
+        channel_names = recording.get_channel_ids().astype("str", copy=False)
+
+    return channel_names
+
+
+def _get_group_name(recording: BaseRecording) -> np.ndarray:
+    """
+    Extract the canonical `group_name` from the recording, which will be written
+    in the electrodes table.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        The recording object from which to extract the group names.
+
+    Returns
+    -------
+    np.ndarray
+        An array containing the group names. If the `group_name` property is not
+        available, the channel groups will be returned. If the group names are
+        empty, a default value 'ElectrodeGroup' will be used.
+    """
+    default_value = "ElectrodeGroup"
+    group_names = recording.get_property("group_name")
+    if group_names is None:
+        group_names = recording.get_channel_groups()
+    if group_names is None:
+        group_names = np.full(recording.get_num_channels(), fill_value=default_value)
+
+    # Always ensure group_names are strings
+    group_names = group_names.astype("str", copy=False)
+
+    # If for any reason the group names are empty, fill them with the default
+    group_names[group_names == ""] = default_value
+
+    return group_names
+
+
+def _get_electrodes_table_global_ids(nwbfile: pynwb.NWBFile) -> List[str]:
+    """
+    Generate a list of global identifiers for channels in the electrode table of an NWB file.
+
+    These identifiers are used to map electrodes across writing operations.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        The NWB file from which to extract the electrode table information.
+
+    Returns
+    -------
+    List[str]
+        A list of unique keys, each representing a combination of channel name and
+        group name from the electrodes table. If the electrodes table or the
+        necessary columns are not present, an empty list is returned.
+    """
+
+    if nwbfile.electrodes is None:
+        return []
+
+    if "channel_name" not in nwbfile.electrodes.colnames or "group_name" not in nwbfile.electrodes.colnames:
+        return []
+
+    channel_names = nwbfile.electrodes["channel_name"][:]
+    group_names = nwbfile.electrodes["group_name"][:]
+    unique_keys = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
+
+    return unique_keys
+
+
 def add_electrodes(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -220,7 +310,9 @@ def add_electrodes(
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
     """
-    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    assert isinstance(
+        nwbfile, pynwb.NWBFile
+    ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
 
     # Test that metadata has the expected structure
     electrodes_metadata = list()
@@ -245,32 +337,42 @@ def add_electrodes(
         property_descriptions[property["name"]] = property["description"]
 
     # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
-    data_to_add = defaultdict(dict)
+    data_to_add = dict()
 
-    recorder_properties = recording.get_property_keys()
-    excluded_properties = list(exclude) + ["offset_to_uV", "gain_to_uV", "contact_vector"]
-    properties_to_extract = [property for property in recorder_properties if property not in excluded_properties]
+    recording_properties = recording.get_property_keys()
+    special_cases = [
+        "offset_to_uV",  # Written in the ElectricalSeries
+        "gain_to_uV",  # Written in the ElectricalSeries
+        "contact_vector",  # Structured array representing the probe
+        "channel_name",  # We handle this here with _get_channel_name
+        "channel_names",  # Some formats from neo also have this property, skip it
+        "group_name",  # We handle this here _get_group_name
+        "group",  # We handle this here with _get_group_name
+    ]
+    excluded_properties = list(exclude) + special_cases
+    properties_to_extract = [property for property in recording_properties if property not in excluded_properties]
 
     for property in properties_to_extract:
-        data = recording.get_property(property)
+        data = np.asarray(recording.get_property(property)).copy()  # Do not modify properties of the recording
+
         index = isinstance(data[0], (list, np.ndarray, tuple))
         if index and isinstance(data[0], np.ndarray):
             index = data[0].ndim
+
         # booleans are parsed as strings
         if isinstance(data[0], (bool, np.bool_)):
             data = data.astype(str)
+
         # Fill with provided custom descriptions
         description = property_descriptions.get(property, "no description")
-        data_to_add[property].update(description=description, data=data, index=index)
+        data_to_add[property] = dict(description=description, data=data, index=index)
 
-    # Channel name logic
-    channel_ids = recording.get_channel_ids()
-    if "channel_name" in data_to_add:
-        # if 'channel_name' is set as a property, it is used to override default channel_ids (and "id")
-        channel_name_array = data_to_add["channel_name"]["data"].astype("str", copy=False)
-    else:
-        channel_name_array = channel_ids.astype("str", copy=False)
-        data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
+    # Special cases properties
+    channel_names = _get_channel_name(recording=recording)
+    data_to_add["channel_name"] = dict(description="unique channel reference", data=channel_names, index=False)
+
+    group_names = _get_group_name(recording=recording)
+    data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     if "location" in data_to_add:
@@ -278,105 +380,59 @@ def add_electrodes(
         column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
         for column_number in range(data.shape[1]):
             property = column_number_to_property[column_number]
-            data_to_add[property].update(description=property, data=data[:, column_number], index=False)
+            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
         data_to_add.pop("location")
 
-    # Brain area is the meaning of location in the nwb standard
+    # In the electrode table location is the brain area of spikeinterface
     if "brain_area" in data_to_add:
         data_to_add["location"] = data_to_add["brain_area"]
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
-
-    # If no group_names are provided, use information from groups. Use default values if nothing is provided.
-    if "group_name" in data_to_add:
-        group_name_array = data_to_add["group_name"]["data"].astype("str", copy=False)
-    elif "group" in data_to_add:
-        group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
     else:
-        default_group_name = "ElectrodeGroup"
-        group_name_array = np.full(channel_name_array.size, fill_value=default_group_name)
-
-    group_name_array[group_name_array == ""] = "ElectrodeGroup"
-    data_to_add["group_name"].update(description="group_name", data=group_name_array, index=False)
+        # This is a required property and needs a default value
+        data = np.full(recording.get_num_channels(), fill_value="unknown")
+        data_to_add["location"] = dict(description="location", data=data, index=False)
 
     # Add missing groups to the nwb file
-    groupless_names = [group_name for group_name in group_name_array if group_name not in nwbfile.electrode_groups]
+    groupless_names = [group_name for group_name in group_names if group_name not in nwbfile.electrode_groups]
     if len(groupless_names) > 0:
         electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
         missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
         add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
 
-    group_list = [nwbfile.electrode_groups[group_name] for group_name in group_name_array]
-    data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
+    group_list = [nwbfile.electrode_groups[group_name] for group_name in group_names]
+    data_to_add["group"] = dict(description="the ElectrodeGroup object", data=group_list, index=False)
 
-    # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
-    # This mapping contains all the defaults that might be required by pre-defined columns on the NWB schema
-    # https://nwb-schema.readthedocs.io/en/latest/format.html#groups-general-extracellular-ephys-electrodes
-    required_schema_property_to_default_value = dict(
-        id=None,
-        group=None,
-        group_name="ElectrodeGroup",
-        location="unknown",
-    )
-    optional_schema_property_to_default_value = dict(
-        x=np.nan,
-        y=np.nan,
-        z=np.nan,
-        # There doesn't seem to be a canonical default for impedance, if missing.
-        # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
-        imp=-1.0,
-        filtering="none",
-    )
-    required_schema_properties = set(required_schema_property_to_default_value)
-    optional_schema_properties = set(optional_schema_property_to_default_value)
-    schema_properties = required_schema_properties | optional_schema_properties
-
+    schema_properties = {"group", "group_name", "location"}
     electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
     extracted_properties = set(data_to_add)
-    properties_to_add_by_rows = required_schema_properties | electrode_table_previous_properties
-    properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
+    properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
+    properties_to_add_by_columns = extracted_properties.difference(properties_to_add_by_rows)
 
-    # Find default values for a subset of optional schema defined properties already in the electrode table
-    all_properties_to_default_value = dict(required_schema_property_to_default_value)
-    for optional_property in optional_schema_properties.intersection(electrode_table_previous_properties):
-        all_properties_to_default_value.update(
-            {optional_property: optional_schema_property_to_default_value[optional_property]}
-        )
-
-    # Find default values for custom (not schema defined) properties / columns already in the electrode table
+    # Properties that were added before but we are not adding now require default values
+    properties_to_default_value = dict()
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
-    for property in electrode_table_previous_properties - schema_properties:
+    for property in electrode_table_previous_properties.difference(data_to_add):
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
-        all_properties_to_default_value.update({property: default_value})
+        properties_to_default_value[property] = default_value
 
-    # Add data by rows excluding the rows containing channel_names and group_names that were previously added
-    # The same channel_name can be added provided that it belongs to a different group
-    channel_group_names_used_previously = []
-    if "channel_name" in electrode_table_previous_properties and "group_name" in electrode_table_previous_properties:
-        channel_group_names_used_previously = [
-            (ch_name, gr_name)
-            for ch_name, gr_name in zip(nwbfile.electrodes["channel_name"].data, nwbfile.electrodes["group_name"].data)
-        ]
+    # We only add new electrodes to the table
+    existing_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
+    channel_global_ids = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
+    channel_indices_to_add = [index for index, key in enumerate(channel_global_ids) if key not in existing_global_ids]
 
-    properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
-    rows_in_data = [index for index in range(recording.get_num_channels())]
-    rows_to_add = [
-        index
-        for index in rows_in_data
-        if (channel_name_array[index], group_name_array[index]) not in channel_group_names_used_previously
-    ]
-    for row in rows_to_add:
-        electrode_kwargs = dict(all_properties_to_default_value)
-        for property in properties_with_data:
-            electrode_kwargs[property] = data_to_add[property]["data"][row]
-
+    properties_with_data = properties_to_add_by_rows.intersection(data_to_add)
+    for channel_index in channel_indices_to_add:
+        electrode_kwargs = dict(properties_to_default_value)
+        data_dict = {property: data_to_add[property]["data"][channel_index] for property in properties_with_data}
+        electrode_kwargs.update(**data_dict)
         nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
-    previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
+    previous_table_size = len(nwbfile.electrodes.id[:]) - recording.get_num_channels()
 
     if "channel_name" in properties_to_add_by_columns:
         cols_args = data_to_add["channel_name"]
@@ -392,11 +448,10 @@ def add_electrodes(
     # Build  a channel name to electrode table index map
     electrodes_df = nwbfile.electrodes.to_dataframe().reset_index()
     channel_name_to_electrode_index = {
-        channel_name: electrodes_df.query(f"channel_name=='{channel_name}'").index[0]
-        for channel_name in channel_name_array
+        channel_name: electrodes_df.query(f"channel_name=='{channel_name}'").index[0] for channel_name in channel_names
     }
 
-    indexes_for_new_data = [channel_name_to_electrode_index[channel_name] for channel_name in channel_name_array]
+    indexes_for_new_data = [channel_name_to_electrode_index[channel_name] for channel_name in channel_names]
     indexes_for_default_values = electrodes_df.index.difference(indexes_for_new_data).values
 
     # Add properties as columns
@@ -405,9 +460,8 @@ def add_electrodes(
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype("float")
+            default_value = np.nan
 
-        if property in optional_schema_property_to_default_value:
-            default_value = optional_schema_property_to_default_value[property]
         else:  # Find first matching data-type for custom column
             sample_data = data[0]
             matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
@@ -653,26 +707,16 @@ def add_electrical_series(
     # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
-    # That uses either the `channel_name` property or the channel ids as string otherwise.
-    channel_names = recording.get_property("channel_name")
-    if channel_names is None:
-        channel_names = recording.get_channel_ids().astype("str")
+    # Create a region for the electrodes table
+    channel_names = _get_channel_name(recording=recording)
+    group_names = _get_group_name(recording=recording)
+    channel_global_ids = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
+    table_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
+    electrode_table_indices = [table_global_ids.index(ch_id) for ch_id in channel_global_ids]
 
-    if "group_name" in recording.get_property_keys():
-        group_names = recording.get_property("group_name").astype("str")
-    elif "group" in recording.get_property_keys():
-        group_names = recording.get_property("group").astype("str")
-    else:
-        group_names = np.full(channel_names.size, fill_value="ElectrodeGroup")
-
-    # We use those channels to select the electrodes to be added to the ElectricalSeries
-    channel_names_in_electrode_table = nwbfile.electrodes["channel_name"][:]
-    channel_mask = np.isin(channel_names_in_electrode_table, channel_names)
-    group_names_in_electrode_table = nwbfile.electrodes["group_name"][:]
-    group_mask = np.isin(group_names_in_electrode_table, group_names)
-    (electrode_table_indices,) = np.nonzero(np.logical_and(channel_mask, group_mask))
     electrode_table_region = nwbfile.create_electrode_table_region(
-        region=electrode_table_indices.tolist(), description="electrode_table_region"
+        region=electrode_table_indices,
+        description="electrode_table_region",
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
@@ -1005,11 +1049,13 @@ def add_units_table(
     unit_electrode_indices : list of lists of int, optional
         For each unit, a list of electrode indices corresponding to waveform data.
     """
+
+    assert isinstance(
+        nwbfile, pynwb.NWBFile
+    ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
+
     if not write_in_processing_module and units_table_name != "units":
         raise ValueError("When writing to the nwbfile.units table, the name of the table must be 'units'!")
-
-    if not isinstance(nwbfile, pynwb.NWBFile):
-        raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
 
     if write_in_processing_module:
         ecephys_mod = get_module(
