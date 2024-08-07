@@ -392,7 +392,6 @@ def add_electrodes(
     for property in properties_to_extract:
         data = np.asarray(recording.get_property(property)).copy()  # Do not modify properties of the recording
 
-        # TODO: Add logic for arbitrarily nested ragged arrays
         index = isinstance(data[0], (list, np.ndarray, tuple))
         if index and isinstance(data[0], np.ndarray):
             index = data[0].ndim
@@ -447,8 +446,8 @@ def add_electrodes(
     properties_to_default_value = dict()
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", float: np.nan, complex: np.nan}
 
-    # We exclude schema properties because we ensure they are filled above
-    for property in electrode_table_previous_properties.difference(schema_properties):
+    # Properties that were added before but we are not adding now require default values
+    for property in electrode_table_previous_properties.difference(data_to_add):
         sample_data = nwbfile.electrodes[property][:][0]
         # If numpy transform to python type
         sample_data = sample_data.item() if isinstance(sample_data, np.generic) else sample_data
@@ -458,19 +457,19 @@ def add_electrodes(
             default_value = property_to_null_values.get(property, None)
             if default_value is None:
                 error_msg = (
-                    f"Could not find a sensible default value for property '{property}' "
-                    f"with dtype {sample_data_type}. Set it with the argument 'property_to_null_values' as in: \n"
-                    "property_to_null_values = {'property_name': default_value}"
+                    f"Could not find a sensible default value for property '{property}' of type {sample_data_type} \n"
+                    "This can be fixed by  by modifying the recording property or setting a sensible default value "
+                    "using the `add_electrodes` function argument `property_to_null_values` as in: \n"
+                    "property_to_null_values = {{property}': default_value}"
                 )
                 raise ValueError(error_msg)
             if type(default_value) != sample_data_type:
                 error_msg = (
-                    f"Default value for property '{property}' in property_to_null_values dict "
-                    f"has a different type than the currently existing data. Modify the recording property."
+                    f"Default value for property '{property}' in property_to_null_values dict has a "
+                    f"different type {type(default_value)} than the currently existing data type {sample_data_type}. \n"
+                    "Modify the recording property or the default value to match"
                 )
                 raise ValueError(error_msg)
-
-        properties_to_default_value[property] = default_value
 
     # We only add new electrodes to the table
     existing_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
