@@ -97,7 +97,7 @@ def get_device_metadata(meta) -> dict:
     dict
         a dict containing the metadata necessary for creating the device
     """
-
+    # TODO, get probe metadata from spikeinterface
     metadata_dict = dict()
     if "imDatPrb_type" in meta:
         probe_type_to_probe_description = {
@@ -107,7 +107,7 @@ def get_device_metadata(meta) -> dict:
             "1030": "NP1.0 NHP",
         }
         probe_type = str(meta["imDatPrb_type"])
-        probe_type_description = probe_type_to_probe_description[probe_type]
+        probe_type_description = probe_type_to_probe_description.get(probe_type, "")
         metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
 
     if "imDatFx_pn" in meta:
