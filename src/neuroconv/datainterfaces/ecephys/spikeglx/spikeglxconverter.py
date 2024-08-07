@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import List, Optional
 
-import numpy as np
-
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
@@ -69,14 +67,16 @@ class SpikeGLXConverterPipe(ConverterPipe):
                 file_path = (
                     folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.ap.bin"
                 )
-                interface = SpikeGLXRecordingInterface(file_path=file_path)
-            if "lf" in stream:
+                es_key = f"ElectricalSeriesAP{probe_name.capitalize()}"
+                interface = SpikeGLXRecordingInterface(file_path=file_path, es_key=es_key)
+            elif "lf" in stream:
                 probe_name = stream[:5]
                 file_path = (
                     folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.lf.bin"
                 )
-                interface = SpikeGLXRecordingInterface(file_path=file_path)
-            if "nidq" in stream:
+                es_key = f"ElectricalSeriesLF{probe_name.capitalize()}"
+                interface = SpikeGLXRecordingInterface(file_path=file_path, es_key=es_key)
+            elif "nidq" in stream:
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
             data_interfaces.update({str(stream): interface})  # Without str() casting, is a numpy string

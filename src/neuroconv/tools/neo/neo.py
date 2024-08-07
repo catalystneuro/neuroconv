@@ -8,7 +8,6 @@ from typing import Optional, Tuple
 import neo.io.baseio
 import numpy as np
 import pynwb
-from hdmf.backends.hdf5 import H5DataIO
 
 from ..nwb_helpers import add_device_from_metadata
 from ...utils import OptionalFilePathType
@@ -215,7 +214,7 @@ def add_icephys_recordings(
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: str = "not described",
     skip_electrodes: Tuple[int] = (),
-    compression: str = "gzip",
+    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -230,8 +229,18 @@ def add_icephys_recordings(
     stimulus_type : str, default: 'not described'
     skip_electrodes : tuple, default: ()
         Electrode IDs to skip.
-    compression : str | bool
     """
+    # TODO: remove completely after 10/1/2024
+    if compression is not None:
+        warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
     n_segments = get_number_of_segments(neo_reader, block=0)
 
     # Check for protocol data (only ABF2), necessary for stimuli data
@@ -317,10 +326,7 @@ def add_icephys_recordings(
                 name=response_name,
                 description=f"Response to: {session_stimulus_type}",
                 electrode=electrode,
-                data=H5DataIO(
-                    data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
-                    compression=compression,
-                ),
+                data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
                 starting_time=starting_time,
                 rate=sampling_rate,
                 conversion=response_conversion * response_gain,
@@ -374,7 +380,7 @@ def add_neo_to_nwb(
     neo_reader,
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
-    compression: Optional[str] = "gzip",
+    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
     skip_electrodes: Tuple[int] = (),
@@ -393,9 +399,6 @@ def add_neo_to_nwb(
         metadata info for constructing the nwb file (optional).
         Check the auxiliary function docstrings for more information
         about metadata format.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
@@ -404,6 +407,17 @@ def add_neo_to_nwb(
         Electrode IDs to skip. Defaults to ().
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    # TODO: remove completely after 10/1/2024
+    if compression is not None:
+        warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
 
     add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
@@ -420,7 +434,6 @@ def add_neo_to_nwb(
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
         skip_electrodes=skip_electrodes,
-        compression=compression,
     )
 
 
@@ -430,7 +443,7 @@ def write_neo_to_nwb(
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,
-    compression: Optional[str] = "gzip",
+    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
     skip_electrodes: Optional[tuple] = (),
@@ -505,13 +518,23 @@ def write_neo_to_nwb(
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 
+    # TODO: remove completely after 10/1/2024
+    if compression is not None:
+        warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
     if metadata is None:
         metadata = get_nwb_metadata(neo_reader=neo_reader)
 
     kwargs = dict(
         neo_reader=neo_reader,
         metadata=metadata,
-        compression=compression,
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
         skip_electrodes=skip_electrodes,

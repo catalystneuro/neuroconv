@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Phy dat
 
 .. code-block:: bash
 
-    pip install neuroconv[phy]
+    pip install "neuroconv[phy]"
 
 Convert Phy data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.phy.phydatainterface.PhySortingInterface`.
 

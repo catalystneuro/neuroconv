@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading EDF dat
 
 .. code-block:: bash
 
-    pip install neuroconv[edf]
+    pip install "neuroconv[edf]"
 
 Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface`.
 

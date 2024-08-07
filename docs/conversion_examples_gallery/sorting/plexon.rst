@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 
 .. code-block:: bash
 
-    pip install neuroconv[plexon]
+    pip install "neuroconv[plexon]"
 
 Convert Plexon spiking data (.plx) to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonSortingInterface`.
 
