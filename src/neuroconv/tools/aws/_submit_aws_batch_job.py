@@ -25,7 +25,7 @@ def submit_aws_batch_job(
     minimum_worker_cpus: int = 4,
     submission_id: Optional[str] = None,
     region: Optional[str] = None,
-) -> Dict[str, str]:  # pragma: no cover
+) -> Dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
 
