@@ -8,7 +8,7 @@ from ....utils import FilePathType
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
-    """Automatically add shank group_name and shank_electrode_number for spikeglx."""
+    """Utility functions for setting some properties on the recording extractor"""
     probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
 
@@ -20,16 +20,14 @@ def add_recording_extractor_properties(recording_extractor) -> None:
         recording_extractor.set_property(key="shank_ids", values=shank_ids)
         group_name = [f"{probe_name}{shank_id}" for shank_id in shank_ids]
     else:
-        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
         group_name = [f"{probe_name}"] * len(channel_ids)
 
-    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 
     contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
     recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
-    contact_ids = probe.contact_ids
+    contact_ids = probe.contact_ids  # s{shank_number}e{electrode_number} or e{electrode_number}
     recording_extractor.set_property(key="contact_ids", ids=channel_ids, values=contact_ids)
 
 
