@@ -11,13 +11,13 @@ A simple to-do list for the Neuroconv release process:
 
 2. **Set the Correct Version for Release**:
 
-   - The development version (the current code on `main`) should be one patch version ahead of the latest PyPI release and therefore ready.
+   - The development version (the current code on `main`) should be one patch version ahead of the latest PyPI release and therefore ready for the next step.
    - If a minor version bump is necessary, change it accordingly.
    - Example: `Version Change Example <https://github.com/catalystneuro/neuroconv/commit/af91f09f300cb36ba4fee483196c8cb492c180ae>`_
 
 3. **Perform Checks**:
 
-   - Ensure that no requirement files include pointers to non-standard branches (e.g., GitHub links).
+   - Ensure that no requirement files include pointers to `git`-based dependencies (including specific branches or commit hashes). All dependencies for a PyPI release should point to the released package versions that are available on conda-forge or PyPI.
 
 4. **Tag on GitHub**:
 
