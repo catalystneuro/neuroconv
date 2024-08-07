@@ -16,7 +16,7 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     probe_name = recording_extractor.stream_id[:5].capitalize()
 
     if probe.get_shank_count() > 1:
-        shank_ids = probe.get_shank_ids()
+        shank_ids = probe.shank_ids
         recording_extractor.set_property(key="shank_ids", values=shank_ids)
         group_name = [f"{probe_name}{shank_id}" for shank_id in shank_ids]
     else:
