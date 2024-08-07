@@ -16,17 +16,21 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     probe_name = recording_extractor.stream_id[:5].capitalize()
 
     if probe.get_shank_count() > 1:
-        shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
-        group_name = [f"{probe_name}{contact_id.split('e')[0]}" for contact_id in probe.contact_ids]
+        shank_ids = probe.get_shank_ids()
+        recording_extractor.set_property(key="shank_ids", values=shank_ids)
+        group_name = [f"{probe_name}{shank_id}" for shank_id in shank_ids]
     else:
         shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
-        group_name = [f"{probe_name}Shank0"] * len(channel_ids)
+        group_name = [f"{probe_name}"] * len(channel_ids)
 
     recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 
     contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
     recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+
+    contact_ids = probe.contact_ids
+    recording_extractor.set_property(key="contact_ids", ids=channel_ids, values=contact_ids)
 
 
 def get_session_start_time(recording_metadata: dict) -> datetime:
@@ -105,6 +109,7 @@ def get_device_metadata(meta) -> dict:
             "21": "NP2.0(1-shank)",
             "24": "NP2.0(4-shank)",
             "1030": "NP1.0 NHP",
+            "2013": "NP2.0(4-shank)",
         }
         probe_type = str(meta["imDatPrb_type"])
         probe_type_description = probe_type_to_probe_description[probe_type]
