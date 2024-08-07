@@ -107,7 +107,7 @@ def get_device_metadata(meta) -> dict:
             "1030": "NP1.0 NHP",
         }
         probe_type = str(meta["imDatPrb_type"])
-        probe_type_description = probe_type_to_probe_description.get(probe_type, "")
+        probe_type_description = probe_type_to_probe_description.get(probe_type, "Unknown SpikeGLX probe type.")
         metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
 
     if "imDatFx_pn" in meta:
