@@ -1,5 +1,12 @@
 # Upcoming
 
+
+### Deprecations
+* Deprecated  `WaveformExtractor` usage . [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
+
+### Features
+* Support `SortingAnalyzer` in the `SpikeGLXConverterPipe`. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
+
 ### Bug fixes
 * Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
 
@@ -9,9 +16,6 @@
 * The `DeeplabcutInterface` now skips inferring timestamps from movie when timestamps are specified, running faster. [PR #967](https://github.com/catalystneuro/neuroconv/pull/967)
 * Improve metadata writing for SpikeGLX data interface. Added contact ids, shank ids and, remove references to shanks for neuropixels 1.0. Also deprecated the previous neuroconv exclusive property "electrode_shank_number` [PR #986](https://github.com/catalystneuro/neuroconv/pull/986)
 
-
-### Dependencies
-* Updated `spikeinterface` to `v0.101.0` to use `SortingAnalyzer` instead of `WaveformExtractor` (discontinued) in the `spikeinterface` tools
 
 
 ## v0.5.0 (July 17, 2024)
