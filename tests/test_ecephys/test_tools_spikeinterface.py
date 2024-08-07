@@ -1263,7 +1263,7 @@ class TestAddUnitsTable(TestCase):
             nwbfile=self.nwbfile,
         )
         self.assertIn("test_bool", self.nwbfile.units.colnames)
-        assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
+        assert all(tb in [False, True] for tb in self.nwbfile.units["test_bool"][:])
 
     def test_adding_ragged_array_properties(self):
 
