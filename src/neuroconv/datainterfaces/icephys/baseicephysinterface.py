@@ -30,7 +30,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
         if dandi_icephys_spec is not None:
             from ndx_dandi_icephys import DandiIcephysMetadata
-            
+
             self.DandiIcephysMetadata = DandiIcephysMetadata
 
             self.HAVE_NDX_DANDI_ICEPHYS = True
