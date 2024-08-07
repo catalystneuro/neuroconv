@@ -181,8 +181,19 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
 
 def _get_channel_name(recording: BaseRecording) -> np.ndarray:
     """
-    Utility function to extract the canonical `channel_name` that will be written in the
-    electrodes table
+    Extract the canonical `channel_name` from the recording, which will be written
+    in the electrodes table.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        The recording object from which to extract the channel names.
+
+    Returns
+    -------
+    np.ndarray
+        An array containing the channel names. If the `channel_name` property is not
+        available, the channel IDs as strings will be returned.
     """
 
     # That uses either the `channel_name` property or the channel ids as string otherwise.
@@ -195,8 +206,20 @@ def _get_channel_name(recording: BaseRecording) -> np.ndarray:
 
 def _get_group_name(recording: BaseRecording) -> np.ndarray:
     """
-    Utility function to extract the canonical `group_name` that will be written in the
-    electrodes table
+    Extract the canonical `group_name` from the recording, which will be written
+    in the electrodes table.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        The recording object from which to extract the group names.
+
+    Returns
+    -------
+    np.ndarray
+        An array containing the group names. If the `group_name` property is not
+        available, the channel groups will be returned. If the group names are
+        empty, a default value 'ElectrodeGroup' will be used.
     """
     default_value = "ElectrodeGroup"
     group_names = recording.get_property("group_name")
@@ -216,8 +239,21 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
 
 def _get_electrodes_table_global_ids(nwbfile: pynwb.NWBFile) -> List[str]:
     """
-    Neuroconv definition of global identifier for channels in the electrode table.
-    We use this to map electrodes across writing operations.
+    Generate a list of global identifiers for channels in the electrode table of an NWB file.
+
+    These identifiers are used to map electrodes across writing operations.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        The NWB file from which to extract the electrode table information.
+
+    Returns
+    -------
+    List[str]
+        A list of unique keys, each representing a combination of channel name and
+        group name from the electrodes table. If the electrodes table or the
+        necessary columns are not present, an empty list is returned.
     """
 
     if nwbfile.electrodes is None:
