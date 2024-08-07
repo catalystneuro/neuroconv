@@ -355,7 +355,6 @@ def add_electrodes(
     for property in properties_to_extract:
         data = np.asarray(recording.get_property(property)).copy()  # Do not modify properties of the recording
 
-        # TODO: Add logic for arbitrarily nested ragged arrays
         index = isinstance(data[0], (list, np.ndarray, tuple))
         if index and isinstance(data[0], np.ndarray):
             index = data[0].ndim
@@ -410,11 +409,10 @@ def add_electrodes(
     properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
     properties_to_add_by_columns = extracted_properties.difference(properties_to_add_by_rows)
 
-    # Find default values for a subset of optional schema defined properties already in the electrode table
+    # Properties that were added before but we are not adding now require default values
     properties_to_default_value = dict()
-    # Find default values for custom (not schema defined) properties / columns already in the electrode table
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
-    for property in electrode_table_previous_properties.difference(schema_properties):
+    for property in electrode_table_previous_properties.difference(data_to_add):
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
