@@ -6,6 +6,8 @@
 
 ### Features
 * Support `SortingAnalyzer` in the `SpikeGLXConverterPipe`. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
+* Add Plexon2 support [PR #918](https://github.com/catalystneuro/neuroconv/pull/918)
+* Converter working with multiple VideoInterface instances [PR 914](https://github.com/catalystneuro/neuroconv/pull/914)
 
 ### Bug fixes
 * Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
@@ -54,8 +56,7 @@
 
 ### Improvements
 * Propagated `photon_series_type` to `BaseImagingExtractorInterface` init instead of passing it as an argument of `get_metadata()` and `get_metadata_schema()`. [PR #847](https://github.com/catalystneuro/neuroconv/pull/847)
-* Add Plexon2 support [PR #918](https://github.com/catalystneuro/neuroconv/pull/918)
-* Converter working with multiple VideoInterface instances [PR 914](https://github.com/catalystneuro/neuroconv/pull/914)
+
 
 
 

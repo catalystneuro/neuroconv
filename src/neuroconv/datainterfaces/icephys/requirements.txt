@@ -1,1 +1,1 @@
-neo @ git+https://github.com/NeuralEnsemble/python-neo.git@master
+neo>=0.13.2
