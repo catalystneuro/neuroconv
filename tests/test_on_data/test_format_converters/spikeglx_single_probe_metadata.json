@@ -17,8 +17,8 @@
     ],
     "ElectrodeGroup": [
       {
-        "name": "Imec0Shank0",
-        "description": "A group representing probe/shank 'Imec0Shank0'.",
+        "name": "Imec0",
+        "description": "A group representing probe/shank 'Imec0'.",
         "location": "unknown",
         "device": "NeuropixelImec0"
       },
@@ -35,16 +35,16 @@
     },
     "Electrodes": [
       {
-        "name": "shank_electrode_number",
-        "description": "0-indexed channel within a shank."
-      },
-      {
         "name": "group_name",
         "description": "Name of the ElectrodeGroup this electrode is a part of."
       },
       {
         "name": "contact_shapes",
         "description": "The shape of the electrode"
+      },
+      {
+        "name": "contact_ids",
+        "description": "The id of the contact on the electrode"
       }
     ],
     "ElectricalSeriesNIDQ": {
