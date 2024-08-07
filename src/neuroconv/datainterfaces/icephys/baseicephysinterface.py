@@ -1,3 +1,4 @@
+import importlib.util
 from typing import Tuple
 
 import numpy as np
@@ -10,14 +11,6 @@ from ...utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
 )
-
-try:
-    from ndx_dandi_icephys import DandiIcephysMetadata
-
-    HAVE_NDX_DANDI_ICEPHYS = True
-except ImportError:
-    DandiIcephysMetadata = None
-    HAVE_NDX_DANDI_ICEPHYS = False
 
 
 class BaseIcephysInterface(BaseExtractorInterface):
@@ -33,6 +26,18 @@ class BaseIcephysInterface(BaseExtractorInterface):
         return source_schema
 
     def __init__(self, file_paths: list):
+        # Check if the ndx_dandi_icephys module is available
+        dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
+        if dandi_icephys_spec is not None:
+            from ndx_dandi_icephys import DandiIcephysMetadata
+
+            self.DandiIcephysMetadata = DandiIcephysMetadata
+
+            self.HAVE_NDX_DANDI_ICEPHYS = True
+        else:
+            self.DandiIcephysMetadata = None
+            self.HAVE_NDX_DANDI_ICEPHYS = False
+
         from ...tools.neo import get_number_of_electrodes, get_number_of_segments
 
         super().__init__(file_paths=file_paths)
@@ -49,8 +54,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
-        if DandiIcephysMetadata:
-            metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)
+        if self.DandiIcephysMetadata is not None:
+            metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(self.DandiIcephysMetadata)
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
@@ -109,11 +114,11 @@ class BaseIcephysInterface(BaseExtractorInterface):
             nwbfile = make_nwbfile_from_metadata(metadata)
 
         if (
-            HAVE_NDX_DANDI_ICEPHYS
+            self.HAVE_NDX_DANDI_ICEPHYS
             and "ndx-dandi-icephys" in metadata
             and "DandiIcephysMetadata" not in nwbfile.lab_meta_data
         ):
-            nwbfile.add_lab_meta_data(DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
+            nwbfile.add_lab_meta_data(self.DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
 
         for i, reader in enumerate(self.readers_list):
             add_neo_to_nwb(
