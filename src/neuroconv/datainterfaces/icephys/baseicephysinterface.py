@@ -29,6 +29,9 @@ class BaseIcephysInterface(BaseExtractorInterface):
         # Check if the ndx_dandi_icephys module is available
         dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
         if dandi_icephys_spec is not None:
+            from ndx_dandi_icephys import DandiIcephysMetadata
+            
+            self.DandiIcephysMetadata = DandiIcephysMetadata
 
             self.HAVE_NDX_DANDI_ICEPHYS = True
         else:
@@ -51,7 +54,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
-        if self.DandiIcephysMetadata:
+        if self.DandiIcephysMetadata is not None:
             metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(self.DandiIcephysMetadata)
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
