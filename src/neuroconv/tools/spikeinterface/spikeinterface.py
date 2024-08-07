@@ -489,6 +489,7 @@ def add_electrodes(
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype("float")
+            default_value = np.nan
 
         else:  # Find first matching data-type for custom column
             sample_data = data[0]
