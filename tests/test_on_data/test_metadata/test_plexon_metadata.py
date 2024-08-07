@@ -1,7 +1,5 @@
 import datetime
 
-import pytest
-
 from neuroconv.datainterfaces import Plexon2RecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH
