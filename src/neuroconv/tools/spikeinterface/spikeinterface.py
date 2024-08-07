@@ -481,8 +481,10 @@ def add_electrodes(
             dtype = data.dtype
             extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=dtype)
             extended_data[indexes_for_new_data] = data
-            extended_data[indexes_for_default_values] = default_value
-
+            try:
+                extended_data[indexes_for_default_values] = default_value
+            except ValueError as e:
+                raise ValueError(f"{property=} {default_value=}") from e
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
