@@ -301,7 +301,7 @@ def _get_electrode_table_indices_for_recording(recording: BaseRecording, nwbfile
     return electrode_table_indices
 
 
-def _get_null_value_for_property(sample_data: Any, null_values_for_properties: dict[str, Any]) -> Any:
+def _get_null_value_for_property(property: str, sample_data: Any, null_values_for_properties: dict[str, Any]) -> Any:
     """
     Retrieve the null value for a given property based on its data type or a provided mapping.
 
@@ -505,8 +505,12 @@ def add_electrodes(
     properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
     for property in properties_requiring_null_values:
         sample_data = nwbfile.electrodes[property][:][0]
-        default_value = _get_null_value_for_property(sample_data, null_values_for_properties)
-        null_values_for_properties[property] = default_value
+        null_value = _get_null_value_for_property(
+            property=property,
+            sample_data=sample_data,
+            null_values_for_properties=null_values_for_properties,
+        )
+        null_values_for_properties[property] = null_value
 
     # We only add new electrodes to the table
     existing_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
@@ -561,7 +565,11 @@ def add_electrodes(
             extended_data = np.empty(shape=electrode_table_size, dtype=dtype)
             extended_data[indices_for_new_data] = data
 
-            null_value = _get_null_value_for_property(sample_data, null_values_for_properties)
+            null_value = _get_null_value_for_property(
+                property=property,
+                sample_data=sample_data,
+                null_values_for_properties=null_values_for_properties,
+            )
             extended_data[indices_for_null_values] = null_value
         else:
 
