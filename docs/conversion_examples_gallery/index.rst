@@ -28,6 +28,7 @@ Recording
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
     Plexon <recording/plexon>
+    Plexon2 <recording/plexon2>
     Spike2 <recording/spike2>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
