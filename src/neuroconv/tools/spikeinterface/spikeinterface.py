@@ -525,8 +525,8 @@ def add_electrodes(
         electrode_kwargs.update(**data_dict)
         nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
-    # The channel_name column is special because we previous entries are filled with previous electrode table ids
-    # And needs to be present for global ids to be correctly matched
+    # The channel_name column as we use channel_name, group_name as a unique identifier
+    # We fill previously inexistent values with the electrode table ids
     electrode_table_size = len(nwbfile.electrodes.id[:])
     previous_table_size = electrode_table_size - recording.get_num_channels()
 
@@ -541,11 +541,9 @@ def add_electrodes(
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column("channel_name", **cols_args)
 
-    # To fill the new data, get their indices in the electrode table
     all_indices = np.arange(electrode_table_size)
     indices_for_new_data = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
     indices_for_null_values = [index for index in all_indices if index not in indices_for_new_data]
-
     extending_column = len(indices_for_null_values) > 0
 
     # Add properties as columns
@@ -558,8 +556,11 @@ def add_electrodes(
             nwbfile.add_electrode_column(property, **cols_args)
             continue
 
-        # Extending the columns is done differently for ragged arrays
+        # # For ragged arrays the dtype is always np.ndarray
         adding_ragged_array = cols_args["index"]
+        # dtype = np.ndarray if adding_ragged_array else data.dtype
+
+        # Extending the columns is done differently for ragged arrays
         if not adding_ragged_array:
             sample_data = data[0]
             dtype = data.dtype
@@ -585,7 +586,6 @@ def add_electrodes(
                 null_value = []
                 extended_data[index] = null_value
 
-        # Add the data
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
