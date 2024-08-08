@@ -8,7 +8,7 @@ from ....utils import FilePathType
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
-    """Automatically add shank group_name and shank_electrode_number for spikeglx."""
+    """Utility functions for setting some properties on the recording extractor"""
     probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
 
@@ -16,17 +16,19 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     probe_name = recording_extractor.stream_id[:5].capitalize()
 
     if probe.get_shank_count() > 1:
-        shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
-        group_name = [f"{probe_name}{contact_id.split('e')[0]}" for contact_id in probe.contact_ids]
+        shank_ids = probe.shank_ids
+        recording_extractor.set_property(key="shank_ids", values=shank_ids)
+        group_name = [f"{probe_name}{shank_id}" for shank_id in shank_ids]
     else:
-        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
-        group_name = [f"{probe_name}Shank0"] * len(channel_ids)
+        group_name = [f"{probe_name}"] * len(channel_ids)
 
-    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 
     contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
     recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+
+    contact_ids = probe.contact_ids  # s{shank_number}e{electrode_number} or e{electrode_number}
+    recording_extractor.set_property(key="contact_ids", ids=channel_ids, values=contact_ids)
 
 
 def get_session_start_time(recording_metadata: dict) -> datetime:
@@ -97,7 +99,7 @@ def get_device_metadata(meta) -> dict:
     dict
         a dict containing the metadata necessary for creating the device
     """
-
+    # TODO, get probe metadata from spikeinterface
     metadata_dict = dict()
     if "imDatPrb_type" in meta:
         probe_type_to_probe_description = {
@@ -107,7 +109,7 @@ def get_device_metadata(meta) -> dict:
             "1030": "NP1.0 NHP",
         }
         probe_type = str(meta["imDatPrb_type"])
-        probe_type_description = probe_type_to_probe_description[probe_type]
+        probe_type_description = probe_type_to_probe_description.get(probe_type, "Unknown SpikeGLX probe type.")
         metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
 
     if "imDatFx_pn" in meta:
