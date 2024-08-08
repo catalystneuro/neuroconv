@@ -486,7 +486,7 @@ def _ensure_job_queue_exists(
         job_queue_response = job_queue_request["jobQueues"]
         job_queue_status = job_queue_response[0]["status"] if len(job_queue_response) == 1 else ""
 
-    if len(job_definition_response) != 1 and job_queue_status != "VALID":
+    if len(job_queue_response) != 1 and job_queue_status != "VALID":
         raise ValueError(f"Job queue '{job_queue_status}' failed to launch after {max_retries} retries.")
 
     return None
