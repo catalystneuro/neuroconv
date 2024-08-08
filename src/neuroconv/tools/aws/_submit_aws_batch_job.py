@@ -4,8 +4,7 @@ import json
 import os
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 
@@ -28,6 +27,8 @@ def submit_aws_batch_job(
 ) -> Dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
+
+    Requires AWS credentials saved to files in the `~/.aws/` folder or set as environment variables.
 
     Parameters
     ----------
@@ -86,18 +87,9 @@ def submit_aws_batch_job(
     """
     import boto3
 
-    # Ensure all client parameters are set
-    region = region or _attempt_to_load_region_from_config() or "us-east-2"
-
+    region = region or "us-east-2"
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
-    if aws_access_key_id is None or aws_secret_access_key is None:
-        aws_access_key_id, aws_secret_access_key = _attempt_to_load_aws_credentials_from_config()
-    if aws_access_key_id is None or aws_secret_access_key is None:
-        raise EnvironmentError(
-            "To use this function, both 'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY' must either be set in the "
-            "local environment or set in the default AWS configuration file."
-        )
 
     # Initialize all clients
     dynamodb_client = boto3.client(
@@ -189,72 +181,6 @@ def submit_aws_batch_job(
 
     info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
     return info
-
-
-def _attempt_to_load_region_from_config() -> Optional[str]:  # pragma: no cover
-    """
-    Attempts to load the AWS region from the default configuration file.
-
-    Returns `None` if any issue is encountered.
-
-    Returns
-    -------
-    region : str or None
-        The AWS region to use for all tasks.
-
-        Returns `None` if:
-        - The default file does not exist.
-        - No line starts with 'region'.
-        - Multiple lines start with 'region'.
-    """
-    default_config_file_path = Path.home() / ".aws" / "config"
-
-    if not default_config_file_path.exists():
-        return None
-
-    with open(file=default_config_file_path, mode="r") as io:
-        all_lines = io.readlines()
-    lines_with_region = [line for line in all_lines if "region" == line[:7]]
-
-    if len(lines_with_region) != 1:
-        return None
-
-    region = lines_with_region[0].split("=")[1].strip()
-
-    return region
-
-
-def _attempt_to_load_aws_credentials_from_config() -> Tuple[Optional[str], Optional[str]]:  # pragma: no cover
-    """
-    Attempts to load the AWS credentials from a configuration file.
-
-    Returns
-    -------
-    aws_access_key_id : str or None
-    aws_secret_access_key : str or None
-
-        Returns `None` if:
-        - The file does not exist
-        - No line starts with either key.
-        - Multiple lines start with either key.
-    """
-    default_credentials_file_path = Path.home() / ".aws" / "credentials"
-
-    if not default_credentials_file_path.exists():
-        return (None, None)
-
-    with open(file=default_credentials_file_path, mode="r") as io:
-        all_lines = io.readlines()
-    lines_with_access_key_id = [line for line in all_lines if "aws_access_key_id" == line[:17]]
-    lines_with_secret_access_key = [line for line in all_lines if "aws_secret_access_key" == line[:21]]
-
-    if len(lines_with_access_key_id) != 1 or len(lines_with_secret_access_key) != 1:
-        return (None, None)
-
-    aws_access_key_id = lines_with_access_key_id[0].split("=")[1].strip()
-    aws_secret_access_key = lines_with_secret_access_key[0].split("=")[1].strip()
-
-    return (aws_access_key_id, aws_secret_access_key)
 
 
 def _create_or_get_status_tracker_table(
