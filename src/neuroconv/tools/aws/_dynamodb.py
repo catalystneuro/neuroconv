@@ -1,5 +1,5 @@
 """Helper functions for operations on DynamoDB tables."""
-
+import os
 
 def update_table_status(
     *,
