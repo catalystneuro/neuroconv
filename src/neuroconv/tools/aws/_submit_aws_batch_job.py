@@ -411,7 +411,7 @@ def _ensure_compute_environment_exists(
             compute_environment_response[0]["status"] if len(compute_environment_response) == 1 else ""
         )
 
-    if len(job_definition_response) != 1 and compute_environment_status != "VALID":
+    if compute_environment_status != "VALID":
         raise ValueError(
             f"Compute environment '{compute_environment_name}' failed to launch after {max_retries} retries."
         )
