@@ -219,7 +219,7 @@ def _attempt_to_load_region_from_config() -> Optional[str]:  # pragma: no cover
     if len(lines_with_region) != 1:
         return None
 
-    region = region_lines[0].split("=")[1].strip()
+    region = lines_with_region[0].split("=")[1].strip()
 
     return region
 
