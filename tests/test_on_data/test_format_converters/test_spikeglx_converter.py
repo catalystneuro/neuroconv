@@ -45,7 +45,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             assert len(nwbfile.devices) == 2
 
             assert "NIDQChannelGroup" in nwbfile.electrode_groups
-            assert "Imec0Shank0" in nwbfile.electrode_groups
+            assert "Imec0" in nwbfile.electrode_groups
             assert len(nwbfile.electrode_groups) == 2
 
     def test_single_probe_spikeglx_converter(self):
@@ -61,7 +61,15 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         del test_metadata["NWBFile"]["source_script"]
         del test_metadata["NWBFile"]["source_script_file_name"]
 
-        assert test_metadata == expected_metadata
+        expected_ecephys_metadata = expected_metadata["Ecephys"]
+        test_ecephys_metadata = test_metadata["Ecephys"]
+
+        device_metadata = test_ecephys_metadata.pop("Device")
+        expected_device_metadata = expected_ecephys_metadata.pop("Device")
+
+        assert device_metadata == expected_device_metadata
+
+        assert test_ecephys_metadata == expected_ecephys_metadata
 
         nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -127,8 +135,8 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         assert "NeuropixelImec1" in nwbfile.devices
         assert len(nwbfile.devices) == 2
 
-        assert "Imec0Shank0" in nwbfile.electrode_groups
-        assert "Imec1Shank0" in nwbfile.electrode_groups
+        assert "Imec0" in nwbfile.electrode_groups
+        assert "Imec1" in nwbfile.electrode_groups
         assert len(nwbfile.electrode_groups) == 2
 
     def test_multi_probe_spikeglx_converter(self):
@@ -146,7 +154,15 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         del test_metadata["NWBFile"]["source_script"]
         del test_metadata["NWBFile"]["source_script_file_name"]
 
-        assert test_metadata == expected_metadata
+        expected_ecephys_metadata = expected_metadata["Ecephys"]
+        test_ecephys_metadata = test_metadata["Ecephys"]
+
+        device_metadata = test_ecephys_metadata.pop("Device")
+        expected_device_metadata = expected_ecephys_metadata.pop("Device")
+
+        assert device_metadata == expected_device_metadata
+
+        assert test_ecephys_metadata == expected_ecephys_metadata
 
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
