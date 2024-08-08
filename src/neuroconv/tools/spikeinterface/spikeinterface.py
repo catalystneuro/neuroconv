@@ -556,11 +556,7 @@ def add_electrodes(
             nwbfile.add_electrode_column(property, **cols_args)
             continue
 
-        # # For ragged arrays the dtype is always np.ndarray
         adding_ragged_array = cols_args["index"]
-        # dtype = np.ndarray if adding_ragged_array else data.dtype
-
-        # Extending the columns is done differently for ragged arrays
         if not adding_ragged_array:
             sample_data = data[0]
             dtype = data.dtype
