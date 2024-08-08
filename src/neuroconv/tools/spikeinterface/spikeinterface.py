@@ -1144,7 +1144,7 @@ def add_units_table(
         Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
     unit_electrode_indices : list of lists of int, optional
         For each unit, a list of electrode indices corresponding to waveform data.
-    null_values_for_properties: dict
+    null_values_for_properties: dict, optional
         A dictionary mapping properties to null values to use when the property is not present
     """
 
