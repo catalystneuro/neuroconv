@@ -38,7 +38,10 @@ jobs:
         run: pip install .
       - name: Test initial import of all non-lazy dependencies
         run: python -c "import neuroconv"
-
+      - name: Install Wine (For Plexon2 Tests)
+        uses: ./.github/actions/install-wine
+        with:
+          os: ${{ runner.os }}
       - name: Install NeuroConv with testing requirements
         run: pip install .[test]
       - name: Run import tests
@@ -88,7 +91,7 @@ jobs:
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ephys-datasets-2024-03-27-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-2024-08-07-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"

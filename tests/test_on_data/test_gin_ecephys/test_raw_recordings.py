@@ -26,6 +26,7 @@ from neuroconv.datainterfaces import (
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
+    Plexon2RecordingInterface,
     PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -94,6 +95,12 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
             ),
             case_name="plexon_recording",
+        ),
+        param(
+            data_interface=Plexon2RecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
+            ),
         ),
         param(
             data_interface=BiocamRecordingInterface,
