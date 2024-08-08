@@ -131,7 +131,7 @@ def submit_aws_batch_job(
         dynamodb_client=dynamodb_client,
         dynamodb_resource=dynamodb_resource,
     )
-    role_info = _create_or_get_iam_role(iam_role_name=iam_role_name, iam_client=iam_client)
+    iam_role_info = _create_or_get_iam_role(iam_role_name=iam_role_name, iam_client=iam_client)
 
     # Ensure all job submission requirements are met
     _ensure_compute_environment_exists(compute_environment_name=compute_environment_name, batch_client=batch_client)
@@ -149,7 +149,7 @@ def submit_aws_batch_job(
         docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
         minimum_worker_cpus=minimum_worker_cpus,
-        role_info=role_info,
+        role_info=iam_role_info,
         batch_client=batch_client,
     )
 
