@@ -578,6 +578,7 @@ def add_electrodes(
             extended_data = np.empty(shape=electrode_table_size, dtype=dtype)
             for index, value in enumerate(data):
                 index_in_extended_data = indices_for_new_data[index]
+                index_in_extended_data = indices_for_new_data[index]
                 extended_data[index_in_extended_data] = value.tolist()
 
             for index in indices_for_null_values:
@@ -809,6 +810,7 @@ def add_electrical_series(
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     # Create a region for the electrodes table
+    electrode_table_indices = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
     electrode_table_indices = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
     electrode_table_region = nwbfile.create_electrode_table_region(
         region=electrode_table_indices,
