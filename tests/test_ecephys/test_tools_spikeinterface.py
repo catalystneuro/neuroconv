@@ -1339,16 +1339,11 @@ class TestAddUnitsTable(TestCase):
             np.testing.assert_array_equal(value, expected_values[i])
 
 
-from packaging.version import Version
-
 from neuroconv.tools import get_package_version
 
 spike_interface_version = get_package_version("spikeinterface")
 
 
-@unittest.skipIf(
-    spike_interface_version >= Version("0.100"), reason="WaveformExtractor not available in spikeinterface"
-)
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):
