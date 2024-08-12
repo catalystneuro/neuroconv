@@ -8,6 +8,7 @@ from pynwb import NWBHDF5IO
 from neuroconv.datainterfaces import (
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
+    TimeIntervalsInterface,
 )
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
 from neuroconv.tools.text import convert_df_to_time_intervals
@@ -96,3 +97,40 @@ def test_csv_round_trip_rename(tmp_path):
 def test_get_metadata_schema():
     interface = CsvTimeIntervalsInterface(trials_csv_path)
     interface.get_metadata_schema()
+
+
+def test_trials():
+    metadata = dict(
+        NWBFile=dict(
+            session_start_time=datetime.now().astimezone(),
+        ),
+        TimeIntervals=dict(
+            trials=dict(
+                columns=dict(
+                    start_time=dict(description="start time of the trial"),
+                    stop_time=dict(description="stop time of the trial"),
+                    correct=dict(description="correct or not"),
+                ),
+                data=[
+                    dict(start_time=0.0, stop_time=1.0, correct=True),
+                    dict(start_time=1.0, stop_time=2.0, correct=False),
+                ],
+             ),
+            new_table=dict(
+                columns=dict(
+                    stim_id=dict(description="stimulus ID"),
+                ),
+                data=[
+                    dict(start_time=0.0, stop_time=1.0, stim_id=0),
+                    dict(start_time=1.0, stop_time=2.0, stim_id=1),
+                ],
+            )
+        ),
+    )
+
+    nwbfile = TimeIntervalsInterface().create_nwbfile(metadata)
+    assert nwbfile.trials.correct.description == "correct or not"
+    assert_array_equal(nwbfile.trials.correct[:], [True, False])
+    assert_array_equal(nwbfile.trials.start_time[:], [0.0, 1.0])
+
+    assert_array_equal(nwbfile.intervals["new_table"].stim_id[:], [0, 1])

@@ -94,6 +94,7 @@ from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
+from .text.timeintervalsinterface import TimeIntervalsInterface
 
 interface_list = [
     # Ecephys
@@ -162,6 +163,7 @@ interface_list = [
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
+    TimeIntervalsInterface,
 ]
 
 interfaces_by_category = dict(

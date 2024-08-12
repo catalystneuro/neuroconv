@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "patternProperties": {
+    "^[a-zA-Z0-9_]+$": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start_time": {
+                "type": "number"
+              },
+              "stop_time": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "start_time",
+              "stop_time"
+            ],
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}
