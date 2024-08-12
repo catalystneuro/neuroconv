@@ -159,6 +159,9 @@ class BaseTimeIntervalsInterface(BaseDataInterface):
 
 class TimeIntervalsInterface(BaseDataInterface):
 
+    display_name = "Time Intervals"
+    keywords = ("table", "trials", "epochs", "time intervals")
+
     @classmethod
     def add_to_nwbfile(cls, nwbfile: NWBFile, metadata: DeepDict) -> None:
 
