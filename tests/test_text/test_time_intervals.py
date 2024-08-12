@@ -115,7 +115,7 @@ def test_trials():
                     dict(start_time=0.0, stop_time=1.0, correct=True),
                     dict(start_time=1.0, stop_time=2.0, correct=False),
                 ],
-             ),
+            ),
             new_table=dict(
                 columns=dict(
                     stim_id=dict(description="stimulus ID"),
@@ -124,7 +124,7 @@ def test_trials():
                     dict(start_time=0.0, stop_time=1.0, stim_id=0),
                     dict(start_time=1.0, stop_time=2.0, stim_id=1),
                 ],
-            )
+            ),
         ),
     )
 
