@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading audio d
 
 .. code-block:: bash
 
-    pip install neuroconv[audio]
+    pip install "neuroconv[audio]"
 
 This interface can handle conversions from `WAV` format to NWB using the
 :py:class:`~neuroconv.datainterfaces.behavior.audio.audiointerface.AudioInterface` class.

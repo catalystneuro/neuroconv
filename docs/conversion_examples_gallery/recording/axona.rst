@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Axona d
 
 .. code-block:: bash
 
-    pip install neuroconv[axona]
+    pip install "neuroconv[axona]"
 
 Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingInterface`.
 

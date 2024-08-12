@@ -5,48 +5,7 @@ import numpy as np
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_package
 from ....utils import FilePathType
-
-
-def write_subject_to_nwb(
-    nwbfile: NWBFile,
-    h5file: FilePathType,
-    individual_name: str,
-    config_file: FilePathType,
-    timestamps: Optional[Union[List, np.ndarray]] = None,
-):
-    """
-    Given, subject name, write h5file to an existing nwbfile.
-
-    Parameters
-    ----------
-    nwbfile : pynwb.NWBFile
-        The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    h5file : str or path
-        Path to the DeepLabCut .h5 output file.
-    individual_name : str
-        Name of the subject (whose pose is predicted) for single-animal DLC project.
-        For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str or path
-        Path to a project config.yaml file
-    timestamps : list, np.ndarray or None, default: None
-        Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
-    Returns
-    -------
-    nwbfile : pynwb.NWBFile
-        nwbfile with pes written in the behavior module
-    """
-    dlc2nwb = get_package(package_name="dlc2nwb")
-
-    scorer, df, video, paf_graph, dlc_timestamps, _ = dlc2nwb.utils._get_pes_args(config_file, h5file, individual_name)
-    if timestamps is None:
-        timestamps = dlc_timestamps
-
-    df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
-    return dlc2nwb.utils._write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
-    )
 
 
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
@@ -87,13 +46,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         verbose: bool, default: True
             controls verbosity.
         """
-        dlc2nwb = get_package(package_name="dlc2nwb")
+        from ._dlc_utils import _read_config
 
         file_path = Path(file_path)
         if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
             raise IOError("The file passed in is not a DeepLabCut h5 data file.")
 
-        self._config_file = dlc2nwb.utils.read_config(config_file_path)
+        self._config_file = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
         super().__init__(file_path=file_path, config_file_path=config_file_path)
@@ -126,13 +85,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         aligned_timestamps : list, np.ndarray
             alternative timestamps vector.
         """
-
         self._timestamps = np.array(aligned_timestamps)
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        container_name: str = "PoseEstimation",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -144,11 +103,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         """
+        from ._dlc_utils import add_subject_to_nwbfile
 
-        write_subject_to_nwb(
+        add_subject_to_nwbfile(
             nwbfile=nwbfile,
             h5file=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
             config_file=str(self.source_data["config_file_path"]),
             timestamps=self._timestamps,
+            pose_estimation_container_kwargs=dict(name=container_name),
         )
