@@ -12,7 +12,7 @@
 ### Bug fixes
 * Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
 * Write new properties to the electrode table use the global identifier channel_name, group [PR #984](https://github.com/catalystneuro/neuroconv/pull/984)
-* Fixed a check in `_configure_beckend` on neurodata_object ndx_events.Events to work only when nex-events==0.2.0 is used. [PR #998](https://github.com/catalystneuro/neuroconv/pull/998)
+* Fixed a check in `_configure_backend` on neurodata_object ndx_events.Events to work only when ndx-events==0.2.0 is used. [PR #998](https://github.com/catalystneuro/neuroconv/pull/998)
 
 ### Improvements
 * The `OpenEphysBinaryRecordingInterface` now uses `lxml` for extracting the session start time from the settings.xml file and does not depend on `pyopenephys` anymore. [PR #971](https://github.com/catalystneuro/neuroconv/pull/971)
