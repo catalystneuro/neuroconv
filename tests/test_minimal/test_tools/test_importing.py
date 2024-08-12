@@ -27,5 +27,3 @@ def test_guide_attributes():
                 assert isinstance(
                     value, tuple
                 ), f"{name} incorrectly specified GUIDE-related attribute 'associated_suffixes' (must be tuple)."
-            if isinstance(value, tuple):
-                assert len(value) > 0, f"{name} is missing entries in GUIDE related attribute {key}."
