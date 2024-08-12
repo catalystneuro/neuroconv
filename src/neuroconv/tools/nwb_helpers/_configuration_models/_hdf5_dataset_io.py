@@ -3,9 +3,11 @@
 from typing import Any, Dict, Literal, Union
 
 import h5py
+from hdmf import Container
 from pydantic import Field, InstanceOf
+from typing_extensions import Self
 
-from ._base_dataset_io import DatasetIOConfiguration
+from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
 from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
@@ -78,3 +80,28 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
+
+    @classmethod
+    def from_existing_neurodata_object(
+        cls, neurodata_object: Container, dataset_name: Literal["data", "timestamps"]
+    ) -> Self:
+        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
+        full_shape = getattr(neurodata_object, dataset_name).shape
+        dtype = getattr(neurodata_object, dataset_name).dtype
+        chunk_shape = getattr(neurodata_object, dataset_name).chunks
+        buffer_shape = getattr(neurodata_object, dataset_name).maxshape
+        compression_method = getattr(neurodata_object, dataset_name).compression
+        compression_opts = getattr(neurodata_object, dataset_name).compression_opts
+        compression_options = dict(compression_opts=compression_opts)
+        return cls(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            location_in_file=location_in_file,
+            dataset_name=dataset_name,
+            full_shape=full_shape,
+            dtype=dtype,
+            chunk_shape=chunk_shape,
+            buffer_shape=buffer_shape,
+            compression_method=compression_method,
+            compression_options=compression_options,
+        )

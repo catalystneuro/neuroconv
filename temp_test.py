@@ -1,60 +1,47 @@
-import shutil
-from datetime import datetime
+import os
 from pathlib import Path
 
-from lerner_lab_to_nwb.seiler_2024.seiler_2024_convert_session import session_to_nwb
+import numpy as np
+from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
+from pynwb.testing.mock.file import mock_NWBFile
+
+from neuroconv.tools.nwb_helpers._configuration_models._hdf5_dataset_io import (
+    HDF5DatasetIOConfiguration,
+)
+
+
+def write_nwbfile(nwbfile_path: Path):
+    if nwbfile_path.exists():
+        os.remove(nwbfile_path)
+    nwbfile = mock_NWBFile()
+    timestamps = np.arange(10.0)
+    data = np.arange(100, 200, 10)
+    time_series_with_timestamps = TimeSeries(
+        name="test_timeseries",
+        description="an example time series",
+        data=H5DataIO(data=data, compression="gzip", chunks=(1,), compression_opts=2),
+        unit="m",
+        timestamps=timestamps,
+    )
+    nwbfile.add_acquisition(time_series_with_timestamps)
+    with NWBHDF5IO(nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
 
 
 def main():
-    # Parameters for conversion
-    data_dir_path = Path("/Volumes/T7/CatalystNeuro/Lerner/raw_data")
-    output_dir_path = Path("/Volumes/T7/CatalystNeuro/Lerner/conversion_nwb")
-    stub_test = False
-
-    if output_dir_path.exists():
-        shutil.rmtree(
-            output_dir_path, ignore_errors=True
-        )  # ignore errors due to MacOS race condition (https://github.com/python/cpython/issues/81441)
-
-    # Fiber Photometry session
-    experiment_type = "FP"
-    experimental_group = "PS"
-    subject_id = "112.283"
-    start_datetime = datetime(2019, 6, 20, 9, 32, 4)
-    session_conditions = {
-        "Start Date": start_datetime.strftime("%m/%d/%y"),
-        "Start Time": start_datetime.strftime("%H:%M:%S"),
-    }
-    start_variable = "Start Date"
-    behavior_file_path = (
-        data_dir_path
-        / f"{experiment_type} Experiments"
-        / "Behavior"
-        / f"{experimental_group}"
-        / f"{subject_id}"
-        / f"{subject_id}"
-    )
-    fiber_photometry_folder_path = (
-        data_dir_path
-        / f"{experiment_type} Experiments"
-        / "Photometry"
-        / f"Punishment Sensitive"
-        / f"Early RI60"
-        / f"Photo_{subject_id.split('.')[0]}_{subject_id.split('.')[1]}-190620-093542"
-    )
-    session_to_nwb(
-        data_dir_path=data_dir_path,
-        output_dir_path=output_dir_path,
-        behavior_file_path=behavior_file_path,
-        fiber_photometry_folder_path=fiber_photometry_folder_path,
-        has_demodulated_commanded_voltages=False,
-        subject_id=subject_id,
-        session_conditions=session_conditions,
-        start_variable=start_variable,
-        experiment_type=experiment_type,
-        experimental_group=experimental_group,
-        stub_test=stub_test,
-    )
+    nwbfile_path = Path("/Volumes/T7/CatalystNeuro/temp.nwb")
+    write_nwbfile(nwbfile_path)
+    with NWBHDF5IO(nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        for neurodata_object in nwbfile.objects.values():
+            print(neurodata_object.name)
+            if isinstance(neurodata_object, TimeSeries):
+                config = HDF5DatasetIOConfiguration.from_existing_neurodata_object(
+                    neurodata_object=neurodata_object, dataset_name="data"
+                )
+                print(f"{config.chunk_shape = }")
+                print(f"{config.compression_method = }")
+                print(f"{config.compression_options = }")
 
 
 if __name__ == "__main__":
