@@ -5,8 +5,8 @@ import numpy as np
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.nwb_helpers._configuration_models._hdf5_dataset_io import (
-    HDF5DatasetIOConfiguration,
+from neuroconv.tools.nwb_helpers._dataset_configuration import (
+    get_existing_dataset_io_configurations,
 )
 
 
@@ -21,7 +21,9 @@ def write_nwbfile(nwbfile_path: Path):
         description="an example time series",
         data=H5DataIO(data=data, compression="gzip", chunks=(1,), compression_opts=2),
         unit="m",
-        timestamps=timestamps,
+        timestamps=H5DataIO(
+            timestamps, compression="gzip", chunks=(1,), compression_opts=2
+        ),  # TODO: add support for uncompressed timestamps
     )
     nwbfile.add_acquisition(time_series_with_timestamps)
     with NWBHDF5IO(nwbfile_path, mode="w") as io:
@@ -33,15 +35,9 @@ def main():
     write_nwbfile(nwbfile_path)
     with NWBHDF5IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
-        for neurodata_object in nwbfile.objects.values():
-            print(neurodata_object.name)
-            if isinstance(neurodata_object, TimeSeries):
-                config = HDF5DatasetIOConfiguration.from_existing_neurodata_object(
-                    neurodata_object=neurodata_object, dataset_name="data"
-                )
-                print(f"{config.chunk_shape = }")
-                print(f"{config.compression_method = }")
-                print(f"{config.compression_options = }")
+        existing_dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile, backend="hdf5")
+        for dataset_io_configuration in existing_dataset_io_configurations:
+            print(dataset_io_configuration)
 
 
 if __name__ == "__main__":
