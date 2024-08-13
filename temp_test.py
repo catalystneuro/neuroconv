@@ -5,8 +5,8 @@ import numpy as np
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.nwb_helpers._configuration_models._hdf5_backend import (
-    HDF5BackendConfiguration,
+from neuroconv.tools.nwb_helpers._backend_configuration import (
+    get_existing_backend_configuration,
 )
 
 
@@ -33,8 +33,8 @@ def main():
     write_nwbfile(nwbfile_path)
     with NWBHDF5IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
-        hdf5_backend_config = HDF5BackendConfiguration.from_existing_nwbfile(nwbfile)
-        print(hdf5_backend_config)
+        backend_config = get_existing_backend_configuration(nwbfile=nwbfile)
+    print(backend_config)
 
 
 if __name__ == "__main__":
