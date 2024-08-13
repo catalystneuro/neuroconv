@@ -552,7 +552,7 @@ class TestWriteRecording(unittest.TestCase):
             nwbfile=self.nwbfile,
         )
         self.assertIn("test_bool", self.nwbfile.electrodes.colnames)
-        assert all(tb in ["False", "True"] for tb in self.nwbfile.electrodes["test_bool"][:])
+        assert all(tb in [False, True] for tb in self.nwbfile.electrodes["test_bool"][:])
 
 
 class TestAddElectrodes(TestCase):
@@ -947,6 +947,69 @@ class TestAddElectrodes(TestCase):
         actual_property_2_values = list(self.nwbfile.electrodes["property_2"].data)
         expected_property_2_values = ["", "", "value_1", "value_2", "value_3", "value_4"]
         self.assertListEqual(actual_property_2_values, expected_property_2_values)
+
+    def test_missing_int_values(self):
+
+        recording1 = generate_recording(num_channels=2, durations=[1.0])
+        recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
+        recording1.set_property(key="complete_int_property", values=[1, 2])
+        add_electrodes(recording=recording1, nwbfile=self.nwbfile)
+
+        expected_property = np.asarray([1, 2])
+        extracted_property = self.nwbfile.electrodes["complete_int_property"].data
+        assert np.array_equal(extracted_property, expected_property)
+
+        recording2 = generate_recording(num_channels=2, durations=[1.0])
+        recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+
+        recording2.set_property(key="incomplete_int_property", values=[10, 11])
+        with self.assertRaises(ValueError):
+            add_electrodes(recording=recording2, nwbfile=self.nwbfile)
+
+        null_values_for_properties = {"complete_int_property": -1, "incomplete_int_property": -3}
+        add_electrodes(
+            recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
+        )
+
+        expected_complete_property = np.asarray([1, 2, -1, -1])
+        expected_incomplete_property = np.asarray([-3, -3, 10, 11])
+
+        extracted_complete_property = self.nwbfile.electrodes["complete_int_property"].data
+        extracted_incomplete_property = self.nwbfile.electrodes["incomplete_int_property"].data
+
+        assert np.array_equal(extracted_complete_property, expected_complete_property)
+        assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
+    def test_missing_bool_values(self):
+        recording1 = generate_recording(num_channels=2)
+        recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
+        recording1.set_property(key="complete_bool_property", values=[True, False])
+        add_electrodes(recording=recording1, nwbfile=self.nwbfile)
+
+        expected_property = np.asarray([True, False])
+        extracted_property = self.nwbfile.electrodes["complete_bool_property"].data.astype(bool)
+        assert np.array_equal(extracted_property, expected_property)
+
+        recording2 = generate_recording(num_channels=2)
+        recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+
+        recording2.set_property(key="incomplete_bool_property", values=[True, False])
+        with self.assertRaises(ValueError):
+            add_electrodes(recording=recording2, nwbfile=self.nwbfile)
+
+        null_values_for_properties = {"complete_bool_property": False, "incomplete_bool_property": False}
+        add_electrodes(
+            recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
+        )
+
+        expected_complete_property = np.asarray([True, False, False, False])
+        expected_incomplete_property = np.asarray([False, False, True, False])
+
+        extracted_complete_property = self.nwbfile.electrodes["complete_bool_property"].data.astype(bool)
+        extracted_incomplete_property = self.nwbfile.electrodes["incomplete_bool_property"].data.astype(bool)
+
+        assert np.array_equal(extracted_complete_property, expected_complete_property)
+        assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
 
 
 class TestAddUnitsTable(TestCase):
