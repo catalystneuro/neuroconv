@@ -147,7 +147,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         """
         size_in_bytes = math.prod(self.full_shape) * self.dtype.itemsize
         maximum_ram_usage_per_iteration_in_bytes = math.prod(self.buffer_shape) * self.dtype.itemsize
-        disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
 
         string = (
             f"\n{self.location_in_file}"
@@ -159,10 +158,14 @@ class DatasetIOConfiguration(BaseModel, ABC):
             f"\n  buffer shape : {self.buffer_shape}"
             f"\n  expected RAM usage : {human_readable_size(maximum_ram_usage_per_iteration_in_bytes)}"
             "\n"
-            f"\n  chunk shape : {self.chunk_shape}"
-            f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
-            "\n"
         )
+        if self.chunk_shape is not None:
+            disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
+            string += (
+                f"\n  chunk shape : {self.chunk_shape}"
+                f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
+                "\n"
+            )
         if self.compression_method is not None:
             string += f"\n  compression method : {self.compression_method}"
         if self.compression_options is not None:
@@ -182,9 +185,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
             dataset_name == location_in_file.split("/")[-1]
         ), f"The `dataset_name` ({dataset_name}) does not match the end of the `location_in_file` ({location_in_file})!"
 
-        chunk_shape = values["chunk_shape"]
-        buffer_shape = values["buffer_shape"]
         full_shape = values["full_shape"]
+        chunk_shape = values["chunk_shape"] if values["chunk_shape"] is not None else full_shape
+        buffer_shape = values["buffer_shape"] if values["buffer_shape"] is not None else full_shape
 
         if len(chunk_shape) != len(buffer_shape):
             raise ValueError(

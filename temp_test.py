@@ -21,9 +21,7 @@ def write_nwbfile(nwbfile_path: Path):
         description="an example time series",
         data=H5DataIO(data=data, compression="gzip", chunks=(1,), compression_opts=2),
         unit="m",
-        timestamps=H5DataIO(
-            timestamps, compression="gzip", chunks=(1,), compression_opts=2
-        ),  # TODO: add support for uncompressed timestamps
+        timestamps=timestamps,
     )
     nwbfile.add_acquisition(time_series_with_timestamps)
     with NWBHDF5IO(nwbfile_path, mode="w") as io:
