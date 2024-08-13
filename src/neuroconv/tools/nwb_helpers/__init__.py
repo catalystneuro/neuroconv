@@ -6,6 +6,7 @@
 from ._backend_configuration import (
     BACKEND_CONFIGURATIONS,
     get_default_backend_configuration,
+    get_existing_backend_configuration,
 )
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_backend import BackendConfiguration
@@ -30,6 +31,7 @@ from ._metadata_and_file_helpers import (
     get_module,
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
+    repack_nwbfile,
 )
 
 __all__ = [
@@ -46,6 +48,7 @@ __all__ = [
     "ZarrDatasetIOConfiguration",
     "get_default_backend_configuration",
     "get_default_dataset_io_configurations",
+    "get_existing_backend_configuration",
     "configure_backend",
     "get_default_dataset_io_configurations",
     "get_default_backend_configuration",
@@ -55,4 +58,5 @@ __all__ = [
     "get_module",
     "make_nwbfile_from_metadata",
     "make_or_load_nwbfile",
+    "repack_nwbfile",
 ]

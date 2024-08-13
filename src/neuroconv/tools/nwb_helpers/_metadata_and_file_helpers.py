@@ -15,7 +15,12 @@ from pydantic import FilePath
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from . import BackendConfiguration, configure_backend, get_default_backend_configuration
+from . import (
+    BackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+    get_existing_backend_configuration,
+)
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
 
@@ -370,3 +375,48 @@ def configure_and_write_nwbfile(
 
     with IO(output_filepath, mode="w") as io:
         io.write(nwbfile)
+
+
+def configure_and_export_nwbfile(
+    nwbfile: NWBFile,
+    export_nwbfile_path: Path,
+    backend_configuration: BackendConfiguration,
+) -> None:
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    IO = BACKEND_NWB_IO[backend_configuration.backend]
+
+    with IO(export_nwbfile_path, mode="w") as io:
+        io.export(nwbfile=nwbfile, src_io=nwbfile.read_io)
+
+
+def repack_nwbfile(
+    *,
+    nwbfile: NWBFile,
+    export_nwbfile_path: Path,
+    backend_configuration_changes: dict,
+    template: Literal["existing", "default"],
+):
+    """Repack the NWBFile with the new backend configuration changes."""
+
+    if template == "existing":
+        backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+    elif template == "default":
+        read_io = nwbfile.read_io
+        if isinstance(read_io, NWBHDF5IO):
+            backend = "hdf5"
+        elif isinstance(read_io, NWBZarrIO):
+            backend = "zarr"
+        else:
+            raise ValueError(f"The backend of the NWBFile from io {read_io} is not recognized.")
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+    dataset_configurations = backend_configuration.dataset_configurations
+
+    for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
+        dataset_configuration = dataset_configurations[neurodata_object_location]
+        for dataset_config_key, dataset_config_value in dataset_config_changes.items():
+            setattr(dataset_configuration, dataset_config_key, dataset_config_value)
+
+    configure_and_export_nwbfile(
+        nwbfile=nwbfile, backend_configuration=backend_configuration, export_nwbfile_path=export_nwbfile_path
+    )
