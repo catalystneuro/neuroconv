@@ -76,6 +76,7 @@ docs = [
 ]
 dandi = ["dandi>=0.58.1"]
 compressors = ["hdf5plugin"]
+aws = ["boto3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

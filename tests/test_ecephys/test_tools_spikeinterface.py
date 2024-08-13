@@ -542,17 +542,17 @@ class TestWriteRecording(unittest.TestCase):
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    # def test_write_bool_properties(self):
-    #     """ """
-    #     bool_property = np.array([False] * len(self.single_segment_recording_extractor.channel_ids))
-    #     bool_property[::2] = True
-    #     self.single_segment_recording_extractor.set_property("test_bool", bool_property)
-    #     add_electrodes(
-    #         recording=self.single_segment_recording_extractor,
-    #         nwbfile=self.nwbfile,
-    #     )
-    #     self.assertIn("test_bool", self.nwbfile.electrodes.colnames)
-    #     assert all(tb in ["False", "True"] for tb in self.nwbfile.electrodes["test_bool"][:])
+    def test_write_bool_properties(self):
+        """ """
+        bool_property = np.array([False] * len(self.single_segment_recording_extractor.channel_ids))
+        bool_property[::2] = True
+        self.single_segment_recording_extractor.set_property("test_bool", bool_property)
+        add_electrodes(
+            recording=self.single_segment_recording_extractor,
+            nwbfile=self.nwbfile,
+        )
+        self.assertIn("test_bool", self.nwbfile.electrodes.colnames)
+        assert all(tb in [False, True] for tb in self.nwbfile.electrodes["test_bool"][:])
 
 
 class TestAddElectrodes(TestCase):
@@ -1398,16 +1398,11 @@ class TestAddUnitsTable(TestCase):
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
 
 
-from packaging.version import Version
-
 from neuroconv.tools import get_package_version
 
 spike_interface_version = get_package_version("spikeinterface")
 
 
-@unittest.skipIf(
-    spike_interface_version >= Version("0.100"), reason="WaveformExtractor not available in spikeinterface"
-)
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):
