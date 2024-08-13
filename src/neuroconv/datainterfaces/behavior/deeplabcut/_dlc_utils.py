@@ -41,6 +41,59 @@ def _read_config(config_file_path):
     return cfg
 
 
+def _get_cv2_timestamps(file_path: Union[Path, str]):
+    """
+    Extract and return an array of timestamps for each frame in a video using OpenCV.
+
+    Parameters
+    ----------
+    file_path : Union[Path, str]
+        The path to the video file from which to extract timestamps.
+
+    Returns
+    -------
+    np.ndarray
+        A numpy array containing the timestamps (in milliseconds) for each frame in the video.
+    """
+    import cv2
+    from tqdm.auto import tqdm
+
+    reader = cv2.VideoCapture(file_path)
+    timestamps = []
+    n_frames = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = reader.get(cv2.CAP_PROP_FPS)
+
+    # Calculate total time in minutes
+    total_time_minutes = n_frames / (fps * 60)
+
+    description = (
+        "Inferring timestamps from video.\n"
+        "This step can be avoided by previously setting the timestamps with `set_aligned_timestamps`"
+    )
+    tqdm.write(description)
+
+    # Use tqdm with a context manager
+    with tqdm(
+        total=n_frames,
+        desc="Processing frames",
+        unit=" frame",
+        bar_format="{l_bar}{bar} | {rate_fmt} | {elapsed}<{remaining} | {unit_divisor}",
+    ) as pbar:
+        # Note, using unit_divisor instead of postfix because of a bug in tqdm https://github.com/tqdm/tqdm/issues/712
+
+        for frame_idx in range(n_frames):
+            _ = reader.read()
+            timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
+
+            current_time_minutes = (frame_idx + 1) / (fps * 60)
+
+            pbar.unit_divisor = f"processed {current_time_minutes:.2f} of {total_time_minutes:.2f} minutes"
+            pbar.update(1)
+
+    reader.release()
+    return timestamps
+
+
 def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=True):
     """
     Return numpy array of the timestamps for a video.
@@ -50,18 +103,15 @@ def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=Tr
     movie_file : str
         Path to movie_file
     """
+
+    timestamps = _get_cv2_timestamps(file_path=movie_file)
+    timestamps = np.array(timestamps) / 1000  # Convert to seconds
+
     import cv2
 
     reader = cv2.VideoCapture(movie_file)
-    timestamps = []
-    n_frames = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = reader.get(cv2.CAP_PROP_FPS)
-
-    for _ in range(n_frames):
-        _ = reader.read()
-        timestamps.append(reader.get(cv2.CAP_PROP_POS_MSEC))
-
-    timestamps = np.array(timestamps) / 1000  # Convert to seconds
+    reader.release()
 
     if np.nanvar(np.diff(timestamps)) < 1.0 / fps * 1.0 / VARIABILITYBOUND:
         warnings.warn(
