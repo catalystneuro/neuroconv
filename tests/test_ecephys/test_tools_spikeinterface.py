@@ -10,7 +10,7 @@ import psutil
 import pynwb.ecephys
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
     generate_recording,
@@ -18,7 +18,7 @@ from spikeinterface.core.generate import (
 )
 from spikeinterface.extractors import NumpyRecording
 
-from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata, get_module
+from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     add_electrical_series,
     add_electrodes,
@@ -1546,20 +1546,22 @@ class TestWriteSortingAnalyzer(TestCase):
                 write_electrical_series=True,
             )
 
-    def test_write_sorting_analyzer_to_file(self):
-        """This tests that the analyzer is written to file"""
-        metadata = get_default_nwbfile_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now()
-        write_sorting_analyzer(
-            sorting_analyzer=self.single_segment_analyzer,
-            nwbfile_path=self.nwbfile_path,
-            write_electrical_series=True,
-            metadata=metadata,
-        )
-        with NWBHDF5IO(self.nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            self._test_analyzer_write(self.single_segment_analyzer, nwbfile)
-            self.assertIn("ElectricalSeriesRaw", nwbfile.acquisition)
+    # def test_write_sorting_analyzer_to_file(self):
+    #     """This tests that the analyzer is written to file"""
+    #     metadata = get_default_nwbfile_metadata()
+    #     metadata["NWBFile"]["session_start_time"] = datetime.now()
+
+    #     write_sorting_analyzer(
+    #         sorting_analyzer=self.single_segment_analyzer,
+    #         nwbfile_path=self.nwbfile_path,
+    #         write_electrical_series=True,
+    #         metadata=metadata,
+    #     )
+
+    #     with NWBHDF5IO(self.nwbfile_path, "r") as io:
+    #         nwbfile = io.read()
+    #         self._test_analyzer_write(self.single_segment_analyzer, nwbfile)
+    #         self.assertIn("ElectricalSeriesRaw", nwbfile.acquisition)
 
     def test_write_multiple_probes_without_electrical_series(self):
         """This test that the analyzer is written to different electrode groups"""

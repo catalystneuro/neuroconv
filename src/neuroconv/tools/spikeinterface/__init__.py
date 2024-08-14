@@ -6,9 +6,12 @@ from .spikeinterface import (
     add_recording,
     add_sorting,
     add_units_table,
+    add_sorting_analyzer,
     check_if_recording_traces_fit_into_memory,
     get_nwb_metadata,
     write_recording,
     write_sorting,
     write_sorting_analyzer,
+    add_waveforms,
+    write_waveforms,
 )
