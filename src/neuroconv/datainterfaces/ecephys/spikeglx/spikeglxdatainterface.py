@@ -18,8 +18,16 @@ from ....utils import FilePathType, get_schema_from_method_signature
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
-    associated_suffixes = (".imec{probe_number}", ".ap", ".lf", ".meta", ".bin")
+    associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
     info = "Interface for SpikeGLX recording data."
+
+    # TODO: Add probe_index to probeinterface and propagate it from there
+    # Note to developer.
+    # In a conversion with Jennifer Colonell she refers to the number after imec as the probe index
+    # Quoting here:
+    # imec0 is the probe in the lowest slot and port number, imec1 in the next highest, and so on.
+    # If you have probes in {slot 2, port 3}, {slot 3, port1} and {slot3, port2},
+    # the probe indices in the SGLX output will be 0, 1, and 2, respectively.
 
     ExtractorName = "SpikeGLXRecordingExtractor"
 
@@ -60,6 +68,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             stream_id=self.stream_id,
             verbose=verbose,
             es_key=es_key,
+            all_annotations=True,
         )
         self.source_data["file_path"] = str(file_path)
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
@@ -76,12 +85,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Device metadata
         device = get_device_metadata(self.meta)
 
+        # Should follow pattern 'Imec0', 'Imec1', etc.
+        probe_name = self.stream_id[:5].capitalize()
+        device["name"] = f"Neuropixel{probe_name}"
+
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
         electrode_groups = [
             dict(
                 name=group_name,
-                description=f"a group representing shank {group_name}",
+                description=f"A group representing probe/shank '{group_name}'.",
                 location="unknown",
                 device=device["name"],
             )
@@ -91,10 +104,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
-            dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
             dict(name="contact_shapes", description="The shape of the electrode"),
+            dict(name="contact_ids", description="The id of the contact on the electrode"),
         ]
+
+        if self.recording_extractor.get_probe().get_shank_count() > 1:
+            metadata["Ecephys"]["Electrodes"].append(
+                dict(name="shank_ids", description="The shank id of the electrode")
+            )
 
         return metadata
 

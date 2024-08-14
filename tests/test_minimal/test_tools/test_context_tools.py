@@ -7,6 +7,7 @@ from tempfile import mkdtemp
 from unittest.mock import patch
 
 import h5py
+import pytest
 from hdmf.testing import TestCase
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries
@@ -220,3 +221,11 @@ def test_make_or_load_nwbfile_on_corrupt_file(tmpdir: Path) -> None:
     with make_or_load_nwbfile(nwbfile_path=nwbfile_path, nwbfile=nwbfile_in, overwrite=True) as nwbfile:
         time_series = mock_TimeSeries()
         nwbfile.add_acquisition(time_series)
+
+
+def test_raise_error_when_metadata_is_empty_and_creation_is_needed(tmpdir):
+    nwbfile_path = tmpdir / "test_make_or_load_nwbfile_empty_metadata.nwb"
+
+    with pytest.raises(ValueError):
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=None, overwrite=True) as nwbfile:
+            pass

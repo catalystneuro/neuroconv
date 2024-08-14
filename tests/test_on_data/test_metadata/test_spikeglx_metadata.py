@@ -30,20 +30,24 @@ def test_spikelgx_recording_property_addition():
     meta_filename = str(ap_file_path).replace(".bin", ".meta")
     probe = pi.read_spikeglx(meta_filename)
     n_channels = probe.device_channel_indices.size
+    probe_name = "Imec0"
 
-    expected_shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
-    expected_group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
+    expected_shank_ids = probe.shank_ids
+    expected_group_name = [f"{probe_name}{shank_id}" for shank_id in expected_shank_ids]
     expected_contact_shapes = ["square"] * n_channels
+    expected_contact_ids = probe.contact_ids
 
     # Initialize the interface and get the added properties
     interface = SpikeGLXRecordingInterface(file_path=ap_file_path)
-    shank_electrode_number = interface.recording_extractor.get_property("shank_electrode_number")
     group_name = interface.recording_extractor.get_property("group_name")
     contact_shapes = interface.recording_extractor.get_property("contact_shapes")
+    shank_ids = interface.recording_extractor.get_property("shank_ids")
+    contact_ids = interface.recording_extractor.get_property("contact_ids")
 
-    assert_array_equal(shank_electrode_number, expected_shank_electrode_number)
     assert_array_equal(group_name, expected_group_name)
     assert_array_equal(contact_shapes, expected_contact_shapes)
+    assert_array_equal(shank_ids, expected_shank_ids)
+    assert_array_equal(contact_ids, expected_contact_ids)
 
 
 @pytest.mark.skip(reason="Legacy spikeextractors cannot read new GIN file.")
