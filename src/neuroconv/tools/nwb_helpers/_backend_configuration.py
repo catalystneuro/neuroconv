@@ -31,4 +31,4 @@ def get_existing_backend_configuration(nwbfile: NWBFile) -> Union[HDF5BackendCon
     else:
         raise ValueError(f"The backend of the NWBFile from io {read_io} is not recognized.")
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
-    return BackendConfigurationClass.from_existing_nwbfile(nwbfile=nwbfile)
+    return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile, mode="existing")
