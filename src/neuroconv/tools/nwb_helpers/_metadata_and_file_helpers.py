@@ -394,8 +394,8 @@ def repack_nwbfile(
     *,
     nwbfile: NWBFile,
     export_nwbfile_path: Path,
-    backend_configuration_changes: dict,
-    template: Literal["existing", "default"],
+    template: Literal["existing", "default"] = "default",
+    backend_configuration_changes: dict = None,
 ):
     """Repack the NWBFile with the new backend configuration changes."""
 
@@ -410,8 +410,11 @@ def repack_nwbfile(
         else:
             raise ValueError(f"The backend of the NWBFile from io {read_io} is not recognized.")
         backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+    else:
+        raise ValueError(f"template must be either 'default' or 'existing' but got {template}")
     dataset_configurations = backend_configuration.dataset_configurations
 
+    backend_configuration_changes = backend_configuration_changes or dict()
     for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
         dataset_configuration = dataset_configurations[neurodata_object_location]
         for dataset_config_key, dataset_config_value in dataset_config_changes.items():
