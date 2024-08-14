@@ -101,13 +101,20 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def validate_metadata(self, metadata: Dict[str, dict]):
+    def validate_metadata(self, metadata: Dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
         encoder = NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
-        validate(instance=decoded_metadata, schema=self.get_metadata_schema())
+
+        metdata_schema = self.get_metadata_schema()
+        if append_mode:
+            # Eliminate required from NWBFile
+            nwbfile_schema = metdata_schema["properties"]["NWBFile"]
+            nwbfile_schema.pop("required", None)
+
+        validate(instance=decoded_metadata, schema=metdata_schema)
         if self.verbose:
             print("Metadata is valid!")
 
@@ -206,7 +213,7 @@ class NWBConverter:
         """
 
         if nwbfile_path is None:
-            warnings.warn(  # TODO: remove on or after 12/26/2024
+            warnings.warn(  # TODO: remove on or after 2024/12/26
                 "Using Converter.run_conversion without specifying nwbfile_path is deprecated. To create an "
                 "NWBFile object in memory, use Converter.create_nwbfile. To append to an existing NWBFile object,"
                 " use Converter.add_to_nwbfile."
@@ -215,10 +222,13 @@ class NWBConverter:
         backend = _resolve_backend(backend, backend_configuration)
         no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
 
+        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        append_mode = file_initially_exists and not overwrite
+
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata)
+        self.validate_metadata(metadata=metadata, append_mode=append_mode)
         self.validate_conversion_options(conversion_options=conversion_options)
 
         self.temporally_align_data_interfaces()
