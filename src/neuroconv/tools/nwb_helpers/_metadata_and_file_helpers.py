@@ -385,9 +385,9 @@ def configure_and_export_nwbfile(
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
     IO = BACKEND_NWB_IO[backend_configuration.backend]
-
+    nwbfile.set_modified()
     with IO(export_nwbfile_path, mode="w") as io:
-        io.export(nwbfile=nwbfile, src_io=nwbfile.read_io)
+        io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
 
 
 def repack_nwbfile(

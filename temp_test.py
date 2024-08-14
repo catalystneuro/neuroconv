@@ -31,7 +31,10 @@ def write_nwbfile(nwbfile_path: Path):
 def main():
     nwbfile_path = Path("/Volumes/T7/CatalystNeuro/temp.nwb")
     repacked_nwbfile_path = Path("/Volumes/T7/CatalystNeuro/repacked_temp.nwb")
-    write_nwbfile(nwbfile_path)
+    if repacked_nwbfile_path.exists():
+        os.remove(repacked_nwbfile_path)
+    if not nwbfile_path.exists():
+        write_nwbfile(nwbfile_path)
     with NWBHDF5IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         backend_configuration_changes = {"acquisition/test_timeseries/data": dict(chunk_shape=(2,))}
