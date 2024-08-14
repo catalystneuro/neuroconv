@@ -440,7 +440,7 @@ class VideoInterface(BaseDataInterface):
             if compression is not None or compression_options is not None:
                 warnings.warn(
                     message=(
-                        "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                        "Specifying compression methods and their options for this interface has been deprecated. "
                         "Please use the `configure_backend` tool function for this purpose."
                     ),
                     category=DeprecationWarning,
