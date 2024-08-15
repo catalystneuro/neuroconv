@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
+from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -262,3 +263,22 @@ processing/ecephys/NewProcessedTimeSeries/data
 
 """
     assert stdout.getvalue() == expected_print
+
+
+def test_000_ImageSeries():
+    nwbfile = mock_NWBFile()
+
+    im_series = ImageSeries(
+        name="my_video", external_file=["my_video.mp4"], starting_frame=[0], format="external", rate=30.0
+    )
+    nwbfile.add_acquisition(im_series)
+
+    with NWBHDF5IO("test.nwb", "w") as io:
+        io.write(nwbfile)
+
+    io = NWBHDF5IO("test.nwb", "r")
+    nwbfile = io.read()
+    print(nwbfile.acquisition["my_video"])
+
+    backend_config = get_default_backend_configuration(nwbfile, "hdf5")
+    print(backend_config)  # TODO: Figure out why this doesn't throw an error like Ben said it did
