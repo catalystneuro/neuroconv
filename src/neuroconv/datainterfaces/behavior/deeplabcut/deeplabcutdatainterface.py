@@ -83,9 +83,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         Parameters
         ----------
         aligned_timestamps : list, np.ndarray
-            alternative timestamps vector.
+            A timestamps vector.
         """
-        self._timestamps = np.array(aligned_timestamps)
+        self._timestamps = np.asarray(aligned_timestamps)
 
     def add_to_nwbfile(
         self,

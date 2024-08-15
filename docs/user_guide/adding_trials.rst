@@ -28,9 +28,3 @@ Once this information is added, you can write the NWB file to disk.
     from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
     configure_and_write_nwbfile(nwbfile, save_path="path/to/destination.nwb", backend="hdf5")
-
-.. note::
-
-    NWB generally recommends storing the full continuous stream of data in the NWB file, and then adding trials or
-    epochs as time intervals. Trial-aligning the data is then done on-the-fly when reading the file. This allows for
-    more flexibility in the analysis of the data.
