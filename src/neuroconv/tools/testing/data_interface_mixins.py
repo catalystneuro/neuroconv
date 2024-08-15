@@ -947,6 +947,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
