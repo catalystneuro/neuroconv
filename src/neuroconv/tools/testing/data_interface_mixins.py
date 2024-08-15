@@ -135,12 +135,11 @@ class DataInterfaceTestMixin:
 
         nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
-        if metadata["NWBFile"].get("session_start_time") is None:
-            raise ValueError("Something modified metadata")
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
