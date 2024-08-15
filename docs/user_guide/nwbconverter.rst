@@ -44,20 +44,29 @@ keys of``data_interface_classes``.
 
 This creates an :py:class:`.NWBConverter` object that can aggregate and distribute across
 the data interfaces. To fetch metadata across all of the interfaces and merge
-them together, call::
+them together, call.
+
+.. code-block:: python
 
     metadata = converter.get_metadata()
 
-The metadata can then be manually modified with any additional user-input, just like ``DataInterface`` objects::
+The metadata can then be manually modified with any additional user-input, just like ``DataInterface`` objects.
+
+.. code-block:: python
 
     metadata["NWBFile"]["session_description"] = "NeuroConv tutorial."
     metadata["NWBFile"]["experimenter"] = "My name"
     metadata["Subject"]["subject_id"] = "ID of experimental subject"
 
-The final metadata dictionary should follow the form defined by
-``converter.get_metadata_schema()``. Now run the entire conversion with::
+The final metadata dictionary should follow the form defined by :meth:`.NWBConverter.get_metadata_schema`.
+Now run the entire conversion with.
+
+.. code-block:: python
 
     converter.run_conversion(metadata=metadata, nwbfile_path="my_nwbfile.nwb")
+
+Like ``DataInterface`` objects, :py:class:`.NWBConverter` objects can output an in-memory NWBFile object by
+calling :meth:`.NWBConverter.create_nwbfile`. This can be useful for debugging or for further processing.
 
 Though this example was only for two data streams (recording and spike-sorted
 data), it can easily extend to any number of sources, including video of a
