@@ -3,11 +3,9 @@
 Adding Trials to NWB Files
 ==========================
 
-NWB allows you to store information about time intervals in a structured way. These structure are often used to store
-information about trials, epochs, or other time intervals in the data.
-You can add time intervals to an NWBFile object before writing it using PyNWB.
-Here is an example of how to add trials to an NWBFile object.
-Here is how you would add trials to an NWB file:
+NWB allows you to store information about timing information in a structured way.
+These structures are often used to store information about trials, epochs, or other time intervals in the data.
+Here is how to add trials to an NWBFile object:
 
 .. code-block:: python
 
@@ -21,10 +19,15 @@ You can also add epochs or other types of time intervals to an NWB File. See
 `PyNWB Annotating Time Intervals <https://pynwb.readthedocs.io/en/stable/tutorials/general/plot_timeintervals.html>`_
 for more information.
 
-Once this information is added, you can write the NWB file to disk.
+Once this information is added, you can write the NWB file to disk:
 
 .. code-block:: python
 
     from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
-    configure_and_write_nwbfile(nwbfile, save_path="path/to/destination.nwb", backend="hdf5")
+    configure_and_write_nwbfile(
+        nwbfile, save_path="path/to/destination.nwb", backend="hdf5"
+    )
+
+This will write the NWB file to disk with the added trials information, and optimize the storage settings of large
+datasets for cloud compute.
