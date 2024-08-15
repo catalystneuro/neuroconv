@@ -960,7 +960,6 @@ def add_recording(
     iterator_type : {'v2', None}, default='v2'
         The type of DataChunkIterator to use when writing data in chunks. Options are:
 
-        - 'v1': The original DataChunkIterator from hdmf.data_utils.
         - 'v2': The SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         - None: Write the TimeSeries with no memory chunking.
     iterator_opts : dict, optional
