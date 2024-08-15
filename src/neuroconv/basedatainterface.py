@@ -18,11 +18,11 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
-    NWBMetaDataEncoder,
     get_schema_from_method_signature,
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
+from .utils.json_schema import NWBMetaDataEncoder, NWBSourceDataEncoder
 
 
 class BaseDataInterface(ABC):
@@ -38,9 +38,28 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
+    @classmethod
+    def validate_source(cls, source_data: dict, verbose: bool = True):
+        """Validate source_data against Converter source_schema."""
+        cls._validate_source_data(source_data=source_data, verbose=verbose)
+
+    def _validate_source_data(self, source_data: dict, verbose: bool = True):
+
+        encoder = NWBSourceDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(serialized_source_data)
+        schema = self.get_source_schema()
+        validate(instance=decoded_source_data, schema=schema)
+        if verbose:
+            print("Source data is valid!")
+
     def __init__(self, verbose: bool = False, **source_data):
         self.verbose = verbose
         self.source_data = source_data
+
+        self._validate_source_data(source_data=source_data, verbose=verbose)
 
     def get_conversion_options_schema(self) -> dict:
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""

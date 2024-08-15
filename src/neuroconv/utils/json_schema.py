@@ -120,15 +120,17 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
             if doc_param.arg_name == param_name and doc_param.description:
                 args_spec[param_name].update(description=doc_param.description)
         if param.annotation:
-            if getattr(param.annotation, "__origin__", None) == Literal:
+            generic_type = getattr(param.annotation, "__origin__", None)
+            if generic_type == Literal:
                 args_spec[param_name]["enum"] = list(param.annotation.__args__)
-            elif getattr(param.annotation, "__origin__", None) == dict:
+            elif generic_type == dict:
                 args_spec[param_name] = dict(type="object")
                 if param.annotation.__args__ == (str, str):
                     args_spec[param_name].update(additionalProperties={"^.*$": dict(type="string")})
                 else:
                     args_spec[param_name].update(additionalProperties=True)
-            elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
+            # Annotation has __args__ if it was made by typing.Union or typing.Tuple
+            elif hasattr(param.annotation, "__args__"):
                 args = param.annotation.__args__
                 valid_args = [x.__name__ in annotation_json_type_map for x in args]
                 if not any(valid_args):
@@ -147,8 +149,11 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 if num_params == 2 and args[1] is not type(None):  # noqa: E721
                     raise ValueError(conflict_message)
 
+                if type(None) in args:
+                    param_types.append("null")
+
                 # Guaranteed to only have a single index by this point
-                args_spec[param_name]["type"] = param_types[0]
+                args_spec[param_name]["type"] = param_types
                 if arg_types[0] == FilePathType:
                     input_schema["properties"].update({param_name: dict(format="file")})
                 elif arg_types[0] == FolderPathType:
