@@ -1,1 +1,2 @@
 zugbruecke >= 0.2.1; platform_system != "Windows"
+neo @ git+https://github.com/h-mayorquin/python-neo@fix_plexon_streams

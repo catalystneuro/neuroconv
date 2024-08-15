@@ -35,7 +35,9 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+
+        stream_name = "WB-Wideband"
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
