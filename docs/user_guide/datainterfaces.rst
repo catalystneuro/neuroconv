@@ -143,8 +143,8 @@ Here we can see that ``metadata["Ecephys"]["ElectrodeGroup"][0]["location"]`` is
 
 Use ``.get_metadata_schema()`` to get the schema of the metadata dictionary. This schema is a JSON-schema-like dictionary that specifies required and optional fields in the metadata dictionary. See :ref:`metadata schema <metadata_schema>` for more information.
 
-4. Run conversion
-~~~~~~~~~~~~~~~~~
+4a. Run conversion
+~~~~~~~~~~~~~~~~~~
 The ``.run_conversion`` method takes the (edited) metadata dictionary and
 the path of an NWB file, and launches the actual data conversion into NWB.
 
@@ -159,3 +159,24 @@ This method reads and writes large datasets piece-by-piece, so you
 can convert large datasets without overloading the computer's available RAM.
 It also uses good defaults for data chunking and lossless compression, reducing
 the file size of the output NWB file and optimizing the file for cloud compute.
+
+4b. Create an in-memory NWB file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you want to create an in-memory NWB file, you can use the ``.create_nwbfile`` method.
+
+.. code-block:: python
+
+    nwbfile = spikeglx_interface.create_nwbfile(metadata=metadata)
+
+This is useful for add data such as trials, epochs, or other time intervals to the NWB file. See
+:ref:`Adding Time Intervals to NWB Files <adding_trials>` for more information.
+
+This does not load large datasets into memory. Those remain in the source files and are read piece-by-piece during the
+write process. Once you make all the modifications you want to the NWBfile, you can save it to disk. The following code
+automatically optimizes datasets for cloud compute and writes the file to disk.
+
+.. code-block:: python
+
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    configure_and_write_nwbfile(nwbfile, save_path="path/to/destination.nwb", backend="hdf5")
