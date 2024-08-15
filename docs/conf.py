@@ -1,3 +1,4 @@
+import inspect
 import sys
 from pathlib import Path
 
@@ -92,14 +93,14 @@ autodoc_default_options = {
 add_module_names = False
 
 
-# def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
-#     if what == "class":
-#         signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
-#     return (signature, return_annotation)
+def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
+    if what == "class":
+        signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
+    return (signature, return_annotation)
 
 
-# def setup(app):  # This makes the data-interfaces signatures display on the docs/api, they don't otherwise
-#     app.connect("autodoc-process-signature", _correct_signatures)
+def setup(app):  # This makes the data-interfaces signatures display on the docs/api, they don't otherwise
+    app.connect("autodoc-process-signature", _correct_signatures)
 
 
 # Toggleprompt
