@@ -79,13 +79,16 @@ napoleon_include_special_with_doc = True
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
 autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
 autodata_content = "both"
+
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
-    "private-members": True,
+    "private-members": False,
     "show-inheritance": False,
     "toctree": True,
+    'undoc-members': True,
 }
+
 add_module_names = False
 
 
