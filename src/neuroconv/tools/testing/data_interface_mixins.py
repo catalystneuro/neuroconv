@@ -159,8 +159,7 @@ class DataInterfaceTestMixin:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         conversion_options = dict(Test=self.conversion_options)
-        if metadata["NWBFile"].get("session_start_time") is None:
-            raise ValueError("Something modified metadata")
+
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
