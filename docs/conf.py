@@ -1,4 +1,3 @@
-import inspect
 import sys
 from pathlib import Path
 
@@ -66,13 +65,14 @@ linkcheck_ignore = [
 # Extension configuration
 # --------------------------------------------------
 
+
 # Napoleon
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = False
 napoleon_use_ivar = True
 napoleon_include_init_with_doc = False
-napoleon_include_private_with_doc = True
+napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
 
 # Autodoc
@@ -92,14 +92,14 @@ autodoc_default_options = {
 add_module_names = False
 
 
-def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
-    if what == "class":
-        signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
-    return (signature, return_annotation)
+# def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
+#     if what == "class":
+#         signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
+#     return (signature, return_annotation)
 
 
-def setup(app):  # This makes the data-interfaces signatures display on the docs/api, they don't otherwise
-    app.connect("autodoc-process-signature", _correct_signatures)
+# def setup(app):  # This makes the data-interfaces signatures display on the docs/api, they don't otherwise
+#     app.connect("autodoc-process-signature", _correct_signatures)
 
 
 # Toggleprompt
