@@ -108,13 +108,13 @@ class NWBConverter:
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
 
-        metdata_schema = self.get_metadata_schema()
+        metadata_schema = self.get_metadata_schema()
         if append_mode:
             # Eliminate required from NWBFile
-            nwbfile_schema = metdata_schema["properties"]["NWBFile"]
+            nwbfile_schema = metadata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate(instance=decoded_metadata, schema=metdata_schema)
+        validate(instance=decoded_metadata, schema=metadata_schema)
         if self.verbose:
             print("Metadata is valid!")
 
