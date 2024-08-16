@@ -65,4 +65,5 @@ def test_repack_nwbfile(hdf5_nwbfile_path):
     with NWBHDF5IO(export_path, mode="r") as io:
         nwbfile = io.read()
         assert nwbfile.acquisition["RawTimeSeries"].data.chunks == (2, 3)
+        assert nwbfile.intervals["trials"].start_time.data.chunks == (10,)
         assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.chunks == (4, 2)
