@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -39,6 +39,13 @@ def hdf5_nwbfile_path(tmpdir_factory):
     nwbfile_path = tmpdir_factory.mktemp("data").join("test_repack_nwbfile.nwb.h5")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_complex_nwbfile()
+
+        # Add a H5DataIO-compressed time series
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
+        data = H5DataIO(data=raw_array, compression="gzip", compression_opts=2)
+        raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
+        nwbfile.add_acquisition(raw_time_series)
+
         with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
             io.write(nwbfile)
     return str(nwbfile_path)
@@ -54,16 +61,26 @@ def zarr_nwbfile_path(tmpdir_factory):
     return str(nwbfile_path)
 
 
-def test_repack_nwbfile(hdf5_nwbfile_path):
+@pytest.mark.parametrize("use_default_backend_configuration", [True, False])
+def test_repack_nwbfile(hdf5_nwbfile_path, use_default_backend_configuration):
     export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.h5"
     repack_nwbfile(
         nwbfile_path=hdf5_nwbfile_path,
         export_nwbfile_path=export_path,
         backend="hdf5",
+        use_default_backend_configuration=use_default_backend_configuration,
     )
 
     with NWBHDF5IO(export_path, mode="r") as io:
         nwbfile = io.read()
-        assert nwbfile.acquisition["RawTimeSeries"].data.chunks == (2, 3)
-        assert nwbfile.intervals["trials"].start_time.data.chunks == (10,)
-        assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.chunks == (4, 2)
+
+        if use_default_backend_configuration:
+            assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 4
+            assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
+        else:
+            assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts is None
+            assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
