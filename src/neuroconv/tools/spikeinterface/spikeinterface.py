@@ -97,9 +97,9 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] 
         metadata["Ecephys"] = dict()
     if "Device" not in metadata["Ecephys"]:
         metadata["Ecephys"]["Device"] = [defaults]
-    for dev in metadata["Ecephys"]["Device"]:
-        if dev.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **dev))
+    for device_metadata in metadata["Ecephys"]["Device"]:
+        if device_metadata.get("name", defaults["name"]) not in nwbfile.devices:
+            nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
@@ -152,8 +152,7 @@ def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWB
     if "Ecephys" not in metadata:
         metadata["Ecephys"] = dict()
 
-    if len(nwbfile.devices) == 0:
-        add_devices(nwbfile=nwbfile, metadata=metadata)
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     group_names = _get_group_name(recording=recording)
 
@@ -482,7 +481,7 @@ def add_electrodes_to_nwbfile(
     data_to_add = dict()
 
     recording_properties = recording.get_property_keys()
-    special_cases = [
+    spikeinterface_special_cases = [
         "offset_to_uV",  # Written in the ElectricalSeries
         "gain_to_uV",  # Written in the ElectricalSeries
         "contact_vector",  # Structured array representing the probe
@@ -491,7 +490,7 @@ def add_electrodes_to_nwbfile(
         "group_name",  # We handle this here _get_group_name
         "group",  # We handle this here with _get_group_name
     ]
-    excluded_properties = list(exclude) + special_cases
+    excluded_properties = list(exclude) + spikeinterface_special_cases
     properties_to_extract = [property for property in recording_properties if property not in excluded_properties]
 
     for property in properties_to_extract:
@@ -668,7 +667,7 @@ def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
     return_scaled: bool = False,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_opts: dict = None,
 ) -> AbstractDataChunkIterator:
     """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
@@ -887,7 +886,7 @@ def add_electrical_series_to_nwbfile(
         eseries_kwargs["name"] += f"{segment_index:0{width}}"
 
     # The add_electrodes adds a column with channel name to the electrode table.
-    add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     # Create a region for the electrodes table
     electrode_table_indices = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
@@ -1297,7 +1296,7 @@ def write_recording_to_nwbfile(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        add_recording(
+        add_recording_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile_out,
             starting_time=starting_time,
