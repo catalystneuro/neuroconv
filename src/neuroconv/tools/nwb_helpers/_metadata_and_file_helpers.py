@@ -392,34 +392,29 @@ def configure_and_export_nwbfile(
 
 def repack_nwbfile(
     *,
-    nwbfile: NWBFile,
+    nwbfile_path: Path,
     export_nwbfile_path: Path,
-    template: Literal["existing", "default"] = "default",
+    backend: Literal["hdf5", "zarr"] = "hdf5",
+    export_backend: Literal["hdf5", "zarr", None] = None,
+    use_default_backend_configuration: bool = True,
     backend_configuration_changes: dict = None,
 ):
     """Repack the NWBFile with the new backend configuration changes."""
-
-    if template == "existing":
-        backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
-    elif template == "default":
-        read_io = nwbfile.read_io
-        if isinstance(read_io, NWBHDF5IO):
-            backend = "hdf5"
-        elif isinstance(read_io, NWBZarrIO):
-            backend = "zarr"
+    IO = BACKEND_NWB_IO[backend]
+    with IO(nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        if use_default_backend_configuration:
+            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         else:
-            raise ValueError(f"The backend of the NWBFile from io {read_io} is not recognized.")
-        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
-    else:
-        raise ValueError(f"template must be either 'default' or 'existing' but got {template}")
-    dataset_configurations = backend_configuration.dataset_configurations
+            backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+        dataset_configurations = backend_configuration.dataset_configurations
 
-    backend_configuration_changes = backend_configuration_changes or dict()
-    for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
-        dataset_configuration = dataset_configurations[neurodata_object_location]
-        for dataset_config_key, dataset_config_value in dataset_config_changes.items():
-            setattr(dataset_configuration, dataset_config_key, dataset_config_value)
+        backend_configuration_changes = backend_configuration_changes or dict()
+        for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
+            dataset_configuration = dataset_configurations[neurodata_object_location]
+            for dataset_config_key, dataset_config_value in dataset_config_changes.items():
+                setattr(dataset_configuration, dataset_config_key, dataset_config_value)
 
-    configure_and_export_nwbfile(
-        nwbfile=nwbfile, backend_configuration=backend_configuration, export_nwbfile_path=export_nwbfile_path
-    )
+        configure_and_export_nwbfile(
+            nwbfile=nwbfile, backend_configuration=backend_configuration, export_nwbfile_path=export_nwbfile_path
+        )

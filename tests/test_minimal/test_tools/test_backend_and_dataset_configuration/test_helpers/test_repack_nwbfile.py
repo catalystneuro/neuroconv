@@ -56,12 +56,11 @@ def zarr_nwbfile_path(tmpdir_factory):
 
 def test_repack_nwbfile(hdf5_nwbfile_path):
     export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.h5"
-    with NWBHDF5IO(hdf5_nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        repack_nwbfile(
-            nwbfile=nwbfile,
-            export_nwbfile_path=export_path,
-        )
+    repack_nwbfile(
+        nwbfile_path=hdf5_nwbfile_path,
+        export_nwbfile_path=export_path,
+        backend="hdf5",
+    )
 
     with NWBHDF5IO(export_path, mode="r") as io:
         nwbfile = io.read()

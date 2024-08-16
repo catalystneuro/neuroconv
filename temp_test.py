@@ -35,15 +35,14 @@ def main():
         os.remove(repacked_nwbfile_path)
     if not nwbfile_path.exists():
         write_nwbfile(nwbfile_path)
-    with NWBHDF5IO(nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        backend_configuration_changes = {"acquisition/test_timeseries/data": dict(chunk_shape=(2,))}
-        repack_nwbfile(
-            nwbfile=nwbfile,
-            export_nwbfile_path=repacked_nwbfile_path,
-            backend_configuration_changes=backend_configuration_changes,
-            template="existing",
-        )
+    backend_configuration_changes = {"acquisition/test_timeseries/data": dict(chunk_shape=(2,))}
+    repack_nwbfile(
+        nwbfile_path=nwbfile_path,
+        export_nwbfile_path=repacked_nwbfile_path,
+        backend="hdf5",
+        backend_configuration_changes=backend_configuration_changes,
+        use_default_backend_configuration=False,
+    )
 
     with NWBHDF5IO(repacked_nwbfile_path, mode="r") as io:
         nwbfile = io.read()
