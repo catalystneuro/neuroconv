@@ -1990,7 +1990,7 @@ def add_sorting_analyzer_to_nwbfile(
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, tm[prop])
 
-    add_electrodes_info(recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_info_to_nwbfile(recording, nwbfile=nwbfile, metadata=metadata)
     electrode_group_indices = get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
 
