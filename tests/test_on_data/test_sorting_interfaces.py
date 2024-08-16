@@ -4,6 +4,7 @@ from unittest import TestCase
 import numpy as np
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+from spikeinterface.extractors.nwbextractors import read_nwbfile
 
 from neuroconv.datainterfaces import (
     BlackrockRecordingInterface,
@@ -17,7 +18,6 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     SortingExtractorInterfaceTestMixin,
 )
-from spikeinterface.extractors.nwbextractors import read_nwbfile
 
 try:
     from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
@@ -174,7 +174,7 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
 
         # check that the max channel is correctly extracted
         max_channel = self.interface.get_max_channel()
-        assert_array_equal(max_channel, [1,  2,  5,  5,  6, 21, 13, 13, 21, 21, 22, 22, 24])
+        assert_array_equal(max_channel, [1, 2, 5, 5, 6, 21, 13, 13, 21, 21, 22, 22, 24])
 
         # check that max channel was properly added to sorting extractor
         assert_array_equal(self.interface.sorting_extractor.get_property("max_channel"), max_channel)
@@ -182,7 +182,6 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
         # check that max channels were properly added to the NWB file
         nwbfile = read_nwbfile(file_path=nwbfile_path, backend="hdf5")
         assert_array_equal(nwbfile.units["max_channel"].data[:], max_channel)
-
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
