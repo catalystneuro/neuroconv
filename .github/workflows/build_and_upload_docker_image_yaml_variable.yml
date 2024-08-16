@@ -2,7 +2,7 @@ name: Build and Upload Docker Image of latest with YAML variable to GHCR
 
 on:
   workflow_run:
-    workflows: [build_and_upload_docker_image_latest_release]
+    workflows: [Build and Upload Docker Image of Latest Release to GHCR]
     types: [completed]
   workflow_dispatch:
 

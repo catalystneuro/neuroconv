@@ -357,15 +357,12 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions(RecordingEx
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg=(
-                "Unable to identify the OpenEphys folder structure! "
-                "Please check that your `folder_path` contains sub-folders of the "
-                "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
+                "Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains a "
+                "settings.xml file and sub-folders of the following form: 'experiment<index>' -> 'recording<index>' ->"
+                " 'continuous'."
             ),
         ):
-            OpenEphysBinaryRecordingInterface(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream"),
-                stream_name="Record_Node_107#Neuropix-PXI-116.0",
-            )
+            OpenEphysBinaryRecordingInterface(folder_path=str(DATA_PATH / "openephysbinary"))
 
     def test_stream_name_missing_assertion(self):
         with self.assertRaisesWith(
@@ -494,7 +491,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="Neuropixel-Imec",
+            name="NeuropixelImec0",
             description="{"
             '"probe_type": "0", '
             '"probe_type_description": "NP1.0", '
@@ -522,7 +519,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="Neuropixel-Imec",
+            name="NeuropixelImec0",
             description="{"
             '"probe_type": "1030", '
             '"probe_type_description": "NP1.0 NHP", '

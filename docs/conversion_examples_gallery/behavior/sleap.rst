@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading SLEAP d
 
 .. code-block:: bash
 
-    pip install neuroconv[sleap]
+    pip install "neuroconv[sleap]"
 
 Convert SLEAP pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface`.
 

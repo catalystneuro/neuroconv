@@ -1,11 +1,10 @@
+import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Literal, Optional
-from warnings import warn
 
 import numpy as np
 import psutil
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
@@ -321,13 +320,6 @@ class VideoInterface(BaseDataInterface):
         module_description: str, optional
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
-        compression: str, default: "gzip"
-            Compression strategy to use for :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO`. For full list of currently
-            supported filters, see
-            https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
-        compression_options: int, optional
-            Parameter(s) for compression filter. Currently, only supports the compression level (integer from 0 to 9) of
-            compression="gzip".
         """
         metadata = metadata or dict()
 
@@ -388,7 +380,7 @@ class VideoInterface(BaseDataInterface):
                 uncompressed_estimate = Path(file).stat().st_size * 70
                 available_memory = psutil.virtual_memory().available
                 if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
-                    warn(
+                    warnings.warn(
                         f"Not enough memory (estimated {human_readable_size(uncompressed_estimate)}) to load video file"
                         f"as array ({human_readable_size(available_memory)} available)! Forcing chunk_data to True."
                     )
@@ -437,14 +429,18 @@ class VideoInterface(BaseDataInterface):
                                 pbar.update(1)
                     iterable = video
 
-                # Wrap data for compression
-                wrapped_io_data = H5DataIO(
-                    iterable,
-                    compression=compression,
-                    compression_opts=compression_options,
-                    chunks=chunks,
+            # TODO: remove completely after 03/1/2024
+            if compression is not None or compression_options is not None:
+                warnings.warn(
+                    message=(
+                        "Specifying compression methods and their options for this interface has been deprecated. "
+                        "Please use the `configure_backend` tool function for this purpose."
+                    ),
+                    category=DeprecationWarning,
+                    stacklevel=2,
                 )
-                image_series_kwargs.update(data=wrapped_io_data)
+
+                image_series_kwargs.update(data=iterable)
 
                 if timing_type == "starting_time and rate":
                     starting_time = (

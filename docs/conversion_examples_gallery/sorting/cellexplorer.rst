@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading CellExp
 
 .. code-block:: bash
 
-    pip install neuroconv[cellexplorer]
+    pip install "neuroconv[cellexplorer]"
 
 Convert CellExplorer sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface.CellExplorerSortingInterface`.
 

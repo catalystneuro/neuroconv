@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading CaImAn 
 
 .. code-block:: bash
 
-    pip install neuroconv[caiman]
+    pip install "neuroconv[caiman]"
 
 Convert CaImAn segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.caiman.caimandatainterface.CaimanSegmentationInterface`.
 

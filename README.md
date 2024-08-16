@@ -60,10 +60,10 @@ pip install git+https://github.com/catalystneuro/neuroconv.git@main
 NeuroConv also supports a variety of extra dependencies that can be specified inside square brackets, such as
 
 ```shell
-pip install neuroconv[dandi]
+pip install "neuroconv[openephys, dandi]"
 ```
 
-which will then install extra dependencies related to usage of the DANDI CLI (such as automatic upload to the [DANDI Archive](https://www.dandiarchive.org/)).
+which will then install extra dependencies related to reading OpenEphys data as well as the usage of the DANDI CLI (such as automatic upload to the [DANDI Archive](https://www.dandiarchive.org/)).
 
 You can read more about these options in the main [installation guide](https://neuroconv.readthedocs.io/en/main/user_guide/datainterfaces.html#installation).
 

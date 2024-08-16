@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading neuraly
 
 .. code-block:: bash
 
-    pip install neuroconv[neuralynx]
+    pip install "neuroconv[neuralynx]"
 
 Convert Neuralynx data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxSortingInterface`.
