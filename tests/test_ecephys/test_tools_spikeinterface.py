@@ -20,12 +20,12 @@ from spikeinterface.extractors import NumpyRecording
 
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
-    add_electrical_series,
-    add_electrodes,
-    add_units_table,
+    add_electrical_series_to_nwb,
+    add_electrodes_to_nwb,
+    add_units_table_to_nwb,
     check_if_recording_traces_fit_into_memory,
-    write_recording,
-    write_sorting_analyzer,
+    write_recording_to_nwb,
+    write_sorting_analyzer_to_nwb,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -52,7 +52,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
 
     def test_default_values(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         assert "ElectricalSeriesRaw" in acquisition_module
@@ -64,7 +64,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
     def test_write_as_lfp(self):
         write_as = "lfp"
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
         )
 
@@ -85,7 +85,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
     def test_write_as_processing(self):
         write_as = "processed"
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
         )
 
@@ -111,7 +111,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
                 ElectricalSeriesLFP=dict(name="ElectricalSeriesLFP", description="lfp series"),
             )
         )
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -121,7 +121,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -141,7 +141,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
         original_groups = self.test_recording_extractor.get_channel_groups()
         self.test_recording_extractor.set_channel_groups(["group0"] * len(self.test_recording_extractor.channel_ids))
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -158,7 +158,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
         # set new channel groups to create a new  electrode_group
         self.test_recording_extractor.set_channel_groups(["group1"] * len(self.test_recording_extractor.channel_ids))
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -183,7 +183,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
         with self.assertRaisesRegex(AssertionError, reg_expression):
-            add_electrical_series(
+            add_electrical_series_to_nwb(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
             )
 
@@ -206,7 +206,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         )
 
     def test_uniform_timestamps(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -219,7 +219,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
         self.test_recording_extractor.set_times(times=expected_timestamps, with_warning=False)
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -265,7 +265,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -290,7 +290,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -315,7 +315,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -342,7 +342,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         gains = self.gains_default
         self.test_recording_extractor.set_channel_gains(gains=gains)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -373,7 +373,9 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         reg_expression = "Recording extractors with heterogeneous offsets are not supported"
 
         with self.assertRaisesRegex(ValueError, reg_expression):
-            add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+            add_electrical_series_to_nwb(
+                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
+            )
 
 
 class TestAddElectricalSeriesChunking(unittest.TestCase):
@@ -405,7 +407,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         )
 
     def test_default_iterative_writer(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -419,7 +421,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
     def test_iterator_opts_propagation(self):
         iterator_opts = dict(chunk_shape=(10, 3))
-        add_electrical_series(
+        add_electrical_series_to_nwb(
             recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_opts=iterator_opts
         )
 
@@ -430,7 +432,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
     def test_hdmf_iterator(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -443,7 +445,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_non_iterative_write(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        add_electrical_series_to_nwb(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -476,7 +478,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         reg_expression = "iterator_type (.*?)"
         with self.assertRaisesRegex(ValueError, reg_expression):
-            add_electrical_series(
+            add_electrical_series_to_nwb(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=iterator_type
             )
 
@@ -513,7 +515,9 @@ class TestWriteRecording(unittest.TestCase):
 
     def test_default_values_single_segment(self):
         """This test that the names are written appropriately for the single segment case (numbers not added)"""
-        write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        write_recording_to_nwb(
+            recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
+        )
 
         acquisition_module = self.nwbfile.acquisition
         assert "ElectricalSeriesRaw" in acquisition_module
@@ -524,7 +528,9 @@ class TestWriteRecording(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_multiple_segments(self):
-        write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        write_recording_to_nwb(
+            recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
+        )
 
         acquisition_module = self.nwbfile.acquisition
         assert len(acquisition_module) == 2
@@ -547,7 +553,7 @@ class TestWriteRecording(unittest.TestCase):
         bool_property = np.array([False] * len(self.single_segment_recording_extractor.channel_ids))
         bool_property[::2] = True
         self.single_segment_recording_extractor.set_property("test_bool", bool_property)
-        add_electrodes(
+        add_electrodes_to_nwb(
             recording=self.single_segment_recording_extractor,
             nwbfile=self.nwbfile,
         )
@@ -581,7 +587,7 @@ class TestAddElectrodes(TestCase):
         )
 
     def test_default_electrode_column_names(self):
-        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.base_recording, nwbfile=self.nwbfile)
 
         expected_electrode_column_names = ["location", "group", "group_name", "channel_name", "rel_x", "rel_y"]
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
@@ -595,8 +601,8 @@ class TestAddElectrodes(TestCase):
             channel_ids=channel_ids, renamed_channel_ids=offest_channels_ids
         )
 
-        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
-        add_electrodes(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.base_recording, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
 
         expected_channel_names_in_electrodes_table = ["0", "1", "2", "3", "4", "5"]
         actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
@@ -604,29 +610,29 @@ class TestAddElectrodes(TestCase):
 
     def test_string_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are strings."""
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile)
 
         expected_channel_names_in_electrodes_table = ["a", "b", "c", "d", "e", "f"]
         actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
     def test_non_overwriting_channel_names_property(self):
-        "add_electrodes function should not overwrite the recording object channel name property"
+        "add_electrodes_to_nwb function should not overwrite the recording object channel name property"
         channel_names = ["name a", "name b", "name c", "name d"]
         self.recording_1.set_property(key="channel_name", values=channel_names)
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_channel_names_in_electrodes_table = channel_names
         channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
     def test_channel_group_names_table(self):
-        "add_electrodes function should add new rows if same channel names, but different group_names"
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        "add_electrodes_to_nwb function should add new rows if same channel names, but different group_names"
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
         original_groups = self.recording_1.get_channel_groups()
         self.recording_1.set_channel_groups(["1"] * len(self.recording_1.channel_ids))
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
         # reset channel_groups
         self.recording_1.set_channel_groups(original_groups)
         assert len(self.nwbfile.electrodes) == 2 * len(self.recording_1.channel_ids)
@@ -643,14 +649,14 @@ class TestAddElectrodes(TestCase):
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
         self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile)
 
         actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["common_property"].data)
         expected_properties_in_electrodes_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
         self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
 
-    def test_add_electrodes_addition(self):
+    def test_add_electrodes_addition_to_nwb(self):
         """
         Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
         """
@@ -663,22 +669,22 @@ class TestAddElectrodes(TestCase):
         values_dic.update(id=1, channel_name="1")
         self.nwbfile.add_electrode(**values_dic)
         # The self.base_recording channel_ids are [0, 1, 2, 3], so only '3' and '4' should be added
-        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.base_recording, nwbfile=self.nwbfile)
         self.assertEqual(len(self.nwbfile.electrodes), len(self.base_recording.channel_ids))
 
     def test_new_property_addition(self):
         """Add a property only available in a second recording."""
         self.recording_2.set_property(key="added_property", values=["added_value"] * self.num_channels)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile)
 
         actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["added_property"].data)
         expected_properties_in_electrodes_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
         self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
 
-    def test_manual_row_adition_before_add_electrodes_function(self):
-        """Add some rows to the electrode tables before using the add_electrodes function"""
+    def test_manual_row_adition_before_add_electrodes_function_to_nwb(self):
+        """Add some rows to the electrode tables before using the add_electrodes_to_nwb function"""
         values_dic = self.defaults
 
         values_dic.update(id=123)
@@ -687,16 +693,16 @@ class TestAddElectrodes(TestCase):
         values_dic.update(id=124)
         self.nwbfile.add_electrode(**values_dic)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_ids = [123, 124, 2, 3, 4, 5]
         expected_names = ["123", "124", "a", "b", "c", "d"]
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
-    def test_manual_row_adition_after_add_electrodes_function(self):
-        """Add some rows to the electrode table after using the add_electrodes function"""
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+    def test_manual_row_adition_after_add_electrodes_function_to_nwb(self):
+        """Add some rows to the electrode table after using the add_electrodes_to_nwb function"""
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         values_dic = self.defaults
 
@@ -715,8 +721,8 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
-    def test_manual_row_adition_before_add_electrodes_function_optional_columns(self):
-        """Add some rows including optional columns to the electrode tables before using the add_electrodes function."""
+    def test_manual_row_adition_before_add_electrodes_function_optional_columns_to_nwb(self):
+        """Add some rows including optional columns to the electrode tables before using the add_electrodes_to_nwb function."""
         values_dic = self.defaults
 
         values_dic.update(id=123)
@@ -726,7 +732,7 @@ class TestAddElectrodes(TestCase):
         self.nwbfile.add_electrode(**values_dic, x=1.0, y=2.0, z=3.0)
 
         # recording_1 does not have x, y, z positions
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_ids = [123, 124, 2, 3, 4, 5]
         expected_x = [0, 1, np.nan, np.nan, np.nan, np.nan]
@@ -758,7 +764,7 @@ class TestAddElectrodes(TestCase):
         property_values = ["value_a", "value_b", "x", "y"]
         self.recording_1.set_property(key="property", values=property_values)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
@@ -781,8 +787,8 @@ class TestAddElectrodes(TestCase):
 
         recording2.set_property(key="added_property", values=["value"] * 3)
 
-        add_electrodes(recording=recording1, nwbfile=self.nwbfile)
-        add_electrodes(recording=recording2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=recording1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=recording2, nwbfile=self.nwbfile)
 
         expected_property = ["", "", "", "value", "value", "value"]
         property = self.nwbfile.electrodes["added_property"].data
@@ -809,7 +815,7 @@ class TestAddElectrodes(TestCase):
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
@@ -825,7 +831,7 @@ class TestAddElectrodes(TestCase):
 
         ragged_array_values1 = [[1, 2], [3, 4], [5, 6], [7, 8]]
         self.recording_1.set_property(key="ragged_property", values=ragged_array_values1)
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property"].to_list()
         np.testing.assert_array_equal(written_values, ragged_array_values1)
@@ -836,7 +842,7 @@ class TestAddElectrodes(TestCase):
         second_ragged_array_values = [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"], ["j", "k", "l"]]
         self.recording_2.set_property(key="ragged_property2", values=second_ragged_array_values)
 
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property"].to_list()
         expected_values = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]]
@@ -861,7 +867,7 @@ class TestAddElectrodes(TestCase):
         ]
         self.recording_1.set_property(key="double_ragged_property", values=doubled_nested_array1)
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile)
         written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property"].to_list()
         np.testing.assert_array_equal(written_values, doubled_nested_array1)
 
@@ -874,7 +880,7 @@ class TestAddElectrodes(TestCase):
             [[21, 22], [23, 24]],
         ]
         self.recording_2.set_property(key="double_ragged_property", values=doubled_nested_array2)
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property"].to_list()
 
@@ -899,7 +905,7 @@ class TestAddElectrodes(TestCase):
 
         # We add another properyt to recording 2 tat is not in recording 1
         self.recording_2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property2"].to_list()
 
@@ -933,8 +939,8 @@ class TestAddElectrodes(TestCase):
             )
         )
 
-        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile, metadata=metadata)
-        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile, metadata=metadata)
+        add_electrodes_to_nwb(recording=self.recording_1, nwbfile=self.nwbfile, metadata=metadata)
+        add_electrodes_to_nwb(recording=self.recording_2, nwbfile=self.nwbfile, metadata=metadata)
 
         actual_common_property_values = list(self.nwbfile.electrodes["common_property"].data)
         expected_common_property_values = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
@@ -953,7 +959,7 @@ class TestAddElectrodes(TestCase):
         recording1 = generate_recording(num_channels=2, durations=[1.0])
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
         recording1.set_property(key="complete_int_property", values=[1, 2])
-        add_electrodes(recording=recording1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=recording1, nwbfile=self.nwbfile)
 
         expected_property = np.asarray([1, 2])
         extracted_property = self.nwbfile.electrodes["complete_int_property"].data
@@ -964,10 +970,10 @@ class TestAddElectrodes(TestCase):
 
         recording2.set_property(key="incomplete_int_property", values=[10, 11])
         with self.assertRaises(ValueError):
-            add_electrodes(recording=recording2, nwbfile=self.nwbfile)
+            add_electrodes_to_nwb(recording=recording2, nwbfile=self.nwbfile)
 
         null_values_for_properties = {"complete_int_property": -1, "incomplete_int_property": -3}
-        add_electrodes(
+        add_electrodes_to_nwb(
             recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
         )
 
@@ -984,7 +990,7 @@ class TestAddElectrodes(TestCase):
         recording1 = generate_recording(num_channels=2)
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
         recording1.set_property(key="complete_bool_property", values=[True, False])
-        add_electrodes(recording=recording1, nwbfile=self.nwbfile)
+        add_electrodes_to_nwb(recording=recording1, nwbfile=self.nwbfile)
 
         expected_property = np.asarray([True, False])
         extracted_property = self.nwbfile.electrodes["complete_bool_property"].data.astype(bool)
@@ -995,10 +1001,10 @@ class TestAddElectrodes(TestCase):
 
         recording2.set_property(key="incomplete_bool_property", values=[True, False])
         with self.assertRaises(ValueError):
-            add_electrodes(recording=recording2, nwbfile=self.nwbfile)
+            add_electrodes_to_nwb(recording=recording2, nwbfile=self.nwbfile)
 
         null_values_for_properties = {"complete_bool_property": False, "incomplete_bool_property": False}
-        add_electrodes(
+        add_electrodes_to_nwb(
             recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
         )
 
@@ -1035,25 +1041,25 @@ class TestAddUnitsTable(TestCase):
 
     def test_integer_unit_names(self):
         """Ensure add units_table gets the right units name for integer units ids."""
-        add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.base_sorting, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["0", "1", "2", "3"]
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 
     def test_string_unit_names(self):
-        """Ensure add_units_table gets the right units name for string units ids"""
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        """Ensure add_units_table_to_nwb gets the right units name for string units ids"""
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["a", "b", "c", "d"]
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 
     def test_non_overwriting_unit_names_sorting_property(self):
-        "add_units_table function should not overwrite the sorting object unit_name property"
+        "add_units_table_to_nwb function should not overwrite the sorting object unit_name property"
         unit_names = ["name a", "name b", "name c", "name d"]
         self.sorting_1.set_property(key="unit_name", values=unit_names)
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
@@ -1067,8 +1073,8 @@ class TestAddUnitsTable(TestCase):
             unit_ids=unit_ids, renamed_unit_ids=offest_units_ids
         )
 
-        add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
-        add_units_table(sorting=sorting_with_offset_unit_ids, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.base_sorting, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting_with_offset_unit_ids, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["0", "1", "2", "3", "4", "5"]
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
@@ -1076,8 +1082,8 @@ class TestAddUnitsTable(TestCase):
 
     def test_string_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when channel names are strings."""
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["a", "b", "c", "d", "e", "f"]
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
@@ -1088,8 +1094,8 @@ class TestAddUnitsTable(TestCase):
         self.sorting_1.set_property(key="common_property", values=["value_1"] * self.num_units)
         self.sorting_2.set_property(key="common_property", values=["value_2"] * self.num_units)
 
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
         properties_in_units_table = list(self.nwbfile.units["common_property"].data)
         expected_properties_in_units_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
@@ -1099,15 +1105,15 @@ class TestAddUnitsTable(TestCase):
         """Add a property only available in a second sorting."""
         self.sorting_2.set_property(key="added_property", values=["added_value"] * self.num_units)
 
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
         properties_in_units_table = list(self.nwbfile.units["added_property"].data)
         expected_properties_in_units_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
         self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
 
     def test_units_table_extension_after_manual_unit_addition(self):
-        """Add some rows to the units tables before using the add_units_table function"""
+        """Add some rows to the units tables before using the add_units_table_to_nwb function"""
         values_dic = self.defaults
 
         values_dic.update(id=123, spike_times=[0, 1, 2])
@@ -1116,17 +1122,17 @@ class TestAddUnitsTable(TestCase):
         values_dic.update(id=124, spike_times=[2, 3, 4])
         self.nwbfile.add_unit(**values_dic)
 
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         expected_units_ids = [123, 124, 2, 3, 4, 5]
         expected_unit_names = ["123", "124", "a", "b", "c", "d"]
         self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
 
-    def test_manual_extension_after_add_units_table(self):
-        """Add some units to the units table after using the add_units_table function"""
+    def test_manual_extension_after_add_units_table_to_nwb(self):
+        """Add some units to the units table after using the add_units_table_to_nwb function"""
 
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         values_dic = self.defaults
 
@@ -1147,7 +1153,7 @@ class TestAddUnitsTable(TestCase):
 
     def test_property_matching_by_unit_name_with_existing_property(self):
         """
-        Add some units to the units tables before using the add_units_table function.
+        Add some units to the units tables before using the add_units_table_to_nwb function.
         Previous properties that are also available in the sorting are matched with unit_name
         """
 
@@ -1168,7 +1174,7 @@ class TestAddUnitsTable(TestCase):
         property_values = ["value_a", "value_b", "x", "y"]
         self.sorting_1.set_property(key="property", values=property_values)
 
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         # Properties correspond with unit names, ids are filled positionally
         expected_units_ids = [20, 21, 22, 3, 4]
@@ -1181,13 +1187,13 @@ class TestAddUnitsTable(TestCase):
 
     def test_add_existing_units(self):
         # test that additional units are not added if already in the nwbfile.units table
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
         self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
 
     def test_property_matching_by_unit_name_with_new_property(self):
         """
-        Add some units to the units tables before using the add_units_table function.
+        Add some units to the units tables before using the add_units_table_to_nwb function.
         New properties in the sorter are matched by unit name
         """
 
@@ -1207,7 +1213,7 @@ class TestAddUnitsTable(TestCase):
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.sorting_1.set_property(key="property", values=property_values)
 
-        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         # Properties correspond with unit names, ids are filled positionally
         expected_units_ids = [20, 21, 22, 3, 4]
@@ -1223,7 +1229,7 @@ class TestAddUnitsTable(TestCase):
 
         units_table_name = "testing_processing"
         unit_table_description = "testing_description"
-        add_units_table(
+        add_units_table_to_nwb(
             sorting=self.base_sorting,
             nwbfile=self.nwbfile,
             units_table_name=units_table_name,
@@ -1244,7 +1250,7 @@ class TestAddUnitsTable(TestCase):
     def test_write_subset_units(self):
         """ """
         subset_unit_ids = self.base_sorting.unit_ids[::2]
-        add_units_table(
+        add_units_table_to_nwb(
             sorting=self.base_sorting,
             nwbfile=self.nwbfile,
             unit_ids=subset_unit_ids,
@@ -1258,7 +1264,7 @@ class TestAddUnitsTable(TestCase):
         bool_property = np.array([False] * len(self.base_sorting.unit_ids))
         bool_property[::2] = True
         self.base_sorting.set_property("test_bool", bool_property)
-        add_units_table(
+        add_units_table_to_nwb(
             sorting=self.base_sorting,
             nwbfile=self.nwbfile,
         )
@@ -1274,7 +1280,7 @@ class TestAddUnitsTable(TestCase):
 
         ragged_array_values1 = [[1, 2], [3, 4], [5, 6], [7, 8]]
         sorting1.set_property(key="ragged_property", values=ragged_array_values1)
-        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting1, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.units.to_dataframe()["ragged_property"].to_list()
         np.testing.assert_array_equal(written_values, ragged_array_values1)
@@ -1284,7 +1290,7 @@ class TestAddUnitsTable(TestCase):
         sorting2.set_property(key="ragged_property", values=ragged_array_values2)
         second_ragged_array_values = [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"], ["j", "k", "l"]]
         sorting2.set_property(key="ragged_property2", values=second_ragged_array_values)
-        add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.units.to_dataframe()["ragged_property"].to_list()
         expected_values = ragged_array_values1 + ragged_array_values2
@@ -1308,7 +1314,7 @@ class TestAddUnitsTable(TestCase):
 
         doubled_nested_array = [[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]], [[13, 14], [15, 16]]]
         sorting1.set_property(key="double_ragged_property", values=doubled_nested_array)
-        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting1, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.units.to_dataframe()["double_ragged_property"].to_list()
         np.testing.assert_array_equal(written_values, doubled_nested_array)
@@ -1323,7 +1329,7 @@ class TestAddUnitsTable(TestCase):
             [["s", "t", "u"], ["v", "w", "x"]],
         ]
         sorting2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
-        add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.units.to_dataframe()["double_ragged_property"].to_list()
         expected_values = doubled_nested_array + doubled_nested_array2
@@ -1343,7 +1349,7 @@ class TestAddUnitsTable(TestCase):
         sorting1 = generate_sorting(num_units=2, durations=[1.0])
         sorting1 = sorting1.rename_units(new_unit_ids=["a", "b"])
         sorting1.set_property(key="complete_int_property", values=[1, 2])
-        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting1, nwbfile=self.nwbfile)
 
         expected_property = np.asarray([1, 2])
         extracted_property = self.nwbfile.units["complete_int_property"].data
@@ -1354,10 +1360,12 @@ class TestAddUnitsTable(TestCase):
 
         sorting2.set_property(key="incomplete_int_property", values=[10, 11])
         with self.assertRaises(ValueError):
-            add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+            add_units_table_to_nwb(sorting=sorting2, nwbfile=self.nwbfile)
 
         null_values_for_properties = {"complete_int_property": -1, "incomplete_int_property": -3}
-        add_units_table(sorting=sorting2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties)
+        add_units_table_to_nwb(
+            sorting=sorting2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
+        )
 
         expected_complete_property = np.asarray([1, 2, -1, -1])
         expected_incomplete_property = np.asarray([-3, -3, 10, 11])
@@ -1372,7 +1380,7 @@ class TestAddUnitsTable(TestCase):
         sorting1 = generate_sorting(num_units=2, durations=[1.0])
         sorting1 = sorting1.rename_units(new_unit_ids=["a", "b"])
         sorting1.set_property(key="complete_bool_property", values=[True, False])
-        add_units_table(sorting=sorting1, nwbfile=self.nwbfile)
+        add_units_table_to_nwb(sorting=sorting1, nwbfile=self.nwbfile)
 
         expected_property = np.asarray([True, False])
         extracted_property = self.nwbfile.units["complete_bool_property"].data.astype(bool)
@@ -1383,10 +1391,12 @@ class TestAddUnitsTable(TestCase):
 
         sorting2.set_property(key="incomplete_bool_property", values=[True, False])
         with self.assertRaises(ValueError):
-            add_units_table(sorting=sorting2, nwbfile=self.nwbfile)
+            add_units_table_to_nwb(sorting=sorting2, nwbfile=self.nwbfile)
 
         null_values_for_properties = {"complete_bool_property": False, "incomplete_bool_property": False}
-        add_units_table(sorting=sorting2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties)
+        add_units_table_to_nwb(
+            sorting=sorting2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
+        )
 
         expected_complete_property = np.asarray([True, False, False, False])
         expected_incomplete_property = np.asarray([False, False, True, False])
@@ -1488,7 +1498,7 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_analyzer_single_segment(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=True
         )
         self._test_analyzer_write(self.single_segment_analyzer, self.nwbfile)
@@ -1496,7 +1506,7 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_analyzer_single_segment_sparse(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=True
         )
         self._test_analyzer_write(self.single_segment_analyzer_sparse, self.nwbfile)
@@ -1504,14 +1514,14 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_analyzer_multiple_segments(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.multi_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=False
         )
         self._test_analyzer_write(self.multi_segment_analyzer, self.nwbfile)
 
     def test_analyzer_multiple_segments_sparse(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.multi_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=False
         )
         self._test_analyzer_write(self.multi_segment_analyzer_sparse, self.nwbfile)
@@ -1519,7 +1529,7 @@ class TestWriteSortingAnalyzer(TestCase):
     def test_write_subset_units(self):
         """This tests that the analyzer is sliced properly based on unit_ids"""
         subset_unit_ids = self.single_segment_analyzer.unit_ids[::2]
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, unit_ids=subset_unit_ids
         )
         self._test_analyzer_write(self.analyzer_slice, self.nwbfile, test_properties=False)
@@ -1527,9 +1537,9 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
         self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
 
-    def test_write_recordingless(self):
+    def test_write_recordingless_to_write_recording_to_nwb(self):
         """This tests that the analyzer is written properly in recordingless mode"""
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             recording=self.analyzer_recless_recording,
@@ -1539,19 +1549,19 @@ class TestWriteSortingAnalyzer(TestCase):
 
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
-            write_sorting_analyzer(
+            write_sorting_analyzer_to_nwb(
                 sorting_analyzer=self.analyzer_recless,
                 nwbfile=self.nwbfile,
                 recording=self.analyzer_recless_recording,
                 write_electrical_series=True,
             )
 
-    # def test_write_sorting_analyzer_to_file(self):
+    # def test_write_sorting_analyzer_to_file_to_write_sorting_analyzer_to_nwb(self):
     #     """This tests that the analyzer is written to file"""
     #     metadata = get_default_nwbfile_metadata()
     #     metadata["NWBFile"]["session_start_time"] = datetime.now()
 
-    #     write_sorting_analyzer(
+    #     write_sorting_analyzer_to_nwb(
     #         sorting_analyzer=self.single_segment_analyzer,
     #         nwbfile_path=self.nwbfile_path,
     #         write_electrical_series=True,
@@ -1568,7 +1578,7 @@ class TestWriteSortingAnalyzer(TestCase):
         # we write the first set of waveforms as belonging to group 0
         original_channel_groups = self.analyzer_recless_recording.get_channel_groups()
         self.analyzer_recless_recording.set_channel_groups([0] * len(self.analyzer_recless_recording.channel_ids))
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             write_electrical_series=False,
@@ -1576,7 +1586,7 @@ class TestWriteSortingAnalyzer(TestCase):
         )
         # now we set new channel groups to mimic a different probe and call the function again
         self.analyzer_recless_recording.set_channel_groups([1] * len(self.analyzer_recless_recording.channel_ids))
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             write_electrical_series=False,
@@ -1609,26 +1619,26 @@ class TestWriteSortingAnalyzer(TestCase):
                 ElectricalSeriesRaw2=dict(name="ElectricalSeriesRaw2", description="lfp series"),
             )
         )
-        add_electrical_series_kwargs1 = dict(es_key="ElectricalSeriesRaw1")
-        write_sorting_analyzer(
+        add_electrical_series_kwargs1_to_add_electrical_series_to_nwb = dict(es_key="ElectricalSeriesRaw1")
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
             write_electrical_series=True,
             metadata=metadata,
-            add_electrical_series_kwargs=add_electrical_series_kwargs1,
+            add_electrical_series_kwargs_to_add_electrical_series_to_nwb=add_electrical_series_kwargs1_to_add_electrical_series_to_nwb,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(recording.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
 
         # now we set new channel groups to mimic a different probe and call the function again
         self.single_segment_analyzer.recording.set_channel_groups([1] * len(recording.channel_ids))
-        add_electrical_series_kwargs2 = dict(es_key="ElectricalSeriesRaw2")
-        write_sorting_analyzer(
+        add_electrical_series_kwargs2_to_add_electrical_series_to_nwb = dict(es_key="ElectricalSeriesRaw2")
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
             write_electrical_series=True,
             metadata=metadata,
-            add_electrical_series_kwargs=add_electrical_series_kwargs2,
+            add_electrical_series_kwargs_to_add_electrical_series_to_nwb=add_electrical_series_kwargs2_to_add_electrical_series_to_nwb,
         )
         # check that we have 2 groups
         self.assertEqual(len(self.nwbfile.electrode_groups), 2)
@@ -1653,7 +1663,7 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that analyzer is correctly written even if the 'group' property is not available"""
         groups = self.single_segment_analyzer.recording.get_channel_groups()
         self.single_segment_analyzer.recording.delete_property("group")
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -1663,7 +1673,7 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that the 'group_name' property is correctly used to instantiate electrode groups"""
         num_channels = len(self.single_segment_analyzer.recording.channel_ids)
         self.single_segment_analyzer.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
-        write_sorting_analyzer(
+        write_sorting_analyzer_to_nwb(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -1674,7 +1684,7 @@ class TestWriteSortingAnalyzer(TestCase):
     def test_units_table_name(self):
         """This tests the units naming exception"""
         with self.assertRaises(Exception) as context:
-            write_sorting_analyzer(
+            write_sorting_analyzer_to_nwb(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
                 write_as="units",

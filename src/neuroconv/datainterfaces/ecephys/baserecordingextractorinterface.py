@@ -350,14 +350,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
         """
-        from ...tools.spikeinterface import add_recording
+        from ...tools.spikeinterface import add_recording_to_nwb
 
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
 
-        add_recording(
+        add_recording_to_nwb(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
