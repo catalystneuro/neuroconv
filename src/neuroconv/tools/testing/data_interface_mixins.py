@@ -139,6 +139,7 @@ class DataInterfaceTestMixin:
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
@@ -158,6 +159,7 @@ class DataInterfaceTestMixin:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         conversion_options = dict(Test=self.conversion_options)
+
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
@@ -947,6 +949,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )

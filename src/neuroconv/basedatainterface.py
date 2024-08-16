@@ -64,14 +64,20 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def validate_metadata(self, metadata: dict) -> None:
+    def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
         encoder = NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
 
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
-        validate(instance=decoded_metadata, schema=self.get_metadata_schema())
+        metdata_schema = self.get_metadata_schema()
+        if append_mode:
+            # Eliminate required from NWBFile
+            nwbfile_schema = metdata_schema["properties"]["NWBFile"]
+            nwbfile_schema.pop("required", None)
+
+        validate(instance=decoded_metadata, schema=metdata_schema)
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
         """
@@ -156,6 +162,11 @@ class BaseDataInterface(ABC):
 
         if metadata is None:
             metadata = self.get_metadata()
+
+        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        append_mode = file_initially_exists and not overwrite
+
+        self.validate_metadata(metadata=metadata, append_mode=append_mode)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
