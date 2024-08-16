@@ -958,7 +958,7 @@ def add_electrical_series_to_nwbfile(
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
 
 
-def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
+def add_electrodes_info_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
     Add device, electrode_groups, and electrodes info to the nwbfile.
 
@@ -991,9 +991,9 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
         If no group information is passed via metadata, automatic linking to existing electrode groups,
         possibly including the default, will occur.
     """
-    add_devices(nwbfile=nwbfile, metadata=metadata)
-    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
 def add_recording(
@@ -1107,7 +1107,7 @@ def add_recording_to_nwbfile(
     elif metadata is None:
         metadata = _get_nwb_metadata(recording=recording)
 
-    add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_info_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     if write_electrical_series:
         number_of_segments = recording.get_num_segments()
