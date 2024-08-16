@@ -342,6 +342,7 @@ def configure_and_write_nwbfile(
     output_filepath: str,
     backend: Optional[Literal["hdf5"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
+    export: bool = False,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -360,6 +361,8 @@ def configure_and_write_nwbfile(
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
+    export: bool, default: False
+        Whether to export the NWB file instead of writing.
 
     """
 
@@ -374,20 +377,11 @@ def configure_and_write_nwbfile(
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
     with IO(output_filepath, mode="w") as io:
-        io.write(nwbfile)
-
-
-def configure_and_export_nwbfile(
-    nwbfile: NWBFile,
-    export_nwbfile_path: Path,
-    backend_configuration: BackendConfiguration,
-) -> None:
-    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
-
-    IO = BACKEND_NWB_IO[backend_configuration.backend]
-    nwbfile.set_modified()
-    with IO(export_nwbfile_path, mode="w") as io:
-        io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
+        if export:
+            nwbfile.set_modified()
+            io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
+        else:
+            io.write(nwbfile)
 
 
 def repack_nwbfile(
@@ -401,6 +395,8 @@ def repack_nwbfile(
 ):
     """Repack the NWBFile with the new backend configuration changes."""
     backend_configuration_changes = backend_configuration_changes or dict()
+    export_backend = export_backend or backend
+
     IO = BACKEND_NWB_IO[backend]
     with IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
@@ -415,6 +411,10 @@ def repack_nwbfile(
             for dataset_config_key, dataset_config_value in dataset_config_changes.items():
                 setattr(dataset_configuration, dataset_config_key, dataset_config_value)
 
-        configure_and_export_nwbfile(
-            nwbfile=nwbfile, backend_configuration=backend_configuration, export_nwbfile_path=export_nwbfile_path
+        configure_and_write_nwbfile(
+            nwbfile=nwbfile,
+            backend_configuration=backend_configuration,
+            output_filepath=export_nwbfile_path,
+            backend=export_backend,
+            export=True,
         )
