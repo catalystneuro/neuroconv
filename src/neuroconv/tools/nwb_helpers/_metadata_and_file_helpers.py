@@ -400,6 +400,7 @@ def repack_nwbfile(
     backend_configuration_changes: dict = None,
 ):
     """Repack the NWBFile with the new backend configuration changes."""
+    backend_configuration_changes = backend_configuration_changes or dict()
     IO = BACKEND_NWB_IO[backend]
     with IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
@@ -409,7 +410,6 @@ def repack_nwbfile(
             backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
         dataset_configurations = backend_configuration.dataset_configurations
 
-        backend_configuration_changes = backend_configuration_changes or dict()
         for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
             dataset_configuration = dataset_configurations[neurodata_object_location]
             for dataset_config_key, dataset_config_value in dataset_config_changes.items():
