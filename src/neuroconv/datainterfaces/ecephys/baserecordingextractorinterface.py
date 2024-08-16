@@ -299,7 +299,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series: bool = True,
         compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
         compression_opts: Optional[int] = None,
-        iterator_type: str = "v2",
+        iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         """
@@ -324,10 +324,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        iterator_type : {'v2', 'v1'}
+        iterator_type : {'v2'}
             The type of DataChunkIterator to use.
-            'v1' is the original DataChunkIterator of the hdmf data_utils.
-            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking
         iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
             Valid options are:
@@ -356,6 +355,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
+
+        if metadata is None:
+            metadata = self.get_metadata()
 
         add_recording(
             recording=recording,
