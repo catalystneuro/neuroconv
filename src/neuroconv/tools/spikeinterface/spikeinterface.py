@@ -50,18 +50,18 @@ def _get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
 
 def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
     """
-    Deprecated function. Use add_devices_to_nwb instead.
+    Deprecated function. Use add_devices_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_devices' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_devices_to_nwb' instead.",
+        "Please use 'add_devices_to_nwbfile' instead.",
     )
 
-    return add_devices_to_nwb(nwbfile=nwbfile, metadata=metadata)
+    return add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
 
-def add_devices_to_nwb(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
+def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
     """
     Add device information to nwbfile object.
 
@@ -104,18 +104,18 @@ def add_devices_to_nwb(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = No
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
-    Deprecated function. Use add_electrode_groups_to_nwb instead.
+    Deprecated function. Use add_electrode_groups_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_electrode_groups' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_electrode_groups_to_nwb' instead.",
+        "Please use 'add_electrode_groups_to_nwbfile' instead.",
     )
 
-    return add_electrode_groups_to_nwb(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    return add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
-def add_electrode_groups_to_nwb(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: Optional[dict] = None):
+def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: Optional[dict] = None):
     """
     Add electrode group information to nwbfile object.
 
@@ -391,15 +391,15 @@ def add_electrodes(
     null_values_for_properties: Optional[dict] = None,
 ):
     """
-    Deprecated function. Use add_electrodes_to_nwb instead.
+    Deprecated function. Use add_electrodes_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_electrodes' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_electrodes_to_nwb' instead.",
+        "Please use 'add_electrodes_to_nwbfile' instead.",
     )
 
-    return add_electrodes_to_nwb(
+    return add_electrodes_to_nwbfile(
         recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -408,7 +408,7 @@ def add_electrodes(
     )
 
 
-def add_electrodes_to_nwb(
+def add_electrodes_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: Optional[dict] = None,
@@ -536,7 +536,7 @@ def add_electrodes_to_nwb(
     if len(groupless_names) > 0:
         electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
         missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
-        add_electrode_groups_to_nwb(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
+        add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
 
     group_list = [nwbfile.electrode_groups[group_name] for group_name in group_names]
     data_to_add["group"] = dict(description="the ElectrodeGroup object", data=group_list, index=False)
@@ -755,15 +755,15 @@ def add_electrical_series(
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Deprecated function. Use add_electrical_series_to_nwb instead.
+    Deprecated function. Use add_electrical_series_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_electrical_series' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_electrical_series_to_nwb' instead.",
+        "Please use 'add_electrical_series_to_nwbfile' instead.",
     )
 
-    return add_electrical_series_to_nwb(
+    return add_electrical_series_to_nwbfile(
         recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -779,7 +779,7 @@ def add_electrical_series(
     )
 
 
-def add_electrical_series_to_nwb(
+def add_electrical_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
@@ -1012,15 +1012,15 @@ def add_recording(
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Deprecated function. Use add_recording_to_nwb instead.
+    Deprecated function. Use add_recording_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_recording' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_recording_to_nwb' instead.",
+        "Please use 'add_recording_to_nwbfile' instead.",
     )
 
-    return add_recording_to_nwb(
+    return add_recording_to_nwbfile(
         recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -1036,7 +1036,7 @@ def add_recording(
     )
 
 
-def add_recording_to_nwb(
+def add_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: Optional[dict] = None,
@@ -1108,12 +1108,12 @@ def add_recording_to_nwb(
     elif metadata is None:
         metadata = _get_nwb_metadata(recording=recording)
 
-    add_electrodes_to_nwb(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     if write_electrical_series:
         number_of_segments = recording.get_num_segments()
         for segment_index in range(number_of_segments):
-            add_electrical_series_to_nwb(
+            add_electrical_series_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 segment_index=segment_index,
@@ -1147,15 +1147,15 @@ def write_recording(
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Deprecated function. Use write_recording_to_nwb instead.
+    Deprecated function. Use write_recording_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'write_recording' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'write_recording_to_nwb' instead.",
+        "Please use 'write_recording_to_nwbfile' instead.",
     )
 
-    return write_recording_to_nwb(
+    return write_recording_to_nwbfile(
         recording=recording,
         nwbfile_path=nwbfile_path,
         nwbfile=nwbfile,
@@ -1174,7 +1174,7 @@ def write_recording(
     )
 
 
-def write_recording_to_nwb(
+def write_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
@@ -1329,15 +1329,15 @@ def add_units_table(
     null_values_for_properties: Optional[dict] = None,
 ):
     """
-    Deprecated function. Use add_units_table_to_nwb instead.
+    Deprecated function. Use add_units_table_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_units_table' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_units_table_to_nwb' instead.",
+        "Please use 'add_units_table_to_nwbfile' instead.",
     )
 
-    return add_units_table_to_nwb(
+    return add_units_table_to_nwbfile(
         sorting=sorting,
         nwbfile=nwbfile,
         unit_ids=unit_ids,
@@ -1353,7 +1353,7 @@ def add_units_table(
     )
 
 
-def add_units_table_to_nwb(
+def add_units_table_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: pynwb.NWBFile,
     unit_ids: Optional[List[Union[str, int]]] = None,
@@ -1627,15 +1627,15 @@ def add_sorting(
     unit_electrode_indices=None,
 ):
     """
-    Deprecated function. Use add_sorting_to_nwb instead.
+    Deprecated function. Use add_sorting_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_sorting' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_sorting_to_nwb' instead.",
+        "Please use 'add_sorting_to_nwbfile' instead.",
     )
 
-    return add_sorting_to_nwb(
+    return add_sorting_to_nwbfile(
         sorting=sorting,
         nwbfile=nwbfile,
         unit_ids=unit_ids,
@@ -1651,7 +1651,7 @@ def add_sorting(
     )
 
 
-def add_sorting_to_nwb(
+def add_sorting_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: Optional[pynwb.NWBFile] = None,
     unit_ids: Optional[Union[List[str], List[int]]] = None,
@@ -1714,7 +1714,7 @@ def add_sorting_to_nwb(
     ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
     write_in_processing_module = False if write_as == "units" else True
 
-    add_units_table_to_nwb(
+    add_units_table_to_nwbfile(
         sorting=sorting,
         unit_ids=unit_ids,
         nwbfile=nwbfile,
@@ -1748,15 +1748,15 @@ def write_sorting(
     unit_electrode_indices=None,
 ):
     """
-    Deprecated function. Use write_sorting_to_nwb instead.
+    Deprecated function. Use write_sorting_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'write_sorting' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'write_sorting_to_nwb' instead.",
+        "Please use 'write_sorting_to_nwbfile' instead.",
     )
 
-    return write_sorting_to_nwb(
+    return write_sorting_to_nwbfile(
         sorting=sorting,
         nwbfile_path=nwbfile_path,
         nwbfile=nwbfile,
@@ -1776,7 +1776,7 @@ def write_sorting(
     )
 
 
-def write_sorting_to_nwb(
+def write_sorting_to_nwbfile(
     sorting: BaseSorting,
     nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
@@ -1877,15 +1877,15 @@ def add_sorting_analyzer(
     units_description: str = "Autogenerated by neuroconv.",
 ):
     """
-    Deprecated function. Use add_sorting_analyzer_to_nwb instead.
+    Deprecated function. Use add_sorting_analyzer_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'add_sorting_analyzer' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'add_sorting_analyzer_to_nwb' instead.",
+        "Please use 'add_sorting_analyzer_to_nwbfile' instead.",
     )
 
-    return add_sorting_analyzer_to_nwb(
+    return add_sorting_analyzer_to_nwbfile(
         sorting_analyzer=sorting_analyzer,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -1899,7 +1899,7 @@ def add_sorting_analyzer(
     )
 
 
-def add_sorting_analyzer_to_nwb(
+def add_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
@@ -1995,7 +1995,7 @@ def add_sorting_analyzer_to_nwb(
     electrode_group_indices = get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
 
-    add_units_table_to_nwb(
+    add_units_table_to_nwbfile(
         sorting=sorting_copy,
         nwbfile=nwbfile,
         unit_ids=unit_ids,
@@ -2028,15 +2028,15 @@ def write_sorting_analyzer(
     units_description: str = "Autogenerated by neuroconv.",
 ):
     """
-    Deprecated function. Use write_sorting_analyzer_to_nwb instead.
+    Deprecated function. Use write_sorting_analyzer_to_nwbfile instead.
     """
 
     warnings.warn(
         "The 'write_sorting_analyzer' function is deprecated and will be removed after February 2025. \n"
-        "Please use 'write_sorting_analyzer_to_nwb' instead.",
+        "Please use 'write_sorting_analyzer_to_nwbfile' instead.",
     )
 
-    return write_sorting_analyzer_to_nwb(
+    return write_sorting_analyzer_to_nwbfile(
         sorting_analyzer=sorting_analyzer,
         nwbfile_path=nwbfile_path,
         nwbfile=nwbfile,
@@ -2055,7 +2055,7 @@ def write_sorting_analyzer(
     )
 
 
-def write_sorting_analyzer_to_nwb(
+def write_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
     nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
@@ -2143,11 +2143,11 @@ def write_sorting_analyzer_to_nwb(
 
         if write_electrical_series:
             add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
-            add_electrical_series_to_nwb(
+            add_electrical_series_to_nwbfile(
                 recording=recording, nwbfile=nwbfile_out, metadata=metadata, **add_electrical_series_kwargs
             )
 
-        add_sorting_analyzer_to_nwb(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=sorting_analyzer,
             nwbfile=nwbfile_out,
             metadata=metadata,
