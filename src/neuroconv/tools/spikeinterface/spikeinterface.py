@@ -720,7 +720,6 @@ def add_electrical_series(
                 name=my_name,
                 description=my_description
             )
-
     segment_index : int, default: 0
         The recording segment to add to the NWBFile.
     starting_time : float, optional
@@ -735,12 +734,8 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression: {None, 'gzip', 'lzf'}, default: 'gzip'
-        Type of compression to use. Set to None to disable all compression.
-        To use the `configure_backend` function, you should set this to None.
-    compression_opts: int, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: {"v2", "v1",  None}, default: 'v2'
+    iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -750,6 +745,8 @@ def add_electrical_series(
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
 
+    Notes
+    -----
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
@@ -924,6 +921,59 @@ def add_recording(
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
+    """
+    Add traces from a recording object as an ElectricalSeries to an NWBFile object.
+    Also adds device, electrode_groups, and electrodes to the NWBFile.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from SpikeInterface.
+    nwbfile : pynwb.NWBFile
+        The NWBFile object to which the recording information is to be added.
+    metadata : dict, optional
+        Metadata information for constructing the NWBFile. This should include:
+
+        - metadata['Ecephys']['ElectricalSeries'] : dict
+            Dictionary with metadata for the ElectricalSeries, such as:
+
+            - name : str
+                Name of the ElectricalSeries.
+            - description : str
+                Description of the ElectricalSeries.
+    starting_time : float, optional
+        Manually set the starting time of the ElectricalSeries. If not provided,
+        the starting time is taken from the recording extractor.
+    write_as : {'raw', 'processed', 'lfp'}, default='raw'
+        Specifies how to save the trace data in the NWB file. Options are:
+
+        - 'raw': Save the data in the acquisition group.
+        - 'processed': Save the data as FilteredEphys in a processing module.
+        - 'lfp': Save the data as LFP in a processing module.
+    es_key : str, optional
+        Key in the metadata dictionary containing metadata information for the specific ElectricalSeries.
+    write_electrical_series : bool, default=True
+        If True, writes the ElectricalSeries to the NWBFile. If False, no ElectricalSeries is written.
+    write_scaled : bool, default=False
+        If True, writes the traces in microvolts (uV) with the appropriate conversion.
+        If False, the data is stored as-is, and the correct conversion factors are added to the NWBFile.
+    iterator_type : {'v2', None}, default='v2'
+        The type of DataChunkIterator to use when writing data in chunks. Options are:
+
+        - 'v2': The SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        - None: Write the TimeSeries with no memory chunking.
+    iterator_opts : dict, optional
+        Dictionary of options for the iterator. Refer to the documentation at
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for a full list of available options.
+
+    Notes
+    -----
+    Missing keys in an element of `metadata['Ecephys']['ElectrodeGroup']` will be auto-populated with defaults
+    whenever possible. Ensure that the provided metadata dictionary is correctly structured to avoid
+    unintended behavior.
+    """
+
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
