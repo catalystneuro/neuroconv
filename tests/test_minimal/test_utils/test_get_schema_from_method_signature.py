@@ -1,8 +1,29 @@
+from pydantic import Field
+
 from neuroconv.utils import get_json_schema_from_method_signature
 
 
 def test_get_schema_from_method_signature_basic():
     def test1(integer: int, string: str, boolean: bool, number: float):
+        pass
+
+    json_schema = get_json_schema_from_method_signature(method=test1)
+
+    assert json_schema == {
+        "additionalProperties": False,
+        "properties": {
+            "boolean": {"type": "boolean"},
+            "integer": {"type": "integer"},
+            "number": {"type": "number"},
+            "string": {"type": "string"},
+        },
+        "required": ["integer", "string", "boolean", "number"],
+        "type": "object",
+    }
+
+
+def test_get_schema_from_method_signature_with_fields():
+    def test1(integer: Field(int, description="A description of this argument. Could be the same as the docstring.")):
         pass
 
     json_schema = get_json_schema_from_method_signature(method=test1)

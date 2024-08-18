@@ -4,7 +4,7 @@ import json
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import hdmf.data_utils
 import numpy as np
@@ -114,14 +114,29 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
         annotation = parameter.annotation
 
         # Pydantic uses ellipsis for required
-        pydantic_default = ... if parameter.default is None else parameter.default
+        pydantic_default = ... if parameter.default is inspect._empty else parameter.default
 
         arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
     model = pydantic.create_model("_TempModel", **arguments_to_annotations)
 
-    json_schema = model.model_json_schema()
+    temp_json_schema = model.model_json_schema()
+
+    # We never used to include titles in the lower schema layers
+    # But Pydantic does automatically
+    json_schema = _copy_without_title_keys(temp_json_schema)
+
+    # We also freeze additional properties, but Pydantic does not
+    json_schema["additionalProperties"] = False
+
     return json_schema
+
+
+def _copy_without_title_keys(d: Any, /) -> dict | None:
+    if not isinstance(d, dict):
+        return d
+
+    return {key: _copy_without_title_keys(value) for key, value in d.items() if key != "title"}
 
 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
