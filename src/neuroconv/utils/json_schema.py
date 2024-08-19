@@ -151,7 +151,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[Li
     return json_schema
 
 
-def _copy_without_title_keys(d: Any, /) -> dict | None:
+def _copy_without_title_keys(d: Any, /) -> Optional[dict]:
     if not isinstance(d, dict):
         return d
 
