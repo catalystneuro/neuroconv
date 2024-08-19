@@ -16,11 +16,11 @@ from scipy.io.wavfile import read, write
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
 from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
-from neuroconv.utils import FilePathType
+from neuroconv.utils import FilePath
 
 
 def create_audio_files(
-    test_dir: FilePathType,
+    test_dir: FilePath,
     num_audio_files: int,
     sampling_rate: int,
     num_frames: int,
