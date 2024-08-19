@@ -125,19 +125,19 @@ def test_get_schema_from_example_data_interface():
         "type": "object",
         "additionalProperties": False,
     }
-    # assert schema == {
-    #     "additionalProperties": False,
-    #     "properties": {
-    #         "es_key": {"default": "ElectricalSeries", "type": "string"},
-    #         "folder_path": {
-    #             "anyOf": [{"type": "string"}, {"format": "path", "type": "string"}],
-    #             "description": "Path to the folder of .mpx " "files.",
-    #         },
-    #         "verbose": {"default": True, "description": "Allows verbose.\nDefault is True.", "type": "boolean"},
-    #     },
-    #     "required": ["folder_path"],
-    #     "type": "object",
-    # }
+    assert schema == {
+        "properties": {
+            "folder_path": {
+                "anyOf": [{"type": "string"}, {"format": "path", "type": "string"}],
+                "description": "Path to the folder of .mpx files.",
+            },
+            "verbose": {"default": True, "type": "boolean", "description": "Allows verbose.\nDefault is True."},
+            "es_key": {"default": "ElectricalSeries", "type": "string"},
+        },
+        "required": ["folder_path"],
+        "type": "object",
+        "additionalProperties": False,
+    }
 
 
 def test_fix_to_358():
@@ -172,5 +172,5 @@ def test_fix_to_358():
     }
 
     # Validation used to fail due to lack of Dict[str, str] support
-    conversion_options = dict(TestRecording=dict(column_name_mapping=dict(condition="cond")))
+    conversion_options = dict(column_name_mapping=dict(condition="cond"))
     validate(instance=conversion_options, schema=conversion_options_schema)
