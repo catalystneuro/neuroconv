@@ -14,6 +14,7 @@ def submit_aws_batch_job(
     docker_image: str,
     commands: Optional[List[str]] = None,
     environment_variables: Optional[Dict[str, str]] = None,
+    efs_volume_name: Optional[str] = None,
     job_dependencies: Optional[List[Dict[str, str]]] = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
@@ -42,6 +43,8 @@ def submit_aws_batch_job(
         E.g., `commands=["echo", "'Hello, World!'"]`.
     environment_variables : dict, optional
         A dictionary of environment variables to pass to the Docker container.
+    efs_volume_name : str
+        The name of an EFS volume to be created and attached to the job.
     job_dependencies : list of dict
         A list of job dependencies for this job to trigger. Structured as follows:
         [
@@ -88,6 +91,7 @@ def submit_aws_batch_job(
     import boto3
 
     region = region or "us-east-2"
+    subregion = region + "a"  # For anything that requires subregion, always default to "a"
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
 
@@ -116,6 +120,12 @@ def submit_aws_batch_job(
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
+    efs_client = boto3.client(
+        service_name="efs",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
     # Get the tracking table and IAM role
     table = _create_or_get_status_tracker_table(
@@ -131,6 +141,29 @@ def submit_aws_batch_job(
         job_queue_name=job_queue_name, compute_environment_name=compute_environment_name, batch_client=batch_client
     )
 
+    # Create or fetch EFS volume and attach it to the job
+    efs_id = None
+    if efs_volume_name is not None:
+        efs_volumes = efs_client.describe_file_systems()
+        matching_efs_volumes = [
+            file_system
+            for file_system in efs_volumes["FileSystems"]
+            for tag in file_system["Tags"]
+            if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+        ]
+        if len(matching_efs_volumes) == 0:
+            efs_volume = efs_client.create_file_system(
+                PerformanceMode="generalPurpose",  # Only type supported in one-zone
+                Encrypted=False,
+                ThroughputMode="elastic",
+                AvailabilityZoneName=subregion,  # Enables one-zone for cheaper pricing
+                Backup=False,
+                Tags=[{"Key": "Name", "Value": efs_volume_name}],
+            )
+        else:
+            efs_volume = matching_efs_volumes[0]
+        efs_id = efs_volume["FileSystemId"]
+
     job_definition_name = job_definition_name or _generate_job_definition_name(
         docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
@@ -143,6 +176,7 @@ def submit_aws_batch_job(
         minimum_worker_cpus=minimum_worker_cpus,
         role_info=iam_role_info,
         batch_client=batch_client,
+        efs_id=efs_id,
     )
 
     # Submit job and update status tracker
@@ -160,6 +194,7 @@ def submit_aws_batch_job(
         container_overrides["environment"] = [{key: value} for key, value in environment_variables.items()]
     if commands is not None:
         container_overrides["command"] = commands
+
     job_submission_info = batch_client.submit_job(
         jobName=job_name,
         dependsOn=job_dependencies,
@@ -180,6 +215,10 @@ def submit_aws_batch_job(
     table.put_item(Item=table_submission_info)
 
     info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
+
+    if efs_volume_name is not None:
+        info["efs_volume"] = efs_volume
+
     return info
 
 
@@ -305,8 +344,8 @@ def _ensure_compute_environment_exists(
             "type": "EC2",
             "allocationStrategy": "BEST_FIT",  # Note: not currently supporting spot due to interruptibility
             "instanceTypes": ["optimal"],
-            "minvCpus": 1,
-            "maxvCpus": 8,  # Not: not currently exposing control over this since these are mostly I/O intensive
+            "minvCpus": 0,  # Note: if not zero, will always keep an instance running in active state on standby
+            "maxvCpus": 8,  # Note: not currently exposing control over this since these are mostly I/O intensive
             "instanceRole": "ecsInstanceRole",
             # Security groups and subnets last updated on 8/4/2024
             "securityGroupIds": ["sg-001699e5b7496b226"],
@@ -464,6 +503,7 @@ def _ensure_job_definition_exists_and_get_arn(
     minimum_worker_cpus: int,
     role_info: dict,
     batch_client: "boto3.client.Batch",
+    efs_id: Optional[str] = None,
     max_retries: int = 12,
 ) -> str:  # pragma: no cover
     """
@@ -494,6 +534,8 @@ def _ensure_job_definition_exists_and_get_arn(
         The IAM role information for the job.
     batch_client : boto3.client.Batch
         The AWS Batch client to use for the job.
+    efs_id : str, optional
+        The EFS volume information for the job.
     max_retries : int, default: 12
         If the job definition does not already exist, then this is the maximum number of times to synchronously
         check for its successful creation before erroring.
@@ -534,6 +576,17 @@ def _ensure_job_definition_exists_and_get_arn(
     minimum_time_to_kill_in_days = 1  # Note: eventually consider exposing this for very long jobs?
     minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
 
+    if efs_id is not None:
+        volumes = [
+            {
+                "name": "neuroconv_batch_efs_mounted",
+                "efsVolumeConfiguration": {
+                    "fileSystemId": efs_id,
+                    "transitEncryption": "DISABLED",
+                },
+            },
+        ]
+
     # batch_client.register_job_definition() is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(
         jobDefinitionName=job_definition_name,
@@ -544,6 +597,7 @@ def _ensure_job_definition_exists_and_get_arn(
             resourceRequirements=resource_requirements,
             jobRoleArn=role_info["Role"]["Arn"],
             executionRoleArn=role_info["Role"]["Arn"],
+            volumes=volumes,
         ),
     )
 

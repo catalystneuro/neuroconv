@@ -15,7 +15,7 @@ def read_requirements(file):
 
 
 extras_require = defaultdict(list)
-extras_require["full"] = ["dandi>=0.58.1", "hdf5plugin"]
+extras_require["full"] = ["dandi>=0.58.1", "hdf5plugin", "boto3"]
 
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
