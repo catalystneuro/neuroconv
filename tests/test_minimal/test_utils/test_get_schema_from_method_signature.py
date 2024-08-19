@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Dict, Optional, Union
 
 from jsonschema import validate
-from pynwb import NWBFile
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
 from neuroconv.utils import get_json_schema_from_method_signature
@@ -147,16 +146,30 @@ def test_fix_to_358():
     class Test358:
         def add_to_nwbfile(
             self,
-            nwbfile: NWBFile,
             metadata: Optional[dict] = None,
             tag: str = "trials",
-            column_name_mapping: Dict[str, str] = None,
-            column_descriptions: Dict[str, str] = None,
+            column_name_mapping: Optional[Dict[str, str]] = None,
+            column_descriptions: Optional[Dict[str, str]] = None,
         ):
             pass
 
     conversion_options_schema = get_json_schema_from_method_signature(method=Test358.add_to_nwbfile)
-    assert conversion_options_schema == {}
+    assert conversion_options_schema == {
+        "properties": {
+            "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
+            "tag": {"default": "trials", "type": "string"},
+            "column_name_mapping": {
+                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                "default": None,
+            },
+            "column_descriptions": {
+                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                "default": None,
+            },
+        },
+        "type": "object",
+        "additionalProperties": False,
+    }
 
     # Validation used to fail due to lack of Dict[str, str] support
     conversion_options = dict(TestRecording=dict(column_name_mapping=dict(condition="cond")))
