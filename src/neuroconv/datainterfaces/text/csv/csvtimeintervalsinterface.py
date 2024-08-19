@@ -2,7 +2,6 @@ import pandas as pd
 from pydantic import FilePath
 
 from ..timeintervalsinterface import TimeIntervalsInterface
-from ....utils.types import FilePath
 
 
 class CsvTimeIntervalsInterface(TimeIntervalsInterface):

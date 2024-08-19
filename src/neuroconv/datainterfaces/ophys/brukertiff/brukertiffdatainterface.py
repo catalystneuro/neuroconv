@@ -190,7 +190,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @classmethod
-    def get_streams(cls, folder_path: FolderPathType) -> dict:
+    def get_streams(cls, folder_path: DirectoryPath) -> dict:
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)

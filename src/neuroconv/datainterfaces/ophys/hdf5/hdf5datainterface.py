@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import FilePath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import ArrayType, FilePath
+from ....utils import ArrayType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):

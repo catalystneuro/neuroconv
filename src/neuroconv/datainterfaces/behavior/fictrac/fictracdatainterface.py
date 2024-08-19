@@ -414,13 +414,13 @@ def extract_session_start_time(
     return None
 
 
-def parse_fictrac_config(file_path: FilePathType) -> dict:
+def parse_fictrac_config(file_path: FilePath) -> dict:
     """
     Parse a FicTrac configuration file and return a dictionary of its parameters.
 
     Parameters
     ----------
-    file_path : str, Path
+    file_path : FilePath
         Path to the configuration file in txt format.
 
     Returns
