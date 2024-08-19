@@ -69,7 +69,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
     """Deprecated version of `get_json_schema_from_method_signature`."""
     message = (
         "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
@@ -80,7 +80,7 @@ def get_schema_from_method_signature(method: Callable, exclude: list[str] | None
     return get_json_schema_from_method_signature(method=method, exclude=exclude)
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict:
+def get_json_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -123,7 +123,10 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
 
         arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
-    model = pydantic.create_model("_TempModel", **arguments_to_annotations)
+    model = pydantic.create_model(
+        "_TempModel", __config__=pydantic.ConfigDict(arbitrary_types_allowed=True), **arguments_to_annotations
+    )
+
     temp_json_schema = model.model_json_schema()
 
     # We never used to include titles in the lower schema layers
@@ -148,7 +151,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     return json_schema
 
 
-def _copy_without_title_keys(d: Any, /) -> dict | None:
+def _copy_without_title_keys(d: Any, /) -> Optional[dict]:
     if not isinstance(d, dict):
         return d
 
