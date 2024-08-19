@@ -7,9 +7,8 @@ from tempfile import mkdtemp
 from typing import List, Optional, Union
 from warnings import warn
 
+from pydantic import DirectoryPath
 from pynwb import NWBHDF5IO
-
-from ...utils import DirectoryPath
 
 
 def automatic_dandi_upload(
