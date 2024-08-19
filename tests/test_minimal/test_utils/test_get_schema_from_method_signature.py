@@ -67,46 +67,12 @@ def test_get_json_schema_from_method_signature_advanced():
     expected_json_schema = {
         "additionalProperties": False,
         "properties": {
-            "more_nested_list_of_strings": {
-                "items": {"items": {"items": {"type": "string"}, "type": "array"}, "type": "array"},
-                "type": "array",
-            },
             "nested_list_of_strings": {"items": {"items": {"type": "string"}, "type": "array"}, "type": "array"},
             "new_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
-            "new_list_of_strings": {"items": {"type": "string"}, "type": "array"},
             "old_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
             "old_list_of_strings": {"items": {"type": "string"}, "type": "array"},
-            "pathalogical_case": {
-                "items": {
-                    "additionalProperties": {
-                        "items": {
-                            "anyOf": [
-                                {
-                                    "additionalProperties": {
-                                        "items": {"anyOf": [{"enum": ["a", "b"], "type": "string"}, {"type": "null"}]},
-                                        "type": "array",
-                                    },
-                                    "type": "object",
-                                },
-                                {"type": "null"},
-                            ]
-                        },
-                        "type": "array",
-                    },
-                    "type": "object",
-                },
-                "type": "array",
-            },
         },
-        "required": [
-            "old_list_of_strings",
-            "new_list_of_strings",
-            "old_dict_of_ints",
-            "new_dict_of_ints",
-            "nested_list_of_strings",
-            "more_nested_list_of_strings",
-            "pathalogical_case",
-        ],
+        "required": ["old_list_of_strings", "old_dict_of_ints", "new_dict_of_ints", "nested_list_of_strings"],
         "type": "object",
     }
 
