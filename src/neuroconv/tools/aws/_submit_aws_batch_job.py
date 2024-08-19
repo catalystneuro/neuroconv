@@ -430,9 +430,20 @@ def _ensure_job_queue_exists(
         computeEnvironmentOrder=[
             dict(order=1, computeEnvironment=compute_environment_name),
         ],
+        # Note: boto3 annotates the reason as a generic string
+        # But really it is Literal[
+        #    "MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE", "MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT"
+        # ]
+        # And we should have limits on both
         jobStateTimeLimitActions=[
             dict(
-                # reason="Avoid zombie jobs.",
+                reason="MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE",
+                state="RUNNABLE",
+                maxTimeSeconds=minimum_time_to_kill_in_seconds,
+                action="CANCEL",
+            ),
+            dict(
+                reason="MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT",
                 state="RUNNABLE",
                 maxTimeSeconds=minimum_time_to_kill_in_seconds,
                 action="CANCEL",
