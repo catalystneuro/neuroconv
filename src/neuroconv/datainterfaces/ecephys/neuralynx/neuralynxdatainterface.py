@@ -2,6 +2,7 @@ import json
 from typing import List, Optional
 
 import numpy as np
+from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -17,7 +18,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Neuralynx recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> List[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
