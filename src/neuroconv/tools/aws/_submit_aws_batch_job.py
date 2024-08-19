@@ -587,6 +587,7 @@ def _ensure_job_definition_exists_and_get_arn(
     minimum_time_to_kill_in_days = 1  # Note: eventually consider exposing this for very long jobs?
     minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
 
+    volumes = None
     if efs_id is not None:
         volumes = [
             {
