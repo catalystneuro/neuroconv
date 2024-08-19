@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import FilePath
 from pynwb import NWBFile
@@ -70,20 +70,11 @@ class LightningPoseConverter(NWBConverter):
             self.data_interface_objects.update(dict(LabeledVideo=VideoInterface(file_paths=[labeled_video_file_path])))
 
     def get_conversion_options_schema(self) -> dict:
-        conversion_options = self.data_interface_objects["PoseEstimation"].get_conversion_options_schema()
-        conversion_options = dict_deep_update(
-            conversion_options, self.data_interface_objects["OriginalVideo"].get_conversion_options_schema()
+        conversion_options_schema = get_schema_from_method_signature(
+            method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
         )
 
-        starting_frames = conversion_options["properties"].pop("starting_frames")
-        conversion_options["properties"].update(
-            dict(
-                starting_frames_original_videos=starting_frames,
-                starting_frames_labeled_videos=starting_frames,
-            )
-        )
-
-        return conversion_options
+        return conversion_options_schema
 
     def get_metadata(self) -> DeepDict:
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
@@ -115,8 +106,8 @@ class LightningPoseConverter(NWBConverter):
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
         external_mode: bool = True,
-        starting_frames_original_videos: Optional[list] = None,
-        starting_frames_labeled_videos: Optional[list] = None,
+        starting_frames_original_videos: Optional[List[int]] = None,
+        starting_frames_labeled_videos: Optional[List[int]] = None,
         stub_test: bool = False,
     ):
         original_video_interface = self.data_interface_objects["OriginalVideo"]
