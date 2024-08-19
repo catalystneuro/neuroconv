@@ -59,13 +59,11 @@ class BackendConfiguration(BaseModel):
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
-    def from_nwbfile(cls, nwbfile: NWBFile, mode: Literal["default", "existing"] = "default") -> Self:
-        if mode == "default":
+    def from_nwbfile(cls, nwbfile: NWBFile, use_default_dataset_io_configurations: bool = True) -> Self:
+        if use_default_dataset_io_configurations:
             dataset_io_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
-        elif mode == "existing":
-            dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         else:
-            raise ValueError(f"mode must be either 'default' or 'existing' but got {mode}")
+            dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
             default_dataset_configuration.location_in_file: default_dataset_configuration
             for default_dataset_configuration in dataset_io_configurations

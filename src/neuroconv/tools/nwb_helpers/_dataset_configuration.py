@@ -207,7 +207,7 @@ def get_existing_dataset_io_configurations(
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
                     neurodata_object=column,
                     dataset_name=dataset_name,
-                    mode="existing",
+                    use_default_dataset_io_configuration=False,
                 )
 
                 yield dataset_io_configuration
@@ -232,7 +232,7 @@ def get_existing_dataset_io_configurations(
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
                     neurodata_object=neurodata_object,
                     dataset_name=known_dataset_field,
-                    mode="existing",
+                    use_default_dataset_io_configuration=False,
                 )
 
                 yield dataset_io_configuration

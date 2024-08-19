@@ -86,11 +86,11 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-        mode: Literal["default", "existing"] = "default",
+        use_default_dataset_io_configuration: bool = True,
     ) -> Self:
-        if mode == "default":
+        if use_default_dataset_io_configuration:
             return super().from_neurodata_object(neurodata_object=neurodata_object, dataset_name=dataset_name)
-        elif mode == "existing":
+        else:
             location_in_file = _find_location_in_memory_nwbfile(
                 neurodata_object=neurodata_object, field_name=dataset_name
             )
@@ -113,5 +113,3 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
                 compression_method=compression_method,
                 compression_options=compression_options,
             )
-        else:
-            raise ValueError(f"mode must be either 'default' or 'existing' but got {mode}")
