@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from jsonschema import validate
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
@@ -172,7 +173,7 @@ class NWBConverter:
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Optional[FilePath] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

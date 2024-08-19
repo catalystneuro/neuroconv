@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal, Optional, Tuple, Union
 
 from jsonschema.validators import validate
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import (
@@ -19,7 +20,7 @@ from .tools.nwb_helpers import (
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
     NWBMetaDataEncoder,
-    get_schema_from_method_signature,
+    get_json_schema_from_method_signature,
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
@@ -36,15 +37,11 @@ class BaseDataInterface(ABC):
     @classmethod
     def get_source_schema(cls) -> dict:
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls, exclude=["source_data"])
+        return get_json_schema_from_method_signature(cls, exclude=["source_data"])
 
     def __init__(self, verbose: bool = False, **source_data):
         self.verbose = verbose
         self.source_data = source_data
-
-    def get_conversion_options_schema(self) -> dict:
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self) -> dict:
         """Retrieve JSON schema for metadata."""
@@ -78,6 +75,10 @@ class BaseDataInterface(ABC):
             nwbfile_schema.pop("required", None)
 
         validate(instance=decoded_metadata, schema=metdata_schema)
+
+    def get_conversion_options_schema(self) -> dict:
+        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
+        return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
         """
@@ -121,7 +122,7 @@ class BaseDataInterface(ABC):
 
     def run_conversion(
         self,
-        nwbfile_path: str,
+        nwbfile_path: FilePath,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

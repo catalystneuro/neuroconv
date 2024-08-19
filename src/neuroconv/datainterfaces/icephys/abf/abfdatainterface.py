@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import List
 from warnings import warn
 
+from pydantic import FilePath
+
 from ..baseicephysinterface import BaseIcephysInterface
 
 
@@ -49,17 +51,19 @@ class AbfInterface(BaseIcephysInterface):
         )
         return source_schema
 
-    def __init__(self, file_paths: list, icephys_metadata: dict = None, icephys_metadata_file_path: str = None):
+    def __init__(
+        self, file_paths: List[FilePath], icephys_metadata: dict = None, icephys_metadata_file_path: FilePath = None
+    ):
         """
         ABF IcephysInterface based on Neo AxonIO.
 
         Parameters
         ----------
-        file_paths : list
+        file_paths : list of FilePaths
             List of files to be converted to the same NWB file.
         icephys_metadata : dict, optional
             Dictionary containing the Icephys-specific metadata.
-        icephys_metadata_file_path : str, optional
+        icephys_metadata_file_path : FilePath, optional
             JSON file containing the Icephys-specific metadata.
         """
         super().__init__(file_paths=file_paths)

@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import load_dict_from_file
-from ...utils.types import FilePathType
 
 
 class TimeIntervalsInterface(BaseDataInterface):
@@ -18,7 +18,7 @@ class TimeIntervalsInterface(BaseDataInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         read_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
@@ -152,5 +152,5 @@ class TimeIntervalsInterface(BaseDataInterface):
         return nwbfile
 
     @abstractmethod
-    def _read_file(self, file_path: FilePathType, **read_kwargs):
+    def _read_file(self, file_path: FilePath, **read_kwargs):
         pass

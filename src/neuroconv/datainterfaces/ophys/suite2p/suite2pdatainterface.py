@@ -1,10 +1,11 @@
 from copy import deepcopy
 from typing import Optional
 
+from pydantic import DirectoryPath
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils import DeepDict, FolderPathType
+from ....utils import DeepDict
 
 
 def _update_metadata_links_for_plane_segmentation_name(metadata: dict, plane_segmentation_name: str) -> DeepDict:
@@ -73,7 +74,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
         plane_segmentation_name: Optional[str] = None,
@@ -83,7 +84,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             Path to the folder containing Suite2p segmentation data. Should contain 'plane#' sub-folders.
         channel_name: str, optional
             The name of the channel to load.

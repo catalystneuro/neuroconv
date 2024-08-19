@@ -1,7 +1,9 @@
 from typing import Literal
 
+from pydantic import FilePath
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import ArrayType, FilePathType
+from ....utils import ArrayType, FilePath
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
@@ -13,7 +15,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         mov_field: str = "mov",
         sampling_frequency: float = None,
         start_time: float = None,
@@ -26,7 +28,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .h5 or .hdf5 file.
         mov_field : str, default: 'mov'
         sampling_frequency : float, optional

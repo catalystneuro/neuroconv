@@ -75,7 +75,7 @@ def test_get_json_schema_from_method_signature_advanced():
             "new_list_of_strings": {"items": {"type": "string"}, "type": "array"},
             "old_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
             "old_list_of_strings": {"items": {"type": "string"}, "type": "array"},
-            "pathalogical_case": {
+            "pathological_case": {
                 "items": {
                     "additionalProperties": {
                         "items": {
@@ -104,7 +104,7 @@ def test_get_json_schema_from_method_signature_advanced():
             "new_dict_of_ints",
             "nested_list_of_strings",
             "more_nested_list_of_strings",
-            "pathalogical_case",
+            "pathological_case",
         ],
         "type": "object",
     }
