@@ -89,6 +89,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .ophys.thor.thorimaginginterface import ThorTiffImagingInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text
@@ -141,6 +142,7 @@ interface_list = [
     ExtractSegmentationInterface,
     SimaSegmentationInterface,
     SbxImagingInterface,
+    ThorTiffImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
