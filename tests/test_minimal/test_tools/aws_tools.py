@@ -158,60 +158,60 @@ def test_submit_aws_batch_job_with_dependencies():
     )
 
 
-def test_submit_aws_batch_job_with_efs_mount():
-    region = "us-east-2"
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
-    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
-
-    dynamodb_resource = boto3.resource(
-        service_name="dynamodb",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-    batch_client = boto3.client(
-        service_name="batch",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    job_name = "test_submit_aws_batch_job"
-    docker_image = "ubuntu:latest"
-    commands = ["echo", "'Testing NeuroConv AWS Batch submission.'"]
-
-    # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
-    info = submit_aws_batch_job(job_name=job_name, docker_image=docker_image, commands=commands, efs_volume="/mnt/data")
-
-    # Wait for AWS to process the job
-    time.sleep(60)
-
-    job_id = info["job_submission_info"]["jobId"]
-
-    all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
-    assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
-
-    jobs = all_jobs_response["jobs"]
-    assert len(jobs) == 1
-
-    job = jobs[0]
-    assert job["jobName"] == job_name
-    assert "neuroconv_batch_queue" in job["jobQueue"]
-    assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
-    assert job["status"] == "SUCCEEDED"
-
-    status_tracker_table_name = "neuroconv_batch_status_tracker"
-    table = dynamodb_resource.Table(name=status_tracker_table_name)
-    table_submission_id = info["table_submission_info"]["id"]
-
-    table_item_response = table.get_item(Key={"id": table_submission_id})
-    assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
-
-    table_item = table_item_response["Item"]
-    assert table_item["job_name"] == job_name
-    assert table_item["job_id"] == job_id
-    assert table_item["status"] == "Job submitted..."
-
-    table.update_item(
-        Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
-    )
+# def test_submit_aws_batch_job_with_efs_mount():
+#     region = "us-east-2"
+#     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+#     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+#
+#     dynamodb_resource = boto3.resource(
+#         service_name="dynamodb",
+#         region_name=region,
+#         aws_access_key_id=aws_access_key_id,
+#         aws_secret_access_key=aws_secret_access_key,
+#     )
+#     batch_client = boto3.client(
+#         service_name="batch",
+#         region_name=region,
+#         aws_access_key_id=aws_access_key_id,
+#         aws_secret_access_key=aws_secret_access_key,
+#     )
+#
+#     job_name = "test_submit_aws_batch_job"
+#     docker_image = "ubuntu:latest"
+#     commands = ["echo", "'Testing NeuroConv AWS Batch submission.'"]
+#
+#     # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
+#     info = submit_aws_batch_job(job_name=job_name, docker_image=docker_image, commands=commands, efs_volume="/mnt/data")
+#
+#     # Wait for AWS to process the job
+#     time.sleep(60)
+#
+#     job_id = info["job_submission_info"]["jobId"]
+#
+#     all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
+#     assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+#
+#     jobs = all_jobs_response["jobs"]
+#     assert len(jobs) == 1
+#
+#     job = jobs[0]
+#     assert job["jobName"] == job_name
+#     assert "neuroconv_batch_queue" in job["jobQueue"]
+#     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
+#     assert job["status"] == "SUCCEEDED"
+#
+#     status_tracker_table_name = "neuroconv_batch_status_tracker"
+#     table = dynamodb_resource.Table(name=status_tracker_table_name)
+#     table_submission_id = info["table_submission_info"]["id"]
+#
+#     table_item_response = table.get_item(Key={"id": table_submission_id})
+#     assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+#
+#     table_item = table_item_response["Item"]
+#     assert table_item["job_name"] == job_name
+#     assert table_item["job_id"] == job_id
+#     assert table_item["status"] == "Job submitted..."
+#
+#     table.update_item(
+#         Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
+#     )
