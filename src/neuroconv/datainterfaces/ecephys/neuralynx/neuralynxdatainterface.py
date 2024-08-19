@@ -5,8 +5,7 @@ import numpy as np
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FolderPathType
-from ....utils.json_schema import dict_deep_update
+from ....utils import FolderPathType, dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
