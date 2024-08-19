@@ -132,6 +132,7 @@ class NWBConverter:
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
+
         return conversion_options_schema
 
     def validate_conversion_options(self, conversion_options: Dict[str, dict]):

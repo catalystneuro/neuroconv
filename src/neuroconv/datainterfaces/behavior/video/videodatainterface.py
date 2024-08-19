@@ -264,7 +264,7 @@ class VideoInterface(BaseDataInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_frames: Optional[list] = None,
+        starting_frames: Optional[List[int]] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
