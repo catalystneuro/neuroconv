@@ -393,7 +393,7 @@ def repack_nwbfile(
     use_default_backend_configuration: bool = True,
     backend_configuration_changes: dict = None,
 ):
-    """Repack the NWBFile with the new backend configuration changes."""
+    """Repack the NWBFile with the new backend configuration changes."""  # NOTE: keys for configuration_changes must be as they appear in the BackendConfiguration NOT how they appear in the H5DataIO
     backend_configuration_changes = backend_configuration_changes or dict()
     export_backend = export_backend or backend
 

@@ -84,3 +84,32 @@ def test_repack_nwbfile(hdf5_nwbfile_path, use_default_backend_configuration):
             assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
             assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
             assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
+
+
+@pytest.mark.parametrize("use_default_backend_configuration", [True, False])
+def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, use_default_backend_configuration):
+    export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.h5"
+    backend_configuration_changes = {
+        "acquisition/RawTimeSeries/data": dict(compression_method="gzip", compression_options=dict(compression_opts=1))
+    }
+    repack_nwbfile(
+        nwbfile_path=hdf5_nwbfile_path,
+        export_nwbfile_path=export_path,
+        backend="hdf5",
+        use_default_backend_configuration=use_default_backend_configuration,
+        backend_configuration_changes=backend_configuration_changes,
+    )
+
+    with NWBHDF5IO(export_path, mode="r") as io:
+        nwbfile = io.read()
+
+        if use_default_backend_configuration:
+            assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 1
+            assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
+        else:
+            assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 1
+            assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
