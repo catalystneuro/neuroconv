@@ -359,8 +359,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
 
 def extract_session_start_time(
-    file_path: FilePathType,
-    configuration_file_path: Optional[FilePathType] = None,
+    file_path: FilePath,
+    configuration_file_path: Optional[FilePath] = None,
 ) -> Union[datetime, None]:
     """
     Extract the session start time from a FicTrac data file or its configuration file.
@@ -379,9 +379,9 @@ def extract_session_start_time(
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         Path to the FicTrac data file.
-    configuration_file_path : Optional[FilePathType]
+    configuration_file_path : FilePath, optional
         Path to the FicTrac configuration file. If omitted, the function defaults to searching for
         "fictrac_config.txt" in the same directory as the data file.
 
