@@ -1,11 +1,12 @@
 from typing import Optional
 
+from pydantic import DirectoryPath
 from pynwb import NWBFile
 
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import DirectoryPath, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class MiniscopeConverter(NWBConverter):

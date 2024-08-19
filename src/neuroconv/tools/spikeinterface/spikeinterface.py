@@ -7,6 +7,7 @@ import numpy as np
 import psutil
 import pynwb
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
+from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 
 from .spikeinterfacerecordingdatachunkiterator import (
@@ -15,7 +16,6 @@ from .spikeinterfacerecordingdatachunkiterator import (
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
-    FilePath,
     calculate_regular_series_rate,
     dict_deep_update,
 )
