@@ -8,9 +8,7 @@ from shutil import copy
 from typing import Dict, List, Union
 
 import numpy as np
-
-# Constants for header size and record format
-from neuroconv.utils import FilePath
+from pydantic import FilePath
 
 HEADER_SIZE = 16 * 1024
 

@@ -3,13 +3,12 @@ from typing import Literal, Optional
 
 import numpy as np
 import scipy
-from pydantic import FilePath
+from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import DirectoryPath
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: DirectoryPath):

@@ -3,10 +3,10 @@ from typing import Optional, Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator
+from pydantic import FilePath
 from tqdm import tqdm
 
 from ....tools import get_package
-from ....utils import FilePath
 
 
 def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, display_progress: bool = True) -> list:

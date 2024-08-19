@@ -18,11 +18,6 @@ from .json_schema import (
 )
 from .types import (
     ArrayType,
-    FilePath,
-    FloatType,
-    DirectoryPath,
     IntType,
     OptionalArrayType,
-    OptionalFilePathType,
-    OptionalFolderPathType,
 )

@@ -1,7 +1,7 @@
 from dateutil.parser import parse
+from pydantic import DirectoryPath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DirectoryPath
 
 
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):

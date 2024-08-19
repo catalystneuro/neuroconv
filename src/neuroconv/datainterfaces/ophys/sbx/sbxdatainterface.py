@@ -1,7 +1,8 @@
 from typing import Literal
 
+from pydantic import FilePath
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePath
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):

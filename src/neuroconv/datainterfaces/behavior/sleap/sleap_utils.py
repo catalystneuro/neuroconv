@@ -1,5 +1,6 @@
+from pydantic import FilePath
+
 from ....tools import get_package
-from ....utils import FilePath
 
 
 def extract_timestamps(video_file_path: FilePath) -> list:

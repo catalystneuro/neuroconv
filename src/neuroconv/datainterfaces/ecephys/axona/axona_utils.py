@@ -4,9 +4,8 @@ from typing import Union
 
 import dateutil
 import numpy as np
+from pydantic import FilePath
 from pynwb.behavior import Position, SpatialSeries
-
-from ....utils import FilePath
 
 
 def get_eeg_sampling_frequency(file_path: FilePath) -> float:

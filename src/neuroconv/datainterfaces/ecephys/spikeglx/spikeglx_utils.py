@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from ....utils import FilePath
+from pydantic import FilePath
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:

@@ -9,8 +9,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import yaml
-
-from .types import FilePath
+from pydantic import FilePath
 
 
 class NoDatesSafeLoader(yaml.SafeLoader):

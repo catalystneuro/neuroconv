@@ -1,6 +1,5 @@
 import numpy as np
-
-from neuroconv.utils import FilePath
+from pydantic import FilePath
 
 
 def get_medpc_variables(file_path: FilePath, variable_names: list) -> dict:

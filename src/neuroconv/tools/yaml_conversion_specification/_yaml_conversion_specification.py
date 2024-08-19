@@ -5,9 +5,10 @@ from typing import Optional
 
 import click
 from jsonschema import RefResolver, validate
+from pydantic import DirectoryPath, FilePath
 
 from ...nwbconverter import NWBConverter
-from ...utils import DirectoryPath, FilePath, dict_deep_update, load_dict_from_file
+from ...utils import dict_deep_update, load_dict_from_file
 
 
 @click.command()

@@ -4,11 +4,12 @@ from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
+from pydantic import DirectoryPath
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from ..importing import is_package_installed
-from ...utils import ArrayType, DirectoryPath
+from ...utils import ArrayType
 
 
 def _check_parameter_dtype_consistency(
