@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 
 from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
@@ -38,6 +38,74 @@ def test_get_json_schema_from_method_signature_basic():
             "string_with_default": {"default": "hi", "type": "string"},
         },
         "required": ["integer", "floating", "string_or_path", "boolean", "literal", "dictionary"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_advanced():
+    """
+    These are annotations newly supported by the Pydantic-based inference.
+
+    They should also be compatible with __future__.annotations for SpikeInterface.
+    """
+
+    def advanced_method(
+        old_list_of_strings: List[str],
+        new_list_of_strings: list[str],
+        old_dict_of_ints: Dict[str, int],
+        new_dict_of_ints: dict[str, int],
+        nested_list_of_strings: List[List[str]],
+        more_nested_list_of_strings: list[list[list[str]]],
+        pathalogical_case: list[dict[str | int | None, list[Optional[dict[str, list[Literal["a", "b"] | None]]]]],],
+    ):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=advanced_method)
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {
+            "more_nested_list_of_strings": {
+                "items": {"items": {"items": {"type": "string"}, "type": "array"}, "type": "array"},
+                "type": "array",
+            },
+            "nested_list_of_strings": {"items": {"items": {"type": "string"}, "type": "array"}, "type": "array"},
+            "new_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
+            "new_list_of_strings": {"items": {"type": "string"}, "type": "array"},
+            "old_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
+            "old_list_of_strings": {"items": {"type": "string"}, "type": "array"},
+            "pathalogical_case": {
+                "items": {
+                    "additionalProperties": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "additionalProperties": {
+                                        "items": {"anyOf": [{"enum": ["a", "b"], "type": "string"}, {"type": "null"}]},
+                                        "type": "array",
+                                    },
+                                    "type": "object",
+                                },
+                                {"type": "null"},
+                            ]
+                        },
+                        "type": "array",
+                    },
+                    "type": "object",
+                },
+                "type": "array",
+            },
+        },
+        "required": [
+            "old_list_of_strings",
+            "new_list_of_strings",
+            "old_dict_of_ints",
+            "new_dict_of_ints",
+            "nested_list_of_strings",
+            "more_nested_list_of_strings",
+            "pathalogical_case",
+        ],
         "type": "object",
     }
 
