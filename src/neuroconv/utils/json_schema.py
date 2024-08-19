@@ -100,10 +100,11 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
         The JSON schema corresponding to the method signature.
     """
     exclude = exclude or []
-    exclude += ["self"]
+    exclude += ["self", "cls"]
 
     signature = inspect.signature(obj=method)
     parameters = signature.parameters
+    additional_properties = False
     arguments_to_annotations = {}
     for argument_name in parameters:
         if argument_name in exclude:
@@ -112,6 +113,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
         parameter = parameters[argument_name]
 
         if parameter.kind == inspect.Parameter.VAR_KEYWORD:  # Skip all **{...} usage
+            additional_properties = True
             continue
 
         annotation = parameter.annotation
@@ -131,8 +133,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     # But Pydantic does automatically
     json_schema = _copy_without_title_keys(temp_json_schema)
 
-    # We also freeze additional properties, but Pydantic does not
-    json_schema["additionalProperties"] = False
+    # Pydantic does not make determinations on additionalProperties
+    json_schema["additionalProperties"] = additional_properties
 
     # Attempt to find descriptions within the docstring of the method
     parsed_docstring = docstring_parser.parse(method.__doc__)

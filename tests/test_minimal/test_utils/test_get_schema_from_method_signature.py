@@ -156,6 +156,21 @@ def test_get_schema_from_method_signature_class_method():
     assert test_json_schema == expected_json_schema
 
 
+def test_get_json_schema_from_method_signature_with_kwargs():
+    def method_with_kwargs(integer: int, **kwargs):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_kwargs)
+    expected_json_schema = {
+        "additionalProperties": True,
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
 def test_get_json_schema_from_example_data_interface():
     test_json_schema = get_json_schema_from_method_signature(AlphaOmegaRecordingInterface.__init__)
     expected_json_schema = {
