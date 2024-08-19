@@ -1,7 +1,9 @@
 from typing import List, Optional
 
+from pydantic import DirectoryPath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FolderPathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
@@ -18,7 +20,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> List[str]:
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
@@ -37,7 +39,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
         stub_test: bool = False,

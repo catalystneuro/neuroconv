@@ -7,7 +7,7 @@ import click
 from jsonschema import RefResolver, validate
 
 from ...nwbconverter import NWBConverter
-from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_from_file
+from ...utils import DirectoryPath, FilePath, dict_deep_update, load_dict_from_file
 
 
 @click.command()
@@ -45,9 +45,9 @@ def run_conversion_from_yaml_cli(
 
 
 def run_conversion_from_yaml(
-    specification_file_path: FilePathType,
-    data_folder_path: Optional[FolderPathType] = None,
-    output_folder_path: Optional[FolderPathType] = None,
+    specification_file_path: FilePath,
+    data_folder_path: Optional[DirectoryPath] = None,
+    output_folder_path: Optional[DirectoryPath] = None,
     overwrite: bool = False,
 ):
     """

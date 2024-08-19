@@ -1,7 +1,7 @@
 from dateutil.parser import parse
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FolderPathType
+from ....utils import DirectoryPath
 
 
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
@@ -18,7 +18,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
         """
         Data Interface for MicroManagerTiffImagingExtractor.
 

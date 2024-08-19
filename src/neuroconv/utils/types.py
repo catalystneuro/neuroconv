@@ -3,10 +3,10 @@ from typing import Optional, TypeVar, Union
 
 import numpy as np
 
-FilePathType = TypeVar("FilePathType", str, Path)
-FolderPathType = TypeVar("FolderPathType", str, Path)
-OptionalFilePathType = Optional[FilePathType]
-OptionalFolderPathType = Optional[FolderPathType]
+FilePath = TypeVar("FilePathType", str, Path)
+DirectoryPath = TypeVar("FolderPathType", str, Path)
+OptionalFilePathType = Optional[FilePath]
+OptionalFolderPathType = Optional[DirectoryPath]
 ArrayType = Union[list, np.ndarray]
 OptionalArrayType = Optional[ArrayType]
 FloatType = float

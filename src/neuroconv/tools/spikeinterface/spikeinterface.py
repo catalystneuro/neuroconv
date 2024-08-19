@@ -15,7 +15,7 @@ from .spikeinterfacerecordingdatachunkiterator import (
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
-    FilePathType,
+    FilePath,
     calculate_regular_series_rate,
     dict_deep_update,
 )
@@ -1003,7 +1003,7 @@ def add_recording(
 
 def write_recording(
     recording: BaseRecording,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1479,7 +1479,7 @@ def add_sorting(
 
 def write_sorting(
     sorting: BaseSorting,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1678,7 +1678,7 @@ def add_sorting_analyzer(
 
 def write_sorting_analyzer(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1785,7 +1785,7 @@ def write_sorting_analyzer(
 # TODO: Remove February 2025
 def write_waveforms(
     waveform_extractor,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,

@@ -8,7 +8,7 @@ from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from ..importing import is_package_installed
-from ...utils import ArrayType, FolderPathType
+from ...utils import ArrayType, DirectoryPath
 
 
 def _check_parameter_dtype_consistency(
@@ -128,7 +128,7 @@ def generate_mock_ttl_signal(
     return trace
 
 
-def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_images: bool = False):  # pragma: no cover
+def regenerate_test_cases(folder_path: DirectoryPath, regenerate_reference_images: bool = False):  # pragma: no cover
     """
     Regenerate the test cases of the file included in the main testing suite, which is frozen between breaking changes.
 

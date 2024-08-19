@@ -18,9 +18,9 @@ from .json_schema import (
 )
 from .types import (
     ArrayType,
-    FilePathType,
+    FilePath,
     FloatType,
-    FolderPathType,
+    DirectoryPath,
     IntType,
     OptionalArrayType,
     OptionalFilePathType,

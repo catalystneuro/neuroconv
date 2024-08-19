@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from pydantic import DirectoryPath, FilePath
 
 from .neuroscope_utils import (
     get_channel_groups,
@@ -13,7 +14,6 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType
 
 
 def filter_non_neural_channels(recording_extractor, xml_file_path: str):
@@ -125,9 +125,9 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         gain: Optional[float] = None,
-        xml_file_path: Optional[FilePathType] = None,
+        xml_file_path: Optional[FilePath] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
@@ -202,9 +202,9 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         gain: Optional[float] = None,
-        xml_file_path: Optional[FilePathType] = None,
+        xml_file_path: Optional[FilePath] = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -267,10 +267,10 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list] = None,
-        xml_file_path: Optional[FilePathType] = None,
+        xml_file_path: Optional[FilePath] = None,
         verbose: bool = True,
     ):
         """

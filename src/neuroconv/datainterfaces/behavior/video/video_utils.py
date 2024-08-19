@@ -6,12 +6,10 @@ from hdmf.data_utils import GenericDataChunkIterator
 from tqdm import tqdm
 
 from ....tools import get_package
-from ....utils import FilePathType
+from ....utils import FilePath
 
 
-def get_video_timestamps(
-    file_path: FilePathType, max_frames: Optional[int] = None, display_progress: bool = True
-) -> list:
+def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, display_progress: bool = True) -> list:
     """Extract the timestamps of the video located in file_path
 
     Parameters
@@ -36,7 +34,7 @@ def get_video_timestamps(
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager."""
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePath):
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         self.vc = cv2.VideoCapture(filename=file_path)
@@ -178,7 +176,7 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
     def __init__(
         self,
-        video_file: FilePathType,
+        video_file: FilePath,
         buffer_gb: float = None,
         chunk_shape: tuple = None,
         stub_test: bool = False,

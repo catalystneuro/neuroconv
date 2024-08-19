@@ -10,7 +10,7 @@ import yaml
 from pynwb import NWBFile
 from ruamel.yaml import YAML
 
-from ....utils import FilePathType
+from ....utils import FilePath
 
 
 def _read_config(config_file_path):
@@ -303,9 +303,9 @@ def _write_pes_to_nwbfile(
 
 def add_subject_to_nwbfile(
     nwbfile: NWBFile,
-    h5file: FilePathType,
+    h5file: FilePath,
     individual_name: str,
-    config_file: FilePathType,
+    config_file: FilePath,
     timestamps: Optional[Union[List, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:

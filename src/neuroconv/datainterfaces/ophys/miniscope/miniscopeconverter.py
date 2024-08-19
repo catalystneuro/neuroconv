@@ -5,7 +5,7 @@ from pynwb import NWBFile
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FolderPathType, get_schema_from_method_signature
+from ....utils import DirectoryPath, get_schema_from_method_signature
 
 
 class MiniscopeConverter(NWBConverter):
@@ -22,7 +22,7 @@ class MiniscopeConverter(NWBConverter):
         source_schema["properties"]["folder_path"]["description"] = "The path to the main Miniscope folder."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
 

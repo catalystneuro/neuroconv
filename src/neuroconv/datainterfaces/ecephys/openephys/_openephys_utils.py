@@ -5,7 +5,7 @@ from warnings import warn
 
 from lxml import etree
 
-from ....utils import FolderPathType
+from ....utils import DirectoryPath
 
 
 def _get_session_start_time(element: etree.Element) -> Union[datetime, None]:
@@ -28,7 +28,7 @@ def _get_session_start_time(element: etree.Element) -> Union[datetime, None]:
     return session_start_time
 
 
-def _read_settings_xml(folder_path: FolderPathType) -> etree.Element:
+def _read_settings_xml(folder_path: DirectoryPath) -> etree.Element:
     """
     Read the settings.xml file from an OpenEphys binary recording folder.
     Returns the root element of the XML tree.

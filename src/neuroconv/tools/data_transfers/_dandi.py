@@ -9,13 +9,13 @@ from warnings import warn
 
 from pynwb import NWBHDF5IO
 
-from ...utils import FolderPathType
+from ...utils import DirectoryPath
 
 
 def automatic_dandi_upload(
     dandiset_id: str,
-    nwb_folder_path: FolderPathType,
-    dandiset_folder_path: Optional[FolderPathType] = None,
+    nwb_folder_path: DirectoryPath,
+    dandiset_folder_path: Optional[DirectoryPath] = None,
     version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,
