@@ -432,7 +432,7 @@ def _ensure_job_queue_exists(
         ],
         jobStateTimeLimitActions=[
             dict(
-                reason="Avoid zombie jobs.",
+                # reason="Avoid zombie jobs.",
                 state="RUNNABLE",
                 maxTimeSeconds=minimum_time_to_kill_in_seconds,
                 action="CANCEL",
