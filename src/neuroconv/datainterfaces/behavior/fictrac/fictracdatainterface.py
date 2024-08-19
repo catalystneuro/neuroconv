@@ -1,5 +1,6 @@
 import json
 import re
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Union
@@ -222,7 +223,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         # TODO: remove completely after 10/1/2024
         if compression is not None or compression_opts is not None:
-            warn(
+            warnings.warn(
                 message=(
                     "Specifying compression methods and their options at the level of tool functions has been deprecated. "
                     "Please use the `configure_backend` tool function for this purpose."
