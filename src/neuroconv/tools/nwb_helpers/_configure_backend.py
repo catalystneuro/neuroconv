@@ -4,6 +4,7 @@ import importlib
 from typing import Union
 
 from hdmf.common import Data
+from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile, TimeSeries
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
@@ -46,16 +47,24 @@ def configure_backend(
 
         # Table columns
         if isinstance(neurodata_object, Data):
-            neurodata_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
+            neurodata_object.set_data_io(
+                data_io_class=data_io_class, data_io_kwargs=data_io_kwargs, data_chunk_iterator_class=DataChunkIterator
+            )
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
             neurodata_object.set_data_io(
-                dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+                dataset_name=dataset_name,
+                data_io_class=data_io_class,
+                data_io_kwargs=data_io_kwargs,
+                data_chunk_iterator_class=DataChunkIterator,
             )
         # Special ndx-events v0.2.0 types
         elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.Events):
             neurodata_object.set_data_io(
-                dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+                dataset_name=dataset_name,
+                data_io_class=data_io_class,
+                data_io_kwargs=data_io_kwargs,
+                data_chunk_iterator_class=DataChunkIterator,
             )
         # But temporarily skipping LabeledEvents
         elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.LabeledEvents):
