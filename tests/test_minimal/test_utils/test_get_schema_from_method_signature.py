@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Literal, Optional, Union
 
 from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
@@ -14,6 +14,7 @@ def test_get_json_schema_from_method_signature_basic():
         floating: float,
         string_or_path: Union[Path, str],
         boolean: bool,
+        literal: Literal["a", "b", "c"],
         dictionary: Dict[str, str],
         string_with_default: str = "hi",
         optional_dictionary: Optional[Dict[str, str]] = None,
@@ -28,6 +29,7 @@ def test_get_json_schema_from_method_signature_basic():
             "dictionary": {"additionalProperties": {"type": "string"}, "type": "object"},
             "floating": {"type": "number"},
             "integer": {"type": "integer"},
+            "literal": {"enum": ["a", "b", "c"], "type": "string"},
             "optional_dictionary": {
                 "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
                 "default": None,
@@ -35,7 +37,7 @@ def test_get_json_schema_from_method_signature_basic():
             "string_or_path": {"anyOf": [{"format": "path", "type": "string"}, {"type": "string"}]},
             "string_with_default": {"default": "hi", "type": "string"},
         },
-        "required": ["integer", "floating", "string_or_path", "boolean", "dictionary"],
+        "required": ["integer", "floating", "string_or_path", "boolean", "literal", "dictionary"],
         "type": "object",
     }
 
@@ -112,7 +114,7 @@ def test_get_schema_from_method_signature_class_static():
     class TestClass:
 
         @staticmethod
-        def test_static_method(integer: int, string: str, boolean: bool, number: float):
+        def test_static_method(integer: int, string: str, boolean: bool):
             pass
 
     test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_static_method)
@@ -121,10 +123,9 @@ def test_get_schema_from_method_signature_class_static():
         "properties": {
             "boolean": {"type": "boolean"},
             "integer": {"type": "integer"},
-            "number": {"type": "number"},
             "string": {"type": "string"},
         },
-        "required": ["integer", "string", "boolean", "number"],
+        "required": ["integer", "string", "boolean"],
         "type": "object",
     }
 
@@ -137,7 +138,7 @@ def test_get_schema_from_method_signature_class_method():
     class TestClass:
 
         @classmethod
-        def some_class_method(cls, integer: int, string: str, boolean: bool, number: float):
+        def some_class_method(cls, integer: int, string: str, boolean: bool):
             pass
 
     test_json_schema = get_json_schema_from_method_signature(method=TestClass.some_class_method)
@@ -146,10 +147,9 @@ def test_get_schema_from_method_signature_class_method():
         "properties": {
             "boolean": {"type": "boolean"},
             "integer": {"type": "integer"},
-            "number": {"type": "number"},
             "string": {"type": "string"},
         },
-        "required": ["integer", "string", "boolean", "number"],
+        "required": ["integer", "string", "boolean"],
         "type": "object",
     }
 
