@@ -126,7 +126,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     model = pydantic.create_model(
         "_TempModel", __config__=pydantic.ConfigDict(arbitrary_types_allowed=True), **arguments_to_annotations
     )
-   
+
     temp_json_schema = model.model_json_schema()
 
     # We never used to include titles in the lower schema layers
