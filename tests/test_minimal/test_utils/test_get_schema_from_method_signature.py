@@ -109,26 +109,29 @@ def test_get_json_schema_from_method_signature_basic():
 def test_get_schema_from_example_data_interface():
     schema = get_json_schema_from_method_signature(AlphaOmegaRecordingInterface.__init__)
 
-    # assert schema == {
-    #     "required": ["folder_path"],
-    #     "properties": {
-    #         "folder_path": {
-    #             "format": "directory",
-    #             "description": "Path to the folder of .mpx files.",
-    #             "type": "string",
-    #         },
-    #         "verbose": {"description": "Allows verbose.\nDefault is True.", "type": "boolean", "default": True},
-    #         "es_key": {"type": "string", "default": "ElectricalSeries"},
-    #     },
-    #     "type": "object",
-    #     "additionalProperties": False,
-    # }
+    assert schema == {
+        "required": ["folder_path"],
+        "properties": {
+            "folder_path": {
+                "format": "directory",
+                "description": "Path to the folder of .mpx files.",
+                "type": "string",
+            },
+            "verbose": {"description": "Allows verbose.\nDefault is True.", "type": "boolean", "default": True},
+            "es_key": {"type": "string", "default": "ElectricalSeries"},
+        },
+        "type": "object",
+        "additionalProperties": False,
+    }
     assert schema == {
         "additionalProperties": False,
         "properties": {
             "es_key": {"default": "ElectricalSeries", "type": "string"},
-            "folder_path": {"anyOf": [{"type": "string"}, {"format": "path", "type": "string"}]},
-            "verbose": {"default": True, "type": "boolean"},
+            "folder_path": {
+                "anyOf": [{"type": "string"}, {"format": "path", "type": "string"}],
+                "description": "Path to the folder of .mpx " "files.",
+            },
+            "verbose": {"default": True, "description": "Allows verbose.\nDefault is True.", "type": "boolean"},
         },
         "required": ["folder_path"],
         "type": "object",

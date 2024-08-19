@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+import docstring_parser
 import hdmf.data_utils
 import numpy as np
 import pydantic
@@ -83,6 +84,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     """
     Get the equivalent JSON schema for a signature of a method.
 
+    Also uses `docstring_parser` (NumPy style) to attempt to find descriptions for the arguments.
+
     Parameters
     ----------
     method : callable
@@ -128,6 +131,18 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
 
     # We also freeze additional properties, but Pydantic does not
     json_schema["additionalProperties"] = False
+
+    # Attempt to find descriptions within the docstring of the method
+    parsed_docstring = docstring_parser.parse(method.__doc__)
+    for parameter_in_docstring in parsed_docstring.params:
+        if (
+            parameter_in_docstring.arg_name in json_schema["properties"]
+            and parameter_in_docstring.description is not None
+        ):
+            json_schema["properties"][parameter_in_docstring.arg_name].update(
+                description=parameter_in_docstring.description
+            )
+    # TODO: could also add Field support for more direct control over docstrings (and enhanced validation conditions)
 
     return json_schema
 
