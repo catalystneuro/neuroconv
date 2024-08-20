@@ -1,12 +1,13 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Self, Union
 
 import numcodecs
 import zarr
+from hdmf import Container
 from pydantic import Field, InstanceOf, model_validator
 
-from ._base_dataset_io import DatasetIOConfiguration
+from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
 
 _base_zarr_codecs = set(zarr.codec_registry.keys())
 _lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
@@ -130,3 +131,35 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+
+    @classmethod
+    def from_neurodata_object(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+        use_default_dataset_io_configuration: bool = True,
+    ) -> Self:
+        if use_default_dataset_io_configuration:
+            return super().from_neurodata_object(neurodata_object=neurodata_object, dataset_name=dataset_name)
+        else:  # TODO: Remove else to decrease indentation
+            location_in_file = _find_location_in_memory_nwbfile(
+                neurodata_object=neurodata_object, field_name=dataset_name
+            )
+            full_shape = getattr(neurodata_object, dataset_name).shape
+            dtype = getattr(neurodata_object, dataset_name).dtype
+            chunk_shape = getattr(neurodata_object, dataset_name).chunks
+            buffer_shape = full_shape  # TODO: replace with default buffer shape
+            compression_method = getattr(neurodata_object, dataset_name).compressor
+            filter_methods = getattr(neurodata_object, dataset_name).filters
+            return cls(
+                object_id=neurodata_object.object_id,
+                object_name=neurodata_object.name,
+                location_in_file=location_in_file,
+                dataset_name=dataset_name,
+                full_shape=full_shape,
+                dtype=dtype,
+                chunk_shape=chunk_shape,
+                buffer_shape=buffer_shape,
+                compression_method=compression_method,
+                filter_methods=filter_methods,
+            )
