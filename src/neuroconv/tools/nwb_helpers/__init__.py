@@ -22,7 +22,7 @@ from ._configuration_models._zarr_dataset_io import (
     ZarrDatasetIOConfiguration,
 )
 from ._configure_backend import configure_backend
-from ._dataset_configuration import get_default_dataset_io_configurations
+from ._dataset_configuration import get_default_dataset_io_configurations, get_existing_dataset_io_configurations
 from ._metadata_and_file_helpers import (
     BACKEND_NWB_IO,
     add_device_from_metadata,
@@ -49,6 +49,7 @@ __all__ = [
     "get_default_backend_configuration",
     "get_default_dataset_io_configurations",
     "get_existing_backend_configuration",
+    "get_existing_dataset_io_configurations",
     "configure_backend",
     "get_default_dataset_io_configurations",
     "get_default_backend_configuration",
