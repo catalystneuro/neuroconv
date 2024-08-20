@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import Literal, Optional
 from warnings import warn
 
-from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from pynwb.file import Subject
 
 from . import (
+    BACKEND_NWB_IO,
     BackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
@@ -23,8 +23,6 @@ from . import (
 )
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
-
-BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):

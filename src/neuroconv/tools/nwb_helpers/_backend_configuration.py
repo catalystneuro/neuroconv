@@ -9,6 +9,7 @@ from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
 
 BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
+BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 
 def get_default_backend_configuration(
@@ -34,13 +35,9 @@ def get_existing_backend_configuration(nwbfile: NWBFile) -> Union[HDF5BackendCon
     Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
         The backend configuration extracted from the nwbfile.
     """
-
     read_io = nwbfile.read_io
-    if isinstance(read_io, NWBHDF5IO):
-        backend = "hdf5"
-    elif isinstance(read_io, NWBZarrIO):
-        backend = "zarr"
-    else:
-        raise ValueError(f"The backend of the NWBFile from io {read_io} is not recognized.")
+    for backend, io in BACKEND_NWB_IO.items():
+        if isinstance(read_io, io):
+            break
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
     return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile, use_default_dataset_io_configurations=False)
