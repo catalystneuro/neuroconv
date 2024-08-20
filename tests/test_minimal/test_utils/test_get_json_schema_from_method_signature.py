@@ -6,7 +6,7 @@ from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
-from neuroconv.utils import get_json_schema_from_method_signature
+from neuroconv.utils import ArrayType, get_json_schema_from_method_signature
 
 
 def test_get_json_schema_from_method_signature_basic():
@@ -59,6 +59,7 @@ def test_get_json_schema_from_method_signature_advanced():
         old_dict_of_ints: Dict[str, int],
         new_dict_of_ints: dict[str, int],
         nested_list_of_strings: List[List[str]],
+        array_type: ArrayType,
         # more_nested_list_of_strings: list[list[list[str]]],
         # pathalogical_case: list[dict[str | int | None, list[Optional[dict[str, list[Literal["a", "b"] | None]]]]],],
     ):
@@ -68,6 +69,7 @@ def test_get_json_schema_from_method_signature_advanced():
     expected_json_schema = {
         "additionalProperties": False,
         "properties": {
+            "array_type": {"items": {}, "type": "array"},
             "nested_list_of_strings": {"items": {"items": {"type": "string"}, "type": "array"}, "type": "array"},
             "new_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
             "new_list_of_strings": {"items": {"type": "string"}, "type": "array"},
@@ -80,6 +82,7 @@ def test_get_json_schema_from_method_signature_advanced():
             "old_dict_of_ints",
             "new_dict_of_ints",
             "nested_list_of_strings",
+            "array_type",
         ],
         "type": "object",
     }
@@ -89,13 +92,8 @@ def test_get_json_schema_from_method_signature_advanced():
 
 def test_get_json_schema_from_method_signature_exclude():
     def basic_method(
-        integer: int,
-        floating: float,
-        string_or_path: Union[Path, str],
-        boolean: bool,
-        dictionary: Dict[str, str],
-        string_with_default: str = "hi",
-        optional_dictionary: Optional[Dict[str, str]] = None,
+        integer_to_keep: int,
+        floating_to_ignore: float,
     ):
         pass
 
@@ -103,17 +101,8 @@ def test_get_json_schema_from_method_signature_exclude():
     test_json_schema = get_json_schema_from_method_signature(method=basic_method, exclude=test_exclude)
     expected_json_schema = {
         "additionalProperties": False,
-        "properties": {
-            "boolean": {"type": "boolean"},
-            "dictionary": {"additionalProperties": {"type": "string"}, "type": "object"},
-            "integer": {"type": "integer"},
-            "optional_dictionary": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
-            },
-            "string_or_path": {"anyOf": [{"format": "path", "type": "string"}, {"type": "string"}]},
-        },
-        "required": ["integer", "string_or_path", "boolean", "dictionary"],
+        "properties": {"floating_to_ignore": {"type": "number"}, "integer_to_keep": {"type": "integer"}},
+        "required": ["integer_to_keep", "floating_to_ignore"],
         "type": "object",
     }
 
@@ -273,7 +262,7 @@ def test_fix_to_358():
 
 
 def test_get_json_schema_from_method_signature_simple_docstring():
-    def basic_method(integer: int):
+    def method_with_docstring(integer: int):
         """
         This is a simple docstring.
 
@@ -284,7 +273,7 @@ def test_get_json_schema_from_method_signature_simple_docstring():
         """
         pass
 
-    test_json_schema = get_json_schema_from_method_signature(method=basic_method)
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_docstring)
     expected_json_schema = {
         "additionalProperties": False,
         "properties": {"integer": {"description": "This is an integer.", "type": "integer"}},
@@ -296,7 +285,7 @@ def test_get_json_schema_from_method_signature_simple_docstring():
 
 
 def test_get_json_schema_from_method_signature_docstring_warning():
-    def basic_method(integer: int):
+    def method_with_typo_in_docstring(integer: int):
         """
         This is a docstring with a typo in the argument name.
 
@@ -308,7 +297,7 @@ def test_get_json_schema_from_method_signature_docstring_warning():
         pass
 
     with pytest.warns(expected_warning=UserWarning) as warning_info:
-        test_json_schema = get_json_schema_from_method_signature(method=basic_method)
+        test_json_schema = get_json_schema_from_method_signature(method=method_with_typo_in_docstring)
 
     expected_warning_message = (
         "The argument_name 'integ' from the docstring not occur in the method signature, possibly due to a typo."
