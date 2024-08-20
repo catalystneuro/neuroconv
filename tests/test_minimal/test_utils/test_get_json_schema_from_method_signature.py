@@ -54,7 +54,7 @@ def test_get_json_schema_from_method_signature_advanced():
     # TODO: enable | usage cases when 3.11 is minimal
     def advanced_method(
         old_list_of_strings: List[str],
-        # new_list_of_strings: list[str],
+        new_list_of_strings: list[str],
         old_dict_of_ints: Dict[str, int],
         new_dict_of_ints: dict[str, int],
         nested_list_of_strings: List[List[str]],
@@ -69,10 +69,17 @@ def test_get_json_schema_from_method_signature_advanced():
         "properties": {
             "nested_list_of_strings": {"items": {"items": {"type": "string"}, "type": "array"}, "type": "array"},
             "new_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
+            "new_list_of_strings": {"items": {"type": "string"}, "type": "array"},
             "old_dict_of_ints": {"additionalProperties": {"type": "integer"}, "type": "object"},
             "old_list_of_strings": {"items": {"type": "string"}, "type": "array"},
         },
-        "required": ["old_list_of_strings", "old_dict_of_ints", "new_dict_of_ints", "nested_list_of_strings"],
+        "required": [
+            "old_list_of_strings",
+            "new_list_of_strings",
+            "old_dict_of_ints",
+            "new_dict_of_ints",
+            "nested_list_of_strings",
+        ],
         "type": "object",
     }
 
