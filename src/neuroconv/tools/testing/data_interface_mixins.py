@@ -242,11 +242,10 @@ class DataInterfaceTestMixin:
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
-                # TODO: enable when all H5DataIO prewraps are gone
-                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
-                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
@@ -1031,11 +1030,10 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
-                # TODO: enable when all H5DataIO prewraps are gone
-                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
-                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
@@ -1353,11 +1351,10 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
 
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
-                # TODO: enable when all H5DataIO prewraps are gone
-                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
-                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
