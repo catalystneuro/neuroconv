@@ -18,7 +18,8 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
-    get_schema_from_method_signature,
+    NWBMetaDataEncoder,
+    get_json_schema_from_method_signature,
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
@@ -36,7 +37,24 @@ class BaseDataInterface(ABC):
     @classmethod
     def get_source_schema(cls) -> dict:
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls, exclude=["source_data"])
+        return get_json_schema_from_method_signature(cls, exclude=["source_data"])
+
+    @classmethod
+    def validate_source(cls, source_data: dict, verbose: bool = True):
+        """Validate source_data against Converter source_schema."""
+        cls._validate_source_data(source_data=source_data, verbose=verbose)
+
+    def _validate_source_data(self, source_data: dict, verbose: bool = True):
+
+        encoder = NWBSourceDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(serialized_source_data)
+        schema = self.get_source_schema()
+        validate(instance=decoded_source_data, schema=schema)
+        if verbose:
+            print("Source data is valid!")
 
     @classmethod
     def validate_source(cls, source_data: dict, verbose: bool = True):
@@ -63,7 +81,7 @@ class BaseDataInterface(ABC):
 
     def get_conversion_options_schema(self) -> dict:
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
+        return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self) -> dict:
         """Retrieve JSON schema for metadata."""
@@ -83,14 +101,20 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def validate_metadata(self, metadata: dict) -> None:
+    def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
         encoder = NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
 
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
-        validate(instance=decoded_metadata, schema=self.get_metadata_schema())
+        metdata_schema = self.get_metadata_schema()
+        if append_mode:
+            # Eliminate required from NWBFile
+            nwbfile_schema = metdata_schema["properties"]["NWBFile"]
+            nwbfile_schema.pop("required", None)
+
+        validate(instance=decoded_metadata, schema=metdata_schema)
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
         """
@@ -175,6 +199,11 @@ class BaseDataInterface(ABC):
 
         if metadata is None:
             metadata = self.get_metadata()
+
+        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        append_mode = file_initially_exists and not overwrite
+
+        self.validate_metadata(metadata=metadata, append_mode=append_mode)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,

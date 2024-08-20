@@ -14,6 +14,7 @@ from .json_schema import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     unroot_schema,
+    get_json_schema_from_method_signature,
 )
 from .types import (
     ArrayType,

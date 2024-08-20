@@ -6,8 +6,8 @@ preprocessing systems with different proprietary formats in the same session.
 For instance, in a given extracellular electrophysiology experiment, you might
 have raw and processed data. The :py:class:`.NWBConverter` class streamlines this
 conversion process. This single :py:class:`.NWBConverter` object is responsible for
-combining those multiple read/write operations. An example of how to define
-a :py:class:`.NWBConverter` would be
+combining those multiple read/write operations. Here is an example definition of a
+:py:class:`.NWBConverter`:
 
 .. code-block:: python
 
@@ -42,22 +42,32 @@ keys of``data_interface_classes``.
 
     example_nwb_converter = ExampleNWBConverter(source_data)
 
-This creates an :py:class:`.NWBConverter` object that can aggregate and distribute across
-the data interfaces. To fetch metadata across all of the interfaces and merge
-them together, call::
+This creates an :py:class:`.NWBConverter`. To fetch metadata across all of the interfaces and merge
+them together, call:
+
+.. code-block:: python
 
     metadata = converter.get_metadata()
 
-The metadata can then be manually modified with any additional user-input, just like ``DataInterface`` objects::
+The metadata can then be manually modified with any additional user-input, just like ``DataInterface`` objects:
+
+.. code-block:: python
 
     metadata["NWBFile"]["session_description"] = "NeuroConv tutorial."
     metadata["NWBFile"]["experimenter"] = "My name"
     metadata["Subject"]["subject_id"] = "ID of experimental subject"
 
-The final metadata dictionary should follow the form defined by
-``converter.get_metadata_schema()``. Now run the entire conversion with::
+The final metadata dictionary should follow the form defined by :meth:`.NWBConverter.get_metadata_schema`.
+
+Now run the entire conversion with:
+
+.. code-block:: python
 
     converter.run_conversion(metadata=metadata, nwbfile_path="my_nwbfile.nwb")
+
+Like ``DataInterface`` objects, :py:class:`.NWBConverter` objects can output an in-memory :py:class:`.NWBFile` object by
+calling :meth:`.NWBConverter.create_nwbfile`. This can be useful for debugging, for adding metadata to the file, or for
+further processing.
 
 Though this example was only for two data streams (recording and spike-sorted
 data), it can easily extend to any number of sources, including video of a
