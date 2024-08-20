@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Union
 
+import pytest
 from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
 
@@ -269,3 +270,56 @@ def test_fix_to_358():
     # Validation used to fail due to lack of Dict[str, str] support
     test_conversion_options = dict(column_name_mapping=dict(condition="cond"))
     validate(instance=test_conversion_options, schema=test_conversion_options_schema)
+
+
+def test_get_json_schema_from_method_signature_simple_docstring():
+    def basic_method(integer: int):
+        """
+        This is a simple docstring.
+
+        Parameters
+        ----------
+        integer : int
+            This is an integer.
+        """
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=basic_method)
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {"integer": {"description": "This is an integer.", "type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_docstring_warning():
+    def basic_method(integer: int):
+        """
+        This is a docstring with a typo in the argument name.
+
+        Parameters
+        ----------
+        integ : int
+            This is an integer.
+        """
+        pass
+
+    with pytest.warns(expected_warning=UserWarning) as warning_info:
+        test_json_schema = get_json_schema_from_method_signature(method=basic_method)
+
+    expected_warning_message = (
+        "The argument_name 'integ' from the docstring not occur in the method signature, possibly due to a typo."
+    )
+    assert warning_info[0].message.args[0] == expected_warning_message
+
+    expected_json_schema = {
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+    assert test_json_schema == expected_json_schema

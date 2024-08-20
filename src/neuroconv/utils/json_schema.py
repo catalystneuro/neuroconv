@@ -140,10 +140,15 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[Li
     # Attempt to find descriptions within the docstring of the method
     parsed_docstring = docstring_parser.parse(method.__doc__)
     for parameter_in_docstring in parsed_docstring.params:
-        if (
-            parameter_in_docstring.arg_name in json_schema["properties"]
-            and parameter_in_docstring.description is not None
-        ):
+        if parameter_in_docstring.arg_name not in json_schema["properties"]:
+            message = (
+                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring not occur in the "
+                "method signature, possibly due to a typo."
+            )
+            warnings.warn(message=message, stacklevel=2)
+            continue
+
+        if parameter_in_docstring.description is not None:
             json_schema["properties"][parameter_in_docstring.arg_name].update(
                 description=parameter_in_docstring.description
             )
