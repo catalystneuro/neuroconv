@@ -51,7 +51,7 @@ def test_get_json_schema_from_method_signature_advanced():
     They should also be compatible with __future__.annotations for SpikeInterface.
     """
 
-    # TODO: enable | usage cases when 3.11 is minimal
+    # TODO: enable | instead of union when 3.11 is minimal
     def advanced_method(
         old_list_of_strings: List[str],
         new_list_of_strings: list[str],
