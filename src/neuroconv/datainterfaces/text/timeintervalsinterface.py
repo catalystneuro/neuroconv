@@ -4,14 +4,15 @@ from typing import Dict, Optional
 
 import numpy as np
 from pynwb import NWBFile
+from pynwb.epoch import TimeIntervals
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
-from ...utils.dict import load_dict_from_file
+from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.types import FilePathType
 
 
-class TimeIntervalsInterface(BaseDataInterface):
+class BaseTimeIntervalsInterface(BaseDataInterface):
     """Abstract Interface for time intervals."""
 
     keywords = ("table", "trials", "epochs", "time intervals")
@@ -154,3 +155,58 @@ class TimeIntervalsInterface(BaseDataInterface):
     @abstractmethod
     def _read_file(self, file_path: FilePathType, **read_kwargs):
         pass
+
+
+class TimeIntervalsInterface(BaseDataInterface):
+
+    display_name = "Time Intervals"
+    keywords = ("table", "trials", "epochs", "time intervals")
+    associated_suffixes = ()
+    info = "Interface for time intervals data added to metadata."
+
+    @classmethod
+    def add_to_nwbfile(cls, nwbfile: NWBFile, metadata: DeepDict) -> None:
+
+        for table_name, table_metadata in metadata["TimeIntervals"].items():
+            time_intervals = TimeIntervals(
+                name=table_name, description=table_metadata.get("description", "no description")
+            )
+
+            # add custom columns
+            for column_name, column_metadata in table_metadata["columns"].items():
+                if column_name not in ("start_time", "stop_time"):
+                    time_intervals.add_column(
+                        name=column_name, description=column_metadata.get("description", "no description")
+                    )
+            # handle any custom columns that were not defined in columns object
+            for column_name in table_metadata["data"][0]:
+                if column_name not in time_intervals.colnames + ("start_time", "stop_time"):
+                    time_intervals.add_column(name=key, description="no description")
+            # add data
+            for row in table_metadata["data"]:
+                time_intervals.add_interval(**row)
+
+            # add to nwbfile
+            if table_name == "trials":
+                nwbfile.trials = time_intervals
+            else:
+                nwbfile.add_time_intervals(time_intervals)
+
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+
+        time_intervals_schema = load_dict_from_file(Path(__file__).parent / "time_intervals.schema.json")
+        metadata_schema["properties"]["TimeIntervals"] = time_intervals_schema
+        return metadata_schema
+
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+        metadata["TimeIntervals"]["trials"] = dict(
+            columns=dict(
+                start_time=dict(description="start time of the trial"),
+                stop_time=dict(description="stop time of the trial"),
+            ),
+            data=[],
+        )
+
+        return metadata

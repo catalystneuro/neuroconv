@@ -1,10 +1,10 @@
 import pandas as pd
 
-from ..timeintervalsinterface import TimeIntervalsInterface
+from ..timeintervalsinterface import BaseTimeIntervalsInterface
 from ....utils.types import FilePathType
 
 
-class CsvTimeIntervalsInterface(TimeIntervalsInterface):
+class CsvTimeIntervalsInterface(BaseTimeIntervalsInterface):
     """Interface for adding data from a .csv file as a TimeIntervals object."""
 
     display_name = "CSV time interval table"

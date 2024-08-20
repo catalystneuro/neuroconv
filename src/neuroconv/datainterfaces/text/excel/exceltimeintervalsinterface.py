@@ -2,11 +2,11 @@ from typing import Optional
 
 import pandas as pd
 
-from ..timeintervalsinterface import TimeIntervalsInterface
+from ..timeintervalsinterface import BaseTimeIntervalsInterface
 from ....utils.types import FilePathType
 
 
-class ExcelTimeIntervalsInterface(TimeIntervalsInterface):
+class ExcelTimeIntervalsInterface(BaseTimeIntervalsInterface):
     """Interface for adding data from an Excel file to NWB as a TimeIntervals object."""
 
     display_name = "Excel time interval table"
