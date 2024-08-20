@@ -7,10 +7,9 @@ from typing import List, Optional, Union
 import numpy as np
 import pandas as pd
 import yaml
+from pydantic import FilePath
 from pynwb import NWBFile
 from ruamel.yaml import YAML
-
-from ....utils import FilePath
 
 
 def _read_config(config_file_path):

@@ -4,8 +4,7 @@ from typing import Union
 from warnings import warn
 
 from lxml import etree
-
-from ....utils import DirectoryPath
+from pydantic import DirectoryPath
 
 
 def _get_session_start_time(element: etree.Element) -> Union[datetime, None]:
