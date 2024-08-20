@@ -1230,3 +1230,238 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             optical_channel_names = [channel.name for channel in optical_channels]
             assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
+
+
+class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_no_metadata_mutation(self, metadata: dict):
+        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
+
+        metadata_in = deepcopy(metadata)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+
+        assert metadata == metadata_in
+
+    def check_run_conversion_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+    def check_configure_backend_for_equivalent_nwbfiles(
+        self, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
+
+    def check_run_conversion_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            backend_configuration=backend_configuration,
+            **self.conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
+
+    def test_all_conversion_checks(self, metadata: dict):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+
+                self.check_no_metadata_mutation(metadata=metadata)
+
+                self.check_configure_backend_for_equivalent_nwbfiles(metadata=metadata)
+
+                self.check_run_conversion_in_nwbconverter_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # TODO: enable when all H5DataIO prewraps are gone
+                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
+    def check_interface_get_original_timestamps(self):
+        """
+        Just to ensure each interface can call .get_original_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+        for stream_name, timestamps in stream_name_to_timestamps.items():
+            assert len(timestamps) != 0, f"Timestamps for {stream_name} are empty."
+
+    def check_interface_get_timestamps(self):
+        """
+        Just to ensure each interface can call .get_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
+        for stream_name, timestamps in stream_name_to_timestamps.items():
+            assert len(timestamps) != 0, f"Timestamps for {stream_name} are empty."
+
+    def check_interface_set_aligned_timestamps(self):
+        """Ensure that internal mechanisms for the timestamps getter/setter work as expected."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        self.setUpFreshInterface()
+        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_stream_name_to_timestamps = {}
+        for stream_name, unaligned_timestamps in unaligned_stream_name_to_timestamps.items():
+            aligned_timestamps = (
+                unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+            )
+            aligned_stream_name_to_timestamps[stream_name] = aligned_timestamps
+        self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
+        t1 += 1.23 if t1 != 0.0 else 0.0
+        t2 += 2.23 if t2 != 0.0 else 0.0
+
+        retrieved_aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
+        for stream_name, aligned_timestamps in aligned_stream_name_to_timestamps.items():
+            retrieved_aligned_timestamps = retrieved_aligned_stream_name_to_timestamps[stream_name]
+            assert_array_equal(retrieved_aligned_timestamps, aligned_timestamps)
+
+    def check_shift_timestamps_by_start_time(self):
+        """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        self.setUpFreshInterface()
+        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+
+        aligned_starting_time = 1.23
+        self.interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time, t1=t1, t2=t2)
+        t1 += aligned_starting_time if t1 != 0.0 else 0.0
+        t2 += aligned_starting_time if t2 != 0.0 else 0.0
+
+        aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
+        expected_timestamps_dict = {
+            name: unaligned_timestamps + aligned_starting_time
+            for name, unaligned_timestamps in unaligned_stream_name_to_timestamps.items()
+        }
+        for name, expected_timestamps in expected_timestamps_dict.items():
+            timestamps = aligned_stream_name_to_timestamps[name]
+            assert_array_equal(timestamps, expected_timestamps)
+
+    def check_interface_original_timestamps_inmutability(self):
+        """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        self.setUpFreshInterface()
+        pre_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+
+        aligned_stream_name_to_timestamps = {
+            name: pre_alignment_timestamps + 1.23
+            for name, pre_alignment_timestamps in pre_alignment_stream_name_to_timestamps.items()
+        }
+        self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
+
+        post_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+        for name, post_alignment_timestamps in post_alignment_stream_name_to_timestamps.items():
+            pre_alignment_timestamps = pre_alignment_stream_name_to_timestamps[name]
+            assert_array_equal(post_alignment_timestamps, pre_alignment_timestamps)
+
+    def test_interface_alignment(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+
+                self.check_interface_get_original_timestamps()
+                self.check_interface_get_timestamps()
+                self.check_interface_set_aligned_timestamps()
+                self.check_shift_timestamps_by_start_time()
+                self.check_interface_original_timestamps_inmutability()
+                self.check_nwbfile_temporal_alignment()
