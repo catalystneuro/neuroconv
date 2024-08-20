@@ -92,7 +92,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[Li
         The method to generate the JSON schema from.
     exclude : list of str, optional
         List of arguments to exclude from the schema generation.
-        Always includes 'self' and 'kwargs'.
+        Always includes 'self' and 'cls'.
 
     Returns
     -------
@@ -123,6 +123,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[Li
 
         arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
+    # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
         "_TempModel", __config__=pydantic.ConfigDict(arbitrary_types_allowed=True), **arguments_to_annotations
     )
