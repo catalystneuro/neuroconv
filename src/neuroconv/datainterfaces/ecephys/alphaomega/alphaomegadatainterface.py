@@ -1,5 +1,6 @@
+from pydantic import DirectoryPath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.types import FolderPathType
 
 
 class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
@@ -19,7 +20,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder of .mpx files."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for AlphaOmega.
 

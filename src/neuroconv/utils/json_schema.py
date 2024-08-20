@@ -1,20 +1,19 @@
 import collections.abc
 import inspect
 import json
+import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import docstring_parser
 import hdmf.data_utils
 import numpy as np
+import pydantic
 import pynwb
 from jsonschema import validate
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
-
-from .dict import dict_deep_update
-from .types import FilePathType, FolderPathType
 
 
 class NWBMetaDataEncoder(json.JSONEncoder):
@@ -70,104 +69,99 @@ def get_base_schema(
     return base_schema
 
 
-def get_schema_from_method_signature(method: Callable, exclude: list = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
+    """Deprecated version of `get_json_schema_from_method_signature`."""
+    message = (
+        "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
+        "This method is deprecated and will be removed after January 2025."
+    )
+    warnings.warn(message=message, category=DeprecationWarning, stacklevel=2)
+
+    return get_json_schema_from_method_signature(method=method, exclude=exclude)
+
+
+def get_json_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
     """
-    Take a class method and return a json-schema of the input args.
+    Get the equivalent JSON schema for a signature of a method.
+
+    Also uses `docstring_parser` (NumPy style) to attempt to find descriptions for the arguments.
 
     Parameters
     ----------
-    method: function
-    exclude: list, optional
+    method : callable
+        The method to generate the JSON schema from.
+    exclude : list of str, optional
+        List of arguments to exclude from the schema generation.
+        Always includes 'self' and 'cls'.
 
     Returns
     -------
-    dict
-
+    json_schema : dict
+        The JSON schema corresponding to the method signature.
     """
-    if exclude is None:
-        exclude = ["self", "kwargs"]
-    else:
-        exclude = exclude + ["self", "kwargs"]
-    input_schema = get_base_schema()
-    annotation_json_type_map = dict(
-        bool="boolean",
-        str="string",
-        int="number",
-        float="number",
-        dict="object",
-        list="array",
-        tuple="array",
-        FilePathType="string",
-        FolderPathType="string",
-    )
-    args_spec = dict()
-    parsed_docstring = docstring_parser.parse(method.__doc__)
-    for param_name, param in inspect.signature(method).parameters.items():
-        if param_name in exclude:
-            continue
-        args_spec[param_name] = dict()
-        for doc_param in parsed_docstring.params:
-            if doc_param.arg_name == param_name and doc_param.description:
-                args_spec[param_name].update(description=doc_param.description)
-        if param.annotation:
-            if getattr(param.annotation, "__origin__", None) == Literal:
-                args_spec[param_name]["enum"] = list(param.annotation.__args__)
-            elif getattr(param.annotation, "__origin__", None) == dict:
-                args_spec[param_name] = dict(type="object")
-                if param.annotation.__args__ == (str, str):
-                    args_spec[param_name].update(additionalProperties={"^.*$": dict(type="string")})
-                else:
-                    args_spec[param_name].update(additionalProperties=True)
-            elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
-                args = param.annotation.__args__
-                valid_args = [x.__name__ in annotation_json_type_map for x in args]
-                if not any(valid_args):
-                    raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
-                arg_types = [x for x in np.array(args)[valid_args]]
-                param_types = [annotation_json_type_map[x.__name__] for x in arg_types]
-                num_params = len(set(param_types))
-                conflict_message = (
-                    "Conflicting json parameter types were detected from the annotation! "
-                    f"{param.annotation.__args__} found."
-                )
-                # Normally cannot support Union[...] of multiple annotation types
-                if num_params > 2:
-                    raise ValueError(conflict_message)
-                # Special condition for Optional[...]
-                if num_params == 2 and args[1] is not type(None):  # noqa: E721
-                    raise ValueError(conflict_message)
+    exclude = exclude or []
+    exclude += ["self", "cls"]
 
-                # Guaranteed to only have a single index by this point
-                args_spec[param_name]["type"] = param_types[0]
-                if arg_types[0] == FilePathType:
-                    input_schema["properties"].update({param_name: dict(format="file")})
-                elif arg_types[0] == FolderPathType:
-                    input_schema["properties"].update({param_name: dict(format="directory")})
-            else:
-                arg = param.annotation
-                if arg.__name__ in annotation_json_type_map:
-                    args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
-                else:
-                    raise ValueError(
-                        f"No valid arguments were found in the json type mapping '{arg}' for parameter {param}"
-                    )
-                if arg == FilePathType:
-                    input_schema["properties"].update({param_name: dict(format="file")})
-                if arg == FolderPathType:
-                    input_schema["properties"].update({param_name: dict(format="directory")})
-        else:
-            raise NotImplementedError(
-                f"The annotation type of '{param}' in function '{method}' is not implemented! "
-                "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
-                "or create the json-schema for this method manually."
+    signature = inspect.signature(obj=method)
+    parameters = signature.parameters
+    additional_properties = False
+    arguments_to_annotations = {}
+    for argument_name in parameters:
+        if argument_name in exclude:
+            continue
+
+        parameter = parameters[argument_name]
+
+        if parameter.kind == inspect.Parameter.VAR_KEYWORD:  # Skip all **{...} usage
+            additional_properties = True
+            continue
+
+        annotation = parameter.annotation
+
+        # Pydantic uses ellipsis for required
+        pydantic_default = ... if parameter.default is inspect._empty else parameter.default
+
+        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
+
+    # The ConfigDict is required to support custom types like NumPy arrays
+    model = pydantic.create_model(
+        "_TempModel", __config__=pydantic.ConfigDict(arbitrary_types_allowed=True), **arguments_to_annotations
+    )
+
+    temp_json_schema = model.model_json_schema()
+
+    # We never used to include titles in the lower schema layers
+    # But Pydantic does automatically
+    json_schema = _copy_without_title_keys(temp_json_schema)
+
+    # Pydantic does not make determinations on additionalProperties
+    json_schema["additionalProperties"] = additional_properties
+
+    # Attempt to find descriptions within the docstring of the method
+    parsed_docstring = docstring_parser.parse(method.__doc__)
+    for parameter_in_docstring in parsed_docstring.params:
+        if parameter_in_docstring.arg_name not in json_schema["properties"]:
+            message = (
+                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring not occur in the "
+                "method signature, possibly due to a typo."
             )
-        if param.default is param.empty:
-            input_schema["required"].append(param_name)
-        elif param.default is not None:
-            args_spec[param_name].update(default=param.default)
-        input_schema["properties"] = dict_deep_update(input_schema["properties"], args_spec)
-        input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
-    return input_schema
+            warnings.warn(message=message, stacklevel=2)
+            continue
+
+        if parameter_in_docstring.description is not None:
+            json_schema["properties"][parameter_in_docstring.arg_name].update(
+                description=parameter_in_docstring.description
+            )
+    # TODO: could also add Field support for more direct control over docstrings (and enhanced validation conditions)
+
+    return json_schema
+
+
+def _copy_without_title_keys(d: Any, /) -> Optional[dict]:
+    if not isinstance(d, dict):
+        return d
+
+    return {key: _copy_without_title_keys(value) for key, value in d.items() if key != "title"}
 
 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
