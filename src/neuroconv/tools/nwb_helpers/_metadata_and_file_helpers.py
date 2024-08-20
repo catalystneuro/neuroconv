@@ -391,9 +391,34 @@ def repack_nwbfile(
     backend: Literal["hdf5", "zarr"] = "hdf5",
     export_backend: Literal["hdf5", "zarr", None] = None,
     use_default_backend_configuration: bool = True,
-    backend_configuration_changes: dict = None,
+    backend_configuration_changes: dict[str, dict] = None,
 ):
-    """Repack the NWBFile with the new backend configuration changes."""  # NOTE: keys for configuration_changes must be as they appear in the BackendConfiguration NOT how they appear in the H5DataIO
+    """
+    Repack an NWBFile with a new backend configuration.
+
+    Parameters
+    ----------
+    nwbfile_path : Path
+        Path to the NWB file to be repacked.
+    export_nwbfile_path : Path
+        Path to export the repacked NWB file.
+    backend : {"hdf5", "zarr"}, default: "hdf5"
+        The type of backend used to read the file.
+    export_backend : {"hdf5", "zarr", None}, default: None
+        The type of backend used to write the repacked file. If None, the same backend as the input file is used.
+    use_default_backend_configuration : bool, default: True
+        Whether to use the default backend configuration for the specified backend and nwbfile. If False, the nwbfile
+        must be written to disk and its existing backend configuration is used.
+    backend_configuration_changes : dict, default: None
+        Changes to the backend configuration. The keys are the locations of the datasets in the NWB file, and the values
+        are dictionaries of the changes to be made to the dataset configuration.
+
+    Notes
+    -----
+    The keys for the `backend_configuration_changes` must be as they appear in the BackendConfiguration NOT how they
+    appear in the H5DataIO. For example, if you want to change the chunking of the 'acquisition/RawTimeSeries/data'
+    dataset to (10,), you would pass {'acquisition/RawTimeSeries/data': {'chunk_shape': (10,)}}.
+    """
     backend_configuration_changes = backend_configuration_changes or dict()
     export_backend = export_backend or backend
 

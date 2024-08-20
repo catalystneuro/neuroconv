@@ -60,6 +60,23 @@ class BackendConfiguration(BaseModel):
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile, use_default_dataset_io_configurations: bool = True) -> Self:
+        """
+        Create a backend configuration from an NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to extract the backend configuration from.
+        use_default_dataset_io_configurations : bool, optional
+            Whether to use default dataset configurations, by default True. If False, the existing dataset
+            configurations in the NWBFile will be used, which requires that the NWBFile was read from an io object.
+
+        Returns
+        -------
+        Self
+            The backend configuration extracted from the NWBFile.
+        """
+
         if use_default_dataset_io_configurations:
             dataset_io_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         else:

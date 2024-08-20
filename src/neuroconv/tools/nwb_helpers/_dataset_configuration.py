@@ -178,6 +178,21 @@ def get_existing_dataset_io_configurations(
     nwbfile: NWBFile,
     backend: Literal["hdf5", "zarr"],
 ) -> Generator[DatasetIOConfiguration, None, None]:
+    """
+    Generate DatasetIOConfiguration objects for each neurodata object in an nwbfile.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        An NWBFile object that has been read from an existing file with an existing backend configuration.
+    backend : "hdf5" or "zarr"
+        Which backend format type you would like to use in configuring each dataset's compression methods and options.
+
+    Yields
+    ------
+    DatasetIOConfiguration
+        A configuration object for each dataset in the NWB file.
+    """
 
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
