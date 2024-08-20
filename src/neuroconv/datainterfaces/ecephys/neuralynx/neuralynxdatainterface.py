@@ -2,11 +2,11 @@ import json
 from typing import List, Optional
 
 import numpy as np
+from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FolderPathType
-from ....utils.json_schema import dict_deep_update
+from ....utils import dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
@@ -18,7 +18,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Neuralynx recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> List[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
@@ -34,7 +34,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
@@ -98,7 +98,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-    def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, sampling_frequency: float = None, verbose: bool = True):
         """_summary_
 
         Parameters
