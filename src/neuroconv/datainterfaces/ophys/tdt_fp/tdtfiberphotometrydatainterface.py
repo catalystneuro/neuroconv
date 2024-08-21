@@ -27,7 +27,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     info = "Data Interface for converting fiber photometry data from TDT files."
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
-    def __init__(self, folder_path: FilePathType, verbose: bool = True):
+    def __init__(self, folder_path: FilePath, verbose: bool = True):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
