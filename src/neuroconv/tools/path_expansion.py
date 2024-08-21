@@ -4,7 +4,7 @@ import abc
 import os
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Iterable
 
 from parse import parse
 from pydantic import DirectoryPath, FilePath
@@ -34,7 +34,7 @@ class AbstractPathExpander(abc.ABC):
 
         Yields
         ------
-        Tuple[Path, Dict[str, Any]]
+        tuple[Path, dict[str, Any]]
             A tuple containing the file path as a `Path` object and a dictionary of the named metadata
             extracted from the file path.
         """
@@ -67,7 +67,7 @@ class AbstractPathExpander(abc.ABC):
         """
         pass
 
-    def expand_paths(self, source_data_spec: Dict[str, dict]) -> List[DeepDict]:
+    def expand_paths(self, source_data_spec: dict[str, dict]) -> list[DeepDict]:
         """
         Match paths in a directory to specs and extract metadata from the paths.
 

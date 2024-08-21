@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 import scipy
@@ -28,7 +28,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".wav",)
     info = "Interface for writing audio recordings to an NWB file."
 
-    def __init__(self, file_paths: List[FilePath], verbose: bool = False):
+    def __init__(self, file_paths: list[FilePath], verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -105,7 +105,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> Optional[np.ndarray]:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -132,7 +132,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 "Please set them using 'set_aligned_segment_starting_times'."
             )
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
         """
         Align the individual starting time for each audio file in this interface relative to the common session start time.
 

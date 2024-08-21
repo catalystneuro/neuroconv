@@ -4,7 +4,7 @@ import json
 import warnings
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Union
 
 from jsonschema import validate
 from pydantic import FilePath
@@ -36,8 +36,8 @@ class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
     display_name: Union[str, None] = None
-    keywords: Tuple[str] = tuple()
-    associated_suffixes: Tuple[str] = tuple()
+    keywords: tuple[str] = tuple()
+    associated_suffixes: tuple[str] = tuple()
     info: Union[str, None] = None
 
     data_interface_classes = None
@@ -57,11 +57,11 @@ class NWBConverter:
         return source_schema
 
     @classmethod
-    def validate_source(cls, source_data: Dict[str, dict], verbose: bool = True):
+    def validate_source(cls, source_data: dict[str, dict], verbose: bool = True):
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
+    def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = True):
 
         encoder = NWBSourceDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
@@ -73,7 +73,7 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
-    def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+    def __init__(self, source_data: dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
         self._validate_source_data(source_data=source_data, verbose=self.verbose)
@@ -102,7 +102,7 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def validate_metadata(self, metadata: Dict[str, dict], append_mode: bool = False):
+    def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
         encoder = NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
@@ -135,7 +135,7 @@ class NWBConverter:
 
         return conversion_options_schema
 
-    def validate_conversion_options(self, conversion_options: Dict[str, dict]):
+    def validate_conversion_options(self, conversion_options: dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""
         validate(instance=conversion_options or {}, schema=self.get_conversion_options_schema())
         if self.verbose:
@@ -289,7 +289,7 @@ class ConverterPipe(NWBConverter):
     def validate_source(cls):
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
-    def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
+    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose
         if isinstance(data_interfaces, list):
             # Create unique names for each interface

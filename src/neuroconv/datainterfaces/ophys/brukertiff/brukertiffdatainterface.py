@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from dateutil.parser import parse
 from pydantic import DirectoryPath
@@ -64,7 +64,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._image_size = self.imaging_extractor.get_image_size()
 
-    def _determine_position_current(self) -> List[float]:
+    def _determine_position_current(self) -> list[float]:
         """
         Returns y, x, and z position values. The unit of values is in the microscope reference frame.
         """
@@ -222,7 +222,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._image_size = self.imaging_extractor.get_image_size()
 
-    def _determine_position_current(self) -> List[float]:
+    def _determine_position_current(self) -> list[float]:
         """
         Returns y, x, and z position values. The unit of values is in the microscope reference frame.
         """

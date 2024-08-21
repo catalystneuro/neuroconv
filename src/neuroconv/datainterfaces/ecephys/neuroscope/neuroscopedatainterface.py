@@ -269,7 +269,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         keep_mua_units: bool = True,
-        exclude_shanks: Optional[list] = None,
+        exclude_shanks: Optional[list[int]] = None,
         xml_file_path: Optional[FilePath] = None,
         verbose: bool = True,
     ):
@@ -282,7 +282,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Path to folder containing .clu and .res files.
         keep_mua_units : bool, default: True
             Optional. Whether to return sorted spikes from multi-unit activity.
-        exclude_shanks : list, optional
+        exclude_shanks : list of integers, optional
             List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
             final integer of all the .res.%i and .clu.%i pairs.
         xml_file_path : FilePathType, optional

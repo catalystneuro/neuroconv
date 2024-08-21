@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 from pydantic import FilePath
@@ -76,7 +76,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )
 
-    def set_aligned_timestamps(self, aligned_timestamps: Union[List, np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: Union[list, np.ndarray]):
         """
         Set aligned timestamps vector for DLC data with user defined timestamps
 

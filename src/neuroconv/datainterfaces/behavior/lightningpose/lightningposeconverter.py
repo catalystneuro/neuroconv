@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import FilePath
 from pynwb import NWBFile
@@ -106,8 +106,8 @@ class LightningPoseConverter(NWBConverter):
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
         external_mode: bool = True,
-        starting_frames_original_videos: Optional[List[int]] = None,
-        starting_frames_labeled_videos: Optional[List[int]] = None,
+        starting_frames_original_videos: Optional[list[int]] = None,
+        starting_frames_labeled_videos: Optional[list[int]] = None,
         stub_test: bool = False,
     ):
         original_video_interface = self.data_interface_objects["OriginalVideo"]

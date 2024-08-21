@@ -3,7 +3,7 @@ import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import neo.io.baseio
 import numpy as np
@@ -65,7 +65,7 @@ def get_number_of_segments(neo_reader, block: int = 0) -> int:
     return neo_reader.header["nb_segment"][block]
 
 
-def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
+def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tuple[list, str, str]:
     """
     Get command traces (e.g. voltage clamp command traces).
 
@@ -213,7 +213,7 @@ def add_icephys_recordings(
     metadata: dict = None,
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: str = "not described",
-    skip_electrodes: Tuple[int] = (),
+    skip_electrodes: tuple[int] = (),
     compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
 ):
     """
@@ -383,7 +383,7 @@ def add_neo_to_nwb(
     compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
-    skip_electrodes: Tuple[int] = (),
+    skip_electrodes: tuple[int] = (),
 ):
     """
     Auxiliary static method for nwbextractor.

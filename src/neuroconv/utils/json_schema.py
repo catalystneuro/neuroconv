@@ -4,7 +4,7 @@ import json
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import docstring_parser
 import hdmf.data_utils
@@ -48,8 +48,8 @@ def get_base_schema(
     tag: Optional[str] = None,
     root: bool = False,
     id_: Optional[str] = None,
-    required: Optional[List] = None,
-    properties: Optional[Dict] = None,
+    required: Optional[list[str]] = None,
+    properties: Optional[dict] = None,
     **kwargs,
 ) -> dict:
     """Return the base schema used for all other schemas."""
@@ -69,7 +69,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
     """Deprecated version of `get_json_schema_from_method_signature`."""
     message = (
         "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
@@ -80,7 +80,7 @@ def get_schema_from_method_signature(method: Callable, exclude: Optional[List[st
     return get_json_schema_from_method_signature(method=method, exclude=exclude)
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
+def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -326,7 +326,7 @@ def get_metadata_schema_for_icephys():
     return schema
 
 
-def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbose: bool = False):
+def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
     encoder = NWBMetaDataEncoder()
     # The encoder produces a serialized object, so we deserialized it for comparison

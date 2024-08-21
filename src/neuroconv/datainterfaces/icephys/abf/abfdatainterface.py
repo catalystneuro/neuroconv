@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
 from warnings import warn
 
 from pydantic import FilePath
@@ -52,7 +51,7 @@ class AbfInterface(BaseIcephysInterface):
         return source_schema
 
     def __init__(
-        self, file_paths: List[FilePath], icephys_metadata: dict = None, icephys_metadata_file_path: FilePath = None
+        self, file_paths: list[FilePath], icephys_metadata: dict = None, icephys_metadata_file_path: FilePath = None
     ):
         """
         ABF IcephysInterface based on Neo AxonIO.
@@ -161,7 +160,7 @@ class AbfInterface(BaseIcephysInterface):
                 reader._t_starts[segment_index] += aligned_starting_time
 
     def set_aligned_segment_starting_times(
-        self, aligned_segment_starting_times: List[List[float]], stub_test: bool = False
+        self, aligned_segment_starting_times: list[list[float]], stub_test: bool = False
     ):
         """
         Align the individual starting time for each video in this interface relative to the common session start time.
