@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 
 from jsonschema.validators import validate
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import (
