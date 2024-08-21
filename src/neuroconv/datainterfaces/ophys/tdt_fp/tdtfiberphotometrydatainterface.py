@@ -11,7 +11,7 @@ from pynwb.file import NWBFile
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package
 from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
-from neuroconv.utils import DeepDict, FilePathType
+from neuroconv.utils import DeepDict
 
 
 class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
