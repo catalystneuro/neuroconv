@@ -89,6 +89,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text
@@ -149,6 +150,7 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    TDTFiberPhotometryInterface,
     # Behavior
     VideoInterface,
     AudioInterface,
@@ -185,6 +187,7 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
+    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
         Video=VideoInterface,
