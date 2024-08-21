@@ -8,9 +8,9 @@ from typing import Optional, Tuple
 import neo.io.baseio
 import numpy as np
 import pynwb
+from pydantic import FilePath
 
 from ..nwb_helpers import add_device_from_metadata
-from ...utils import OptionalFilePathType
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -439,7 +439,7 @@ def add_neo_to_nwb(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: OptionalFilePathType = None,  # pragma: no cover
+    save_path: Optional[FilePath] = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,

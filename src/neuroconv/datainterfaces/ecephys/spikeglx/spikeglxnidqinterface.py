@@ -2,11 +2,12 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
+from pydantic import FilePath
 
 from .spikeglx_utils import get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
@@ -27,7 +28,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         verbose: bool = True,
         load_sync_channel: bool = False,
         es_key: str = "ElectricalSeriesNIDQ",

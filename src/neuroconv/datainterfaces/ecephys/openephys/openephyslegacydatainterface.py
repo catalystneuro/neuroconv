@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import List, Optional
 from warnings import warn
 
+from pydantic import DirectoryPath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FolderPathType
 
 
 class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
@@ -18,7 +19,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for converting legacy OpenEphys recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> List[str]:
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
@@ -36,7 +37,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
         verbose: bool = True,

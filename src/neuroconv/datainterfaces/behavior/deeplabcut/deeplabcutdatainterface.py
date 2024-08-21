@@ -2,10 +2,10 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import numpy as np
+from pydantic import FilePath
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import FilePathType
 
 
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
@@ -27,8 +27,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
-        config_file_path: FilePathType,
+        file_path: FilePath,
+        config_file_path: FilePath,
         subject_name: str = "ind1",
         verbose: bool = True,
     ):
@@ -37,9 +37,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             path to the h5 file output by dlc.
-        config_file_path : FilePathType
+        config_file_path : FilePath
             path to .yml config file
         subject_name : str, default: "ind1"
             the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.

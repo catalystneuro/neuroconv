@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....utils import (
     DeepDict,
-    FilePathType,
     calculate_regular_series_rate,
     get_base_schema,
 )
@@ -60,9 +60,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
-        original_video_file_path: FilePathType,
-        labeled_video_file_path: Optional[FilePathType] = None,
+        file_path: FilePath,
+        original_video_file_path: FilePath,
+        labeled_video_file_path: Optional[FilePath] = None,
         verbose: bool = True,
     ):
         """
@@ -70,9 +70,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : a string or a path
+        file_path : FilePath
             Path to the .csv file that contains the predictions from Lightning Pose.
-        original_video_file_path : a string or a path
+        original_video_file_path : FilePath
             Path to the original video file (.mp4).
         labeled_video_file_path : a string or a path, optional
             Path to the labeled video file (.mp4).
