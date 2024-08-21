@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 from time import sleep, time
-from typing import Dict, List, Tuple, Union
+from typing import Union
 
 from pydantic import DirectoryPath
 from tqdm import tqdm
@@ -15,7 +15,7 @@ from ..processes import deploy_process
 
 def get_globus_dataset_content_sizes(
     globus_endpoint_id: str, path: str, recursive: bool = True, timeout: float = 120.0
-) -> Dict[str, int]:  # pragma: no cover
+) -> dict[str, int]:  # pragma: no cover
     """
     May require external login via 'globus login' from CLI.
 
@@ -35,13 +35,13 @@ def get_globus_dataset_content_sizes(
 
 def transfer_globus_content(
     source_endpoint_id: str,
-    source_files: Union[str, List[List[str]]],
+    source_files: Union[str, list[list[str]]],
     destination_endpoint_id: str,
     destination_folder: DirectoryPath,
     display_progress: bool = True,
     progress_update_rate: float = 60.0,
     progress_update_timeout: float = 600.0,
-) -> Tuple[bool, List[str]]:  # pragma: no cover
+) -> tuple[bool, list[str]]:  # pragma: no cover
     """
     Track progress for transferring content from source_endpoint_id to destination_endpoint_id:destination_folder.
 
@@ -81,10 +81,10 @@ def transfer_globus_content(
 
     def _submit_transfer_request(
         source_endpoint_id: str,
-        source_files: Union[str, List[List[str]]],
+        source_files: Union[str, list[list[str]]],
         destination_endpoint_id: str,
         destination_folder_path: Path,
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """Send transfer request to Globus."""
         folder_content_sizes = dict()
         task_total_sizes = dict()
@@ -134,7 +134,7 @@ def transfer_globus_content(
         return task_total_sizes
 
     def _track_transfer(
-        task_total_sizes: Dict[str, int],
+        task_total_sizes: dict[str, int],
         display_progress: bool = True,
         progress_update_rate: float = 60.0,
         progress_update_timeout: float = 600.0,

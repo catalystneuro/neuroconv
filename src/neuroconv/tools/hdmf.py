@@ -2,21 +2,20 @@
 
 import math
 import warnings
-from typing import Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
-    def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> Tuple[int]:
+    def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> tuple[int]:
         return self.estimate_default_buffer_shape(
             buffer_gb=buffer_gb, chunk_shape=self.chunk_shape, maxshape=self.maxshape, dtype=self.dtype
         )
 
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
-    def estimate_default_chunk_shape(chunk_mb: float, maxshape: Tuple[int, ...], dtype: np.dtype) -> Tuple[int, ...]:
+    def estimate_default_chunk_shape(chunk_mb: float, maxshape: tuple[int, ...], dtype: np.dtype) -> tuple[int, ...]:
         """
         Select chunk shape with size in MB less than the threshold of chunk_mb.
 
@@ -47,8 +46,8 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
     def estimate_default_buffer_shape(
-        buffer_gb: float, chunk_shape: Tuple[int, ...], maxshape: Tuple[int, ...], dtype: np.dtype
-    ) -> Tuple[int, ...]:
+        buffer_gb: float, chunk_shape: tuple[int, ...], maxshape: tuple[int, ...], dtype: np.dtype
+    ) -> tuple[int, ...]:
         # Elevate any overflow warnings to trigger error.
         # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
         # avoided at all costs.
@@ -149,5 +148,5 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
     def _get_maxshape(self) -> tuple:
         return self.data.shape
 
-    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+    def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         return self.data[selection]

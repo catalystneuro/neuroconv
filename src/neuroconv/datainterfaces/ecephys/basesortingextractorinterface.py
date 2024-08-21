@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -83,7 +83,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
 
-    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -138,7 +138,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                     times=aligned_timestamps[segment_index], segment_index=segment_index
                 )
 
-    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for all segments in this interface with those aligned to the common session start time.
 
@@ -182,7 +182,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 else:
                     sorting_segment._t_start += aligned_starting_time
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
         """
         Align the starting time for each segment in this interface relative to the common session start time.
 

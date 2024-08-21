@@ -1,6 +1,6 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Literal, Union
 
 import numcodecs
 import zarr
@@ -58,11 +58,11 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
-    compression_options: Union[Dict[str, Any], None] = Field(
+    compression_options: Union[dict[str, Any], None] = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
     filter_methods: Union[
-        List[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec]]], None
+        list[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec]]], None
     ] = Field(
         default=None,
         description=(
@@ -72,7 +72,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             "Set to `None` to disable filtering."
         ),
     )
-    filter_options: Union[List[Dict[str, Any]], None] = Field(
+    filter_options: Union[list[dict[str, Any]], None] = Field(
         default=None, description="The optional parameters to use for each specified filter method."
     )
 
@@ -88,7 +88,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         return string
 
     @model_validator(mode="before")
-    def validate_filter_methods_and_options_length_match(cls, values: Dict[str, Any]):
+    def validate_filter_methods_and_options_length_match(cls, values: dict[str, Any]):
         filter_methods = values.get("filter_methods", None)
         filter_options = values.get("filter_options", None)
 
@@ -110,7 +110,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return values
 
-    def get_data_io_kwargs(self) -> Dict[str, Any]:
+    def get_data_io_kwargs(self) -> dict[str, Any]:
         filters = None
         if self.filter_methods:
             filters = list()

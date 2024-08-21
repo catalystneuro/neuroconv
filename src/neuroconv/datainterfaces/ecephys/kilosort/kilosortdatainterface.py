@@ -1,5 +1,6 @@
+from pydantic import DirectoryPath
+
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FolderPathType
 
 
 class KiloSortSortingInterface(BaseSortingExtractorInterface):
@@ -19,7 +20,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         keep_good_only: bool = False,
         verbose: bool = True,
     ):

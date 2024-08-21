@@ -1,9 +1,9 @@
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from dateutil.parser import parse
+from pydantic import DirectoryPath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FolderPathType
 from ....utils.dict import DeepDict
 
 
@@ -25,7 +25,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     @classmethod
     def get_streams(
         cls,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         plane_separation_type: Literal["contiguous", "disjoint"] = None,
     ) -> dict:
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
@@ -40,7 +40,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         verbose: bool = True,
     ):
@@ -49,7 +49,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
@@ -64,7 +64,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._image_size = self.imaging_extractor.get_image_size()
 
-    def _determine_position_current(self) -> List[float]:
+    def _determine_position_current(self) -> list[float]:
         """
         Returns y, x, and z position values. The unit of values is in the microscope reference frame.
         """
@@ -190,7 +190,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @classmethod
-    def get_streams(cls, folder_path: FolderPathType) -> dict:
+    def get_streams(cls, folder_path: DirectoryPath) -> dict:
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
@@ -198,7 +198,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         verbose: bool = True,
     ):
@@ -207,7 +207,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
@@ -222,7 +222,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._image_size = self.imaging_extractor.get_image_size()
 
-    def _determine_position_current(self) -> List[float]:
+    def _determine_position_current(self) -> list[float]:
         """
         Returns y, x, and z position values. The unit of values is in the microscope reference frame.
         """

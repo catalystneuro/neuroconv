@@ -1,6 +1,7 @@
 from copy import deepcopy
-from typing import List, Optional
+from typing import Optional
 
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter
@@ -8,7 +9,6 @@ from neuroconv.datainterfaces import LightningPoseDataInterface, VideoInterface
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
-    FilePathType,
     dict_deep_update,
     get_schema_from_method_signature,
 )
@@ -28,9 +28,9 @@ class LightningPoseConverter(NWBConverter):
 
     def __init__(
         self,
-        file_path: FilePathType,
-        original_video_file_path: FilePathType,
-        labeled_video_file_path: Optional[FilePathType] = None,
+        file_path: FilePath,
+        original_video_file_path: FilePath,
+        labeled_video_file_path: Optional[FilePath] = None,
         image_series_original_video_name: Optional[str] = None,
         image_series_labeled_video_name: Optional[str] = None,
         verbose: bool = True,
@@ -41,11 +41,11 @@ class LightningPoseConverter(NWBConverter):
 
         Parameters
         ----------
-        file_path : a string or a path
+        file_path : FilePath
             Path to the .csv file that contains the predictions from Lightning Pose.
-        original_video_file_path : a string or a path
+        original_video_file_path : FilePath
             Path to the original video file (.mp4).
-        labeled_video_file_path : a string or a path, optional
+        labeled_video_file_path : FilePath, optional
             Path to the labeled video file (.mp4).
         image_series_original_video_name: string, optional
             The name of the ImageSeries to add for the original video.
@@ -106,8 +106,8 @@ class LightningPoseConverter(NWBConverter):
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
         external_mode: bool = True,
-        starting_frames_original_videos: Optional[List[int]] = None,
-        starting_frames_labeled_videos: Optional[List[int]] = None,
+        starting_frames_original_videos: Optional[list[int]] = None,
+        starting_frames_labeled_videos: Optional[list[int]] = None,
         stub_test: bool = False,
     ):
         original_video_interface = self.data_interface_objects["OriginalVideo"]
@@ -160,7 +160,7 @@ class LightningPoseConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Optional[FilePath] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
