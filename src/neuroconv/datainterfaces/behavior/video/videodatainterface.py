@@ -30,7 +30,7 @@ class VideoInterface(BaseDataInterface):
 
     def __init__(
         self,
-        file_paths: List[FilePath],
+        file_paths: list[FilePath],
         verbose: bool = False,
         *,
         metadata_key_name: str = "Videos",

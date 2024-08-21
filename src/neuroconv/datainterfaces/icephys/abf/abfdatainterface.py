@@ -51,7 +51,7 @@ class AbfInterface(BaseIcephysInterface):
         return source_schema
 
     def __init__(
-        self, file_paths: List[FilePath], icephys_metadata: dict = None, icephys_metadata_file_path: FilePath = None
+        self, file_paths: list[FilePath], icephys_metadata: dict = None, icephys_metadata_file_path: FilePath = None
     ):
         """
         ABF IcephysInterface based on Neo AxonIO.

@@ -28,7 +28,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".wav",)
     info = "Interface for writing audio recordings to an NWB file."
 
-    def __init__(self, file_paths: List[FilePath], verbose: bool = False):
+    def __init__(self, file_paths: list[FilePath], verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
 
