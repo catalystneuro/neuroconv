@@ -6,7 +6,7 @@ from typing import Literal
 
 import numpy as np
 import pytz
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -28,6 +28,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     info = "Data Interface for converting fiber photometry data from TDT files."
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
+    @validate_call
     def __init__(self, folder_path: FilePath, verbose: bool = True):
         """Initialize the TDTFiberPhotometryInterface.
 

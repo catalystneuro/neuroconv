@@ -2,7 +2,7 @@ import json
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
@@ -20,6 +20,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".nvt",)
     info = "Interface for writing Neuralynx position tracking .nvt files to NWB."
 
+    @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True):
         """
         Interface for writing Neuralynx .nvt files to nwb.

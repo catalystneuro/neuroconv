@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from .spikeglx_utils import get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -25,6 +25,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

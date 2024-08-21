@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
@@ -26,6 +26,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return source_schema
 
+    @validate_call
     def __init__(self, folder_path: DirectoryPath):
         """
         Initialize reading the Miniscope imaging data.

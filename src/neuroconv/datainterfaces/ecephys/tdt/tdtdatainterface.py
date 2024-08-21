@@ -1,4 +1,4 @@
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
@@ -10,6 +10,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
     info = "Interface for TDT recording data."
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,
