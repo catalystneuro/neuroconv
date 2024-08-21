@@ -1175,7 +1175,7 @@ def write_recording(
 
 def write_recording_to_nwbfile(
     recording: BaseRecording,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1196,7 +1196,7 @@ def write_recording_to_nwbfile(
     Parameters
     ----------
     recording : spikeinterface.BaseRecording
-    nwbfile_path : FilePathType, optional
+    nwbfile_path : FilePath, optional
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
@@ -1777,7 +1777,7 @@ def write_sorting(
 
 def write_sorting_to_nwbfile(
     sorting: BaseSorting,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1799,7 +1799,7 @@ def write_sorting_to_nwbfile(
     Parameters
     ----------
     sorting : spikeinterface.BaseSorting
-    nwbfile_path : FilePathType, optional
+    nwbfile_path : FilePath, optional
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
@@ -2056,7 +2056,7 @@ def write_sorting_analyzer(
 
 def write_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -2083,7 +2083,7 @@ def write_sorting_analyzer_to_nwbfile(
     ----------
     sorting_analyzer : spikeinterface.SortingAnalyzer
         The sorting analyzer object to be written to the NWBFile.
-    nwbfile_path : FilePathType
+    nwbfile_path : FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
