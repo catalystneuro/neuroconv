@@ -141,25 +141,23 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     ) -> Self:
         if use_default_dataset_io_configuration:
             return super().from_neurodata_object(neurodata_object=neurodata_object, dataset_name=dataset_name)
-        else:  # TODO: Remove else to decrease indentation
-            location_in_file = _find_location_in_memory_nwbfile(
-                neurodata_object=neurodata_object, field_name=dataset_name
-            )
-            full_shape = getattr(neurodata_object, dataset_name).shape
-            dtype = getattr(neurodata_object, dataset_name).dtype
-            chunk_shape = getattr(neurodata_object, dataset_name).chunks
-            buffer_shape = full_shape  # TODO: replace with default buffer shape
-            compression_method = getattr(neurodata_object, dataset_name).compressor
-            filter_methods = getattr(neurodata_object, dataset_name).filters
-            return cls(
-                object_id=neurodata_object.object_id,
-                object_name=neurodata_object.name,
-                location_in_file=location_in_file,
-                dataset_name=dataset_name,
-                full_shape=full_shape,
-                dtype=dtype,
-                chunk_shape=chunk_shape,
-                buffer_shape=buffer_shape,
-                compression_method=compression_method,
-                filter_methods=filter_methods,
-            )
+
+        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
+        full_shape = getattr(neurodata_object, dataset_name).shape
+        dtype = getattr(neurodata_object, dataset_name).dtype
+        chunk_shape = getattr(neurodata_object, dataset_name).chunks
+        buffer_shape = full_shape  # TODO: replace with default buffer shape
+        compression_method = getattr(neurodata_object, dataset_name).compressor
+        filter_methods = getattr(neurodata_object, dataset_name).filters
+        return cls(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            location_in_file=location_in_file,
+            dataset_name=dataset_name,
+            full_shape=full_shape,
+            dtype=dtype,
+            chunk_shape=chunk_shape,
+            buffer_shape=buffer_shape,
+            compression_method=compression_method,
+            filter_methods=filter_methods,
+        )
