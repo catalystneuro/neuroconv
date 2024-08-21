@@ -6,6 +6,7 @@ from typing import Literal
 
 import numpy as np
 import pytz
+from pydantic import FilePath
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -32,7 +33,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        folder_path : FilePathType
+        folder_path : FilePath
             The path to the folder containing the TDT data.
         verbose : bool, optional
             Whether to print status messages, default = True.
