@@ -2,7 +2,6 @@
 
 import math
 import warnings
-from typing import Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator

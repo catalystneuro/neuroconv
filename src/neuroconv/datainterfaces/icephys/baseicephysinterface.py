@@ -1,5 +1,4 @@
 import importlib.util
-from typing import Tuple
 
 import numpy as np
 from pynwb import NWBFile

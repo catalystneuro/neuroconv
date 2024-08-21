@@ -3,7 +3,7 @@ import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import neo.io.baseio
 import numpy as np
