@@ -3,11 +3,13 @@
 from typing import Any, Dict, List, Literal, Self, Union
 
 import numcodecs
+import numpy as np
 import zarr
 from hdmf import Container
 from pydantic import Field, InstanceOf, model_validator
 
 from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
+from ...hdmf import SliceableDataChunkIterator
 
 _base_zarr_codecs = set(zarr.codec_registry.keys())
 _lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
@@ -146,7 +148,10 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         full_shape = getattr(neurodata_object, dataset_name).shape
         dtype = getattr(neurodata_object, dataset_name).dtype
         chunk_shape = getattr(neurodata_object, dataset_name).chunks
-        buffer_shape = full_shape  # TODO: replace with default buffer shape
+        buffer_chunk_shape = chunk_shape or full_shape
+        buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+            buffer_gb=0.5, chunk_shape=buffer_chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+        )
         compression_method = getattr(neurodata_object, dataset_name).compressor
         filter_methods = getattr(neurodata_object, dataset_name).filters
         return cls(

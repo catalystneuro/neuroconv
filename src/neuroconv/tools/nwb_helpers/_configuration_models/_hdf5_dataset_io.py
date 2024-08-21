@@ -3,11 +3,13 @@
 from typing import Any, Dict, Literal, Union
 
 import h5py
+import numpy as np
 from hdmf import Container
 from pydantic import Field, InstanceOf
 from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
+from ...hdmf import SliceableDataChunkIterator
 from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
@@ -95,7 +97,10 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
         full_shape = getattr(neurodata_object, dataset_name).shape
         dtype = getattr(neurodata_object, dataset_name).dtype
         chunk_shape = getattr(neurodata_object, dataset_name).chunks
-        buffer_shape = getattr(neurodata_object, dataset_name).maxshape
+        buffer_chunk_shape = chunk_shape or full_shape
+        buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+            buffer_gb=0.5, chunk_shape=buffer_chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+        )
         compression_method = getattr(neurodata_object, dataset_name).compression
         compression_opts = getattr(neurodata_object, dataset_name).compression_opts
         compression_options = dict(compression_opts=compression_opts)
