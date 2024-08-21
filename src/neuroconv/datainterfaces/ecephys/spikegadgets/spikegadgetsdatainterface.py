@@ -1,7 +1,9 @@
 from typing import Optional
 
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import ArrayType, FilePathType
+from ....utils import ArrayType, get_json_schema_from_method_signature
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
@@ -16,13 +18,13 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = super().get_source_schema()
+        source_schema = get_json_schema_from_method_signature(cls, exclude=["source_data"])
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         return source_schema
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         stream_id: str = "trodes",
         gains: Optional[ArrayType] = None,
         verbose: bool = True,

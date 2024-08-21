@@ -7,15 +7,14 @@ from tempfile import mkdtemp
 from typing import Optional, Union
 from warnings import warn
 
+from pydantic import DirectoryPath
 from pynwb import NWBHDF5IO
-
-from ...utils import FolderPathType
 
 
 def automatic_dandi_upload(
     dandiset_id: str,
-    nwb_folder_path: FolderPathType,
-    dandiset_folder_path: Optional[FolderPathType] = None,
+    nwb_folder_path: DirectoryPath,
+    dandiset_folder_path: Optional[DirectoryPath] = None,
     version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,

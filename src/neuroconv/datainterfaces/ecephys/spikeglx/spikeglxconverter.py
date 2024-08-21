@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import Optional
 
+from pydantic import DirectoryPath
+
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
-from ....utils import FolderPathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class SpikeGLXConverterPipe(ConverterPipe):
@@ -26,14 +28,14 @@ class SpikeGLXConverterPipe(ConverterPipe):
         return source_schema
 
     @classmethod
-    def get_streams(cls, folder_path: FolderPathType) -> list[str]:
+    def get_streams(cls, folder_path: DirectoryPath) -> list[str]:
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
         return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         streams: Optional[list[str]] = None,
         verbose: bool = False,
     ):

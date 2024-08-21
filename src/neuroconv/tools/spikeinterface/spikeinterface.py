@@ -7,6 +7,7 @@ import numpy as np
 import psutil
 import pynwb
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
+from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 
 from .spikeinterfacerecordingdatachunkiterator import (
@@ -15,7 +16,6 @@ from .spikeinterfacerecordingdatachunkiterator import (
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
-    FilePathType,
     calculate_regular_series_rate,
     dict_deep_update,
 )
@@ -1130,7 +1130,7 @@ def add_recording_to_nwbfile(
 
 def write_recording(
     recording: BaseRecording,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1175,7 +1175,7 @@ def write_recording(
 
 def write_recording_to_nwbfile(
     recording: BaseRecording,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1196,7 +1196,7 @@ def write_recording_to_nwbfile(
     Parameters
     ----------
     recording : spikeinterface.BaseRecording
-    nwbfile_path : FilePathType, optional
+    nwbfile_path : FilePath, optional
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
@@ -1730,7 +1730,7 @@ def add_sorting_to_nwbfile(
 
 def write_sorting(
     sorting: BaseSorting,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1777,7 +1777,7 @@ def write_sorting(
 
 def write_sorting_to_nwbfile(
     sorting: BaseSorting,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1799,7 +1799,7 @@ def write_sorting_to_nwbfile(
     Parameters
     ----------
     sorting : spikeinterface.BaseSorting
-    nwbfile_path : FilePathType, optional
+    nwbfile_path : FilePath, optional
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
@@ -2011,7 +2011,7 @@ def add_sorting_analyzer_to_nwbfile(
 
 def write_sorting_analyzer(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -2056,7 +2056,7 @@ def write_sorting_analyzer(
 
 def write_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -2083,7 +2083,7 @@ def write_sorting_analyzer_to_nwbfile(
     ----------
     sorting_analyzer : spikeinterface.SortingAnalyzer
         The sorting analyzer object to be written to the NWBFile.
-    nwbfile_path : FilePathType
+    nwbfile_path : FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile : NWBFile, optional
@@ -2163,7 +2163,7 @@ def write_sorting_analyzer_to_nwbfile(
 # TODO: Remove February 2025
 def write_waveforms(
     waveform_extractor,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,

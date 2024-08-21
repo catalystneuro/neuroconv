@@ -6,6 +6,7 @@ from typing import Literal, Optional
 import numpy as np
 import psutil
 from hdmf.data_utils import DataChunkIterator
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
@@ -29,7 +30,7 @@ class VideoInterface(BaseDataInterface):
 
     def __init__(
         self,
-        file_paths: list,
+        file_paths: List[FilePath],
         verbose: bool = False,
         *,
         metadata_key_name: str = "Videos",
@@ -39,7 +40,7 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths : list of FilePathTypes
+        file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         metadata_key_name : str, optional

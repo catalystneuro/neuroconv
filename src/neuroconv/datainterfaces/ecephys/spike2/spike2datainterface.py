@@ -1,8 +1,10 @@
 from pathlib import Path
 
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 def _test_sonpy_installation() -> None:
@@ -33,12 +35,12 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     @classmethod
-    def get_all_channels_info(cls, file_path: FilePathType):
+    def get_all_channels_info(cls, file_path: FilePath):
         """Retrieve and inspect necessary channel information prior to initialization."""
         _test_sonpy_installation()
         return cls.get_extractor().get_all_channels_info(file_path=file_path)
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Initialize reading of Spike2 file.
 

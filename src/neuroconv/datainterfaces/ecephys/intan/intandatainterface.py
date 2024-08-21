@@ -2,11 +2,12 @@ import warnings
 from typing import Optional
 
 from packaging.version import Version
+from pydantic import FilePath
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package_version
-from ....utils import FilePathType, get_schema_from_hdmf_class
+from ....utils import get_schema_from_hdmf_class
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
@@ -29,7 +30,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         stream_id: Optional[str] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",

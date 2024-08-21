@@ -1,7 +1,8 @@
 from typing import Literal
 
+from pydantic import FilePath
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):
@@ -13,7 +14,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         sampling_frequency: float = None,
         verbose: bool = True,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",

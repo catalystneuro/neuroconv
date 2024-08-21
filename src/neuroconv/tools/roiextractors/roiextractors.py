@@ -9,6 +9,7 @@ import psutil
 
 # from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.base import Images
 from pynwb.device import Device
@@ -35,7 +36,6 @@ from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
-    FilePathType,
     calculate_regular_series_rate,
     dict_deep_update,
 )
@@ -570,7 +570,7 @@ def add_imaging(
 
 def write_imaging(
     imaging: ImagingExtractor,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1447,7 +1447,7 @@ def add_segmentation(
 
 def write_segmentation(
     segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,

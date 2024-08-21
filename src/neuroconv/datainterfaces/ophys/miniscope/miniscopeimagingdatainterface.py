@@ -3,10 +3,11 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
+from pydantic import DirectoryPath
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, FolderPathType, dict_deep_update
+from ....utils import DeepDict, dict_deep_update
 
 
 class MiniscopeImagingInterface(BaseImagingExtractorInterface):
@@ -25,13 +26,13 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType):
+    def __init__(self, folder_path: DirectoryPath):
         """
         Initialize reading the Miniscope imaging data.
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The main Miniscope folder.
             The microscope movie files are expected to be in sub folders within the main folder.
         """
