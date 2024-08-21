@@ -5,7 +5,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Optional, Type, Union
+from typing import Literal, Optional, Type, Union
 
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
@@ -63,7 +63,7 @@ class DataInterfaceTestMixin:
     """
 
     data_interface_cls: Type[BaseDataInterface]
-    interface_kwargs: Union[dict, List[dict]]
+    interface_kwargs: Union[dict, list[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
     conversion_options: dict = dict()
     maxDiff = None
@@ -260,7 +260,7 @@ class TemporalAlignmentMixin:
     """
 
     data_interface_cls: Type[BaseDataInterface]
-    interface_kwargs: Union[dict, List[dict]]
+    interface_kwargs: Union[dict, list[dict]]
     maxDiff = None
 
     def setUpFreshInterface(self):

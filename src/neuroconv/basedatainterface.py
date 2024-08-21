@@ -3,7 +3,7 @@ import json
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Union
 
 from jsonschema.validators import validate
 from pynwb import NWBFile
@@ -29,8 +29,8 @@ class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
     display_name: Union[str, None] = None
-    keywords: Tuple[str] = tuple()
-    associated_suffixes: Tuple[str] = tuple()
+    keywords: tuple[str] = tuple()
+    associated_suffixes: tuple[str] = tuple()
     info: Union[str, None] = None
 
     @classmethod

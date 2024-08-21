@@ -2,7 +2,7 @@ import importlib
 import pickle
 import warnings
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -306,7 +306,7 @@ def add_subject_to_nwbfile(
     h5file: FilePathType,
     individual_name: str,
     config_file: FilePathType,
-    timestamps: Optional[Union[List, np.ndarray]] = None,
+    timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
@@ -18,7 +18,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: FolderPathType) -> list[str]:
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)

@@ -269,7 +269,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: FolderPathType,
         keep_mua_units: bool = True,
-        exclude_shanks: Optional[list] = None,
+        exclude_shanks: Optional[list[int]] = None,
         xml_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
     ):

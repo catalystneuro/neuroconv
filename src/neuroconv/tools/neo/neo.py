@@ -10,7 +10,7 @@ import numpy as np
 import pynwb
 
 from ..nwb_helpers import add_device_from_metadata
-from ...utils import OptionalFilePathType
+from ...utils import FilePathType
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -65,7 +65,7 @@ def get_number_of_segments(neo_reader, block: int = 0) -> int:
     return neo_reader.header["nb_segment"][block]
 
 
-def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
+def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tuple[list, str, str]:
     """
     Get command traces (e.g. voltage clamp command traces).
 
@@ -213,7 +213,7 @@ def add_icephys_recordings(
     metadata: dict = None,
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: str = "not described",
-    skip_electrodes: Tuple[int] = (),
+    skip_electrodes: tuple[int] = (),
     compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
 ):
     """
@@ -383,7 +383,7 @@ def add_neo_to_nwb(
     compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
-    skip_electrodes: Tuple[int] = (),
+    skip_electrodes: tuple[int] = (),
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -439,7 +439,7 @@ def add_neo_to_nwb(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: OptionalFilePathType = None,  # pragma: no cover
+    save_path: Optional[FilePathType] = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,

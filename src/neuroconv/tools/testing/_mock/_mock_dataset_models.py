@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Literal, Tuple, Union
+from typing import Any, Iterable, Literal, Union
 
 import h5py
 import numcodecs
@@ -18,14 +18,14 @@ def mock_HDF5DatasetIOConfiguration(
     object_id: str = "481a0860-3a0c-40ec-b931-df4a3e9b101f",
     location_in_file: str = "acquisition/TestElectricalSeries/data",
     dataset_name: Literal["data", "timestamps"] = "data",
-    full_shape: Tuple[int, ...] = (60 * 30_000, 384),  # ~1 minute of v1 NeuroPixels probe
+    full_shape: tuple[int, ...] = (60 * 30_000, 384),  # ~1 minute of v1 NeuroPixels probe
     dtype: np.dtype = np.dtype("int16"),
-    chunk_shape: Tuple[int, ...] = (78_125, 64),  # ~10 MB
-    buffer_shape: Tuple[int, ...] = (1_250_000, 384),  # ~1 GB
+    chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
+    buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
     compression_method: Union[
         Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
     ] = "gzip",
-    compression_options: Union[Dict[str, Any], None] = None,
+    compression_options: Union[dict[str, Any], None] = None,
 ) -> HDF5DatasetIOConfiguration:
     """Mock object of a HDF5DatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return HDF5DatasetIOConfiguration(
@@ -45,18 +45,18 @@ def mock_ZarrDatasetIOConfiguration(
     object_id: str = "481a0860-3a0c-40ec-b931-df4a3e9b101f",
     location_in_file: str = "acquisition/TestElectricalSeries/data",
     dataset_name: Literal["data", "timestamps"] = "data",
-    full_shape: Tuple[int, ...] = (60 * 30_000, 384),  # ~1 minute of v1 NeuroPixels probe
+    full_shape: tuple[int, ...] = (60 * 30_000, 384),  # ~1 minute of v1 NeuroPixels probe
     dtype: np.dtype = np.dtype("int16"),
-    chunk_shape: Tuple[int, ...] = (78_125, 64),  # ~10 MB
-    buffer_shape: Tuple[int, ...] = (1_250_000, 384),  # ~1 GB
+    chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
+    buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
     compression_method: Union[
         Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
     ] = "gzip",
-    compression_options: Union[Dict[str, Any]] = None,
+    compression_options: Union[dict[str, Any]] = None,
     filter_methods: Iterable[
         Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None]
     ] = None,
-    filter_options: Union[Iterable[Dict[str, Any]], None] = None,
+    filter_options: Union[Iterable[dict[str, Any]], None] = None,
 ) -> ZarrDatasetIOConfiguration:
     """Mock object of a ZarrDatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return ZarrDatasetIOConfiguration(
@@ -76,7 +76,7 @@ def mock_ZarrDatasetIOConfiguration(
 
 def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
     """Mock instance of a HDF5BackendConfiguration with two NeuroPixel-like datasets."""
-    dataset_configurations: Dict[str, HDF5DatasetIOConfiguration] = {
+    dataset_configurations: dict[str, HDF5DatasetIOConfiguration] = {
         "acquisition/TestElectricalSeriesAP/data": mock_HDF5DatasetIOConfiguration(
             location_in_file="acquisition/TestElectricalSeriesAP/data", dataset_name="data"
         ),
@@ -97,7 +97,7 @@ def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
 
 def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
     """Mock instance of a HDF5BackendConfiguration with several NeuroPixel-like datasets."""
-    dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = {
+    dataset_configurations: dict[str, ZarrDatasetIOConfiguration] = {
         "acquisition/TestElectricalSeriesAP/data": mock_ZarrDatasetIOConfiguration(
             location_in_file="acquisition/TestElectricalSeriesAP/data",
             dataset_name="data",

@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -106,7 +106,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+    def get_original_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -128,7 +128,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -152,7 +152,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         self.recording_extractor.set_times(times=aligned_timestamps)
 
-    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for all segments in this interface with those aligned to the common session start time.
 
@@ -185,7 +185,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 ]
             )
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
         """
         Align the starting time for each segment in this interface relative to the common session start time.
 

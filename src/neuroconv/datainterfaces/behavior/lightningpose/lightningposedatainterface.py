@@ -116,7 +116,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         pose_estimation_data = pd.read_csv(self.file_path, header=[0, 1, 2])
         return pose_estimation_data
 
-    def _get_original_video_shape(self) -> Tuple[int, int]:
+    def _get_original_video_shape(self) -> tuple[int, int]:
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             video_shape = video.get_frame_shape()
         # image size of the original video is in height x width

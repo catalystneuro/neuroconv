@@ -92,7 +92,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict = None,
         icephys_experiment_type: str = "voltage_clamp",
-        skip_electrodes: Tuple[int] = (),
+        skip_electrodes: tuple[int] = (),
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.

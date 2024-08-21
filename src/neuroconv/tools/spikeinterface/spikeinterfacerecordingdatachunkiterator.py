@@ -77,7 +77,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             progress_bar_options=progress_bar_options,
         )
 
-    def _get_default_chunk_shape(self, chunk_mb: float = 10.0) -> Tuple[int, int]:
+    def _get_default_chunk_shape(self, chunk_mb: float = 10.0) -> tuple[int, int]:
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         chunk_channels = min(
@@ -91,7 +91,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         return (chunk_frames, chunk_channels)
 
-    def _get_data(self, selection: Tuple[slice]) -> Iterable:
+    def _get_data(self, selection: tuple[slice]) -> Iterable:
         return self.recording.get_traces(
             segment_index=self.segment_index,
             channel_ids=self.channel_ids[selection[1]],

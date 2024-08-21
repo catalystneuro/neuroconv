@@ -1,7 +1,7 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 import psutil
@@ -103,7 +103,7 @@ class VideoInterface(BaseDataInterface):
 
         return metadata
 
-    def get_original_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+    def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -158,7 +158,7 @@ class VideoInterface(BaseDataInterface):
                 "Please specify the temporal alignment of each video."
             )
 
-    def get_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+    def get_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -175,7 +175,7 @@ class VideoInterface(BaseDataInterface):
         """
         return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
 
-    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -220,7 +220,7 @@ class VideoInterface(BaseDataInterface):
         else:
             raise ValueError("There are no timestamps or starting times set to shift by a common value!")
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float], stub_test: bool = False):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
@@ -263,7 +263,7 @@ class VideoInterface(BaseDataInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_frames: Optional[List[int]] = None,
+        starting_frames: Optional[list[int]] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,

@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
 from warnings import warn
 
 from ..baseicephysinterface import BaseIcephysInterface
@@ -157,7 +156,7 @@ class AbfInterface(BaseIcephysInterface):
                 reader._t_starts[segment_index] += aligned_starting_time
 
     def set_aligned_segment_starting_times(
-        self, aligned_segment_starting_times: List[List[float]], stub_test: bool = False
+        self, aligned_segment_starting_times: list[list[float]], stub_test: bool = False
     ):
         """
         Align the individual starting time for each video in this interface relative to the common session start time.

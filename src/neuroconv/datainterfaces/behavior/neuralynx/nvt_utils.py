@@ -5,7 +5,7 @@ Derived from https://www.mathworks.com/matlabcentral/fileexchange/26226-readnvt
 import os
 from datetime import datetime
 from shutil import copy
-from typing import Dict, List, Union
+from typing import Union
 
 import numpy as np
 
@@ -28,7 +28,7 @@ RECORD_FORMAT = [
 ]
 
 
-def read_header(filename: str) -> Dict[str, Union[str, datetime, float, int, List[int]]]:
+def read_header(filename: str) -> dict[str, Union[str, datetime, float, int, list[int]]]:
     """
     Parses a Neuralynx NVT File Header and returns it as a dictionary.
 
@@ -85,7 +85,7 @@ def read_header(filename: str) -> Dict[str, Union[str, datetime, float, int, Lis
     return out
 
 
-def read_data(filename: str) -> Dict[str, np.ndarray]:
+def read_data(filename: str) -> dict[str, np.ndarray]:
     """
     Reads a NeuroLynx NVT file and returns its data.
 
@@ -99,7 +99,7 @@ def read_data(filename: str) -> Dict[str, np.ndarray]:
 
     Returns
     -------
-    Dict[str, np.ndarray]
+    dict[str, np.ndarray]
         Dictionary containing the parsed data.
 
     Raises

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -120,8 +120,8 @@ class TimeIntervalsInterface(BaseDataInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         tag: str = "trials",
-        column_name_mapping: Dict[str, str] = None,
-        column_descriptions: Dict[str, str] = None,
+        column_name_mapping: dict[str, str] = None,
+        column_descriptions: dict[str, str] = None,
     ) -> NWBFile:
         """
         Run the NWB conversion for the instantiated data interface.

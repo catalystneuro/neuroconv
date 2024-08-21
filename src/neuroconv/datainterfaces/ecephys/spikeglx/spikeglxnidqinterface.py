@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import numpy as np
 
@@ -92,7 +91,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         ] = "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
         return metadata
 
-    def get_channel_names(self) -> List[str]:
+    def get_channel_names(self) -> list[str]:
         """Return a list of channel names as set in the recording extractor."""
         return list(self.recording_extractor.get_channel_ids())
 

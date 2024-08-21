@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
@@ -26,7 +26,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
         return source_schema
 
     @classmethod
-    def get_streams(cls, folder_path: FolderPathType) -> List[str]:
+    def get_streams(cls, folder_path: FolderPathType) -> list[str]:
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
         return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
@@ -34,7 +34,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
     def __init__(
         self,
         folder_path: FolderPathType,
-        streams: Optional[List[str]] = None,
+        streams: Optional[list[str]] = None,
         verbose: bool = False,
     ):
         """

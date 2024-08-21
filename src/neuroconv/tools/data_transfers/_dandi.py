@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import List, Optional, Union
+from typing import Optional, Union
 from warnings import warn
 
 from pynwb import NWBHDF5IO
@@ -21,7 +21,7 @@ def automatic_dandi_upload(
     cleanup: bool = False,
     number_of_jobs: Union[int, None] = None,
     number_of_threads: Union[int, None] = None,
-) -> List[Path]:
+) -> list[Path]:
     """
     Fully automated upload of NWB files to a Dandiset.
 

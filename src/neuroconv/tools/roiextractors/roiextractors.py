@@ -35,7 +35,7 @@ from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
-    OptionalFilePathType,
+    FilePathType,
     calculate_regular_series_rate,
     dict_deep_update,
 )
@@ -570,7 +570,7 @@ def add_imaging(
 
 def write_imaging(
     imaging: ImagingExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1447,7 +1447,7 @@ def add_segmentation(
 
 def write_segmentation(
     segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
