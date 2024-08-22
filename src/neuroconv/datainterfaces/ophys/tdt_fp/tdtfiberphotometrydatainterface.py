@@ -6,7 +6,7 @@ from typing import Literal
 
 import numpy as np
 import pytz
-from pydantic import FilePath, validate_call
+from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -29,7 +29,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(self, folder_path: FilePath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
