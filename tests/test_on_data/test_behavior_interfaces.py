@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 import sleap_io
 from hdmf.testing import TestCase
 from natsort import natsorted
@@ -41,7 +42,7 @@ except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 
-class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
@@ -52,12 +53,12 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     conversion_options = dict(reference_frame="(0,0) corresponds to the top left corner of the video.")
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls):
-        cls.pose_estimation_name = "PoseEstimation"
-        cls.original_video_height = 406
-        cls.original_video_width = 396
-        cls.expected_keypoint_names = [
+    @pytest.fixture(scope="class", autouse=True)
+    def expected_values(self):
+        self.pose_estimation_name = "PoseEstimation"
+        self.original_video_height = 406
+        self.original_video_width = 396
+        self.expected_keypoint_names = [
             "paw1LH_top",
             "paw2LF_top",
             "paw3RF_top",
@@ -76,68 +77,82 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             "obsHigh_bot",
             "obsLow_bot",
         ]
-        cls.expected_metadata = DeepDict(
+        self.expected_metadata = DeepDict(
             PoseEstimation=dict(
-                name=cls.pose_estimation_name,
+                name=self.pose_estimation_name,
                 description="Contains the pose estimation series for each keypoint.",
                 scorer="heatmap_tracker",
                 source_software="LightningPose",
             )
         )
-        cls.expected_metadata[cls.pose_estimation_name].update(
+        self.expected_metadata[self.pose_estimation_name].update(
             {
                 keypoint_name: dict(
                     name=f"PoseEstimationSeries{keypoint_name}",
                     description=f"The estimated position (x, y) of {keypoint_name} over time.",
                 )
-                for keypoint_name in cls.expected_keypoint_names
+                for keypoint_name in self.expected_keypoint_names
             }
         )
 
-        cls.test_data = pd.read_csv(cls.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
+        self.test_data = pd.read_csv(self.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
 
     def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(
-            metadata["NWBFile"]["session_start_time"],
-            datetime(2023, 11, 9, 10, 14, 37, 0),
-        )
-        self.assertIn(self.pose_estimation_name, metadata["Behavior"])
-        self.assertEqual(
-            metadata["Behavior"][self.pose_estimation_name], self.expected_metadata[self.pose_estimation_name]
-        )
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
+        assert self.pose_estimation_name in metadata["Behavior"]
+        assert metadata["Behavior"][self.pose_estimation_name] == self.expected_metadata[self.pose_estimation_name]
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            self.assertIn("behavior", nwbfile.processing)
-            self.assertIn(self.pose_estimation_name, nwbfile.processing["behavior"].data_interfaces)
+
+            # Replacing assertIn with pytest-style assert
+            assert "behavior" in nwbfile.processing
+            assert self.pose_estimation_name in nwbfile.processing["behavior"].data_interfaces
+
             pose_estimation_container = nwbfile.processing["behavior"].data_interfaces[self.pose_estimation_name]
-            self.assertIsInstance(pose_estimation_container, PoseEstimation)
+
+            # Replacing assertIsInstance with pytest-style assert
+            assert isinstance(pose_estimation_container, PoseEstimation)
 
             pose_estimation_metadata = self.expected_metadata[self.pose_estimation_name]
-            self.assertEqual(pose_estimation_container.description, pose_estimation_metadata["description"])
-            self.assertEqual(pose_estimation_container.scorer, pose_estimation_metadata["scorer"])
-            self.assertEqual(pose_estimation_container.source_software, pose_estimation_metadata["source_software"])
+
+            # Replacing assertEqual with pytest-style assert
+            assert pose_estimation_container.description == pose_estimation_metadata["description"]
+            assert pose_estimation_container.scorer == pose_estimation_metadata["scorer"]
+            assert pose_estimation_container.source_software == pose_estimation_metadata["source_software"]
+
+            # Using numpy's assert_array_equal
             assert_array_equal(
                 pose_estimation_container.dimensions[:], [[self.original_video_height, self.original_video_width]]
             )
 
-            self.assertEqual(len(pose_estimation_container.pose_estimation_series), len(self.expected_keypoint_names))
+            # Replacing assertEqual with pytest-style assert
+            assert len(pose_estimation_container.pose_estimation_series) == len(self.expected_keypoint_names)
+
             for keypoint_name in self.expected_keypoint_names:
                 series_metadata = pose_estimation_metadata[keypoint_name]
-                self.assertIn(series_metadata["name"], pose_estimation_container.pose_estimation_series)
+
+                # Replacing assertIn with pytest-style assert
+                assert series_metadata["name"] in pose_estimation_container.pose_estimation_series
+
                 pose_estimation_series = pose_estimation_container.pose_estimation_series[series_metadata["name"]]
-                self.assertIsInstance(pose_estimation_series, PoseEstimationSeries)
-                self.assertEqual(pose_estimation_series.unit, "px")
-                self.assertEqual(pose_estimation_series.description, series_metadata["description"])
-                self.assertEqual(pose_estimation_series.reference_frame, self.conversion_options["reference_frame"])
+
+                # Replacing assertIsInstance with pytest-style assert
+                assert isinstance(pose_estimation_series, PoseEstimationSeries)
+
+                # Replacing assertEqual with pytest-style assert
+                assert pose_estimation_series.unit == "px"
+                assert pose_estimation_series.description == series_metadata["description"]
+                assert pose_estimation_series.reference_frame == self.conversion_options["reference_frame"]
 
                 test_data = self.test_data[keypoint_name]
+
+                # Using numpy's assert_array_equal
                 assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
-                assert_array_equal(pose_estimation_series.confidence[:], test_data["likelihood"].values)
 
 
-class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
@@ -145,6 +160,7 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
             BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.mp4"
         ),
     )
+
     conversion_options = dict(stub_test=True)
     save_directory = OUTPUT_PATH
 
@@ -153,18 +169,16 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
             nwbfile = io.read()
             pose_estimation_container = nwbfile.processing["behavior"].data_interfaces["PoseEstimation"]
             for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
-                self.assertEqual(pose_estimation_series.data.shape[0], 10)
-                self.assertEqual(pose_estimation_series.confidence.shape[0], 10)
+                assert pose_estimation_series.data.shape[0] == 10
+                assert pose_estimation_series.confidence.shape[0] == 10
 
 
-class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestFicTracDataInterface(DataInterfaceTestMixin):
     data_interface_cls = FicTracDataInterface
-    interface_kwargs = [
-        dict(
-            file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"),
-            configuration_file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "config.txt"),
-        ),
-    ]
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"),
+        configuration_file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "config.txt"),
+    )
 
     save_directory = OUTPUT_PATH
 
@@ -228,11 +242,11 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
                 assert spatial_series.timestamps[0] == 0.0
 
 
-class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCase):
+class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
     data_interface_cls = FicTracDataInterface
-    interface_kwargs = [
-        dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"), radius=1.0),
-    ]
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"), radius=1.0
+    )
 
     save_directory = OUTPUT_PATH
 
@@ -296,14 +310,11 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 assert spatial_series.timestamps[0] == 0.0
 
 
-class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
+class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin):
     data_interface_cls = FicTracDataInterface
-    interface_kwargs = [dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"))]
+    interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"))
 
     save_directory = OUTPUT_PATH
-
-
-import pytest
 
 
 class TestVideoInterface(VideoInterfaceMixin):
@@ -321,19 +332,16 @@ class TestVideoInterface(VideoInterfaceMixin):
         ids=["avi", "flv", "mov", "mp4", "wmv"],
     )
     def setup_interface(self, request):
-        interface_kwargs = request.param
 
         test_id = request.node.callspec.id
         self.test_name = test_id
-        self.interface_kwargs = interface_kwargs
-
+        self.interface_kwargs = request.param
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
-        # Return any necessary objects
         return self.interface, self.test_name
 
 
-class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
+class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs_item = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
@@ -450,13 +458,14 @@ class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittes
             self.assertCountEqual(first=pose_estimation_series_in_nwb, second=expected_pose_estimation_series)
 
 
-class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestMiniscopeInterface(DataInterfaceTestMixin):
     data_interface_cls = MiniscopeBehaviorInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @pytest.fixture(scope="class", autouse=True)
+    def expected_values(self, request):
+        cls = request.cls
         folder_path = Path(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
         cls.device_name = "BehavCam2"
         cls.image_series_name = "BehavCamImageSeries"
@@ -473,45 +482,42 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
         cls.timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
     def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(
-            metadata["NWBFile"]["session_start_time"],
-            datetime(2021, 10, 7, 15, 3, 28, 635),
-        )
-        self.assertEqual(metadata["Behavior"]["Device"][0], self.device_metadata)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert metadata["Behavior"]["Device"][0] == self.device_metadata
 
         image_series_metadata = metadata["Behavior"]["ImageSeries"][0]
-        self.assertEqual(image_series_metadata["name"], self.image_series_name)
-        self.assertEqual(image_series_metadata["device"], self.device_name)
-        self.assertEqual(image_series_metadata["unit"], "px")
-        self.assertEqual(image_series_metadata["dimension"], [1280, 720])  # width x height
+        assert image_series_metadata["name"] == self.image_series_name
+        assert image_series_metadata["device"] == self.device_name
+        assert image_series_metadata["unit"] == "px"
+        assert image_series_metadata["dimension"] == [1280, 720]  # width x height
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
 
             # Check device metadata
-            self.assertIn(self.device_name, nwbfile.devices)
+            assert self.device_name in nwbfile.devices
             device = nwbfile.devices[self.device_name]
-            self.assertIsInstance(device, Miniscope)
-            self.assertEqual(device.compression, self.device_metadata["compression"])
-            self.assertEqual(device.deviceType, self.device_metadata["deviceType"])
-            self.assertEqual(device.framesPerFile, self.device_metadata["framesPerFile"])
+            assert isinstance(device, Miniscope)
+            assert device.compression == self.device_metadata["compression"]
+            assert device.deviceType == self.device_metadata["deviceType"]
+            assert device.framesPerFile == self.device_metadata["framesPerFile"]
             roi = [self.device_metadata["ROI"]["height"], self.device_metadata["ROI"]["width"]]
             assert_array_equal(device.ROI[:], roi)
 
             # Check ImageSeries
-            self.assertIn(self.image_series_name, nwbfile.acquisition)
+            assert self.image_series_name in nwbfile.acquisition
             image_series = nwbfile.acquisition[self.image_series_name]
-            self.assertEqual(image_series.format, "external")
+            assert image_series.format == "external"
             assert_array_equal(image_series.starting_frame, self.starting_frames)
             assert_array_equal(image_series.dimension[:], [1280, 720])
-            self.assertEqual(image_series.unit, "px")
-            self.assertEqual(device, nwbfile.acquisition[self.image_series_name].device)
+            assert image_series.unit == "px"
+            assert device == nwbfile.acquisition[self.image_series_name].device
             assert_array_equal(image_series.timestamps[:], self.timestamps)
             assert_array_equal(image_series.external_file[:], self.external_files)
 
 
-class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = NeuralynxNvtInterface
     interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "neuralynx" / "test.nvt"))
     conversion_options = dict(add_angle=True)

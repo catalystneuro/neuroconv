@@ -1,7 +1,7 @@
 import platform
 from datetime import datetime
 from pathlib import Path
-from unittest import TestCase, skipIf
+from unittest import skipIf
 
 import numpy as np
 from dateutil.tz import tzoffset
@@ -40,7 +40,7 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 
-class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
@@ -69,7 +69,7 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
         },
     ],
 )
-class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin, TestCase):
+class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
@@ -127,7 +127,7 @@ class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInte
         },
     ],
 )
-class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin, TestCase):
+class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -203,7 +203,7 @@ class TestScanImageImagingInterfacesAssertions(hdmf_TestCase):
 
 
 @skipIf(platform.machine() == "arm64", "Interface not supported on arm64 architecture")
-class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
@@ -238,7 +238,7 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin, Te
         },
     ],
 )
-class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin, TestCase):
+class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageMultiFileImagingInterface
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
@@ -279,7 +279,7 @@ class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneIm
         },
     ],
 )
-class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin, TestCase):
+class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageMultiFileImagingInterface
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
@@ -353,13 +353,13 @@ class TestScanImageMultiFileImagingInterfacesAssertions(hdmf_TestCase):
             ScanImageSinglePlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
 
 
-class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = Hdf5ImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"))
     save_directory = OUTPUT_PATH
 
 
-class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
     interface_kwargs = [
         dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.mat")),
@@ -368,7 +368,7 @@ class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
     save_directory = OUTPUT_PATH
 
 
-class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
@@ -446,7 +446,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
-class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffMultiPlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
@@ -516,7 +516,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
             self.assertEqual(photon_series.rate, 20.629515014336377)
 
 
-class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
@@ -603,7 +603,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             self.assertEqual(photon_series.rate, 10.314757507168189)
 
 
-class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
@@ -690,7 +690,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
             assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
 
 
-class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MicroManagerTiffImagingInterface
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
@@ -760,7 +760,7 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
-class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, hdmf_TestCase):
+class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = MiniscopeImagingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
