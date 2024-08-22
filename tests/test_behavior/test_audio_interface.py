@@ -82,9 +82,12 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
         )
 
     def test_unsupported_format(self):
+        not_a_wav_file_path = self.test_dir / "test.test"
+        not_a_wav_file_path.touch()
+
         exc_msg = "The currently supported file format for audio is WAV file. Some of the provided files does not match this format: ['.test']."
         with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
-            AudioInterface(file_paths=["test.test"])
+            AudioInterface(file_paths=[not_a_wav_file_path])
 
     def test_get_metadata(self):
         audio_interface = AudioInterface(file_paths=self.file_paths)
