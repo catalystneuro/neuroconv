@@ -303,16 +303,34 @@ class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
     save_directory = OUTPUT_PATH
 
 
-class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):
+import pytest
+
+
+class TestVideoInterface(VideoInterfaceMixin):
     data_interface_cls = VideoInterface
-    interface_kwargs = [
-        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")]),
-        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")]),
-        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")]),
-        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")]),
-        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")]),
-    ]
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture(
+        params=[
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")])),
+        ],
+        ids=["avi", "flv", "mov", "mp4", "wmv"],
+    )
+    def setup_interface(self, request):
+        interface_kwargs = request.param
+
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = interface_kwargs
+
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        # Return any necessary objects
+        return self.interface, self.test_name
 
 
 class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
