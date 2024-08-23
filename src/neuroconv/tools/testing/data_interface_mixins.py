@@ -67,11 +67,18 @@ class DataInterfaceTestMixin:
 
     @pytest.fixture
     def setup_interface(self, request):
+
         self.test_name: str = ""
         self.conversion_options = self.conversion_options or dict()
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_default_conversion_options(self, request):
+        cls = request.cls
+        cls.conversion_options = cls.conversion_options or dict()
+        return cls.conversion_options
 
     def test_source_schema_valid(self):
         schema = self.data_interface_cls.get_source_schema()
@@ -250,14 +257,21 @@ class TemporalAlignmentMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: dict = dict()
+    conversion_options: Optional[dict] = None
     maxDiff = None
 
     @pytest.fixture
     def setup_interface(self, request):
+
         self.test_name: str = ""
         self.interface = self.data_interface_cls(**self.interface_kwargs)
         return self.interface, self.test_name
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_default_conversion_options(self, request):
+        cls = request.cls
+        cls.conversion_options = cls.conversion_options or dict()
+        return cls.conversion_options
 
     def setUpFreshInterface(self):
         """Protocol for creating a fresh instance of the interface."""
