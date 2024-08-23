@@ -773,11 +773,11 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+        cls = request.cls
+
         cls.device_name = "Miniscope"
-        cls.imaging_plane_name = "ImagingPlane"
-        cls.photon_series_name = "OnePhotonSeries"
 
         cls.device_metadata = dict(
             name=cls.device_name,
@@ -789,25 +789,33 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             led0=47,
         )
 
-    def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(
-            metadata["NWBFile"]["session_start_time"],
-            datetime(2021, 10, 7, 15, 3, 28, 635),
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.imaging_plane_metadata = dict(
+            name=cls.imaging_plane_name,
+            device=cls.device_name,
+            imaging_rate=15.0,
         )
-        self.assertEqual(metadata["Ophys"]["Device"][0], self.device_metadata)
+
+        cls.photon_series_name = "OnePhotonSeries"
+        cls.photon_series_metadata = dict(
+            name=cls.photon_series_name,
+            unit="px",
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert metadata["Ophys"]["Device"][0] == self.device_metadata
+
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-        self.assertEqual(imaging_plane_metadata["name"], self.imaging_plane_name)
-        self.assertEqual(imaging_plane_metadata["device"], self.device_name)
-        self.assertEqual(imaging_plane_metadata["imaging_rate"], 15.0)
+        assert imaging_plane_metadata["name"] == self.imaging_plane_metadata["name"]
+        assert imaging_plane_metadata["device"] == self.imaging_plane_metadata["device"]
+        assert imaging_plane_metadata["imaging_rate"] == self.imaging_plane_metadata["imaging_rate"]
 
         one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
-        self.assertEqual(one_photon_series_metadata["name"], self.photon_series_name)
-        self.assertEqual(one_photon_series_metadata["unit"], "px")
+        assert one_photon_series_metadata["name"] == self.photon_series_metadata["name"]
+        assert one_photon_series_metadata["unit"] == self.photon_series_metadata["unit"]
 
-    def run_custom_checks(self):
-        self.check_incorrect_folder_structure_raises()
-
-    def check_incorrect_folder_structure_raises(self):
+    def test_incorrect_folder_structure_raises(self):
         folder_path = Path(self.interface_kwargs["folder_path"]) / "15_03_28/BehavCam_2/"
         with self.assertRaisesWith(
             exc_type=AssertionError, exc_msg="The main folder should contain at least one subfolder named 'Miniscope'."
