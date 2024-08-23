@@ -383,45 +383,41 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def metadata_setup(cls):
-        device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
-        optical_channel_metadata = dict(
+    def setup_metadata(cls, request):
+
+        cls = request.cls
+
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.optical_channel_metadata = dict(
             name="Ch2",
             emission_lambda=np.NAN,
             description="An optical channel of the microscope.",
         )
-        imaging_plane_metadata = dict(
+        cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
             excitation_lambda=np.NAN,
             indicator="unknown",
             location="unknown",
-            device=device_metadata["name"],
-            optical_channel=[optical_channel_metadata],
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
             imaging_rate=29.873732099062256,
             grid_spacing=[1.1078125e-06, 1.1078125e-06],
             origin_coords=[0.0, 0.0],
         )
-        two_photon_series_metadata = dict(
+        cls.two_photon_series_metadata = dict(
             name="TwoPhotonSeries",
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
             dimension=[512, 512],
-            imaging_plane=imaging_plane_metadata["name"],
+            imaging_plane=cls.imaging_plane_metadata["name"],
             scan_line_rate=15840.580398865815,
             field_of_view=[0.0005672, 0.0005672],
         )
-        ophys_metadata = dict(
-            Device=[device_metadata],
-            ImagingPlane=[imaging_plane_metadata],
-            TwoPhotonSeries=[two_photon_series_metadata],
-        )
-        return (
-            device_metadata,
-            optical_channel_metadata,
-            imaging_plane_metadata,
-            two_photon_series_metadata,
-            ophys_metadata,
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
         )
 
     def check_extracted_metadata(self, metadata: dict):
@@ -463,8 +459,10 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
     )
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(self, request):
+        cls = request.cls
+
         cls.photon_series_name = "TwoPhotonSeries"
         cls.num_frames = 5
         cls.image_shape = (512, 512, 2)
@@ -509,19 +507,20 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         streams = self.data_interface_cls.get_streams(
             folder_path=self.interface_kwargs["folder_path"], plane_separation_type="contiguous"
         )
-        self.assertEqual(streams, self.available_streams)
+
+        assert streams == self.available_streams
 
     def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
-        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
+        assert metadata["Ophys"] == self.ophys_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
-            assert_array_equal(photon_series.dimension[:], self.image_shape)
-            self.assertEqual(photon_series.rate, 20.629515014336377)
+            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
+            assert photon_series.rate == 20.629515014336377
 
 
 class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin):
@@ -534,8 +533,11 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
     )
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+
+        cls = request.cls
+
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
         cls.num_frames = 5
         cls.image_shape = (512, 512)
@@ -578,18 +580,19 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
     def run_custom_checks(self):
         # check stream names
         streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
-        self.assertEqual(streams, self.available_streams)
+        assert streams == self.available_streams
 
     def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
-        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
+        assert metadata["Ophys"] == self.ophys_metadata
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
-            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+            self.save_directory
+            / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.test_kwargs)
+        interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -606,9 +609,9 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
-            assert_array_equal(photon_series.dimension[:], self.image_shape)
-            self.assertEqual(photon_series.rate, 10.314757507168189)
+            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
+            assert photon_series.rate == 10.314757507168189
 
 
 class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin):
@@ -621,8 +624,10 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
     )
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+
+        cls = request.cls
         cls.photon_series_name = "TwoPhotonSeriesCh2"
         cls.num_frames = 10
         cls.image_shape = (512, 512)
@@ -665,26 +670,27 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
     def run_custom_checks(self):
         # check stream names
         streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
-        self.assertEqual(streams, self.available_streams)
+        assert streams == self.available_streams
 
     def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 7, 6, 15, 13, 58))
-        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 7, 6, 15, 13, 58)
+        assert metadata["Ophys"] == self.ophys_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
-            assert_array_equal(photon_series.dimension[:], self.image_shape)
-            self.assertEqual(photon_series.rate, 29.873615189896864)
+            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
+            assert photon_series.rate == 29.873615189896864
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
-            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+            self.save_directory
+            / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.test_kwargs)
+        interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
