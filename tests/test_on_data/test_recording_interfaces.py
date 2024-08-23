@@ -2,7 +2,6 @@ from datetime import datetime
 from platform import python_version
 from sys import platform
 from typing import Literal
-from unittest import skip, skipIf
 
 import numpy as np
 import pytest
@@ -90,7 +89,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "Darwin" or this_python_version > version.parse("3.9"),
+    platform == "darwin" or this_python_version > version.parse("3.9"),
     reason="Interface unsupported for OSX. Interface only runs on Python 3.9",
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -166,7 +165,10 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 assert electrode_table_row[key] == value
 
 
-@skipIf(platform == "darwin", reason="Not supported for OSX.")
+@pytest.mark.skipif(
+    platform == "darwin",
+    reason="Interface unsupported for OSX.",
+)
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf"))
@@ -226,7 +228,7 @@ class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin):
         return self.interface, self.test_name
 
 
-@skip(reason="This interface fails to load the necessary plugin sometimes.")
+@pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MaxOneRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"))
