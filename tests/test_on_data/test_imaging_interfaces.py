@@ -817,7 +817,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
     def test_incorrect_folder_structure_raises(self):
         folder_path = Path(self.interface_kwargs["folder_path"]) / "15_03_28/BehavCam_2/"
-        with self.assertRaisesWith(
-            exc_type=AssertionError, exc_msg="The main folder should contain at least one subfolder named 'Miniscope'."
+        with pytest.raises(
+            AssertionError, match="The main folder should contain at least one subfolder named 'Miniscope'."
         ):
             self.data_interface_cls(folder_path=folder_path)
