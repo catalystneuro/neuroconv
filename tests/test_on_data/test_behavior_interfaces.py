@@ -54,11 +54,14 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def expected_values(self):
-        self.pose_estimation_name = "PoseEstimation"
-        self.original_video_height = 406
-        self.original_video_width = 396
-        self.expected_keypoint_names = [
+    def setup_metadata(self, request):
+
+        cls = request.cls
+
+        cls.pose_estimation_name = "PoseEstimation"
+        cls.original_video_height = 406
+        cls.original_video_width = 396
+        cls.expected_keypoint_names = [
             "paw1LH_top",
             "paw2LF_top",
             "paw3RF_top",
@@ -77,25 +80,25 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             "obsHigh_bot",
             "obsLow_bot",
         ]
-        self.expected_metadata = DeepDict(
+        cls.expected_metadata = DeepDict(
             PoseEstimation=dict(
-                name=self.pose_estimation_name,
+                name=cls.pose_estimation_name,
                 description="Contains the pose estimation series for each keypoint.",
                 scorer="heatmap_tracker",
                 source_software="LightningPose",
             )
         )
-        self.expected_metadata[self.pose_estimation_name].update(
+        cls.expected_metadata[cls.pose_estimation_name].update(
             {
                 keypoint_name: dict(
                     name=f"PoseEstimationSeries{keypoint_name}",
                     description=f"The estimated position (x, y) of {keypoint_name} over time.",
                 )
-                for keypoint_name in self.expected_keypoint_names
+                for keypoint_name in cls.expected_keypoint_names
             }
         )
 
-        self.test_data = pd.read_csv(self.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
+        cls.test_data = pd.read_csv(cls.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
@@ -317,30 +320,6 @@ class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin):
     save_directory = OUTPUT_PATH
 
 
-class TestVideoInterface(VideoInterfaceMixin):
-    data_interface_cls = VideoInterface
-    save_directory = OUTPUT_PATH
-
-    @pytest.fixture(
-        params=[
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")])),
-        ],
-        ids=["avi", "flv", "mov", "mp4", "wmv"],
-    )
-    def setup_interface(self, request):
-
-        test_id = request.node.callspec.id
-        self.test_name = test_id
-        self.interface_kwargs = request.param
-        self.interface = self.data_interface_cls(**self.interface_kwargs)
-
-        return self.interface, self.test_name
-
-
 class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs_item = dict(
@@ -464,7 +443,7 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def expected_values(self, request):
+    def setup_metadata(self, request):
         cls = request.cls
         folder_path = Path(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
         cls.device_name = "BehavCam2"
@@ -650,6 +629,30 @@ class CustomTestSLEAPInterface(TestCase):
 
                     # Some frames do not have predictions associated with them, so we test for sub-set
                     assert set(extracted_timestamps).issubset(expected_timestamps)
+
+
+class TestVideoInterface(VideoInterfaceMixin):
+    data_interface_cls = VideoInterface
+    save_directory = OUTPUT_PATH
+
+    @pytest.fixture(
+        params=[
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")])),
+            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")])),
+        ],
+        ids=["avi", "flv", "mov", "mp4", "wmv"],
+    )
+    def setup_interface(self, request):
+
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = request.param
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        return self.interface, self.test_name
 
 
 class TestVideoConversions(TestCase):

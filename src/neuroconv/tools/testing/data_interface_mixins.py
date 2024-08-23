@@ -355,10 +355,11 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
-            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+            self.save_directory
+            / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.test_kwargs)
+        interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -817,7 +818,9 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_set_aligned_segment_starting_times(self):
         self.setUpFreshInterface()
 
-        aligned_segment_starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
+        aligned_segment_starting_times = [
+            1.23 * file_path_index for file_path_index in range(len(self.interface_kwargs))
+        ]
         self.interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
         all_aligned_timestamps = self.interface.get_timestamps()
 
