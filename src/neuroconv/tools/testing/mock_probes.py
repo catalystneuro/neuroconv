@@ -1,5 +1,3 @@
-from typing import List
-
 import numpy as np
 
 
@@ -7,7 +5,7 @@ def generate_mock_probe(num_channels: int, num_shanks: int = 3):
     import probeinterface as pi
 
     # The shank ids will be 0, 0, 0, ..., 1, 1, 1, ..., 2, 2, 2, ...
-    shank_ids: List[int] = []
+    shank_ids: list[int] = []
     positions = np.zeros((num_channels, 2))
     # ceil division
     channels_per_shank = (num_channels + num_shanks - 1) // num_shanks

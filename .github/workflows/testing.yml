@@ -34,6 +34,7 @@ jobs:
           python -m pip install -U pip  # Official recommended way
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
+
       - name: Install NeuroConv with minimal requirements
         run: pip install .
       - name: Test initial import of all non-lazy dependencies
@@ -42,6 +43,7 @@ jobs:
         uses: ./.github/actions/install-wine
         with:
           os: ${{ runner.os }}
+
       - name: Install NeuroConv with testing requirements
         run: pip install .[test]
       - name: Run import tests
@@ -49,6 +51,7 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_top_level
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
+
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 

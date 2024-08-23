@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+from pydantic import FilePath
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
-from ....utils import FilePathType, calculate_regular_series_rate
+from ....utils import calculate_regular_series_rate
 
 
 class FicTracDataInterface(BaseTemporalAlignmentInterface):
@@ -155,9 +156,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         radius: Optional[float] = None,
-        configuration_file_path: Optional[FilePathType] = None,
+        configuration_file_path: Optional[FilePath] = None,
         verbose: bool = True,
     ):
         """
@@ -165,12 +166,12 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : a string or a path
+        file_path : FilePath
             Path to the .dat file (the output of fictrac)
         radius : float, optional
             The radius of the ball in meters. If provided the radius is stored as a conversion factor
             and the units are set to meters. If not provided the units are set to radians.
-        configuration_file_path : a string or a path, optional
+        configuration_file_path : FilePath, optional
             Path to the .txt file with the configuration metadata. Usually called config.txt
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
@@ -358,8 +359,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
 
 def extract_session_start_time(
-    file_path: FilePathType,
-    configuration_file_path: Optional[FilePathType] = None,
+    file_path: FilePath,
+    configuration_file_path: Optional[FilePath] = None,
 ) -> Union[datetime, None]:
     """
     Extract the session start time from a FicTrac data file or its configuration file.
@@ -378,9 +379,9 @@ def extract_session_start_time(
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         Path to the FicTrac data file.
-    configuration_file_path : Optional[FilePathType]
+    configuration_file_path : FilePath, optional
         Path to the FicTrac configuration file. If omitted, the function defaults to searching for
         "fictrac_config.txt" in the same directory as the data file.
 
@@ -413,13 +414,13 @@ def extract_session_start_time(
     return None
 
 
-def parse_fictrac_config(file_path: FilePathType) -> dict:
+def parse_fictrac_config(file_path: FilePath) -> dict:
     """
     Parse a FicTrac configuration file and return a dictionary of its parameters.
 
     Parameters
     ----------
-    file_path : str, Path
+    file_path : FilePath
         Path to the configuration file in txt format.
 
     Returns

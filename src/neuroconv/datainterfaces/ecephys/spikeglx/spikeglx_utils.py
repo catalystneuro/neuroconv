@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from ....utils import FilePathType
+from pydantic import FilePath
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -55,7 +55,7 @@ def get_session_start_time(recording_metadata: dict) -> datetime:
     return session_start_time
 
 
-def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
+def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
     """
     Returns the stream_id for a spikelgx file.
 

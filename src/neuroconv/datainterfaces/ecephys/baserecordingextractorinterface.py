@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -106,7 +106,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+    def get_original_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -128,7 +128,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -152,7 +152,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         self.recording_extractor.set_times(times=aligned_timestamps)
 
-    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for all segments in this interface with those aligned to the common session start time.
 
@@ -185,7 +185,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 ]
             )
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
         """
         Align the starting time for each segment in this interface relative to the common session start time.
 
@@ -299,7 +299,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series: bool = True,
         compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
         compression_opts: Optional[int] = None,
-        iterator_type: str = "v2",
+        iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         """
@@ -324,10 +324,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        iterator_type : {'v2', 'v1'}
+        iterator_type : {'v2'}
             The type of DataChunkIterator to use.
-            'v1' is the original DataChunkIterator of the hdmf data_utils.
-            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking
         iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
             Valid options are:
@@ -350,14 +349,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
         """
-        from ...tools.spikeinterface import add_recording
+        from ...tools.spikeinterface import add_recording_to_nwbfile
 
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
 
-        add_recording(
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        add_recording_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,

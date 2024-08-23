@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
+from pydantic import DirectoryPath, FilePath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, FolderPathType
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
@@ -34,7 +34,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     def __new__(
         cls,
-        file_path: FilePathType,
+        file_path: FilePath,
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
         fallback_sampling_frequency: Optional[float] = None,
@@ -92,7 +92,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         fallback_sampling_frequency: Optional[float] = None,
         verbose: bool = True,
     ):
@@ -102,7 +102,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path: str
+        file_path: FilePath
             Path to tiff file.
         fallback_sampling_frequency: float, optional
             The sampling frequency can usually be extracted from the scanimage metadata in
@@ -170,7 +170,7 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
     def __new__(
         cls,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         file_pattern: str,
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
@@ -228,7 +228,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         channel_name: Optional[str] = None,
         image_metadata: Optional[dict] = None,
         parsed_metadata: Optional[dict] = None,
@@ -239,7 +239,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : PathType
+        file_path : FilePath
             Path to the TIFF file.
         channel_name : str
             Name of the channel for this extractor.
@@ -329,7 +329,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         file_pattern: str,
         channel_name: Optional[str] = None,
         extract_all_metadata: bool = False,
@@ -342,7 +342,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
         Parameters
         ----------
-        folder_path : PathType
+        folder_path : DirectoryPath
             Path to the folder containing the TIFF files.
         file_pattern : str
             Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
@@ -445,7 +445,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
         image_metadata: Optional[dict] = None,
@@ -457,7 +457,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : PathType
+        file_path : FilePath
             Path to the TIFF file.
         channel_name : str
             The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
@@ -562,7 +562,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         file_pattern: str,
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
@@ -576,7 +576,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
 
         Parameters
         ----------
-        folder_path : PathType
+        folder_path : DirectoryPath
             Path to the folder containing the TIFF files.
         file_pattern : str
             Pattern for the TIFF files to read -- see pathlib.Path.glob for details.

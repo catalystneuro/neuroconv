@@ -1,6 +1,7 @@
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils.types import FilePathType
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
@@ -22,7 +23,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for EDF.
         Currently, only continuous EDF+ files (EDF+C) and original EDF files (EDF) are supported
