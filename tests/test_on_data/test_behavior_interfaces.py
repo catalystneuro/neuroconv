@@ -660,132 +660,132 @@ class TestVideoInterface(VideoInterfaceMixin):
         return self.interface, self.test_name
 
 
-# class TestVideoConversions(TestCase):
-#     @classmethod
-#     def setUpClass(cls):
-#         cls.video_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
-#         cls.video_files.sort()
-#         cls.number_of_video_files = len(cls.video_files)
-#         cls.aligned_segment_starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
+class TestVideoConversions(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.video_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
+        cls.video_files.sort()
+        cls.number_of_video_files = len(cls.video_files)
+        cls.aligned_segment_starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
-#     def _get_metadata(self):
-#         """TODO: temporary helper function to fetch new metadata each time; need to debug in follow-up."""
-#         self.metadata = self.converter.get_metadata()
-#         self.metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-#         self.image_series_name = self.metadata["Behavior"]["Videos"][0]["name"]
+    def _get_metadata(self):
+        """TODO: temporary helper function to fetch new metadata each time; need to debug in follow-up."""
+        self.metadata = self.converter.get_metadata()
+        self.metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        self.image_series_name = self.metadata["Behavior"]["Videos"][0]["name"]
 
-#     def test_real_videos(self):
-#         # TODO - merge this with the data mixin in follow-up
-#         for file_index, (file_path, segment_starting_time) in enumerate(
-#             zip(self.video_files, self.aligned_segment_starting_times)
-#         ):
-#             self.file_index = file_index
+    def test_real_videos(self):
+        # TODO - merge this with the data mixin in follow-up
+        for file_index, (file_path, segment_starting_time) in enumerate(
+            zip(self.video_files, self.aligned_segment_starting_times)
+        ):
+            self.file_index = file_index
 
-#             class VideoTestNWBConverter(NWBConverter):
-#                 data_interface_classes = dict(Video=VideoInterface)
+            class VideoTestNWBConverter(NWBConverter):
+                data_interface_classes = dict(Video=VideoInterface)
 
-#             source_data = dict(Video=dict(file_paths=[file_path]))
-#             self.converter = VideoTestNWBConverter(source_data)
-#             self.interface = self.converter.data_interface_objects["Video"]
-#             self.interface.set_aligned_segment_starting_times(
-#                 aligned_segment_starting_times=[self.aligned_segment_starting_times[self.file_index]]
-#             )
+            source_data = dict(Video=dict(file_paths=[file_path]))
+            self.converter = VideoTestNWBConverter(source_data)
+            self.interface = self.converter.data_interface_objects["Video"]
+            self.interface.set_aligned_segment_starting_times(
+                aligned_segment_starting_times=[self.aligned_segment_starting_times[self.file_index]]
+            )
 
-#             self.check_video_set_aligned_starting_times()
-#             self.check_video_custom_module()
-#             self.check_video_chunking()
+            self.check_video_set_aligned_starting_times()
+            self.check_video_custom_module()
+            self.check_video_chunking()
 
-#     def check_video_set_aligned_starting_times(self):
-#         self._get_metadata()
-#         conversion_options = dict(Video=dict(external_mode=False))
-#         nwbfile_path = OUTPUT_PATH / "check_video_starting_times.nwb"
-#         self.converter.run_conversion(
-#             nwbfile_path=nwbfile_path,
-#             overwrite=True,
-#             conversion_options=conversion_options,
-#             metadata=self.metadata,
-#         )
-#         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-#             nwbfile = io.read()
-#             assert self.image_series_name in nwbfile.acquisition
-#             self.image_series = nwbfile.acquisition[self.image_series_name]
+    def check_video_set_aligned_starting_times(self):
+        self._get_metadata()
+        conversion_options = dict(Video=dict(external_mode=False))
+        nwbfile_path = OUTPUT_PATH / "check_video_starting_times.nwb"
+        self.converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=self.metadata,
+        )
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert self.image_series_name in nwbfile.acquisition
+            self.image_series = nwbfile.acquisition[self.image_series_name]
 
-#             if self.image_series.starting_time is not None:
-#                 assert self.aligned_segment_starting_times[self.file_index] == self.image_series.starting_time
-#             else:
-#                 assert self.aligned_segment_starting_times[self.file_index] == self.image_series.timestamps[0]
+            if self.image_series.starting_time is not None:
+                assert self.aligned_segment_starting_times[self.file_index] == self.image_series.starting_time
+            else:
+                assert self.aligned_segment_starting_times[self.file_index] == self.image_series.timestamps[0]
 
-#     def check_video_custom_module(self):
-#         self._get_metadata()
-#         module_name = "TestModule"
-#         module_description = "This is a test module."
-#         conversion_options = dict(
-#             Video=dict(
-#                 external_mode=False,
-#                 module_name=module_name,
-#                 module_description=module_description,
-#             )
-#         )
-#         nwbfile_path = OUTPUT_PATH / "test_video_custom_module.nwb"
-#         self.converter.run_conversion(
-#             nwbfile_path=nwbfile_path,
-#             overwrite=True,
-#             conversion_options=conversion_options,
-#             metadata=self.metadata,
-#         )
-#         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-#             nwbfile = io.read()
-#             assert module_name in nwbfile.processing
-#             assert module_description == nwbfile.processing[module_name].description
-#             assert self.image_series_name in nwbfile.processing[module_name].data_interfaces
+    def check_video_custom_module(self):
+        self._get_metadata()
+        module_name = "TestModule"
+        module_description = "This is a test module."
+        conversion_options = dict(
+            Video=dict(
+                external_mode=False,
+                module_name=module_name,
+                module_description=module_description,
+            )
+        )
+        nwbfile_path = OUTPUT_PATH / "test_video_custom_module.nwb"
+        self.converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=self.metadata,
+        )
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert module_name in nwbfile.processing
+            assert module_description == nwbfile.processing[module_name].description
+            assert self.image_series_name in nwbfile.processing[module_name].data_interfaces
 
-#     def check_video_chunking(self):
-#         self._get_metadata()
-#         conversion_options = dict(Video=dict(external_mode=False, stub_test=True, chunk_data=False))
-#         nwbfile_path = OUTPUT_PATH / "check_video_chunking.nwb"
-#         self.converter.run_conversion(
-#             nwbfile_path=nwbfile_path,
-#             overwrite=True,
-#             conversion_options=conversion_options,
-#             metadata=self.metadata,
-#         )
+    def check_video_chunking(self):
+        self._get_metadata()
+        conversion_options = dict(Video=dict(external_mode=False, stub_test=True, chunk_data=False))
+        nwbfile_path = OUTPUT_PATH / "check_video_chunking.nwb"
+        self.converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=self.metadata,
+        )
 
-#         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-#             nwbfile = io.read()
-#             assert self.image_series_name in nwbfile.acquisition
-#             assert nwbfile.acquisition[self.image_series_name].data.chunks is not None
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert self.image_series_name in nwbfile.acquisition
+            assert nwbfile.acquisition[self.image_series_name].data.chunks is not None
 
-#     def check_external_mode(self):
-#         self._get_metadata()
-#         conversion_options = dict(Video=dict(external_mode=True))
-#         nwbfile_path = OUTPUT_PATH / "check_external_mode.nwb"
-#         self.converter.run_conversion(
-#             nwbfile_path=nwbfile_path,
-#             overwrite=True,
-#             conversion_options=conversion_options,
-#             metadata=self.metadata,
-#         )
-#         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-#             nwbfile = io.read()
-#             assert self.image_series_name in nwbfile.acquisition
-#             assert nwbfile.acquisition[self.image_series_name].external_file[0] == str(
-#                 self.video_files[self.file_index]
-#             )
+    def check_external_mode(self):
+        self._get_metadata()
+        conversion_options = dict(Video=dict(external_mode=True))
+        nwbfile_path = OUTPUT_PATH / "check_external_mode.nwb"
+        self.converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=self.metadata,
+        )
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert self.image_series_name in nwbfile.acquisition
+            assert nwbfile.acquisition[self.image_series_name].external_file[0] == str(
+                self.video_files[self.file_index]
+            )
 
-#     def check_video_stub(self):
-#         self._get_metadata()
-#         conversion_options = dict(Video=dict(external_mode=False, stub_test=True))
-#         nwbfile_path = OUTPUT_PATH / "check_video_stub.nwb"
-#         self.converter.run_conversion(
-#             nwbfile_path=nwbfile_path,
-#             overwrite=True,
-#             conversion_options=conversion_options,
-#             metadata=self.metadata,
-#         )
-#         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-#             nwbfile = io.read()
-#             assert self.image_series_name in nwbfile.acquisition
-#             assert nwbfile.acquisition[self.image_series_name].data.shape[0] == 10
+    def check_video_stub(self):
+        self._get_metadata()
+        conversion_options = dict(Video=dict(external_mode=False, stub_test=True))
+        nwbfile_path = OUTPUT_PATH / "check_video_stub.nwb"
+        self.converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=self.metadata,
+        )
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert self.image_series_name in nwbfile.acquisition
+            assert nwbfile.acquisition[self.image_series_name].data.shape[0] == 10
 
 
 class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
