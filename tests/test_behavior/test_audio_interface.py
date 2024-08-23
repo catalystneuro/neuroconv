@@ -1,14 +1,11 @@
-import shutil
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from tempfile import mkdtemp
-from warnings import warn
 
 import jsonschema
 import numpy as np
+import pytest
 from dateutil.tz import gettz
-from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
@@ -38,37 +35,37 @@ def create_audio_files(
     return audio_file_names
 
 
-class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
-    @classmethod
-    def setUpClass(cls):
+class TestAudioInterface(AudioInterfaceTestMixin):
+
+    data_interface_cls = AudioInterface
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_test(self, request, tmpdir):
+
+        cls = request.cls
+
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
         cls.num_frames = int(1e7)
         cls.num_audio_files = 3
         cls.sampling_rate = 500
         cls.aligned_segment_starting_times = [0.0, 20.0, 40.0]
 
-        cls.test_dir = Path(mkdtemp())
+        cls.test_dir = Path(tmpdir)
         cls.file_paths = create_audio_files(
             test_dir=cls.test_dir,
             num_audio_files=cls.num_audio_files,
             sampling_rate=cls.sampling_rate,
             num_frames=cls.num_frames,
         )
-        cls.data_interface_cls = AudioInterface
         cls.interface_kwargs = dict(file_paths=[cls.file_paths[0]])
 
-    def setUp(self):
+    @pytest.fixture(scope="function", autouse=True)
+    def setup_converter(self):
+
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")
         self.create_audio_converter()
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=self.session_start_time)
-
-    @classmethod
-    def tearDownClass(cls):
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:  # Windows CI bug
-            warn(f"Unable to fully clean the temporary directory: {cls.test_dir}\n\nPlease remove it manually.")
 
     def create_audio_converter(self):
         class AudioTestNWBConverter(NWBConverter):
@@ -83,7 +80,7 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
 
     def test_unsupported_format(self):
         exc_msg = "The currently supported file format for audio is WAV file. Some of the provided files does not match this format: ['.test']."
-        with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
+        with pytest.raises(ValueError, match=exc_msg):
             AudioInterface(file_paths=["test.test"])
 
     def test_get_metadata(self):
@@ -125,7 +122,7 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
         expected_error_message = (
             "The Audio metadata is incomplete (1 entry)! Expected 3 (one for each entry of 'file_paths')."
         )
-        with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
+        with pytest.raises(AssertionError, match=expected_error_message):
             self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True)
 
     def test_metadata_update(self):
@@ -149,7 +146,7 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
             ],
         )
         expected_error_message = "Some of the names for Audio metadata are not unique."
-        with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
+        with pytest.raises(AssertionError, match=expected_error_message):
             self.interface.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True)
 
     def test_segment_starting_times_are_floats(self):

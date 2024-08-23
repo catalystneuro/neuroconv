@@ -220,6 +220,7 @@ class DataInterfaceTestMixin:
 
         # Create a unique test name and file path
         nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
+        self.nwbfile_path = nwbfile_path
 
         # Now run the checks using the setup objects
         self.check_metadata_schema_valid()
