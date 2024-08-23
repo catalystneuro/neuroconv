@@ -62,12 +62,13 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: dict = dict()
+    conversion_options: Optional[dict] = None
     maxDiff = None
 
     @pytest.fixture
     def setup_interface(self, request):
         self.test_name: str = ""
+        self.conversion_options = self.conversion_options or dict()
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name

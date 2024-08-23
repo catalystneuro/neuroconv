@@ -16,6 +16,7 @@ from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
 from pynwb.behavior import Position, SpatialSeries
 
+from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     FicTracDataInterface,
