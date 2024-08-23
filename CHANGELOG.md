@@ -6,6 +6,8 @@
 * Deprecated use of `compression` and `compression_options` in `VideoInterface` [PR #1005](https://github.com/catalystneuro/neuroconv/pull/1005)
 * `get_schema_from_method_signature` has been deprecated; please use `get_json_schema_from_method_signature` instead. [PR #1016](https://github.com/catalystneuro/neuroconv/pull/1016)
 * `neuroconv.utils.FilePathType` and `neuroconv.utils.FolderPathType` have been deprecated; please use `pydantic.FilePath` and `pydantic.DirectoryPath` instead. [PR #1017](https://github.com/catalystneuro/neuroconv/pull/1017)
+* Changed the roiextractors.tool function (e.g. `add_imaging` and `add_segmentation`) to have the `_to_nwbfile` suffix [PR #1027][PR #1017](https://github.com/catalystneuro/neuroconv/pull/1027)
+
 
 ### Features
 * Added MedPCInterface for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
