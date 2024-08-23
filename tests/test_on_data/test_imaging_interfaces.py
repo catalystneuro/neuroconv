@@ -705,8 +705,9 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(self, request):
+        cls = request.cls
         cls.device_metadata = dict(name="Microscope")
         cls.optical_channel_metadata = dict(
             name="OpticalChannelDefault",
@@ -739,30 +740,32 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         )
 
     def check_extracted_metadata(self, metadata: dict):
-        self.assertEqual(
-            metadata["NWBFile"]["session_start_time"],
-            datetime(2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)),
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(
+            2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)
         )
-        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+        assert metadata["Ophys"] == self.ophys_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
         """Check the ophys metadata made it to the NWB file"""
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
+        # Assuming you would create and write an NWB file here before reading it back
+
+        with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
 
-            self.assertIn(self.imaging_plane_metadata["name"], nwbfile.imaging_planes)
+            assert self.imaging_plane_metadata["name"] in nwbfile.imaging_planes
             imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
             optical_channel = imaging_plane.optical_channel[0]
-            self.assertEqual(optical_channel.name, self.optical_channel_metadata["name"])
-            self.assertEqual(optical_channel.description, self.optical_channel_metadata["description"])
-            self.assertEqual(imaging_plane.description, self.imaging_plane_metadata["description"])
-            self.assertEqual(imaging_plane.imaging_rate, self.imaging_plane_metadata["imaging_rate"])
-            self.assertIn(self.two_photon_series_metadata["name"], nwbfile.acquisition)
+            assert optical_channel.name == self.optical_channel_metadata["name"]
+            assert optical_channel.description == self.optical_channel_metadata["description"]
+            assert imaging_plane.description == self.imaging_plane_metadata["description"]
+            assert imaging_plane.imaging_rate == self.imaging_plane_metadata["imaging_rate"]
+            assert self.two_photon_series_metadata["name"] in nwbfile.acquisition
             two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
-            self.assertEqual(two_photon_series.description, self.two_photon_series_metadata["description"])
-            self.assertEqual(two_photon_series.unit, self.two_photon_series_metadata["unit"])
-            self.assertEqual(two_photon_series.format, self.two_photon_series_metadata["format"])
+            assert two_photon_series.description == self.two_photon_series_metadata["description"]
+            assert two_photon_series.unit == self.two_photon_series_metadata["unit"]
+            assert two_photon_series.format == self.two_photon_series_metadata["format"]
             assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
