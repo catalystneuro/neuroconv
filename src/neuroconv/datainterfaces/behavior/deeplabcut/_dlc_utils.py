@@ -12,31 +12,31 @@ from pynwb import NWBFile
 from ruamel.yaml import YAML
 
 
-def _read_config(config_file_path):
+def _read_config(config_file_path: FilePath) -> dict:
     """
     Reads structured config file defining a project.
     """
+
     ruamelFile = YAML()
     path = Path(config_file_path)
-    if path.exists():
-        try:
-            with open(path, "r") as f:
-                cfg = ruamelFile.load(f)
-                curr_dir = config_file_path.parent
-                if cfg["project_path"] != curr_dir:
-                    cfg["project_path"] = curr_dir
-        except Exception as err:
-            if len(err.args) > 2:
-                if err.args[2] == "could not determine a constructor for the tag '!!python/tuple'":
-                    with open(path, "r") as ymlfile:
-                        cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
-                else:
-                    raise
 
-    else:
-        raise FileNotFoundError(
-            "Config file is not found. Please make sure that the file exists and/or that you passed the path of the config file correctly!"
-        )
+    if not path.exists():
+        raise FileNotFoundError(f"Config file {path} not found.")
+
+    try:
+        with open(path, "r") as f:
+            cfg = ruamelFile.load(f)
+            curr_dir = config_file_path.parent
+            if cfg["project_path"] != curr_dir:
+                cfg["project_path"] = curr_dir
+    except Exception as err:
+        if len(err.args) > 2:
+            if err.args[2] == "could not determine a constructor for the tag '!!python/tuple'":
+                with open(path, "r") as ymlfile:
+                    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+            else:
+                raise
+
     return cfg
 
 
