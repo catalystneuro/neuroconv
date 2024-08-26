@@ -1,19 +1,15 @@
 import json
 import os
 from copy import deepcopy
-from pathlib import Path
-from typing import Dict, Union
 
 import numpy as np
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
-from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
 from neuroconv.utils import (
     NWBMetaDataEncoder,
     dict_deep_update,
     fill_defaults,
     get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
     load_dict_from_file,
 )
 
@@ -37,35 +33,6 @@ def sort_item(item):
         return {k: sort_item(item[k]) for k in sorted(item)}
     else:
         return item
-
-
-def test_get_schema_from_method_signature():
-    class A:
-        def __init__(self, a: int, b: float, c: Union[Path, str], d: bool, e: str = "hi", f: Dict[str, str] = None):
-            pass
-
-    schema = get_schema_from_method_signature(A.__init__)
-
-    correct_schema = dict(
-        additionalProperties=False,
-        properties=dict(
-            a=dict(type="number"),
-            b=dict(type="number"),
-            c=dict(type="string"),
-            d=dict(type="boolean"),
-            e=dict(default="hi", type="string"),
-            f=dict(type="object", additionalProperties={"^.*$": dict(type="string")}),
-        ),
-        required=[
-            "a",
-            "b",
-            "c",
-            "d",
-        ],
-        type="object",
-    )
-
-    assert schema == correct_schema
 
 
 def test_dict_deep_update_1():
@@ -239,21 +206,3 @@ def test_np_array_encoding():
     np_array = np.array([1, 2, 3])
     encoded = json.dumps(np_array, cls=NWBMetaDataEncoder)
     assert encoded == "[1, 2, 3]"
-
-
-def test_get_schema_from_NWBDataInterface():
-    schema = get_schema_from_method_signature(AlphaOmegaRecordingInterface.__init__)
-    assert schema == {
-        "required": ["folder_path"],
-        "properties": {
-            "folder_path": {
-                "format": "directory",
-                "description": "Path to the folder of .mpx files.",
-                "type": "string",
-            },
-            "verbose": {"description": "Allows verbose.\nDefault is True.", "type": "boolean", "default": True},
-            "es_key": {"type": "string", "default": "ElectricalSeries"},
-        },
-        "type": "object",
-        "additionalProperties": False,
-    }

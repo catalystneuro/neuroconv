@@ -1,5 +1,6 @@
 """Collection of Axona interfaces."""
 
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from .axona_utils import (
@@ -11,7 +12,7 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class AxonaRecordingInterface(BaseRecordingExtractorInterface):
@@ -29,12 +30,12 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path: FilePath
             Path to .bin file.
         verbose: bool, optional, default: True
         es_key: str, default: "ElectricalSeries"
@@ -125,7 +126,7 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
             type="object",
         )
 
-    def __init__(self, file_path: FilePathType, noise_std: float = 3.5):
+    def __init__(self, file_path: FilePath, noise_std: float = 3.5):
         super().__init__(filename=file_path, noise_std=noise_std)
         self.source_data = dict(file_path=file_path, noise_std=noise_std)
 
@@ -147,7 +148,7 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
             additionalProperties=False,
         )
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePath):
         data = read_all_eeg_file_lfp_data(file_path).T
         sampling_frequency = get_eeg_sampling_frequency(file_path)
         super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)

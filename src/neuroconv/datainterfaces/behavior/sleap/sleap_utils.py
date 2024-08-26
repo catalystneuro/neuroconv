@@ -1,8 +1,9 @@
+from pydantic import FilePath
+
 from ....tools import get_package
-from ....utils import FilePathType
 
 
-def extract_timestamps(video_file_path: FilePathType) -> list:
+def extract_timestamps(video_file_path: FilePath) -> list:
     """Extract the timestamps using pyav
 
     Parameters

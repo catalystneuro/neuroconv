@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import Optional
 
+from pydantic import FilePath
+
 from .header_tools import parse_nev_basic_header, parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -25,8 +27,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
-        nsx_override: Optional[FilePathType] = None,
+        file_path: FilePath,
+        nsx_override: Optional[FilePath] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
@@ -81,7 +83,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(self, file_path: FilePath, sampling_frequency: float = None, verbose: bool = True):
         """
         Parameters
         ----------

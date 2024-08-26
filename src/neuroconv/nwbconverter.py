@@ -4,9 +4,10 @@ import json
 import warnings
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Union
 
 from jsonschema import validate
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
@@ -35,8 +36,8 @@ class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
     display_name: Union[str, None] = None
-    keywords: Tuple[str] = tuple()
-    associated_suffixes: Tuple[str] = tuple()
+    keywords: tuple[str] = tuple()
+    associated_suffixes: tuple[str] = tuple()
     info: Union[str, None] = None
 
     data_interface_classes = None
@@ -56,11 +57,11 @@ class NWBConverter:
         return source_schema
 
     @classmethod
-    def validate_source(cls, source_data: Dict[str, dict], verbose: bool = True):
+    def validate_source(cls, source_data: dict[str, dict], verbose: bool = True):
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
+    def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = True):
 
         encoder = NWBSourceDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
@@ -72,7 +73,7 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
-    def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+    def __init__(self, source_data: dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
         self._validate_source_data(source_data=source_data, verbose=self.verbose)
@@ -101,13 +102,20 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def validate_metadata(self, metadata: Dict[str, dict]):
+    def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
         encoder = NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
-        validate(instance=decoded_metadata, schema=self.get_metadata_schema())
+
+        metadata_schema = self.get_metadata_schema()
+        if append_mode:
+            # Eliminate required from NWBFile
+            nwbfile_schema = metadata_schema["properties"]["NWBFile"]
+            nwbfile_schema.pop("required", None)
+
+        validate(instance=decoded_metadata, schema=metadata_schema)
         if self.verbose:
             print("Metadata is valid!")
 
@@ -124,9 +132,10 @@ class NWBConverter:
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
+
         return conversion_options_schema
 
-    def validate_conversion_options(self, conversion_options: Dict[str, dict]):
+    def validate_conversion_options(self, conversion_options: dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""
         validate(instance=conversion_options or {}, schema=self.get_conversion_options_schema())
         if self.verbose:
@@ -165,7 +174,7 @@ class NWBConverter:
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Optional[FilePath] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -206,7 +215,7 @@ class NWBConverter:
         """
 
         if nwbfile_path is None:
-            warnings.warn(  # TODO: remove on or after 12/26/2024
+            warnings.warn(  # TODO: remove on or after 2024/12/26
                 "Using Converter.run_conversion without specifying nwbfile_path is deprecated. To create an "
                 "NWBFile object in memory, use Converter.create_nwbfile. To append to an existing NWBFile object,"
                 " use Converter.add_to_nwbfile."
@@ -215,10 +224,13 @@ class NWBConverter:
         backend = _resolve_backend(backend, backend_configuration)
         no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
 
+        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        append_mode = file_initially_exists and not overwrite
+
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata)
+        self.validate_metadata(metadata=metadata, append_mode=append_mode)
         self.validate_conversion_options(conversion_options=conversion_options)
 
         self.temporally_align_data_interfaces()
@@ -277,7 +289,7 @@ class ConverterPipe(NWBConverter):
     def validate_source(cls):
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
-    def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
+    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose
         if isinstance(data_interfaces, list):
             # Create unique names for each interface

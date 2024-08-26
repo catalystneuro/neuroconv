@@ -9,8 +9,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import yaml
-
-from .types import FilePathType
+from pydantic import FilePath
 
 
 class NoDatesSafeLoader(yaml.SafeLoader):
@@ -37,7 +36,7 @@ class NoDatesSafeLoader(yaml.SafeLoader):
 NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
-def load_dict_from_file(file_path: FilePathType) -> dict:
+def load_dict_from_file(file_path: FilePath) -> dict:
     """Safely load metadata from .yml or .json files."""
     file_path = Path(file_path)
     assert file_path.is_file(), f"{file_path} is not a file."

@@ -5,10 +5,10 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Optional, Type, Union
+from typing import Literal, Optional, Type, Union
 
 import numpy as np
-from hdmf.testing import TestCase as HDMFTestCase
+import pytest
 from hdmf_zarr import NWBZarrIO
 from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
@@ -35,14 +35,11 @@ from neuroconv.tools.nwb_helpers import (
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
-from .mock_probes import generate_mock_probe
-
 
 class DataInterfaceTestMixin:
     """
     Generic class for testing DataInterfaces.
 
-    This mixin must be paired with unittest.TestCase.
 
     Several of these tests are required to be run in a specific order. In this case,
     there is a `test_conversion_as_lone_interface` that calls the `check` functions in
@@ -63,10 +60,25 @@ class DataInterfaceTestMixin:
     """
 
     data_interface_cls: Type[BaseDataInterface]
-    interface_kwargs: Union[dict, List[dict]]
+    interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: dict = dict()
+    conversion_options: Optional[dict] = None
     maxDiff = None
+
+    @pytest.fixture
+    def setup_interface(self, request):
+
+        self.test_name: str = ""
+        self.conversion_options = self.conversion_options or dict()
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        return self.interface, self.test_name
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_default_conversion_options(self, request):
+        cls = request.cls
+        cls.conversion_options = cls.conversion_options or dict()
+        return cls.conversion_options
 
     def test_source_schema_valid(self):
         schema = self.data_interface_cls.get_source_schema()
@@ -139,6 +151,7 @@ class DataInterfaceTestMixin:
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
@@ -149,8 +162,7 @@ class DataInterfaceTestMixin:
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
 
-        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
-        source_data = dict(Test=test_kwargs)
+        source_data = dict(Test=self.interface_kwargs)
         converter = TestNWBConverter(source_data=source_data)
 
         metadata = converter.get_metadata()
@@ -158,6 +170,7 @@ class DataInterfaceTestMixin:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         conversion_options = dict(Test=self.conversion_options)
+
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
@@ -172,8 +185,7 @@ class DataInterfaceTestMixin:
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
 
-        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
-        source_data = dict(Test=test_kwargs)
+        source_data = dict(Test=self.interface_kwargs)
         converter = TestNWBConverter(source_data=source_data)
 
         metadata = converter.get_metadata()
@@ -211,59 +223,59 @@ class DataInterfaceTestMixin:
         """Override this in child classes to inject additional custom checks."""
         pass
 
-    def test_all_conversion_checks(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
+    def test_all_conversion_checks(self, setup_interface, tmp_path):
+        interface, test_name = setup_interface
 
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+        # Create a unique test name and file path
+        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
+        self.nwbfile_path = nwbfile_path
 
-                self.check_no_metadata_mutation()
+        # Now run the checks using the setup objects
+        self.check_metadata_schema_valid()
+        self.check_conversion_options_schema_valid()
+        self.check_metadata()
+        self.check_no_metadata_mutation()
+        self.check_configure_backend_for_equivalent_nwbfiles()
 
-                self.check_configure_backend_for_equivalent_nwbfiles()
+        self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
+        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
-                self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
-                    nwbfile_path=self.nwbfile_path, backend="hdf5"
-                )
+        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
+        self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
-                self.check_run_conversion_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_with_backend_configuration(nwbfile_path=self.nwbfile_path, backend="hdf5")
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
 
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-
-                # TODO: enable when all H5DataIO prewraps are gone
-                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
-                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
-                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
-
-                # Any extra custom checks to run
-                self.run_custom_checks()
+        # Any extra custom checks to run
+        self.run_custom_checks()
 
 
 class TemporalAlignmentMixin:
     """
     Generic class for testing temporal alignment methods.
-
-    This mixin must be paired with a unittest.TestCase class.
     """
 
     data_interface_cls: Type[BaseDataInterface]
-    interface_kwargs: Union[dict, List[dict]]
+    interface_kwargs: dict
+    save_directory: Path = Path(tempfile.mkdtemp())
+    conversion_options: Optional[dict] = None
     maxDiff = None
+
+    @pytest.fixture
+    def setup_interface(self, request):
+
+        self.test_name: str = ""
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_default_conversion_options(self, request):
+        cls = request.cls
+        cls.conversion_options = cls.conversion_options or dict()
+        return cls.conversion_options
 
     def setUpFreshInterface(self):
         """Protocol for creating a fresh instance of the interface."""
-        self.interface = self.data_interface_cls(**self.test_kwargs)
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
 
     def check_interface_get_original_timestamps(self):
         """
@@ -328,22 +340,17 @@ class TemporalAlignmentMixin:
         """Check the temporally aligned timing information makes it into the NWB file."""
         pass  # TODO: will be easier to add when interface have 'add' methods separate from .run_conversion()
 
-    def test_interface_alignment(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
+    def test_interface_alignment(self, setup_interface):
 
-                self.check_interface_get_original_timestamps()
-                self.check_interface_get_timestamps()
-                self.check_interface_set_aligned_timestamps()
-                self.check_shift_timestamps_by_start_time()
-                self.check_interface_original_timestamps_inmutability()
+        interface, test_name = setup_interface
 
-                self.check_nwbfile_temporal_alignment()
+        self.check_interface_get_original_timestamps()
+        self.check_interface_get_timestamps()
+        self.check_interface_set_aligned_timestamps()
+        self.check_shift_timestamps_by_start_time()
+        self.check_interface_original_timestamps_inmutability()
+
+        self.check_nwbfile_temporal_alignment()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -364,10 +371,11 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
-            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+            self.save_directory
+            / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.test_kwargs)
+        interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -397,10 +405,6 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAl
 class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """
     Generic class for testing any recording interface.
-
-    Runs all the basic DataInterface tests as well as temporal alignment tests.
-
-    This mixin must be paired with a hdmf.testing.TestCase class.
     """
 
     data_interface_cls: Type[BaseRecordingExtractorInterface]
@@ -480,12 +484,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
         else:
-            assert isinstance(
-                self, HDMFTestCase
-            ), "The RecordingExtractorInterfaceTestMixin must be mixed-in with the TestCase from hdmf.testing!"
-            with self.assertRaisesWith(
-                exc_type=AssertionError,
-                exc_msg="This recording has multiple segments; please use 'align_segment_timestamps' instead.",
+            with pytest.raises(
+                AssertionError,
+                match="This recording has multiple segments; please use 'align_segment_timestamps' instead.",
             ):
                 all_unaligned_timestamps = self.interface.get_timestamps()
 
@@ -588,74 +589,32 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             post_alignment_original_timestamps = self.interface.get_original_timestamps()
             assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
         else:
-            assert isinstance(
-                self, HDMFTestCase
-            ), "The RecordingExtractorInterfaceTestMixin must be mixed-in with the TestCase from hdmf.testing!"
-            with self.assertRaisesWith(
-                exc_type=AssertionError,
-                exc_msg="This recording has multiple segments; please use 'align_segment_timestamps' instead.",
+            with pytest.raises(
+                AssertionError,
+                match="This recording has multiple segments; please use 'align_segment_timestamps' instead.",
             ):
-                all_pre_alignement_timestamps = self.interface.get_original_timestamps()
+                all_pre_alignment_timestamps = self.interface.get_original_timestamps()
 
                 all_aligned_timestamps = [
-                    unaligned_timestamps + 1.23 for unaligned_timestamps in all_pre_alignement_timestamps
+                    unaligned_timestamps + 1.23 for unaligned_timestamps in all_pre_alignment_timestamps
                 ]
                 self.interface.set_aligned_timestamps(aligned_timestamps=all_aligned_timestamps)
 
-    def test_interface_alignment(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
+    def test_interface_alignment(self, setup_interface):
 
-                self.check_interface_get_original_timestamps()
-                self.check_interface_get_timestamps()
-                self.check_interface_set_aligned_timestamps()
-                self.check_interface_set_aligned_segment_timestamps()
-                self.check_shift_timestamps_by_start_time()
-                self.check_shift_segment_timestamps_by_starting_times()
-                self.check_interface_original_timestamps_inmutability()
+        interface, test_name = setup_interface
 
-                self.check_nwbfile_temporal_alignment()
+        self.check_interface_get_original_timestamps()
+        self.check_interface_get_timestamps()
+        self.check_interface_set_aligned_timestamps()
+        self.check_shift_timestamps_by_start_time()
+        self.check_interface_original_timestamps_inmutability()
 
-    def test_all_conversion_checks(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                assert isinstance(self.interface, BaseRecordingExtractorInterface)
-                if not self.interface.has_probe():
-                    self.interface.set_probe(
-                        generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
-                        group_mode="by_shank",
-                    )
+        self.check_interface_set_aligned_segment_timestamps()
+        self.check_shift_timestamps_by_start_time()
+        self.check_shift_segment_timestamps_by_starting_times()
 
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-
-                self.check_no_metadata_mutation()
-
-                self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
-                    nwbfile_path=self.nwbfile_path, backend="hdf5"
-                )
-
-                self.check_run_conversion_with_backend(nwbfile_path=self.nwbfile_path, backend="hdf5")
-                self.check_run_conversion_with_backend_configuration(nwbfile_path=self.nwbfile_path, backend="hdf5")
-
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-
-                # Any extra custom checks to run
-                self.run_custom_checks()
+        self.check_nwbfile_temporal_alignment()
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -664,7 +623,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
     associated_recording_kwargs: Optional[dict] = None
 
     def setUpFreshInterface(self):
-        self.interface = self.data_interface_cls(**self.test_kwargs)
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
         self.interface.register_recording(recording_interface=recording_interface)
@@ -766,26 +725,45 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             ):
                 assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
 
-    def test_interface_alignment(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
+    def test_all_conversion_checks(self, setup_interface, tmp_path):
+        # The fixture `setup_interface` sets up the necessary objects
+        interface, test_name = setup_interface
 
-                if self.associated_recording_cls is None:
-                    continue
+        # Create a unique test name and file path
+        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
 
-                # Skip get_original_timestamps() checks since unsupported
-                self.check_interface_get_timestamps()
-                self.check_interface_set_aligned_timestamps()
-                self.check_interface_set_aligned_segment_timestamps()
-                self.check_shift_timestamps_by_start_time()
-                self.check_shift_segment_timestamps_by_starting_times()
+        # Now run the checks using the setup objects
+        self.check_metadata_schema_valid()
+        self.check_conversion_options_schema_valid()
+        self.check_metadata()
+        self.check_no_metadata_mutation()
+        self.check_configure_backend_for_equivalent_nwbfiles()
 
-                self.check_nwbfile_temporal_alignment()
+        self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
+        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
+
+        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
+        self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
+
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
+
+        # Any extra custom checks to run
+        self.run_custom_checks()
+
+    def test_interface_alignment(self, setup_interface):
+
+        # TODO sorting can have times without associated recordings, test this later
+        if self.associated_recording_cls is None:
+            return None
+
+        # Skip get_original_timestamps() checks since unsupported
+        self.check_interface_get_timestamps()
+        self.check_interface_set_aligned_timestamps()
+        self.check_interface_set_aligned_segment_timestamps()
+        self.check_shift_timestamps_by_start_time()
+        self.check_shift_segment_timestamps_by_starting_times()
+
+        self.check_nwbfile_temporal_alignment()
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -822,7 +800,7 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            video_type = Path(self.test_kwargs["file_paths"][0]).suffix[1:]
+            video_type = Path(self.interface_kwargs["file_paths"][0]).suffix[1:]
             assert f"Video: video_{video_type}" in nwbfile.acquisition
 
     def check_interface_set_aligned_timestamps(self):
@@ -856,7 +834,9 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_set_aligned_segment_starting_times(self):
         self.setUpFreshInterface()
 
-        aligned_segment_starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
+        aligned_segment_starting_times = [
+            1.23 * file_path_index for file_path_index in range(len(self.interface_kwargs))
+        ]
         self.interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
         all_aligned_timestamps = self.interface.get_timestamps()
 
@@ -884,27 +864,6 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             all_post_alignment_original_timestamps, all_pre_alignment_original_timestamps
         ):
             assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
-
-    def check_nwbfile_temporal_alignment(self):
-        pass  # TODO in separate PR
-
-    def test_interface_alignment(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-
-                self.check_interface_get_original_timestamps()
-                self.check_interface_get_timestamps()
-                self.check_interface_set_aligned_timestamps()
-                self.check_shift_timestamps_by_start_time()
-                self.check_interface_original_timestamps_inmutability()
-                self.check_set_aligned_segment_starting_times()
-
-                self.check_nwbfile_temporal_alignment()
 
 
 class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -947,6 +906,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             overwrite=True,
+            metadata=metadata,
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
@@ -1227,3 +1187,238 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             optical_channel_names = [channel.name for channel in optical_channels]
             assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
+
+
+class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_no_metadata_mutation(self, metadata: dict):
+        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
+
+        metadata_in = deepcopy(metadata)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+
+        assert metadata == metadata_in
+
+    def check_run_conversion_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+    def check_configure_backend_for_equivalent_nwbfiles(
+        self, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
+
+    def check_run_conversion_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            backend_configuration=backend_configuration,
+            **self.conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+
+        conversion_options = dict(Test=self.conversion_options)
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
+
+    def test_all_conversion_checks(self, metadata: dict):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+
+                self.check_no_metadata_mutation(metadata=metadata)
+
+                self.check_configure_backend_for_equivalent_nwbfiles(metadata=metadata)
+
+                self.check_run_conversion_in_nwbconverter_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_run_conversion_with_backend(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+                self.check_run_conversion_with_backend_configuration(
+                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
+                )
+
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # TODO: enable when all H5DataIO prewraps are gone
+                # self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb.zarr")
+                # self.check_run_conversion(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_run_conversion_custom_backend(nwbfile_path=self.nwbfile_path, backend="zarr")
+                # self.check_basic_zarr_read(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
+    def check_interface_get_original_timestamps(self):
+        """
+        Just to ensure each interface can call .get_original_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+        for stream_name, timestamps in stream_name_to_timestamps.items():
+            assert len(timestamps) != 0, f"Timestamps for {stream_name} are empty."
+
+    def check_interface_get_timestamps(self):
+        """
+        Just to ensure each interface can call .get_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        self.setUpFreshInterface()
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
+        for stream_name, timestamps in stream_name_to_timestamps.items():
+            assert len(timestamps) != 0, f"Timestamps for {stream_name} are empty."
+
+    def check_interface_set_aligned_timestamps(self):
+        """Ensure that internal mechanisms for the timestamps getter/setter work as expected."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        self.setUpFreshInterface()
+        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_stream_name_to_timestamps = {}
+        for stream_name, unaligned_timestamps in unaligned_stream_name_to_timestamps.items():
+            aligned_timestamps = (
+                unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+            )
+            aligned_stream_name_to_timestamps[stream_name] = aligned_timestamps
+        self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
+        t1 += 1.23 if t1 != 0.0 else 0.0
+        t2 += 2.23 if t2 != 0.0 else 0.0
+
+        retrieved_aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
+        for stream_name, aligned_timestamps in aligned_stream_name_to_timestamps.items():
+            retrieved_aligned_timestamps = retrieved_aligned_stream_name_to_timestamps[stream_name]
+            assert_array_equal(retrieved_aligned_timestamps, aligned_timestamps)
+
+    def check_shift_timestamps_by_start_time(self):
+        """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        self.setUpFreshInterface()
+        unaligned_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+
+        aligned_starting_time = 1.23
+        self.interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time, t1=t1, t2=t2)
+        t1 += aligned_starting_time if t1 != 0.0 else 0.0
+        t2 += aligned_starting_time if t2 != 0.0 else 0.0
+
+        aligned_stream_name_to_timestamps = self.interface.get_timestamps(t1=t1, t2=t2)
+        expected_timestamps_dict = {
+            name: unaligned_timestamps + aligned_starting_time
+            for name, unaligned_timestamps in unaligned_stream_name_to_timestamps.items()
+        }
+        for name, expected_timestamps in expected_timestamps_dict.items():
+            timestamps = aligned_stream_name_to_timestamps[name]
+            assert_array_equal(timestamps, expected_timestamps)
+
+    def check_interface_original_timestamps_inmutability(self):
+        """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
+        t1 = self.conversion_options.get("t1", 0.0)
+        t2 = self.conversion_options.get("t2", 0.0)
+        self.setUpFreshInterface()
+        pre_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+
+        aligned_stream_name_to_timestamps = {
+            name: pre_alignment_timestamps + 1.23
+            for name, pre_alignment_timestamps in pre_alignment_stream_name_to_timestamps.items()
+        }
+        self.interface.set_aligned_timestamps(stream_name_to_aligned_timestamps=aligned_stream_name_to_timestamps)
+
+        post_alignment_stream_name_to_timestamps = self.interface.get_original_timestamps(t1=t1, t2=t2)
+        for name, post_alignment_timestamps in post_alignment_stream_name_to_timestamps.items():
+            pre_alignment_timestamps = pre_alignment_stream_name_to_timestamps[name]
+            assert_array_equal(post_alignment_timestamps, pre_alignment_timestamps)
+
+    def test_interface_alignment(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+
+                self.check_interface_get_original_timestamps()
+                self.check_interface_get_timestamps()
+                self.check_interface_set_aligned_timestamps()
+                self.check_shift_timestamps_by_start_time()
+                self.check_interface_original_timestamps_inmutability()
+                self.check_nwbfile_temporal_alignment()

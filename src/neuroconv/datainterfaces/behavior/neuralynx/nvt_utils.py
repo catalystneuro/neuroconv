@@ -5,12 +5,10 @@ Derived from https://www.mathworks.com/matlabcentral/fileexchange/26226-readnvt
 import os
 from datetime import datetime
 from shutil import copy
-from typing import Dict, List, Union
+from typing import Union
 
 import numpy as np
-
-# Constants for header size and record format
-from neuroconv.utils import FilePathType
+from pydantic import FilePath
 
 HEADER_SIZE = 16 * 1024
 
@@ -28,7 +26,7 @@ RECORD_FORMAT = [
 ]
 
 
-def read_header(filename: str) -> Dict[str, Union[str, datetime, float, int, List[int]]]:
+def read_header(filename: str) -> dict[str, Union[str, datetime, float, int, list[int]]]:
     """
     Parses a Neuralynx NVT File Header and returns it as a dictionary.
 
@@ -85,7 +83,7 @@ def read_header(filename: str) -> Dict[str, Union[str, datetime, float, int, Lis
     return out
 
 
-def read_data(filename: str) -> Dict[str, np.ndarray]:
+def read_data(filename: str) -> dict[str, np.ndarray]:
     """
     Reads a NeuroLynx NVT file and returns its data.
 
@@ -99,7 +97,7 @@ def read_data(filename: str) -> Dict[str, np.ndarray]:
 
     Returns
     -------
-    Dict[str, np.ndarray]
+    dict[str, np.ndarray]
         Dictionary containing the parsed data.
 
     Raises
@@ -120,7 +118,7 @@ def read_data(filename: str) -> Dict[str, np.ndarray]:
         return {name: records[name].squeeze() for name, *_ in RECORD_FORMAT}
 
 
-def truncate_file(source_filename: FilePathType, dest_filename: str, n_records: int = 10) -> None:  # pragma: no cover
+def truncate_file(source_filename: FilePath, dest_filename: str, n_records: int = 10) -> None:  # pragma: no cover
     """
     Creates a new .nvt file with the same header and truncated data. Useful for creating
     test files.

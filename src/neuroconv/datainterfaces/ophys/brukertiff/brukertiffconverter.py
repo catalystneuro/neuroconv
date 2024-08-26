@@ -1,5 +1,6 @@
 from typing import Literal, Optional
 
+from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from ... import (
@@ -8,7 +9,7 @@ from ... import (
 )
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FolderPathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class BrukerTiffMultiPlaneConverter(NWBConverter):
@@ -31,7 +32,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         plane_separation_type: Literal["disjoint", "contiguous"] = None,
         verbose: bool = False,
     ):
@@ -40,7 +41,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
         Parameters
         ----------
-        folder_path : PathType
+        folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         plane_separation_type: {'contiguous', 'disjoint'}
             Defines how to write volumetric imaging data. Use 'contiguous' to create the volumetric two photon series,
@@ -97,7 +98,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Optional[FilePath] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -137,7 +138,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         verbose: bool = False,
     ):
         """
@@ -145,7 +146,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
         Parameters
         ----------
-        folder_path : PathType
+        folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         verbose : bool, default: True
             Controls verbosity.
@@ -189,7 +190,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Optional[FilePath] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

@@ -4,7 +4,7 @@ import json
 import os
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 from uuid import uuid4
 
 
@@ -12,9 +12,9 @@ def submit_aws_batch_job(
     *,
     job_name: str,
     docker_image: str,
-    commands: Optional[List[str]] = None,
-    environment_variables: Optional[Dict[str, str]] = None,
-    job_dependencies: Optional[List[Dict[str, str]]] = None,
+    commands: Optional[list[str]] = None,
+    environment_variables: Optional[dict[str, str]] = None,
+    job_dependencies: Optional[list[dict[str, str]]] = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
@@ -24,7 +24,7 @@ def submit_aws_batch_job(
     minimum_worker_cpus: int = 4,
     submission_id: Optional[str] = None,
     region: Optional[str] = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
 
