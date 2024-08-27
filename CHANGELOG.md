@@ -1,6 +1,17 @@
 # Upcoming
 
 ### Deprecations
+
+### Features
+
+### Bug fixes
+
+### Improvements
+
+
+## V0.6.0 (August 27, 2024)
+
+### Deprecations
 * Deprecated  `WaveformExtractor` usage. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
 * Changed the spikeinterface.tool functions (e.g. `add_recording`, `add_sorting`) to have `_to_nwbfile` as suffix  [PR #1015](https://github.com/catalystneuro/neuroconv/pull/1015)
 * Deprecated use of `compression` and `compression_options` in `VideoInterface` [PR #1005](https://github.com/catalystneuro/neuroconv/pull/1005)
