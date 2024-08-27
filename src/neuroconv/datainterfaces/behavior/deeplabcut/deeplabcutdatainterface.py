@@ -114,7 +114,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwbfile=nwbfile,
             h5file=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
-            config_file=str(self.source_data["config_file_path"]),
+            config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,
             pose_estimation_container_kwargs=dict(name=container_name),
         )
