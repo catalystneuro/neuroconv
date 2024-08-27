@@ -8,9 +8,7 @@ from .tools import get_package
 
 
 class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
-    """
-    Abstract class defining the structure of all Extractor-based Interfaces.
-    """
+    """Abstract class defining the structure of all Extractor-based Interfaces."""
 
     # Manually override any of these attributes in a subclass if needed.
     # Note that values set at the level of class definition are called upon import.

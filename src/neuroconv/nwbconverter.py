@@ -95,7 +95,10 @@ class NWBConverter:
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        """Auto-fill as much of the metadata as possible.
+
+        Must comply with metadata schema.
+        """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
@@ -142,8 +145,7 @@ class NWBConverter:
             print("conversion_options is valid!")
 
     def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
-        """
-        Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
+        """Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
 
         Parameters
         ----------
@@ -185,8 +187,7 @@ class NWBConverter:
         backend_configuration: Optional[HDF5BackendConfiguration] = None,
         conversion_options: Optional[dict] = None,
     ) -> None:
-        """
-        Run the NWB conversion over all the instantiated data interfaces.
+        """Run the NWB conversion over all the instantiated data interfaces.
 
         Parameters
         ----------
@@ -213,7 +214,6 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
-
         if nwbfile_path is None:
             warnings.warn(  # TODO: remove on or after 2024/12/26
                 "Using Converter.run_conversion without specifying nwbfile_path is deprecated. To create an "
@@ -260,8 +260,7 @@ class NWBConverter:
         nwbfile: NWBFile,
         backend: Literal["hdf5", "zarr"] = "hdf5",
     ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
-        """
-        Fill and return a default backend configuration to serve as a starting point for further customization.
+        """Fill and return a default backend configuration to serve as a starting point for further customization.
 
         Parameters
         ----------
