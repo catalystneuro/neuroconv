@@ -17,8 +17,7 @@ class NoDatesSafeLoader(yaml.SafeLoader):
 
     @classmethod
     def remove_implicit_resolver(cls, tag_to_remove):
-        """
-        Remove implicit resolvers for a particular tag.
+        """Remove implicit resolvers for a particular tag.
 
         Takes care not to modify resolvers in super classes.
         Solution taken from https://stackoverflow.com/a/37958106/11483674
@@ -57,8 +56,7 @@ def exist_dict_in_list(d, ls):
 
 
 def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool = True, remove_repeats: bool = True):
-    """
-    Update the list ls with the dict d.
+    """Update the list ls with the dict d.
 
     Cases:
 
@@ -115,8 +113,7 @@ def dict_deep_update(
     compare_key: str = "name",
     list_dict_deep_update: bool = True,
 ) -> collections.abc.Mapping:
-    """
-    Perform an update to all nested keys of dictionary d(input) from dictionary u(updating dict).
+    """Perform an update to all nested keys of dictionary d(input) from dictionary u(updating dict).
 
     Parameters
     ----------
@@ -174,7 +171,6 @@ def dict_deep_update(
     d: dict
         return the updated dictionary
     """
-
     dict_to_update, dict_with_update_values = d, u
     if not isinstance(dict_to_update, collections.abc.Mapping):
         warnings.warn("input to update should be a dict, returning output")
@@ -206,7 +202,7 @@ def dict_deep_update(
 
 
 class DeepDict(defaultdict):
-    """A defaultdict of defaultdicts"""
+    """A defaultdict of defaultdicts."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(lambda: DeepDict(), *args, **kwargs)
@@ -222,7 +218,7 @@ class DeepDict(defaultdict):
                 self[key] = value
 
     def to_dict(self) -> dict:
-        """Turn a DeepDict into a normal dictionary"""
+        """Turn a DeepDict into a normal dictionary."""
 
         def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
@@ -230,18 +226,6 @@ class DeepDict(defaultdict):
         return _to_dict(self)
 
     def __deepcopy__(self, memodict={}):
-        """
-
-        Parameters
-        ----------
-        memodict: dict
-            unused
-
-        Returns
-        -------
-        DeepDict
-
-        """
         return DeepDict(deepcopy(self.to_dict()))
 
     def __repr__(self) -> str:

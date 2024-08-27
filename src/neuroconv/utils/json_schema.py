@@ -69,7 +69,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:  # noqa: D401
     """Deprecated version of `get_json_schema_from_method_signature`."""
     message = (
         "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
@@ -81,8 +81,7 @@ def get_schema_from_method_signature(method: Callable, exclude: Optional[list[st
 
 
 def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
-    """
-    Get the equivalent JSON schema for a signature of a method.
+    """Get the equivalent JSON schema for a signature of a method.
 
     Also uses `docstring_parser` (NumPy style) to attempt to find descriptions for the arguments.
 
@@ -165,8 +164,7 @@ def _copy_without_title_keys(d: Any, /) -> Optional[dict]:
 
 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
-    """
-    Insert the values of the defaults dict as default values in the schema in place.
+    """Insert the values of the defaults dict as default values in the schema in place.
 
     Parameters
     ----------
@@ -190,8 +188,7 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 
 
 def unroot_schema(schema: dict):
-    """
-    Modify a json-schema dictionary to make it not root.
+    """Modify a json-schema dictionary to make it not root.
 
     Parameters
     ----------

@@ -4,8 +4,7 @@ from typing import Union
 
 
 def infer_path(path: str) -> Union[PureWindowsPath, Path]:
-    """
-    Infers and returns the appropriate path object based on the path string.
+    r"""Infers and returns the appropriate path object based on the path string.
 
     Parameters
     ----------

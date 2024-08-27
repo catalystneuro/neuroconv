@@ -2,9 +2,7 @@ import math
 
 
 def human_readable_size(size_bytes: int, binary: bool = False) -> str:
-    """
-    Convert a file size given in bytes to a human-readable format using division
-    and remainder instead of iteration.
+    """Convert a file size given in bytes to a human-readable format using division and remainder instead of iteration.
 
     Parameters
     ----------
