@@ -9,7 +9,7 @@
 ### Improvements
 
 
-## V0.6.0 (August 27, 2024)
+## v0.6.0 (August 27, 2024)
 
 ### Deprecations
 * Deprecated  `WaveformExtractor` usage. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
