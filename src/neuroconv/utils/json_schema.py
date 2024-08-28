@@ -102,7 +102,6 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     exclude = exclude or []
     exclude += ["self", "cls"]
 
-    print(method.__qualname__)
     split_qualname = method.__qualname__.split(".")[-2:]
     method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
 
