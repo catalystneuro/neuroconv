@@ -138,8 +138,6 @@ fixable = ["ALL"]
 relative-imports-order = "closest-to-furthest"
 known-first-party = ["neuroconv"]
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
 
 [tool.codespell]
 skip = '.git*,*.pdf,*.css'
