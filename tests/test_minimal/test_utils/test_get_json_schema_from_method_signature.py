@@ -359,7 +359,7 @@ def test_get_json_schema_from_method_signature_docstring_warning_with_exclusions
 
 def test_get_json_schema_from_method_signature_docstring_warning_from_bound_method():
     class TestClass:
-        def method_with_typo_in_docstring_from_bound_method(integer: int):
+        def test_bound_method(self, integer: int):
             """
             This is a docstring with a typo in the argument name.
 
@@ -372,15 +372,14 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_bound_meth
 
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(
-            method=TestClass.method_with_typo_in_docstring_and_exclusions, exclude=["nwbfile", "metadata"]
+            method=TestClass.test_bound_method, exclude=["nwbfile", "metadata"]
         )
 
     assert len(warning_info) == 1
 
     expected_warning_message = (
-        "The argument_name 'integ' from the docstring of method "
-        "'TestClass.method_with_typo_in_docstring_and_exclusions' does not occur in the signature, "
-        "possibly due to a typo."
+        "The argument_name 'integ' from the docstring of method 'TestClass.test_bound_method' does not occur in the "
+        "signature, possibly due to a typo."
     )
     assert warning_info[0].message.args[0] == expected_warning_message
 
