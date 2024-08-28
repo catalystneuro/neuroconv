@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.5.1"
+version = "0.6.1"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
     {name = "Cody Baker"},
     {name = "Szonja Weigl"},
     {name = "Heberto Mayorquin"},
+    {name = "Paul Adkisson"},
     {name = "Luiz Tauffer"},
     {name = "Ben Dichter",  email = "ben.dichter@catalystneuro.com"}
 ]
@@ -26,7 +27,8 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
-    "License ::  BSD-3-Clause ",
+    "License :: OSI Approved :: BSD License",
+
 ]
 requires-python = ">=3.9"
 dependencies = [
