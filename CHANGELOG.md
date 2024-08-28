@@ -5,6 +5,8 @@
 ### Features
 
 ### Bug fixes
+* Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method
+  triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
 
 ### Improvements
 
