@@ -102,8 +102,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     exclude = exclude or []
     exclude += ["self", "cls"]
 
-    split_qualname = method.__qualname__.split(".")[1:]
-    method_display = ".".join(split_qualname[1:]) if "<" not in split_qualname[-1] else split_qualname[0]
+    print(method.__qualname__)
+    split_qualname = method.__qualname__.split(".")[-2:]
+    method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
 
     signature = inspect.signature(obj=method)
     parameters = signature.parameters
