@@ -142,7 +142,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     for parameter_in_docstring in parsed_docstring.params:
         if parameter_in_docstring.arg_name not in json_schema["properties"]:
             message = (
-                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring not occur in the "
+                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring does not occur in the "
                 "method signature, possibly due to a typo."
             )
             warnings.warn(message=message, stacklevel=2)

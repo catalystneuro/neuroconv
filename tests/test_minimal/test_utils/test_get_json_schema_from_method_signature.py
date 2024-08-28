@@ -4,9 +4,10 @@ from typing import Dict, List, Literal, Optional, Union
 import pytest
 from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
+from pynwb import NWBFile
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
-from neuroconv.utils import ArrayType, get_json_schema_from_method_signature
+from neuroconv.utils import ArrayType, DeepDict, get_json_schema_from_method_signature
 
 
 def test_get_json_schema_from_method_signature_basic():
@@ -299,8 +300,48 @@ def test_get_json_schema_from_method_signature_docstring_warning():
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=method_with_typo_in_docstring)
 
+    assert len(warning_info) == 1
+
     expected_warning_message = (
-        "The argument_name 'integ' from the docstring not occur in the method signature, possibly due to a typo."
+        "The argument_name 'integ' from the docstring does not occur in the method signature, possibly due to a typo."
+    )
+    assert warning_info[0].message.args[0] == expected_warning_message
+
+    expected_json_schema = {
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_docstring_warning():
+    def method_with_typo_in_docstring(integer: int, nwbfile: NWBFile, metadata: DeepDict):
+        """
+        This is a docstring with a typo in the argument name.
+
+        Parameters
+        ----------
+        integ : int
+            This is an integer.
+        nwbfile : pynwb.NWBFile
+            An in-memory NWBFile object.
+        metadata : neuroconv.utils.DeepDict
+            A dictionary-like object that allows for deep access and modification.
+        """
+        pass
+
+    with pytest.warns(expected_warning=UserWarning) as warning_info:
+        test_json_schema = get_json_schema_from_method_signature(
+            method=method_with_typo_in_docstring, exclude=["nwbfile", "metadata"]
+        )
+
+    assert len(warning_info) == 1
+
+    expected_warning_message = (
+        "The argument_name 'integ' from the docstring does not occur in the method signature, possibly due to a typo."
     )
     assert warning_info[0].message.args[0] == expected_warning_message
 
