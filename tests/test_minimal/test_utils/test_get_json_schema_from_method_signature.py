@@ -303,7 +303,8 @@ def test_get_json_schema_from_method_signature_docstring_warning():
     assert len(warning_info) == 1
 
     expected_warning_message = (
-        "The argument_name 'integ' from the docstring does not occur in the method signature, possibly due to a typo."
+        "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring' does not occur in "
+        "the signature, possibly due to a typo."
     )
     assert warning_info[0].message.args[0] == expected_warning_message
 
@@ -318,7 +319,7 @@ def test_get_json_schema_from_method_signature_docstring_warning():
 
 
 def test_get_json_schema_from_method_signature_docstring_warning():
-    def method_with_typo_in_docstring(integer: int, nwbfile: NWBFile, metadata: DeepDict):
+    def method_with_typo_in_docstring_and_exclusions(integer: int, nwbfile: NWBFile, metadata: DeepDict):
         """
         This is a docstring with a typo in the argument name.
 
@@ -335,13 +336,14 @@ def test_get_json_schema_from_method_signature_docstring_warning():
 
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(
-            method=method_with_typo_in_docstring, exclude=["nwbfile", "metadata"]
+            method=method_with_typo_in_docstring_and_exclusions, exclude=["nwbfile", "metadata"]
         )
 
     assert len(warning_info) == 1
 
     expected_warning_message = (
-        "The argument_name 'integ' from the docstring does not occur in the method signature, possibly due to a typo."
+        "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring_and_exclusions' "
+        "does not occur in the signature, possibly due to a typo."
     )
     assert warning_info[0].message.args[0] == expected_warning_message
 
