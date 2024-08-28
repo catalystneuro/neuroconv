@@ -371,14 +371,47 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_bound_meth
             pass
 
     with pytest.warns(expected_warning=UserWarning) as warning_info:
-        test_json_schema = get_json_schema_from_method_signature(
-            method=TestClass.test_bound_method, exclude=["nwbfile", "metadata"]
-        )
+        test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_bound_method)
 
     assert len(warning_info) == 1
 
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'TestClass.test_bound_method' does not occur in the "
+        "signature, possibly due to a typo."
+    )
+    assert warning_info[0].message.args[0] == expected_warning_message
+
+    expected_json_schema = {
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_docstring_warning_from_class_method():
+    class TestClass:
+        @classmethod
+        def test_class_method(self, integer: int):
+            """
+            This is a docstring with a typo in the argument name.
+
+            Parameters
+            ----------
+            integ : int
+                This is an integer.
+            """
+            pass
+
+    with pytest.warns(expected_warning=UserWarning) as warning_info:
+        test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_class_method)
+
+    assert len(warning_info) == 1
+
+    expected_warning_message = (
+        "The argument_name 'integ' from the docstring of method 'TestClass.test_class_method' does not occur in the "
         "signature, possibly due to a typo."
     )
     assert warning_info[0].message.args[0] == expected_warning_message
