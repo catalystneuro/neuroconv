@@ -23,7 +23,7 @@ A simple to-do list for the Neuroconv release process:
 
    - The title and tag should be the release version.
    - The changelog should be copied correspondingly.
-   - Check the hashes in the markdown to ensure they match with the format of previous releases.
+   - Check the hashes in the markdown to ensure they match with the format of previous releases. This can be done efficiently by searching for `@ git` in an IDE.
 
 5. **Release**:
 
