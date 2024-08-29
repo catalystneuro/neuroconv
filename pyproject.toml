@@ -126,13 +126,12 @@ extend-exclude = '''
 
 [tool.ruff.lint]
 select = ["F401", "I", "D101"] # TODO: eventually, expand to other 'F' linting
-ignore = ["D100"]
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "**__init__.py" = ["F401", "I"]
 "tests/**" = ["D"]  # We are not enforcing docstrings in tests
-"src/neuroconv/tools/testing/data_interface_mixins.py" = ["D"]  # We are not enforcing docstrings in tests
+"src/neuroconv/tools/testing/data_interface_mixins.py" = ["D"]  # We are not enforcing docstrings in the interface mixings
 
 [tool.ruff.lint.isort]
 relative-imports-order = "closest-to-furthest"
