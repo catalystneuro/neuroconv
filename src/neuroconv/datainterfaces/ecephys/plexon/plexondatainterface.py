@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from pydantic import FilePath
 
@@ -24,7 +25,13 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
         return source_schema
 
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
+        stream_name: Optional[str] = None,
+    ):
         """
         Load and prepare data for Plexon.
 
@@ -35,9 +42,17 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        stream_name: str, optional
+            Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
+            the wideband data.
         """
 
-        stream_name = "WB-Wideband"
+        if stream_name is None:
+            stream_name = "WB-Wideband"
+
+        invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
+        assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
     def get_metadata(self) -> DeepDict:
