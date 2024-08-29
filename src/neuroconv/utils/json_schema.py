@@ -102,6 +102,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     exclude = exclude or []
     exclude += ["self", "cls"]
 
+    split_qualname = method.__qualname__.split(".")[-2:]
+    method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
+
     signature = inspect.signature(obj=method)
     parameters = signature.parameters
     additional_properties = False
@@ -140,10 +143,13 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     # Attempt to find descriptions within the docstring of the method
     parsed_docstring = docstring_parser.parse(method.__doc__)
     for parameter_in_docstring in parsed_docstring.params:
+        if parameter_in_docstring.arg_name in exclude:
+            continue
+
         if parameter_in_docstring.arg_name not in json_schema["properties"]:
             message = (
-                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring not occur in the "
-                "method signature, possibly due to a typo."
+                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring of method "
+                f"'{method_display}' does not occur in the signature, possibly due to a typo."
             )
             warnings.warn(message=message, stacklevel=2)
             continue
