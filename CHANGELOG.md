@@ -3,6 +3,7 @@
 ### Deprecations
 
 ### Features
+* Added chunking/compression for compound objects: [PR #1042](https://github.com/catalystneuro/neuroconv/pull/1042)
 
 ### Bug fixes
 
