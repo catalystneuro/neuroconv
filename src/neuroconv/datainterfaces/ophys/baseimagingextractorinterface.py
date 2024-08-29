@@ -147,7 +147,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
-        from ...tools.roiextractors import add_imaging
+        from ...tools.roiextractors import add_imaging_to_nwbfile
 
         if stub_test:
             stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
@@ -155,7 +155,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         else:
             imaging_extractor = self.imaging_extractor
 
-        add_imaging(
+        add_imaging_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,

@@ -1,5 +1,6 @@
+from pydantic import DirectoryPath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.types import FolderPathType
 
 
 class TdtRecordingInterface(BaseRecordingExtractorInterface):
@@ -11,7 +12,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         gain: float,
         stream_id: str = "0",
         verbose: bool = True,

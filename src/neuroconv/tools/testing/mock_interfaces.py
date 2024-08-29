@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -65,7 +65,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: Optional[List[List[float]]] = None, ttl_duration: float = 1.0
+        self, signal_duration: float = 7.0, ttl_times: Optional[list[list[float]]] = None, ttl_duration: float = 1.0
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
@@ -128,8 +128,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
-        # durations: Tuple[float] = (1.0,),  # Uncomment when pydantic is integrated for schema validation
-        durations: tuple = (1.0,),
+        durations: tuple[float] = (1.0,),
         seed: int = 0,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",

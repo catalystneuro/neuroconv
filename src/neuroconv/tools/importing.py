@@ -6,7 +6,7 @@ from importlib.metadata import version as importlib_version
 from importlib.util import find_spec
 from platform import processor, python_version
 from types import ModuleType
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 from packaging import version
 
@@ -41,8 +41,8 @@ def is_package_installed(package_name: str) -> bool:
 def get_package(
     package_name: str,
     installation_instructions: Optional[str] = None,
-    excluded_python_versions: Optional[List[str]] = None,
-    excluded_platforms_and_python_versions: Optional[Dict[str, Union[List[str], Dict[str, List[str]]]]] = None,
+    excluded_python_versions: Optional[list[str]] = None,
+    excluded_platforms_and_python_versions: Optional[dict[str, Union[list[str], dict[str, list[str]]]]] = None,
 ) -> ModuleType:
     """
     Check if package is installed and return module if so.
@@ -128,7 +128,7 @@ def get_package(
     )
 
 
-def get_format_summaries() -> Dict[str, Dict[str, Union[str, Tuple[str, ...], None]]]:
+def get_format_summaries() -> dict[str, dict[str, Union[str, tuple[str, ...], None]]]:
     """Simple helper function for compiling high level summaries of all format interfaces and converters."""
     # Local scope import to avoid circularity
     from ..converters import converter_list

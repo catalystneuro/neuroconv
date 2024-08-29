@@ -1,7 +1,7 @@
 """General purpose iterator for all ImagingExtractor data."""
 
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator
@@ -138,7 +138,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             video_shape += (depth,)
         return video_shape
 
-    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+    def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         data = self.imaging_extractor.get_video(
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
