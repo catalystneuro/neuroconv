@@ -679,7 +679,6 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonRecordingInterface
     interface_kwargs = dict(
-        # Only File_plexon_3.plx has an ecephys recording stream
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
     save_directory = OUTPUT_PATH
