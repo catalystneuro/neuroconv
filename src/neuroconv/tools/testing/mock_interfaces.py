@@ -136,8 +136,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
-        # durations: tuple[float] = (1.0,),  # Uncomment when pydantic is integrated for schema validation
-        durations: tuple = (1.0,),
+        durations: tuple[float] = (1.0,),
         seed: int = 0,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",

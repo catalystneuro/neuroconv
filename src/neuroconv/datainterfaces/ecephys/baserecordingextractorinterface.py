@@ -315,7 +315,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
 
-        The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
