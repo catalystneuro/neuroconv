@@ -5,11 +5,13 @@
 ### Features
 
 ### Bug fixes
-* Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method
-  triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
 
 ### Improvements
 
+## v0.6.1 (August 30, 2024)
+
+### Bug fixes
+* Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
 
 ## v0.6.0 (August 27, 2024)
 
