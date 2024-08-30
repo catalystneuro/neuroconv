@@ -18,6 +18,10 @@ from ...utils import ArrayType, get_schema_from_method_signature
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
+    """
+    A mock behavior event interface for testing purposes.
+    """
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
@@ -56,6 +60,10 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
 
 
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
+    """
+    A mock SpikeGLX interface for testing purposes.
+    """
+
     ExtractorName = "NumpyRecording"
 
     @classmethod
@@ -150,6 +158,10 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class MockImagingInterface(BaseImagingExtractorInterface):
+    """
+    A mock imaging interface for testing purposes.
+    """
+
     def __init__(
         self,
         num_frames: int = 30,

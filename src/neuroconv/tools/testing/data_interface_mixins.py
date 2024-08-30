@@ -767,6 +767,10 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing Audio interfaces.
+    """
+
     # Currently asserted in the downstream testing suite; could be refactored in future PR
     def check_read_nwb(self, nwbfile_path: str):
         pass
@@ -777,6 +781,10 @@ class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing DeepLabCut interfaces.
+    """
+
     def check_interface_get_original_timestamps(self):
         pass  # TODO in separate PR
 
@@ -797,6 +805,10 @@ class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing Video interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
@@ -867,6 +879,10 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing MedPC interfaces.
+    """
+
     def check_no_metadata_mutation(self, metadata: dict):
         """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
 
@@ -1101,6 +1117,10 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing Miniscope Imaging interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
 
@@ -1129,6 +1149,10 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
 
 
 class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixing for testing ScanImage Single Plane Imaging interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
@@ -1160,6 +1184,10 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
 
 
 class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing ScanImage MultiPlane Imaging interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
@@ -1190,6 +1218,8 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
 
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """Mixin for testing TDT Fiber Photometry interfaces."""
+
     def check_no_metadata_mutation(self, metadata: dict):
         """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
 
