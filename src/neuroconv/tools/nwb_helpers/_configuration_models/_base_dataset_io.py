@@ -1,7 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
 import math
-import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Literal, Union
 
@@ -278,13 +277,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
             )
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
-            chunk_shape = full_shape
+            chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
             buffer_shape = full_shape
-            compression_method = "gzip"
-            warnings.warn(
-                f"Default chunking and compression options for compound objects are not optimized. "
-                f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
-            )
+            compression_method = None
 
         return cls(
             object_id=neurodata_object.object_id,
