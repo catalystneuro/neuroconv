@@ -1,5 +1,4 @@
 from datetime import datetime
-from unittest import TestCase
 
 import numpy as np
 from pynwb import NWBHDF5IO
@@ -25,7 +24,7 @@ except ImportError:
     from setup_paths import OUTPUT_PATH
 
 
-class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockSortingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
 
@@ -35,51 +34,81 @@ class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase
     save_directory = OUTPUT_PATH
 
 
-class TestCellExplorerSortingInterfaceBuzCode(SortingExtractorInterfaceTestMixin, TestCase):
+import pytest
+
+
+class TestCellExplorerSortingInterfaceBuzCode(SortingExtractorInterfaceTestMixin):
     """This corresponds to the Buzsaki old CellExplorerFormat or Buzcode format."""
 
     data_interface_cls = CellExplorerSortingInterface
-    interface_kwargs = [
-        dict(
-            file_path=str(
-                DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
-            )
-        ),
-        dict(file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")),
-        dict(
-            file_path=str(DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat")
-        ),
-    ]
     save_directory = OUTPUT_PATH
 
+    @pytest.fixture(
+        params=[
+            dict(
+                file_path=str(
+                    DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
+                )
+            ),
+            dict(
+                file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")
+            ),
+            dict(
+                file_path=str(
+                    DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
+                )
+            ),
+        ],
+        ids=["dataset_1", "dataset_2", "dataset_3"],
+    )
+    def setup_interface(self, request):
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = request.param
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
 
-class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+        return self.interface, self.test_name
+
+
+class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
     """This corresponds to the Buzsaki new CellExplorerFormat where a session.mat file with rich metadata is provided."""
 
     data_interface_cls = CellExplorerSortingInterface
-    interface_kwargs = [
-        dict(
-            file_path=str(
-                DATA_PATH
-                / "cellexplorer"
-                / "dataset_4"
-                / "Peter_MS22_180629_110319_concat_stubbed"
-                / "Peter_MS22_180629_110319_concat_stubbed.spikes.cellinfo.mat"
-            )
-        ),
-        dict(
-            file_path=str(
-                DATA_PATH
-                / "cellexplorer"
-                / "dataset_4"
-                / "Peter_MS22_180629_110319_concat_stubbed_hdf5"
-                / "Peter_MS22_180629_110319_concat_stubbed_hdf5.spikes.cellinfo.mat"
-            )
-        ),
-    ]
     save_directory = OUTPUT_PATH
 
-    def test_writing_channel_metadata(self):
+    @pytest.fixture(
+        params=[
+            dict(
+                file_path=str(
+                    DATA_PATH
+                    / "cellexplorer"
+                    / "dataset_4"
+                    / "Peter_MS22_180629_110319_concat_stubbed"
+                    / "Peter_MS22_180629_110319_concat_stubbed.spikes.cellinfo.mat"
+                )
+            ),
+            dict(
+                file_path=str(
+                    DATA_PATH
+                    / "cellexplorer"
+                    / "dataset_4"
+                    / "Peter_MS22_180629_110319_concat_stubbed_hdf5"
+                    / "Peter_MS22_180629_110319_concat_stubbed_hdf5.spikes.cellinfo.mat"
+                )
+            ),
+        ],
+        ids=["mat", "hdf5"],
+    )
+    def setup_interface(self, request):
+        self.test_name = request.node.callspec.id
+        self.interface_kwargs = request.param
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        return self.interface, self.test_name
+
+    def test_writing_channel_metadata(self, setup_interface):
+        interface, test_name = setup_interface
+
         channel_id = "1"
         expected_channel_properties_recorder = {
             "location": np.array([791.5, -160.0]),
@@ -93,51 +122,49 @@ class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
             "group_name": "Group 5",
         }
 
-        interface_kwargs = self.interface_kwargs
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}_channel.nwb")
+        self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{test_name}_channel.nwb")
 
-                metadata = self.interface.get_metadata()
-                metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-                self.interface.run_conversion(
-                    nwbfile_path=self.nwbfile_path,
-                    overwrite=True,
-                    metadata=metadata,
-                    write_ecephys_metadata=True,
-                )
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        interface.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            write_ecephys_metadata=True,
+        )
 
-                # Test that the registered recording has the ``
-                recording_extractor = self.interface.generate_recording_with_channel_metadata()
-                for key, expected_value in expected_channel_properties_recorder.items():
-                    extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
-                    if key == "location":
-                        assert np.allclose(expected_value, extracted_value)
-                    else:
-                        assert expected_value == extracted_value
+        # Test that the registered recording has the expected channel properties
+        recording_extractor = interface.generate_recording_with_channel_metadata()
+        for key, expected_value in expected_channel_properties_recorder.items():
+            extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
+            if key == "location":
+                assert np.allclose(expected_value, extracted_value)
+            else:
+                assert expected_value == extracted_value
 
-                # Test that the electrode table has the expected values
-                with NWBHDF5IO(self.nwbfile_path, "r") as io:
-                    nwbfile = io.read()
-                    electrode_table = nwbfile.electrodes.to_dataframe()
-                    electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
-                    for key, value in expected_channel_properties_electrodes.items():
-                        assert electrode_table_row[key] == value
+        # Test that the electrode table has the expected values
+        with NWBHDF5IO(self.nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            electrode_table = nwbfile.electrodes.to_dataframe()
+            electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
+            for key, value in expected_channel_properties_electrodes.items():
+                assert electrode_table_row[key] == value
 
 
-class TestNeuralynxSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
-    interface_kwargs = [
-        dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data")),
-        dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),
-    ]
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"))
     save_directory = OUTPUT_PATH
 
 
-class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuralynxSortingInterface
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"))
+
+    save_directory = OUTPUT_PATH
+
+
+class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeSortingInterface
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
@@ -149,7 +176,7 @@ class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
         assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 8, 31, 0, 0)
 
 
-class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTestMixin, TestCase):
+class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTestMixin):
     """Corresponding to issue https://github.com/NeurodataWithoutBorders/nwb-guide/issues/881."""
 
     data_interface_cls = NeuroScopeSortingInterface
@@ -161,13 +188,13 @@ class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTest
         pass
 
 
-class TestPhySortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = PhySortingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
     save_directory = OUTPUT_PATH
 
 
-class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonSortingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "plexon" / "File_plexon_2.plx"))
     save_directory = OUTPUT_PATH
