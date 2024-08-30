@@ -3,9 +3,9 @@
 ### Deprecations
 
 ### Features
+* Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 
 ### Bug fixes
-* Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 
 ### Improvements
 
