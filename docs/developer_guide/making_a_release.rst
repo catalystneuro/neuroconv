@@ -7,7 +7,7 @@ A simple to-do list for the Neuroconv release process:
 
    - Format and update the changelog.
    - Ensure correct formatting and add a header to indicate that the changes belong to a specific release and not upcoming ones.
-   - Example: `Commit Example <https://github.com/catalystneuro/neuroconv/commit/2fbea8f05e5bd92c445fcbb6bf24de45330fcbbc>`_
+   - Example: `Format Changelog Example <https://github.com/catalystneuro/neuroconv/commit/2fbea8f05e5bd92c445fcbb6bf24de45330fcbbc>`_
 
 2. **Set the Correct Version for Release**:
 
@@ -17,13 +17,13 @@ A simple to-do list for the Neuroconv release process:
 
 3. **Perform Checks**:
 
-   - Ensure that no requirement files include pointers to `git`-based dependencies (including specific branches or commit hashes). All dependencies for a PyPI release should point to the released package versions that are available on conda-forge or PyPI.
+   - Ensure that no requirement files include pointers to `git`-based dependencies (including specific branches or commit hashes). All dependencies for a PyPI release should point to the released package versions that are available on conda-forge or PyPI. This can be done efficiently by searching for `@ git` in an IDE.
 
 4. **Tag on GitHub**:
 
    - The title and tag should be the release version.
    - The changelog should be copied correspondingly.
-   - Check the hashes in the markdown to ensure they match with the format of previous releases. This can be done efficiently by searching for `@ git` in an IDE.
+   - Check the hashes in the markdown to ensure they match with the format of previous releases.
 
 5. **Release**:
 

@@ -17,7 +17,17 @@ from pynwb.icephys import IntracellularElectrode
 
 
 class NWBMetaDataEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for NWB metadata.
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in NWB metadata.
+    """
+
     def default(self, obj):
+        """
+        Serialize custom data types to JSON. This overwrites the default method of the JSONEncoder class.
+        """
         # Over-write behaviors for datetime object
         if isinstance(obj, datetime):
             return obj.isoformat()
@@ -34,6 +44,12 @@ class NWBMetaDataEncoder(json.JSONEncoder):
 
 
 class NWBSourceDataEncoder(NWBMetaDataEncoder):
+    """
+    Custom JSON encoder for data interface source data (i.e. kwargs).
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in interface source data.
+    """
 
     def default(self, obj):
 
@@ -102,6 +118,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     exclude = exclude or []
     exclude += ["self", "cls"]
 
+    split_qualname = method.__qualname__.split(".")[-2:]
+    method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
+
     signature = inspect.signature(obj=method)
     parameters = signature.parameters
     additional_properties = False
@@ -140,10 +159,13 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     # Attempt to find descriptions within the docstring of the method
     parsed_docstring = docstring_parser.parse(method.__doc__)
     for parameter_in_docstring in parsed_docstring.params:
+        if parameter_in_docstring.arg_name in exclude:
+            continue
+
         if parameter_in_docstring.arg_name not in json_schema["properties"]:
             message = (
-                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring not occur in the "
-                "method signature, possibly due to a typo."
+                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring of method "
+                f"'{method_display}' does not occur in the signature, possibly due to a typo."
             )
             warnings.warn(message=message, stacklevel=2)
             continue

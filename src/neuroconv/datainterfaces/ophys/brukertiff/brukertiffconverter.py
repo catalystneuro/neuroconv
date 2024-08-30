@@ -13,6 +13,10 @@ from ....utils import get_schema_from_method_signature
 
 
 class BrukerTiffMultiPlaneConverter(NWBConverter):
+    """
+    Converter class for Bruker imaging data with multiple channels and multiple planes.
+    """
+
     display_name = "Bruker TIFF Imaging (multiple channels, multiple planes)"
     keywords = BrukerTiffMultiPlaneImagingInterface.keywords
     associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
@@ -123,6 +127,10 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
 
 class BrukerTiffSinglePlaneConverter(NWBConverter):
+    """
+    Primary data interface class for converting Bruker imaging data with multiple channels and a single plane.
+    """
+
     display_name = "Bruker TIFF Imaging (multiple channels, single plane)"
     keywords = BrukerTiffMultiPlaneImagingInterface.keywords
     associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
