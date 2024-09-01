@@ -132,6 +132,9 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 
 
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
+    """
+    Primary data interface class for converting Axona LFP data.
+    """
 
     display_name = "Axona LFP"
     associated_suffixes = (".bin", ".set")

@@ -361,6 +361,14 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):
+    """
+    Adds lfp data from binary files with the new CellExplorer format:
+
+    https://cellexplorer.org/
+
+    See the `CellExplorerRecordingInterface` class for more information.
+    """
+
     display_name = "CellExplorer LFP"
     keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",

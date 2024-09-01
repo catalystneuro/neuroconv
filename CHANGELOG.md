@@ -8,6 +8,7 @@
 * Solved a bug of `PlexonRecordingInterface` where data with multiple streams could not be opened [PR #989](https://github.com/catalystneuro/neuroconv/pull/989)
 
 ### Improvements
+* Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
 
 ## v0.6.1 (August 30, 2024)
 
@@ -52,6 +53,7 @@
 * Replaced all interface annotations with Pydantic types. [PR #1017](https://github.com/catalystneuro/neuroconv/pull/1017)
 * Changed typehint collections (e.g. `List`) to standard collections (e.g. `list`). [PR #1021](https://github.com/catalystneuro/neuroconv/pull/1021)
 * Testing now is only one dataset per test [PR #1026](https://github.com/catalystneuro/neuroconv/pull/1026)
+
 
 
 
