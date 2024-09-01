@@ -7,7 +7,7 @@ from .dict import (
     load_dict_from_file,
 )
 from .json_schema import (
-    NWBMetaDataEncoder,
+    _NWBMetaDataEncoder,
     fill_defaults,
     get_base_schema,
     get_metadata_schema_for_icephys,

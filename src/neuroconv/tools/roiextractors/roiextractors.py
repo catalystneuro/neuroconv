@@ -558,7 +558,7 @@ def add_photon_series_to_nwbfile(
     return nwbfile
 
 
-def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
+def _check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     """
     Raise an error if the full traces of an imaging extractor are larger than available memory.
 
@@ -625,7 +625,7 @@ def _imaging_frames_to_hdmf_iterator(
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
-        check_if_imaging_fits_into_memory(imaging=imaging)
+        _check_if_imaging_fits_into_memory(imaging=imaging)
         return imaging.get_video().transpose((0, 2, 1))
 
     if iterator_type == "v1":
