@@ -17,7 +17,17 @@ from pynwb.icephys import IntracellularElectrode
 
 
 class NWBMetaDataEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for NWB metadata.
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in NWB metadata.
+    """
+
     def default(self, obj):
+        """
+        Serialize custom data types to JSON. This overwrites the default method of the JSONEncoder class.
+        """
         # Over-write behaviors for datetime object
         if isinstance(obj, datetime):
             return obj.isoformat()
@@ -34,6 +44,12 @@ class NWBMetaDataEncoder(json.JSONEncoder):
 
 
 class NWBSourceDataEncoder(NWBMetaDataEncoder):
+    """
+    Custom JSON encoder for data interface source data (i.e. kwargs).
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in interface source data.
+    """
 
     def default(self, obj):
 
