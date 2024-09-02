@@ -19,8 +19,8 @@ try:
     from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     from ..setup_paths import OUTPUT_PATH
 except ImportError:
-    from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-    from setup_paths import OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+    from ..setup_paths import OUTPUT_PATH
 
 if not DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {DATA_PATH}!")

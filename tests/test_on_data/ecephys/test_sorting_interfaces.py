@@ -17,8 +17,8 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 
 try:
-    from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-    from .setup_paths import OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+    from ..setup_paths import OUTPUT_PATH
 except ImportError:
     from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     from setup_paths import OUTPUT_PATH
