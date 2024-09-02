@@ -3,7 +3,7 @@ import json
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import NWBMetaDataEncoder
+from ....utils.json_schema import _NWBMetaDataEncoder
 
 
 class MEArecRecordingInterface(BaseRecordingExtractorInterface):
@@ -61,7 +61,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         for unneeded_key in ["fs", "dtype"]:
             recording_metadata.pop(unneeded_key)
         metadata["Ecephys"].update(
-            {self.es_key: dict(name=self.es_key, description=json.dumps(recording_metadata, cls=NWBMetaDataEncoder))}
+            {self.es_key: dict(name=self.es_key, description=json.dumps(recording_metadata, cls=_NWBMetaDataEncoder))}
         )
 
         return metadata

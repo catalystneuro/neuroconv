@@ -37,7 +37,7 @@ from neuroconv.tools.testing.data_interface_mixins import (
 from neuroconv.utils import DeepDict
 
 try:
-    from .setup_paths import BEHAVIOR_DATA_PATH, OPHYS_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import BEHAVIOR_DATA_PATH, OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 

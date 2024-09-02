@@ -5,6 +5,7 @@ from typing import Literal
 
 import numpy as np
 import pytest
+from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from packaging import version
 from pynwb import NWBHDF5IO
@@ -36,11 +37,9 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 
 try:
-    from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-    from .setup_paths import OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-    from setup_paths import OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 
 this_python_version = version.parse(python_version())
@@ -48,7 +47,7 @@ this_python_version = version.parse(python_version())
 
 class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AlphaOmegaRecordingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "alphaomega" / "mpx_map_version4"))
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "alphaomega" / "mpx_map_version4"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -57,13 +56,13 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH
 
 
 class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BiocamRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw"))
     save_directory = OUTPUT_PATH
 
 
@@ -73,11 +72,11 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     @pytest.fixture(
         params=[
-            dict(file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns5")),
-            dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
-            dict(file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns5")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2")),
         ],
-        ids=["blackrock_ns5_v1", "blackrock_ns5_v2", "blackrock_ns2"],
+        ids=["multi_stream_case_ns5", "blackrock_ns5_v2", "multi_stream_case_ns2"],
     )
     def setup_interface(self, request):
         test_id = request.node.callspec.id
@@ -94,7 +93,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Spike2RecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx"))
     save_directory = OUTPUT_PATH
 
 
@@ -104,10 +103,14 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     @pytest.fixture(
         params=[
-            dict(folder_path=str(DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed")),
             dict(
                 folder_path=str(
-                    DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed_hdf5"
+                    ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed"
+                )
+            ),
+            dict(
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed_hdf5"
                 )
             ),
         ],
@@ -171,7 +174,7 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
 )
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -213,8 +216,8 @@ class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     @pytest.fixture(
         params=[
-            dict(file_path=str(DATA_PATH / "intan" / "intan_rhd_test_1.rhd")),
-            dict(file_path=str(DATA_PATH / "intan" / "intan_rhs_test_1.rhs")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "intan" / "intan_rhd_test_1.rhd")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "intan" / "intan_rhs_test_1.rhs")),
         ],
         ids=["rhd", "rhs"],
     )
@@ -231,7 +234,9 @@ class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin):
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MaxOneRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"))
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5")
+    )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -242,13 +247,13 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestMCSRawRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MCSRawRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"))
     save_directory = OUTPUT_PATH
 
 
 class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MEArecRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "mearec" / "mearec_test_10s.h5"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -276,7 +281,7 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestNeuralynxRecordingInterfaceV574:
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),)
+    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),)
 
     save_directory = OUTPUT_PATH
 
@@ -317,7 +322,7 @@ class TestNeuralynxRecordingInterfaceV574:
 
 class TestNeuralynxRecordingInterfaceV563:
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),)
+    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),)
 
     save_directory = OUTPUT_PATH
 
@@ -337,7 +342,7 @@ class TestNeuralynxRecordingInterfaceV563:
 
 class TestNeuralynxRecordingInterfaceV540:
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data")),)
+    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data")),)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -356,7 +361,7 @@ class TestNeuralynxRecordingInterfaceV540:
 class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
+        folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
         stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169)",
     )
     save_directory = OUTPUT_PATH
@@ -377,7 +382,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
 
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeRecordingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
     save_directory = OUTPUT_PATH
 
 
@@ -388,7 +393,7 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
     def test_get_stream_names(self):
 
         stream_names = self.data_interface_cls.get_stream_names(
-            folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107")
+            folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107")
         )
 
         assert stream_names == ["Record_Node_107#Neuropix-PXI-116.0", "Record_Node_107#Neuropix-PXI-116.1"]
@@ -398,7 +403,7 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
             ValueError,
             match=r"Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains a settings.xml file and sub-folders of the following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'.",
         ):
-            OpenEphysBinaryRecordingInterface(folder_path=str(DATA_PATH / "openephysbinary"))
+            OpenEphysBinaryRecordingInterface(folder_path=str(ECEPHY_DATA_PATH / "openephysbinary"))
 
     def test_stream_name_missing_assertion(self):
         with pytest.raises(
@@ -406,7 +411,9 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
             match=r"More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. To see what streams are available, call\s+`OpenEphysRecordingInterface.get_stream_names\(folder_path=\.\.\.\)`.",
         ):
             OpenEphysBinaryRecordingInterface(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107")
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"
+                )
             )
 
     def test_stream_name_not_available_assertion(self):
@@ -415,14 +422,16 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
             match=r"The selected stream 'not_a_stream' is not in the available streams '\['Record_Node_107#Neuropix-PXI-116.0', 'Record_Node_107#Neuropix-PXI-116.1'\]'!",
         ):
             OpenEphysBinaryRecordingInterface(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"
+                ),
                 stream_name="not_a_stream",
             )
 
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -432,7 +441,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterf
 class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
         stream_name="Record_Node_107#Neuropix-PXI-116.0",
     )
     save_directory = OUTPUT_PATH
@@ -444,7 +453,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtract
 class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
         stream_name="Record_Node_107#Neuropix-PXI-116.1",
     )
     save_directory = OUTPUT_PATH
@@ -460,7 +469,9 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"),
+        folder_path=str(
+            ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"
+        ),
         stream_name="Record Node 101#NI-DAQmx-103.PXIe-6341",
         block_index=1,
     )
@@ -472,7 +483,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
 
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysLegacyRecordingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -485,14 +496,18 @@ class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin
 
     @pytest.fixture(
         params=[
-            dict(folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1")),
-            dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
+            dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1")),
+            dict(folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
             dict(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"
+                ),
                 stream_name="Record_Node_107#Neuropix-PXI-116.0",
             ),
             dict(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"
+                ),
                 stream_name="Record_Node_107#Neuropix-PXI-116.1",
             ),
         ],
@@ -518,18 +533,47 @@ class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin
         # Additional assertions specific to the metadata can be added here
 
 
+class TestOpenEphysRecordingInterfaceRedirects(TestCase):
+    def test_legacy_format(self):
+        folder_path = ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"
+
+        interface = OpenEphysRecordingInterface(folder_path=folder_path)
+        self.assertIsInstance(interface, OpenEphysLegacyRecordingInterface)
+
+    def test_propagate_stream_name(self):
+        folder_path = ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"
+        exc_msg = "The selected stream 'AUX' is not in the available streams '['Signals CH']'!"
+        with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
+            OpenEphysRecordingInterface(folder_path=folder_path, stream_name="AUX")
+
+    def test_binary_format(self):
+        folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"
+        interface = OpenEphysRecordingInterface(folder_path=folder_path)
+        self.assertIsInstance(interface, OpenEphysBinaryRecordingInterface)
+
+    def test_unrecognized_format(self):
+        folder_path = ECEPHY_DATA_PATH / "plexon"
+        exc_msg = "The Open Ephys data must be in 'legacy' (.continuous) or in 'binary' (.dat) format."
+        with self.assertRaisesWith(AssertionError, exc_msg=exc_msg):
+            OpenEphysRecordingInterface(folder_path=folder_path)
+
+
 class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGadgetsRecordingInterface
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
         params=[
-            dict(file_path=str(DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
-            dict(file_path=str(DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec"), gains=[0.195]),
-            dict(file_path=str(DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec"), gains=[0.385] * 512),
-            dict(file_path=str(DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")),
-            dict(file_path=str(DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"), gains=[0.195]),
-            dict(file_path=str(DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"), gains=[0.385] * 128),
+            dict(file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec"), gains=[0.195]),
+            dict(
+                file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec"), gains=[0.385] * 512
+            ),
+            dict(file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")),
+            dict(file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"), gains=[0.195]),
+            dict(
+                file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"), gains=[0.385] * 128
+            ),
         ],
         ids=[
             "20210225_em8_minirec2_ac_default_gains",
@@ -559,7 +603,9 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin")
+        file_path=str(
+            ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
+        )
     )
     save_directory = OUTPUT_PATH
 
@@ -581,7 +627,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
         file_path=str(
-            DATA_PATH
+            ECEPHY_DATA_PATH
             / "spikeglx"
             / "long_nhp_stubbed"
             / "snippet_g0"
@@ -608,7 +654,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = TdtRecordingInterface
     test_gain_value = 0.195  # arbitrary value to test gain
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
     save_directory = OUTPUT_PATH
 
     def run_custom_checks(self):
@@ -634,7 +680,7 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonRecordingInterface
     interface_kwargs = dict(
         # Only File_plexon_3.plx has an ecephys recording stream
-        file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "File_plexon_3.plx"),
     )
     save_directory = OUTPUT_PATH
 

@@ -29,7 +29,7 @@ from .utils import (
     unroot_schema,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import NWBMetaDataEncoder, NWBSourceDataEncoder
+from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
 
 
 class NWBConverter:
@@ -63,7 +63,7 @@ class NWBConverter:
 
     def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = True):
 
-        encoder = NWBSourceDataEncoder()
+        encoder = _NWBSourceDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
 
         serialized_source_data = encoder.encode(source_data)
@@ -104,7 +104,7 @@ class NWBConverter:
 
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
-        encoder = NWBMetaDataEncoder()
+        encoder = _NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
         serialized_metadata = encoder.encode(metadata)
         decoded_metadata = json.loads(serialized_metadata)
@@ -319,7 +319,7 @@ class ConverterPipe(NWBConverter):
             version="0.1.0",
         )
         for interface_name, data_interface in self.data_interface_objects.items():
-            conversion_options_schema["properties"].update(
-                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
-            )
+
+            schema = data_interface.get_conversion_options_schema()
+            conversion_options_schema["properties"].update({interface_name: unroot_schema(schema)})
         return conversion_options_schema

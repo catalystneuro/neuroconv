@@ -12,7 +12,7 @@ import yaml
 from pydantic import FilePath
 
 
-class NoDatesSafeLoader(yaml.SafeLoader):
+class _NoDatesSafeLoader(yaml.SafeLoader):
     """Custom override of yaml Loader class for datetime considerations."""
 
     @classmethod
@@ -33,7 +33,7 @@ class NoDatesSafeLoader(yaml.SafeLoader):
             ]
 
 
-NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
+_NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
 def load_dict_from_file(file_path: FilePath) -> dict:
@@ -44,7 +44,7 @@ def load_dict_from_file(file_path: FilePath) -> dict:
 
     if file_path.suffix in (".yml", ".yaml"):
         with open(file=file_path, mode="r") as stream:
-            dictionary = yaml.load(stream=stream, Loader=NoDatesSafeLoader)
+            dictionary = yaml.load(stream=stream, Loader=_NoDatesSafeLoader)
     elif file_path.suffix == ".json":
         with open(file=file_path, mode="r") as fp:
             dictionary = json.load(fp=fp)
