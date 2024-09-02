@@ -5,6 +5,7 @@
 
 ### Features
 * Make `config_file_path` optional on `DeepLabCutInterface`[PR #1031](https://github.com/catalystneuro/neuroconv/pull/1031)
+* Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 
 ### Bug fixes
 
