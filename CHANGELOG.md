@@ -1,6 +1,7 @@
 # Upcoming
 
 ### Deprecations
+* The following classes and objects are now private `NWBMetaDataEncoder`, `NWBMetaDataEncoder`, `check_if_imaging_fits_into_memory`, `NoDatesSafeLoader` [PR #1050](https://github.com/catalystneuro/neuroconv/pull/1050)
 
 ### Features
 * Make `config_file_path` optional on `DeepLabCutInterface`[PR #1031](https://github.com/catalystneuro/neuroconv/pull/1031)
@@ -8,6 +9,8 @@
 ### Bug fixes
 
 ### Improvements
+* Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
+* Separated tests that use external data by modality [PR #1049](https://github.com/catalystneuro/neuroconv/pull/1049)
 
 ## v0.6.1 (August 30, 2024)
 
@@ -52,6 +55,7 @@
 * Replaced all interface annotations with Pydantic types. [PR #1017](https://github.com/catalystneuro/neuroconv/pull/1017)
 * Changed typehint collections (e.g. `List`) to standard collections (e.g. `list`). [PR #1021](https://github.com/catalystneuro/neuroconv/pull/1021)
 * Testing now is only one dataset per test [PR #1026](https://github.com/catalystneuro/neuroconv/pull/1026)
+
 
 
 

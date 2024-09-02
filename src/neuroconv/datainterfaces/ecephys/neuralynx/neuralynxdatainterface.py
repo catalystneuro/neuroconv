@@ -94,6 +94,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    """
+    Primary data interface for converting Neuralynx sorting data. Uses
+    :py:class:`~spikeinterface.extractors.NeuralynxSortingExtractor`.
+    """
+
     display_name = "Neuralynx Sorting"
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."

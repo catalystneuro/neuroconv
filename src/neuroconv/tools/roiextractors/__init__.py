@@ -1,5 +1,5 @@
 from .roiextractors import (
-    check_if_imaging_fits_into_memory,
+    _check_if_imaging_fits_into_memory,
     get_nwb_imaging_metadata,
     get_nwb_segmentation_metadata,
     add_background_fluorescence_traces,
