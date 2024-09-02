@@ -16,7 +16,7 @@ from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
 
-class NWBMetaDataEncoder(json.JSONEncoder):
+class _NWBMetaDataEncoder(json.JSONEncoder):
     """
     Custom JSON encoder for NWB metadata.
 
@@ -43,7 +43,7 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-class NWBSourceDataEncoder(NWBMetaDataEncoder):
+class _NWBSourceDataEncoder(_NWBMetaDataEncoder):
     """
     Custom JSON encoder for data interface source data (i.e. kwargs).
 
@@ -350,7 +350,7 @@ def get_metadata_schema_for_icephys():
 
 def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
-    encoder = NWBMetaDataEncoder()
+    encoder = _NWBMetaDataEncoder()
     # The encoder produces a serialized object, so we deserialized it for comparison
 
     serialized_metadata = encoder.encode(metadata)

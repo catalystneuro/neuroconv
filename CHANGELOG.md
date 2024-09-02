@@ -1,6 +1,7 @@
 # Upcoming
 
 ### Deprecations
+* The following classes and objects are now private `NWBMetaDataEncoder`, `NWBMetaDataEncoder`, `check_if_imaging_fits_into_memory`, `NoDatesSafeLoader` [PR #1050](https://github.com/catalystneuro/neuroconv/pull/1050)
 
 ### Features
 
