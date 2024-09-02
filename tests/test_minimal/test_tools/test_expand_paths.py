@@ -9,7 +9,7 @@ from parse import parse
 from neuroconv.tools import LocalPathExpander
 from neuroconv.tools.path_expansion import construct_path_template
 from neuroconv.tools.testing import generate_path_expander_demo_ibl
-from neuroconv.utils import NWBMetaDataEncoder
+from neuroconv.utils import _NWBMetaDataEncoder
 
 
 def create_test_directories_and_files(
@@ -409,7 +409,7 @@ def test_expand_paths_ibl(tmpdir):
             ),
         ),
     )
-    path_expansion_results = json.loads(json.dumps(path_expansion_results, cls=NWBMetaDataEncoder))
+    path_expansion_results = json.loads(json.dumps(path_expansion_results, cls=_NWBMetaDataEncoder))
 
     # build expected output from file
     expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"
