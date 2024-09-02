@@ -238,7 +238,7 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
             break
 
     if video is None:
-        warnings.warn(f"The corresponding video file could not be foundd in the config file")
+        warnings.warn(f"The corresponding video file could not be found in the config file")
         video = None, "0, 0, 0, 0"
 
     # The video in the config_file looks like this:
