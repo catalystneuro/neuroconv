@@ -27,6 +27,7 @@ from roiextractors.testing import (
 
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
+    _check_if_imaging_fits_into_memory,
     add_devices_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
     add_image_segmentation_to_nwbfile,
@@ -34,7 +35,6 @@ from neuroconv.tools.roiextractors import (
     add_photon_series_to_nwbfile,
     add_plane_segmentation_to_nwbfile,
     add_summary_images_to_nwbfile,
-    check_if_imaging_fits_into_memory,
 )
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
@@ -1539,7 +1539,7 @@ class TestAddPhotonSeries(TestCase):
         reg_expression = "Memory error, full TwoPhotonSeries data is (.*?) are available! Please use iterator_type='v2'"
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
-            check_if_imaging_fits_into_memory(imaging=mock_imaging)
+            _check_if_imaging_fits_into_memory(imaging=mock_imaging)
 
     def test_non_iterative_two_photon(self):
         """Test adding two photon series with using DataChunkIterator as iterator type."""

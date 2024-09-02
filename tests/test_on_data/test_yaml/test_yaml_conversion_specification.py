@@ -11,8 +11,8 @@ from pynwb import NWBHDF5IO
 from neuroconv import run_conversion_from_yaml
 from neuroconv.utils import load_dict_from_file
 
-from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
-from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+from ..setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
+from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 
 
 @pytest.mark.parametrize(
@@ -26,7 +26,7 @@ from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 )
 def test_validate_example_specifications(fname):
     path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
-    schema_folder = path_to_test_yml_files.parent.parent.parent / "src" / "neuroconv" / "schemas"
+    schema_folder = path_to_test_yml_files.parent.parent.parent.parent / "src" / "neuroconv" / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
     sys_uri_base = "file://"
     if sys.platform.startswith("win32"):
