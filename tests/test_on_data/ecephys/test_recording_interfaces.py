@@ -37,9 +37,9 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 
 try:
-    from .setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 
 this_python_version = version.parse(python_version())
