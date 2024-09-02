@@ -374,9 +374,6 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def run_custom_checks(self):
-        self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
-
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()

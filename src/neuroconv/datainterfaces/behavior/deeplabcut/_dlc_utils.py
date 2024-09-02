@@ -154,12 +154,30 @@ def _infer_nan_timestamps(timestamps):
     return timestamps
 
 
-def _ensure_individuals_in_header(df, individual_name):
+def _ensure_individuals_in_header(df, individual_name: str):
+    """
+    Ensure that the 'individuals' column is present in the header of the given DataFrame.
+
+    Parameters:
+        df (pandas.DataFrame): The DataFrame to modify.
+        individual_name (str): The name of the individual to add to the header.
+
+    Returns:
+        pandas.DataFrame: The modified DataFrame with the 'individuals' column added to the header.
+
+    Notes:
+        - If the 'individuals' column is already present in the header, no modifications are made.
+        - If the 'individuals' column is not present, a new DataFrame is created with the 'individual_name'
+        as the column name, and the 'individuals' column is added to the header of the DataFrame.
+        - The order of the columns in the header is preserved.
+
+    """
     if "individuals" not in df.columns.names:
         # Single animal project -> add individual row to
         # the header of single animal projects.
         temp = pd.concat({individual_name: df}, names=["individuals"], axis=1)
         df = temp.reorder_levels(["scorer", "individuals", "bodyparts", "coords"], axis=1)
+
     return df
 
 
@@ -220,7 +238,7 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
             break
 
     if video is None:
-        warnings.warn(f"The corresponding video file could not be found...")
+        warnings.warn(f"The corresponding video file could not be foundd in the config file")
         video = None, "0, 0, 0, 0"
 
     # The video in the config_file looks like this:
@@ -240,9 +258,6 @@ def _get_pes_args(
 ):
     h5file = Path(h5file)
 
-    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
-        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
-
     _, scorer = h5file.stem.split("DLC")
     scorer = "DLC" + scorer
 
@@ -256,7 +271,8 @@ def _write_pes_to_nwbfile(
     animal,
     df_animal,
     scorer,
-    video,  # Expects this to be a tuple; first index is string path, second is the image shape as "0, width, 0, height"
+    video_file_path,
+    image_shape,
     paf_graph,
     timestamps,
     exclude_nans,
@@ -295,12 +311,13 @@ def _write_pes_to_nwbfile(
     if is_deeplabcut_installed:
         deeplabcut_version = importlib.metadata.version(distribution_name="deeplabcut")
 
+    # TODO, taken from the original implementation, improve it if the video is passed
+    dimensions = [list(map(int, image_shape.split(",")))[1::2]]
     pose_estimation_default_kwargs = dict(
         pose_estimation_series=pose_estimation_series,
         description="2D keypoint coordinates estimated using DeepLabCut.",
-        original_videos=[video[0]],
-        # TODO check if this is a mandatory arg in ndx-pose (can skip if video is not found_
-        dimensions=[list(map(int, video[1].split(",")))[1::2]],
+        original_videos=[video_file_path],
+        dimensions=dimensions,
         scorer=scorer,
         source_software="DeepLabCut",
         source_software_version=deeplabcut_version,
@@ -326,7 +343,7 @@ def add_subject_to_nwbfile(
     nwbfile: NWBFile,
     h5file: FilePath,
     individual_name: str,
-    config_file: FilePath,
+    config_file: Optional[FilePath] = None,
     timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
@@ -342,7 +359,7 @@ def add_subject_to_nwbfile(
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str or path
+    config_file : str or path, optional
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
         Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
@@ -356,18 +373,26 @@ def add_subject_to_nwbfile(
     """
     h5file = Path(h5file)
 
-    scorer, df = _get_pes_args(
-        h5file=h5file,
-        individual_name=individual_name,
-    )
+    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
+        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+
+    video_name, scorer = h5file.stem.split("DLC")
+    scorer = "DLC" + scorer
+
+    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
 
     # Note the video here is a tuple of the video path and the image shape
-    vidname, scorer = h5file.stem.split("DLC")
-    video = _get_video_info_from_config_file(config_file_path=config_file, vidname=vidname)
+    if config_file is not None:
+        video_file_path, image_shape = _get_video_info_from_config_file(
+            config_file_path=config_file,
+            vidname=video_name,
+        )
+    else:
+        video_file_path = None
+        image_shape = "0, 0, 0, 0"
 
     # find timestamps only if required:``
     timestamps_available = timestamps is not None
-    video_file_path = video[0]
     if not timestamps_available:
         if video_file_path is None:
             timestamps = df.index.tolist()  # setting timestamps to dummy
@@ -375,7 +400,7 @@ def add_subject_to_nwbfile(
             timestamps = _get_movie_timestamps(video_file_path, infer_timestamps=True)
 
     # Fetch the corresponding metadata pickle file, we extract the edges graph from here
-    # TODO: This is the original implementation way to extract the file name but looks very brittle
+    # TODO: This is the original implementation way to extract the file name but looks very brittle. Improve it
     filename = str(h5file.parent / h5file.stem)
     for i, c in enumerate(filename[::-1]):
         if c.isnumeric():
@@ -393,7 +418,8 @@ def add_subject_to_nwbfile(
         individual_name,
         df_animal,
         scorer,
-        video,
+        video_file_path,
+        image_shape,
         paf_graph,
         timestamps,
         exclude_nans=False,
