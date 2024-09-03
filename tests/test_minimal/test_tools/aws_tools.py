@@ -36,14 +36,24 @@ def test_submit_aws_batch_job():
     time.sleep(60)
 
     job_id = info["job_submission_info"]["jobId"]
+    job = None
+    max_retries = 10
+    retry = 0
+    while retry < max_retries:
+        job_description_response = batch_client.describe_jobs(jobs=[job_id])
+        assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
-    assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+        jobs = job_description_response["jobs"]
+        assert len(jobs) == 1
 
-    jobs = all_jobs_response["jobs"]
-    assert len(jobs) == 1
+        job = jobs[0]
 
-    job = jobs[0]
+        if job["status"] == "RUNNABLE":
+            retry += 1
+            time.sleep(60)
+        else:
+            break
+
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
@@ -107,18 +117,29 @@ def test_submit_aws_batch_job_with_dependencies():
     )
 
     # Wait for AWS to process the jobs
-    time.sleep(120)
+    time.sleep(60)
 
     job_id_1 = job_info_1["job_submission_info"]["jobId"]
     job_id_2 = job_info_2["job_submission_info"]["jobId"]
+    job_1 = None
+    max_retries = 10
+    retry = 0
+    while retry < max_retries:
+        all_jobs_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
+        assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    all_jobs_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
-    assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+        jobs_by_id = {job["jobId"]: job for job in all_jobs_response["jobs"]}
+        assert len(jobs_by_id) == 2
 
-    jobs_by_id = {job["jobId"]: job for job in all_jobs_response["jobs"]}
-    assert len(jobs_by_id) == 2
+        job_1 = jobs_by_id[job_id_1]
+        job_2 = jobs_by_id[job_id_2]
 
-    job_1 = jobs_by_id[job_id_1]
+        if job_1["status"] == "RUNNABLE" or job_2["status"] == "RUNNABLE":
+            retry += 1
+            time.sleep(60)
+        else:
+            break
+
     assert job_1["jobName"] == job_name_1
     assert "neuroconv_batch_queue" in job_1["jobQueue"]
     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job_1["jobDefinition"]
@@ -206,6 +227,23 @@ def test_submit_aws_batch_job_with_efs_mount():
     time.sleep(60)
 
     job_id = info["job_submission_info"]["jobId"]
+    job = None
+    max_retries = 10
+    retry = 0
+    while retry < max_retries:
+        job_description_response = batch_client.describe_jobs(jobs=[job_id])
+        assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+        jobs = job_description_response["jobs"]
+        assert len(jobs) == 1
+
+        job = jobs[0]
+
+        if job["status"] == "RUNNABLE":
+            retry += 1
+            time.sleep(60)
+        else:
+            break
 
     efs_volumes = efs_client.describe_file_systems()
     matching_efs_volumes = [
@@ -215,14 +253,8 @@ def test_submit_aws_batch_job_with_efs_mount():
         if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
     ]
     assert len(matching_efs_volumes) == 1
+    efs_id = matching_efs_volumes[0]["FileSystemId"]
 
-    all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
-    assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
-
-    jobs = all_jobs_response["jobs"]
-    assert len(jobs) == 1
-
-    job = jobs[0]
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
@@ -239,6 +271,13 @@ def test_submit_aws_batch_job_with_efs_mount():
     assert table_item["job_name"] == job_name
     assert table_item["job_id"] == job_id
     assert table_item["status"] == "Job submitted..."
+
+    table.update_item(
+        Key={"id": table_submission_id},
+        AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed - cleaning up..."}},
+    )
+
+    efs_client.delete_file_system(FileSystemId=efs_id)
 
     table.update_item(
         Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
