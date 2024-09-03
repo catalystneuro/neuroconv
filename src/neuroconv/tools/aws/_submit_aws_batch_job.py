@@ -157,7 +157,8 @@ def submit_aws_batch_job(
                 PerformanceMode="generalPurpose",  # Only type supported in one-zone
                 Encrypted=False,
                 ThroughputMode="elastic",
-                AvailabilityZoneName=subregion,  # Enables one-zone for cheaper pricing
+                # TODO: figure out how to make job spawn only on subregion for OneZone discount
+                # AvailabilityZoneName=subregion,
                 Backup=False,
                 Tags=[{"Key": "Name", "Value": efs_volume_name}],
             )
