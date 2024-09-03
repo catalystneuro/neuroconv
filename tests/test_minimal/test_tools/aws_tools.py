@@ -265,7 +265,7 @@ def test_submit_aws_batch_job_with_efs_mount():
     # Check normal job completion
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
-    assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
+    assert job_definition_name in job["jobDefinition"]
     assert job["status"] == "SUCCEEDED"
 
     status_tracker_table_name = "neuroconv_batch_status_tracker"
