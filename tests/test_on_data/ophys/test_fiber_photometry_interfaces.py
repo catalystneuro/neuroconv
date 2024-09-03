@@ -14,7 +14,7 @@ from neuroconv.tools.testing.data_interface_mixins import (
 from neuroconv.utils import dict_deep_update, load_dict_from_file
 
 try:
-    from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import OUTPUT_PATH
 

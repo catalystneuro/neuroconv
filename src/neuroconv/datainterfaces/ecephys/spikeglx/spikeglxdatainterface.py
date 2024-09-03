@@ -17,6 +17,10 @@ from ....utils import get_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
+    """
+    Primary SpikeGLX interface for converting raw SpikeGLX data using a :py:class:`~spikeinterface.extractors.SpikeGLXRecordingExtractor`.
+    """
+
     display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")

@@ -94,7 +94,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     ):
         from ndx_miniscope.utils import add_miniscope_device
 
-        from ....tools.roiextractors import add_photon_series
+        from ....tools.roiextractors import add_photon_series_to_nwbfile
 
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
@@ -109,7 +109,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         device_metadata = metadata["Ophys"]["Device"][0]
         add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
 
-        add_photon_series(
+        add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,

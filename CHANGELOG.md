@@ -1,19 +1,42 @@
 # Upcoming
 
 ### Deprecations
+* The following classes and objects are now private `NWBMetaDataEncoder`, `NWBMetaDataEncoder`, `check_if_imaging_fits_into_memory`, `NoDatesSafeLoader` [PR #1050](https://github.com/catalystneuro/neuroconv/pull/1050)
+
+### Features
+* Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
+
+### Bug fixes
+* Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method
+  triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
+
+### Improvements
+* Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
+* Separated tests that use external data by modality [PR #1049](https://github.com/catalystneuro/neuroconv/pull/1049)
+
+## v0.6.1 (August 30, 2024)
+
+### Bug fixes
+* Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
+
+## v0.6.0 (August 27, 2024)
+
+### Deprecations
 * Deprecated  `WaveformExtractor` usage. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
-* Changed the spikeinterface.tool functions (e.g. `add_recording`, `add_sorting`) to have `_to_nwbfile` as suffix  [PR #1015](https://github.com/catalystneuro/neuroconv/pull/1015)
+* Changed the `tools.spikeinterface` functions (e.g. `add_recording`, `add_sorting`) to have `_to_nwbfile` as suffix  [PR #1015](https://github.com/catalystneuro/neuroconv/pull/1015)
 * Deprecated use of `compression` and `compression_options` in `VideoInterface` [PR #1005](https://github.com/catalystneuro/neuroconv/pull/1005)
 * `get_schema_from_method_signature` has been deprecated; please use `get_json_schema_from_method_signature` instead. [PR #1016](https://github.com/catalystneuro/neuroconv/pull/1016)
 * `neuroconv.utils.FilePathType` and `neuroconv.utils.FolderPathType` have been deprecated; please use `pydantic.FilePath` and `pydantic.DirectoryPath` instead. [PR #1017](https://github.com/catalystneuro/neuroconv/pull/1017)
+* Changed the `tools.roiextractors` function (e.g. `add_imaging` and `add_segmentation`) to have the `_to_nwbfile` suffix [PR #1017](https://github.com/catalystneuro/neuroconv/pull/1027)
+
 
 ### Features
-* Added MedPCInterface for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
+* Added `MedPCInterface` for operant behavioral output files. [PR #883](https://github.com/catalystneuro/neuroconv/pull/883)
 * Support `SortingAnalyzer` in the `SpikeGLXConverterPipe`. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
 * Added `TDTFiberPhotometryInterface` data interface, for converting fiber photometry data from TDT file formats. [PR #920](https://github.com/catalystneuro/neuroconv/pull/920)
 * Add argument to `add_electrodes` that grants fine control of what to do with the missing values. As a side effect this drops the implicit casting to int when writing int properties to the electrodes table [PR #985](https://github.com/catalystneuro/neuroconv/pull/985)
 * Add Plexon2 support [PR #918](https://github.com/catalystneuro/neuroconv/pull/918)
-* Converter working with multiple VideoInterface instances [PR #914](https://github.com/catalystneuro/neuroconv/pull/914)
+* Converter working with multiple `VideoInterface` instances [PR #914](https://github.com/catalystneuro/neuroconv/pull/914)
 * Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for basic automated submission of AWS batch jobs. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
 * Data interfaces `run_conversion` method now performs metadata validation before running the conversion. [PR #949](https://github.com/catalystneuro/neuroconv/pull/949)
 * Introduced `null_values_for_properties` to `add_units_table` to give user control over null values behavior [PR #989](https://github.com/catalystneuro/neuroconv/pull/989)
@@ -34,6 +57,8 @@
 * Added `get_json_schema_from_method_signature` which constructs Pydantic models automatically from the signature of any function with typical annotation types used throughout NeuroConv. [PR #1016](https://github.com/catalystneuro/neuroconv/pull/1016)
 * Replaced all interface annotations with Pydantic types. [PR #1017](https://github.com/catalystneuro/neuroconv/pull/1017)
 * Changed typehint collections (e.g. `List`) to standard collections (e.g. `list`). [PR #1021](https://github.com/catalystneuro/neuroconv/pull/1021)
+* Testing now is only one dataset per test [PR #1026](https://github.com/catalystneuro/neuroconv/pull/1026)
+
 
 
 

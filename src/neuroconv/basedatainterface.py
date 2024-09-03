@@ -19,7 +19,7 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
-    NWBMetaDataEncoder,
+    _NWBMetaDataEncoder,
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
@@ -64,7 +64,7 @@ class BaseDataInterface(ABC):
 
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        encoder = NWBMetaDataEncoder()
+        encoder = _NWBMetaDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
 
         serialized_metadata = encoder.encode(metadata)
