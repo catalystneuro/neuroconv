@@ -33,7 +33,7 @@ from neuroconv.tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
 )
-from neuroconv.utils import NWBMetaDataEncoder
+from neuroconv.utils import _NWBMetaDataEncoder
 
 
 class DataInterfaceTestMixin:
@@ -98,7 +98,7 @@ class DataInterfaceTestMixin:
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         # handle json encoding of datetimes and other tricky types
-        metadata_for_validation = json.loads(json.dumps(metadata, cls=NWBMetaDataEncoder))
+        metadata_for_validation = json.loads(json.dumps(metadata, cls=_NWBMetaDataEncoder))
         validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
