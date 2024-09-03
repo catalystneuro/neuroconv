@@ -125,10 +125,10 @@ def test_submit_aws_batch_job_with_dependencies():
     max_retries = 10
     retry = 0
     while retry < max_retries:
-        all_jobs_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
-        assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+        all_job_descriptions_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
+        assert all_job_descriptions_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-        jobs_by_id = {job["jobId"]: job for job in all_jobs_response["jobs"]}
+        jobs_by_id = {job["jobId"]: job for job in all_job_descriptions_response["jobs"]}
         assert len(jobs_by_id) == 2
 
         job_1 = jobs_by_id[job_id_1]
@@ -218,9 +218,14 @@ def test_submit_aws_batch_job_with_efs_mount():
     commands = ["touch", f"/mnt/efs/test_{date}.txt"]
 
     # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
-    efs_volume_name = f"test_neuroconv_batch_efs_{date}"
+    job_definition_name = "test_neuroconv_batch_with_efs"
+    efs_volume_name = f"test_neuroconv_batch_with_efs_{date}"
     info = submit_aws_batch_job(
-        job_name=job_name, docker_image=docker_image, commands=commands, efs_volume_name=efs_volume_name
+        job_name=job_name,
+        docker_image=docker_image,
+        commands=commands,
+        job_definition_name=job_definition_name,
+        efs_volume_name=efs_volume_name,
     )
 
     # Wait for AWS to process the job
