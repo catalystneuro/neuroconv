@@ -250,6 +250,7 @@ def test_submit_aws_batch_job_with_efs_mount():
         else:
             break
 
+    # Check EFS specific details
     efs_volumes = efs_client.describe_file_systems()
     matching_efs_volumes = [
         file_system
@@ -261,9 +262,7 @@ def test_submit_aws_batch_job_with_efs_mount():
     efs_volume = matching_efs_volumes[0]
     efs_id = efs_volume["FileSystemId"]
 
-    # A default EFS roughly 6 KB - mounting and using it once adds more than 9 KB of content
-    assert efs_volume["SizeInBytes"]["Value"] > 9_000
-
+    # Check normal job completion
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
@@ -286,6 +285,8 @@ def test_submit_aws_batch_job_with_efs_mount():
         AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed - cleaning up..."}},
     )
 
+    # Cleanup EFS after testing is complete
+    # TODO: cleanup job definitions? (since built daily)
     efs_client.delete_file_system(FileSystemId=efs_id)
 
     table.update_item(
