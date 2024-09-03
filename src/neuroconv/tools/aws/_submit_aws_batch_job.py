@@ -45,6 +45,7 @@ def submit_aws_batch_job(
         A dictionary of environment variables to pass to the Docker container.
     efs_volume_name : str
         The name of an EFS volume to be created and attached to the job.
+        The path exposed to the container will always be `/mnt/efs`.
     job_dependencies : list of dict
         A list of job dependencies for this job to trigger. Structured as follows:
         [
@@ -547,6 +548,7 @@ def _ensure_job_definition_exists_and_get_arn(
         The AWS Batch client to use for the job.
     efs_id : str, optional
         The EFS volume information for the job.
+        The path exposed to the container will always be `/mnt/efs`.
     max_retries : int, default: 12
         If the job definition does not already exist, then this is the maximum number of times to synchronously
         check for its successful creation before erroring.
@@ -588,6 +590,7 @@ def _ensure_job_definition_exists_and_get_arn(
     minimum_time_to_kill_in_seconds = minimum_time_to_kill_in_days * 24 * 60 * 60
 
     volumes = []
+    mountPoints = []
     if efs_id is not None:
         volumes = [
             {
@@ -598,6 +601,7 @@ def _ensure_job_definition_exists_and_get_arn(
                 },
             },
         ]
+        mountPoints = [{"containerPath": "/mnt/efs/", "readOnly": false, "sourceVolume": "neuroconv_batch_efs_mounted"}]
 
     # batch_client.register_job_definition() is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(
@@ -610,6 +614,7 @@ def _ensure_job_definition_exists_and_get_arn(
             jobRoleArn=role_info["Role"]["Arn"],
             executionRoleArn=role_info["Role"]["Arn"],
             volumes=volumes,
+            mountPoints=mountPoints,
         ),
     )
 
