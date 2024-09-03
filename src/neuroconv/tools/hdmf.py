@@ -7,7 +7,9 @@ import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 
 
-class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
+class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
+    # TODO Should this be added to the API?
+
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> tuple[int]:
         return self.estimate_default_buffer_shape(
             buffer_gb=buffer_gb, chunk_shape=self.chunk_shape, maxshape=self.maxshape, dtype=self.dtype
