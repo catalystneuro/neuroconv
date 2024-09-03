@@ -184,6 +184,12 @@ def test_submit_aws_batch_job_with_efs_mount():
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
+    efs_client = boto3.client(
+        service_name="efs",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
     job_name = "test_submit_aws_batch_job"
     docker_image = "ubuntu:latest"
@@ -191,14 +197,24 @@ def test_submit_aws_batch_job_with_efs_mount():
     commands = ["touch", f"/mnt/efs/test_{date}.txt"]
 
     # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
+    efs_volume_name = f"test_neuroconv_batch_efs_{date}"
     info = submit_aws_batch_job(
-        job_name=job_name, docker_image=docker_image, commands=commands, efs_volume="test_neuroconv_batch_efs"
+        job_name=job_name, docker_image=docker_image, commands=commands, efs_volume_name=efs_volume_name
     )
 
     # Wait for AWS to process the job
     time.sleep(60)
 
     job_id = info["job_submission_info"]["jobId"]
+
+    efs_volumes = efs_client.describe_file_systems()
+    matching_efs_volumes = [
+        file_system
+        for file_system in efs_volumes["FileSystems"]
+        for tag in file_system["Tags"]
+        if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+    ]
+    assert len(matching_efs_volumes) == 1
 
     all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
     assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
