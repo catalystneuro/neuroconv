@@ -258,7 +258,11 @@ def test_submit_aws_batch_job_with_efs_mount():
         if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
     ]
     assert len(matching_efs_volumes) == 1
-    efs_id = matching_efs_volumes[0]["FileSystemId"]
+    efs_volume = matching_efs_volumes[0]
+    efs_id = efs_volume["FileSystemId"]
+
+    # A default EFS roughly 6 KB - mounting and using it once adds more than 9 KB of content
+    assert efs_volume["SizeInBytes"]["Value"] > 9_000
 
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
