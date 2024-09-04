@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
-from pydantic import DirectoryPath, FilePath
+from pydantic import DirectoryPath, FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
@@ -32,6 +32,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
+    @validate_call
     def __new__(
         cls,
         file_path: FilePath,
@@ -90,6 +91,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
@@ -168,6 +170,7 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing the TIFF files."
         return source_schema
 
+    @validate_call
     def __new__(
         cls,
         folder_path: DirectoryPath,
@@ -226,6 +229,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     ExtractorName = "ScanImageTiffMultiPlaneImagingExtractor"
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
@@ -327,6 +331,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
     ExtractorName = "ScanImageTiffMultiPlaneMultiFileImagingExtractor"
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -443,6 +448,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     ExtractorName = "ScanImageTiffSinglePlaneImagingExtractor"
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
@@ -560,6 +566,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
 
     ExtractorName = "ScanImageTiffSinglePlaneMultiFileImagingExtractor"
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,

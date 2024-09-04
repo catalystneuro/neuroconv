@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
@@ -33,6 +33,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
         return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,

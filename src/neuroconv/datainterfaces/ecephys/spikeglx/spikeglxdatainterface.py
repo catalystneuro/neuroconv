@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from .spikeglx_utils import (
     add_recording_extractor_properties,
@@ -42,6 +42,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
