@@ -80,11 +80,6 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             aligned_segment_starting_times=self.aligned_segment_starting_times
         )
 
-    def test_unsupported_format(self):
-        exc_msg = "The currently supported file format for audio is WAV file. Some of the provided files does not match this format: ['.test']."
-        with pytest.raises(ValueError, match=re.escape(exc_msg)):
-            AudioInterface(file_paths=["test.test"])
-
     def test_get_metadata(self):
         audio_interface = AudioInterface(file_paths=self.file_paths)
         metadata = audio_interface.get_metadata()

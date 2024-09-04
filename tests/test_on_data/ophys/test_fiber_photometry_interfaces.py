@@ -400,8 +400,3 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         interface = self.data_interface_cls(**self.interface_kwargs)
         with self.assertRaises(AssertionError):
             interface.load(t2=1.0, evtype=["invalid"])
-
-    def test_load_invalid_folder_path(self):
-        interface = self.data_interface_cls(folder_path="invalid")
-        with self.assertRaises(AssertionError):
-            interface.load(t2=1.0)

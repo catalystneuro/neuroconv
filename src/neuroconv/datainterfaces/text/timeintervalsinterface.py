@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
@@ -16,6 +16,7 @@ class TimeIntervalsInterface(BaseDataInterface):
 
     keywords = ("table", "trials", "epochs", "time intervals")
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

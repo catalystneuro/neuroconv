@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from .sleap_utils import extract_timestamps
@@ -27,6 +27,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         ] = "Path of the video for extracting timestamps (optional)."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

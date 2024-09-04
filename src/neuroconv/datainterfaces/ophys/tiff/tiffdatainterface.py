@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
@@ -18,6 +18,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
