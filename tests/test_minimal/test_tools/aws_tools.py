@@ -6,6 +6,8 @@ import boto3
 
 from neuroconv.tools.aws import submit_aws_batch_job
 
+_RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
+
 
 def test_submit_aws_batch_job():
     region = "us-east-2"
@@ -48,7 +50,7 @@ def test_submit_aws_batch_job():
 
         job = jobs[0]
 
-        if job["status"] == "RUNNABLE":
+        if job["status"] in _RETRY_STATES:
             retry += 1
             time.sleep(60)
         else:
@@ -134,7 +136,7 @@ def test_submit_aws_batch_job_with_dependencies():
         job_1 = jobs_by_id[job_id_1]
         job_2 = jobs_by_id[job_id_2]
 
-        if job_1["status"] == "RUNNABLE" or job_2["status"] == "RUNNABLE":
+        if job_1["status"] in _RETRY_STATES or job_2["status"] in _RETRY_STATES:
             retry += 1
             time.sleep(60)
         else:
@@ -212,7 +214,7 @@ def test_submit_aws_batch_job_with_efs_mount():
         aws_secret_access_key=aws_secret_access_key,
     )
 
-    job_name = "test_submit_aws_batch_job"
+    job_name = "test_submit_aws_batch_job_with_efs"
     docker_image = "ubuntu:latest"
     date = datetime.datetime.now().date().strftime("%y%m%d")
     commands = ["touch", f"/mnt/efs/test_{date}.txt"]
@@ -244,7 +246,7 @@ def test_submit_aws_batch_job_with_efs_mount():
 
         job = jobs[0]
 
-        if job["status"] == "RUNNABLE":
+        if job["status"] in _RETRY_STATES:
             retry += 1
             time.sleep(60)
         else:
@@ -285,8 +287,13 @@ def test_submit_aws_batch_job_with_efs_mount():
         AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed - cleaning up..."}},
     )
 
-    # Cleanup EFS after testing is complete
+    # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
     # TODO: cleanup job definitions? (since built daily)
+    mount_targets = efs_client.describe_mount_targets(FileSystemId=efs_id)
+    for mount_target in mount_targets["MountTargets"]:
+        efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
+
+    time.sleep(60)
     efs_client.delete_file_system(FileSystemId=efs_id)
 
     table.update_item(

@@ -153,6 +153,9 @@ def submit_aws_batch_job(
             if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
         ]
         if len(matching_efs_volumes) == 0:
+            if region != "us-east-2":
+                raise NotImplementedError("EFS volumes are only supported in us-east-2 for now.")
+
             efs_volume = efs_client.create_file_system(
                 PerformanceMode="generalPurpose",  # Only type supported in one-zone
                 Encrypted=False,
@@ -162,9 +165,31 @@ def submit_aws_batch_job(
                 Backup=False,
                 Tags=[{"Key": "Name", "Value": efs_volume_name}],
             )
+            efs_id = efs_volume["FileSystemId"]
+
+            # Takes a while to spin up - cannot assign mount targets until it is ready
+            # TODO: replace with more robust checking mechanism
+            time.sleep(60)
+
+            # TODO: in follow-up, figure out how to fetch this automatically and from any region
+            # (might even resolve those previous OneZone issues)
+            region_to_subnet_id = {
+                "us-east-2a": "subnet-0890a93aedb42e73e",
+                "us-east-2b": "subnet-0e20bbcfb951b5387",
+                "us-east-2c": "subnet-0680e07980538b786",
+            }
+            for subnet_id in region_to_subnet_id.values():
+                efs_client.create_mount_target(
+                    FileSystemId=efs_id,
+                    SubnetId=subnet_id,
+                    SecurityGroups=[
+                        "sg-001699e5b7496b226",
+                    ],
+                )
+            time.sleep(60)  # Also takes a while to create the mount targets
         else:
             efs_volume = matching_efs_volumes[0]
-        efs_id = efs_volume["FileSystemId"]
+            efs_id = efs_volume["FileSystemId"]
 
     job_definition_name = job_definition_name or _generate_job_definition_name(
         docker_image=docker_image,
@@ -612,11 +637,12 @@ def _ensure_job_definition_exists_and_get_arn(
         containerProperties=dict(
             image=docker_image,
             resourceRequirements=resource_requirements,
-            jobRoleArn=role_info["Role"]["Arn"],
-            executionRoleArn=role_info["Role"]["Arn"],
+            # jobRoleArn=role_info["Role"]["Arn"],
+            # executionRoleArn=role_info["Role"]["Arn"],
             volumes=volumes,
             mountPoints=mountPoints,
         ),
+        platformCapabilities=["EC2"],
     )
 
     job_definition_request = batch_client.describe_job_definitions(jobDefinitions=[job_definition_with_revision])
