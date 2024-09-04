@@ -6,18 +6,18 @@
 ### Features
 * Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 
-### Bug fixes
-* Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method
-  triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
-
 ### Improvements
 * Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
 * Separated tests that use external data by modality [PR #1049](https://github.com/catalystneuro/neuroconv/pull/1049)
+
+
 
 ## v0.6.1 (August 30, 2024)
 
 ### Bug fixes
 * Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
+
+
 
 ## v0.6.0 (August 27, 2024)
 
