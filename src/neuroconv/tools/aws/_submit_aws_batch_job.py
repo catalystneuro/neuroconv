@@ -196,9 +196,6 @@ def submit_aws_batch_job(
 
     info = dict(job_submission_info=job_submission_info, table_submission_info=table_submission_info)
 
-    if efs_volume_name is not None:
-        info["efs_volume"] = efs_volume
-
     return info
 
 
