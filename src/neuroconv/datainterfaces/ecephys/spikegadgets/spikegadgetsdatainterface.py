@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import FilePath, ConfigDict, validate_call
+from pydantic import ConfigDict, FilePath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import ArrayType, get_json_schema_from_method_signature
