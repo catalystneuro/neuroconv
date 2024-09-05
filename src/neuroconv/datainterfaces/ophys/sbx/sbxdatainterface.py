@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
@@ -12,6 +12,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".sbx",)
     info = "Interface for Scanbox imaging data."
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

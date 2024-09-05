@@ -1,4 +1,4 @@
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
@@ -10,6 +10,7 @@ class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".sima",)
     info = "Interface for SIMA segmentation."
 
+    @validate_call
     def __init__(self, file_path: FilePath, sima_segmentation_label: str = "auto_ROIs"):
         """
 

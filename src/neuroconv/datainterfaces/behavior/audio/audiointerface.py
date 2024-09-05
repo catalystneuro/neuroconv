@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import numpy as np
 import scipy
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -28,6 +28,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".wav",)
     info = "Interface for writing audio recordings to an NWB file."
 
+    @validate_call
     def __init__(self, file_paths: list[FilePath], verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.

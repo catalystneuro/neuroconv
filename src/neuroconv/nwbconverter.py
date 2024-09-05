@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 
 from jsonschema import validate
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
@@ -73,6 +73,7 @@ class NWBConverter:
         if verbose:
             print("Source data is valid!")
 
+    @validate_call
     def __init__(self, source_data: dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose

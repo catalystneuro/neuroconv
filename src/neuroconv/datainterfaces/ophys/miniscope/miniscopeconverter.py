@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
@@ -23,6 +23,7 @@ class MiniscopeConverter(NWBConverter):
         source_schema["properties"]["folder_path"]["description"] = "The path to the main Miniscope folder."
         return source_schema
 
+    @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
