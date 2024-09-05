@@ -1,6 +1,7 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
 import math
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Literal, Union
 
@@ -280,6 +281,10 @@ class DatasetIOConfiguration(BaseModel, ABC):
             chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
             buffer_shape = full_shape
             compression_method = None
+            warnings.warn(
+                f"Default chunking and compression options for compound objects are not optimized. "
+                f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
+            )
 
         return cls(
             object_id=neurodata_object.object_id,
