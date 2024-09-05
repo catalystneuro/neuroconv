@@ -142,59 +142,12 @@ def submit_aws_batch_job(
         job_queue_name=job_queue_name, compute_environment_name=compute_environment_name, batch_client=batch_client
     )
 
-    # Create or fetch EFS volume and attach it to the job
-    efs_id = None
-    if efs_volume_name is not None:
-        efs_volumes = efs_client.describe_file_systems()
-        matching_efs_volumes = [
-            file_system
-            for file_system in efs_volumes["FileSystems"]
-            for tag in file_system["Tags"]
-            if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
-        ]
-        if len(matching_efs_volumes) == 0:
-            if region != "us-east-2":
-                raise NotImplementedError("EFS volumes are only supported in us-east-2 for now.")
-
-            efs_volume = efs_client.create_file_system(
-                PerformanceMode="generalPurpose",  # Only type supported in one-zone
-                Encrypted=False,
-                ThroughputMode="elastic",
-                # TODO: figure out how to make job spawn only on subregion for OneZone discount
-                # AvailabilityZoneName=subregion,
-                Backup=False,
-                Tags=[{"Key": "Name", "Value": efs_volume_name}],
-            )
-            efs_id = efs_volume["FileSystemId"]
-
-            # Takes a while to spin up - cannot assign mount targets until it is ready
-            # TODO: replace with more robust checking mechanism
-            time.sleep(60)
-
-            # TODO: in follow-up, figure out how to fetch this automatically and from any region
-            # (might even resolve those previous OneZone issues)
-            region_to_subnet_id = {
-                "us-east-2a": "subnet-0890a93aedb42e73e",
-                "us-east-2b": "subnet-0e20bbcfb951b5387",
-                "us-east-2c": "subnet-0680e07980538b786",
-            }
-            for subnet_id in region_to_subnet_id.values():
-                efs_client.create_mount_target(
-                    FileSystemId=efs_id,
-                    SubnetId=subnet_id,
-                    SecurityGroups=[
-                        "sg-001699e5b7496b226",
-                    ],
-                )
-            time.sleep(60)  # Also takes a while to create the mount targets
-        else:
-            efs_volume = matching_efs_volumes[0]
-            efs_id = efs_volume["FileSystemId"]
-
+    efs_id = _create_or_get_efs_id(efs_volume_name=efs_volume_name, efs_client=efs_client, region=region)
     job_definition_name = job_definition_name or _generate_job_definition_name(
         docker_image=docker_image,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
         minimum_worker_cpus=minimum_worker_cpus,
+        efs_id=efs_id,
     )
     job_definition_arn = _ensure_job_definition_exists_and_get_arn(
         job_definition_name=job_definition_name,
@@ -495,11 +448,71 @@ def _ensure_job_queue_exists(
     return None
 
 
+def _create_or_get_efs_id(
+    efs_volume_name: Optional[str], efs_client: "boto3.client.efs", region: str = "us-east-2"
+) -> Optional[str]:  # pragma: no cover
+    if efs_volume_name is None:
+        return None
+
+    if region != "us-east-2":
+        raise NotImplementedError("EFS volumes are only supported in us-east-2 for now.")
+
+    available_efs_volumes = efs_client.describe_file_systems()
+    matching_efs_volumes = [
+        file_system
+        for file_system in available_efs_volumes["FileSystems"]
+        for tag in file_system["Tags"]
+        if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+    ]
+
+    if len(matching_efs_volumes) > 1:
+        efs_volume = matching_efs_volumes[0]
+        efs_id = efs_volume["FileSystemId"]
+
+        return efs_id
+
+    # Existing volume not found - must create a fresh one and set mount targets on it
+    efs_volume = efs_client.create_file_system(
+        PerformanceMode="generalPurpose",  # Only type supported in one-zone
+        Encrypted=False,
+        ThroughputMode="elastic",
+        # TODO: figure out how to make job spawn only on subregion for OneZone discount
+        # AvailabilityZoneName=subregion,
+        Backup=False,
+        Tags=[{"Key": "Name", "Value": efs_volume_name}],
+    )
+    efs_id = efs_volume["FileSystemId"]
+
+    # Takes a while to spin up - cannot assign mount targets until it is ready
+    # TODO: in a follow-up replace with more robust checking mechanism
+    time.sleep(60)
+
+    # TODO: in follow-up, figure out how to fetch this automatically and from any region
+    # (might even resolve those previous OneZone issues)
+    region_to_subnet_id = {
+        "us-east-2a": "subnet-0890a93aedb42e73e",
+        "us-east-2b": "subnet-0e20bbcfb951b5387",
+        "us-east-2c": "subnet-0680e07980538b786",
+    }
+    for subnet_id in region_to_subnet_id.values():
+        efs_client.create_mount_target(
+            FileSystemId=efs_id,
+            SubnetId=subnet_id,
+            SecurityGroups=[
+                "sg-001699e5b7496b226",
+            ],
+        )
+    time.sleep(60)  # Also takes a while to create the mount targets so add some buffer time
+
+    return efs_id
+
+
 def _generate_job_definition_name(
     *,
     docker_image: str,
     minimum_worker_ram_in_gib: int,
     minimum_worker_cpus: int,
+    efs_id: Optional[str] = None,
 ) -> str:  # pragma: no cover
     """
     Generate a job definition name for the AWS Batch job.
@@ -526,6 +539,8 @@ def _generate_job_definition_name(
     job_definition_name += f"_{parsed_docker_image_name}-image"
     job_definition_name += f"_{minimum_worker_ram_in_gib}-GiB-RAM"
     job_definition_name += f"_{minimum_worker_cpus}-CPU"
+    if efs_id is not None:
+        job_definition_name += f"_{efs_id}"
     if docker_tag is None or docker_tag == "latest":
         date = datetime.now().strftime("%Y-%m-%d")
         job_definition_name += f"_created-on-{date}"
@@ -592,17 +607,17 @@ def _ensure_job_definition_exists_and_get_arn(
     job_definition_response = job_definition_request["jobDefinitions"]
 
     # Increment revision until we either find one that is active or we fail to find one that exists
-    # while len(job_definition_response) == 1:
-    #     if job_definition_response[0]["status"] == "ACTIVE":
-    #         return job_definition_response[0]["jobDefinitionArn"]
-    #     else:
-    #         revision += 1
-    #
-    #         job_definition_with_revision = f"{job_definition_name}:{revision}"
-    #         job_definition_request = batch_client.describe_job_definitions(
-    #             jobDefinitions=[job_definition_with_revision]
-    #         )
-    #         job_definition_response = job_definition_request["jobDefinitions"]
+    while len(job_definition_response) == 1:
+        if job_definition_response[0]["status"] == "ACTIVE":
+            return job_definition_response[0]["jobDefinitionArn"]
+        else:
+            revision += 1
+
+            job_definition_with_revision = f"{job_definition_name}:{revision}"
+            job_definition_request = batch_client.describe_job_definitions(
+                jobDefinitions=[job_definition_with_revision]
+            )
+            job_definition_response = job_definition_request["jobDefinitions"]
 
     resource_requirements = [
         {
