@@ -1,17 +1,17 @@
 from typing import Optional, Union
 
 import numpy as np
-from pydantic import BeforeValidator
-#from typing_extensions import Annotated
+
+# from typing_extensions import Annotated
 
 
-#def nd_array_custom_before_validator(object_: Union[list, np.ndarray]):
+# def nd_array_custom_before_validator(object_: Union[list, np.ndarray]):
 #    if isinstance(object_, list):
 #        return np.array(object_)
 #    return object_
 
 
-#ArrayType = Annotated[Union[list, np.ndarray], BeforeValidator(nd_array_custom_before_validator)]
+# ArrayType = Annotated[Union[list, np.ndarray], BeforeValidator(nd_array_custom_before_validator)]
 ArrayType = Union[list, np.ndarray]
 OptionalArrayType = Optional[ArrayType]
 FloatType = float
