@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
 from pynwb.file import NWBFile
 
@@ -41,6 +41,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     info = "Interface for handling MedPC output files."
     associated_suffixes = (".txt",)
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

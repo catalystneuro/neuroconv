@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 
 from jsonschema.validators import validate
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import (
@@ -39,6 +39,7 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_json_schema_from_method_signature(cls, exclude=["source_data"])
 
+    @validate_call
     def __init__(self, verbose: bool = False, **source_data):
         self.verbose = verbose
         self.source_data = source_data

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -25,10 +25,11 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file"
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
-        config_file_path: FilePath,
+        config_file_path: Optional[FilePath] = None,
         subject_name: str = "ind1",
         verbose: bool = True,
     ):
@@ -39,7 +40,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             path to the h5 file output by dlc.
-        config_file_path : FilePath
+        config_file_path : FilePath, optional
             path to .yml config file
         subject_name : str, default: "ind1"
             the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
@@ -52,17 +53,22 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
             raise IOError("The file passed in is not a DeepLabCut h5 data file.")
 
-        self._config_file = _read_config(config_file_path=config_file_path)
+        self.config_dict = dict()
+        if config_file_path is not None:
+            self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["NWBFile"].update(
-            session_description=self._config_file["Task"],
-            experimenter=[self._config_file["scorer"]],
-        )
+
+        if self.config_dict:
+            metadata["NWBFile"].update(
+                session_description=self.config_dict["Task"],
+                experimenter=[self.config_dict["scorer"]],
+            )
+
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
@@ -109,7 +115,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwbfile=nwbfile,
             h5file=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
-            config_file=str(self.source_data["config_file_path"]),
+            config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,
             pose_estimation_container_kwargs=dict(name=container_name),
         )

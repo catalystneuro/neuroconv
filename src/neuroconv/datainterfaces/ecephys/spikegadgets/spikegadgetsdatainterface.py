@@ -22,6 +22,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         return source_schema
 
+    # @validate_call
     def __init__(
         self,
         file_path: FilePath,

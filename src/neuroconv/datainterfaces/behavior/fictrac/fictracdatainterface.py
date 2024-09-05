@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
@@ -154,6 +154,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .dat file (the output of fictrac)"
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
