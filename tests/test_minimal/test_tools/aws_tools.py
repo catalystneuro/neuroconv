@@ -220,13 +220,11 @@ def test_submit_aws_batch_job_with_efs_mount():
     commands = ["touch", f"/mnt/efs/test_{date}.txt"]
 
     # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
-    job_definition_name = "test_neuroconv_batch_with_efs"
     efs_volume_name = f"test_neuroconv_batch_with_efs_{date}"
     info = submit_aws_batch_job(
         job_name=job_name,
         docker_image=docker_image,
         commands=commands,
-        job_definition_name=job_definition_name,
         efs_volume_name=efs_volume_name,
     )
 
@@ -267,7 +265,7 @@ def test_submit_aws_batch_job_with_efs_mount():
     # Check normal job completion
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
-    assert job_definition_name in job["jobDefinition"]
+    assert "fs-" in job["jobDefinition"]
     assert job["status"] == "SUCCEEDED"
 
     status_tracker_table_name = "neuroconv_batch_status_tracker"
