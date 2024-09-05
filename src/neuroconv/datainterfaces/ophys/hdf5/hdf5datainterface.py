@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import FilePath, validate_call
+from pydantic import FilePath, validate_call, ConfigDict
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType
@@ -13,7 +13,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".h5", ".hdf5")
     info = "Interface for HDF5 imaging data."
 
-    @validate_call
+    @validate_call(config=ConfigDict(exclude=["channel_names"]))
     def __init__(
         self,
         file_path: FilePath,
