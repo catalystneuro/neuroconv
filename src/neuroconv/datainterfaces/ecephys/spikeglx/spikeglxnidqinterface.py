@@ -25,6 +25,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
+    # @validate_call
     def __init__(
         self,
         file_path: FilePath,
