@@ -3,6 +3,8 @@ from typing import Optional, Union
 import numpy as np
 from typing_extensions import Annotated
 
+from pydantic import BeforeValidator
+
 def nd_array_custom_before_validator(object_: Union[list, np.ndarray]):
     if isinstance(object_, list):
         return np.array(object_)
