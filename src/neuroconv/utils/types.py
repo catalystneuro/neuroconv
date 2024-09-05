@@ -3,7 +3,12 @@ from typing import Optional, Union
 import numpy as np
 from typing_extensions import Annotated
 
-ArrayType = Annotated[Union[list, np.ndarray]]
+def nd_array_custom_before_validator(object_: Union[list, np.ndarray]):
+    if isinstance(object_, list):
+        return np.array(object_)
+    return object_
+
+ArrayType = Annotated[Union[list, np.ndarray], BeforeValidator(nd_array_custom_before_validator)]
 OptionalArrayType = Optional[ArrayType]
 FloatType = float
 IntType = Union[int, np.integer]
