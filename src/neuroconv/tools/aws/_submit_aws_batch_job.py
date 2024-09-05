@@ -592,17 +592,17 @@ def _ensure_job_definition_exists_and_get_arn(
     job_definition_response = job_definition_request["jobDefinitions"]
 
     # Increment revision until we either find one that is active or we fail to find one that exists
-    while len(job_definition_response) == 1:
-        if job_definition_response[0]["status"] == "ACTIVE":
-            return job_definition_response[0]["jobDefinitionArn"]
-        else:
-            revision += 1
-
-            job_definition_with_revision = f"{job_definition_name}:{revision}"
-            job_definition_request = batch_client.describe_job_definitions(
-                jobDefinitions=[job_definition_with_revision]
-            )
-            job_definition_response = job_definition_request["jobDefinitions"]
+    # while len(job_definition_response) == 1:
+    #     if job_definition_response[0]["status"] == "ACTIVE":
+    #         return job_definition_response[0]["jobDefinitionArn"]
+    #     else:
+    #         revision += 1
+    #
+    #         job_definition_with_revision = f"{job_definition_name}:{revision}"
+    #         job_definition_request = batch_client.describe_job_definitions(
+    #             jobDefinitions=[job_definition_with_revision]
+    #         )
+    #         job_definition_response = job_definition_request["jobDefinitions"]
 
     resource_requirements = [
         {
