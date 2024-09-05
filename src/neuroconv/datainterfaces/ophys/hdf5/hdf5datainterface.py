@@ -13,7 +13,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".h5", ".hdf5")
     info = "Interface for HDF5 imaging data."
 
-    @validate_call(config=ConfigDict(exclude=["channel_names"]))
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
         file_path: FilePath,
