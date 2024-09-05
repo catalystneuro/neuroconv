@@ -1,7 +1,7 @@
 from typing import Optional
 
 import pandas as pd
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..timeintervalsinterface import TimeIntervalsInterface
 
@@ -13,6 +13,7 @@ class ExcelTimeIntervalsInterface(TimeIntervalsInterface):
     associated_suffixes = (".xlsx", ".xls", ".xlsm")
     info = "Interface for writing a time intervals table from an excel file."
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

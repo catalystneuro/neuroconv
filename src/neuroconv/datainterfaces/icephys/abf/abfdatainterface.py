@@ -1,9 +1,10 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 from warnings import warn
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baseicephysinterface import BaseIcephysInterface
 
@@ -50,8 +51,12 @@ class AbfInterface(BaseIcephysInterface):
         )
         return source_schema
 
+    @validate_call
     def __init__(
-        self, file_paths: list[FilePath], icephys_metadata: dict = None, icephys_metadata_file_path: FilePath = None
+        self,
+        file_paths: list[FilePath],
+        icephys_metadata: Optional[dict] = None,
+        icephys_metadata_file_path: Optional[FilePath] = None,
     ):
         """
         ABF IcephysInterface based on Neo AxonIO.
