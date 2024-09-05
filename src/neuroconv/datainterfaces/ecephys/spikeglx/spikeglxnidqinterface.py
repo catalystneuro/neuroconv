@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import numpy as np
-from pydantic import FilePath, ConfigDict, validate_call
+from pydantic import ConfigDict, FilePath, validate_call
 
 from .spikeglx_utils import get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
