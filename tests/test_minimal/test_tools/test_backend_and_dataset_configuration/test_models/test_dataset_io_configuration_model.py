@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
 
@@ -53,3 +54,21 @@ def test_model_json_schema_generator_assertion():
         DatasetIOConfiguration.model_json_schema(schema_generator="anything")
 
     assert "The 'schema_generator' of this method cannot be changed." == str(error_info.value)
+
+
+def test_from_neurodata_object_dtype_object():
+    class TestDatasetIOConfiguration(DatasetIOConfiguration):
+        def get_data_io_kwargs(self):
+            super().get_data_io_kwargs()
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_trial(start_time=0.0, stop_time=1.0)
+    data = np.array(["test"], dtype=object)
+    nwbfile.add_trial_column(name="test", description="test column with object dtype", data=data)
+    neurodata_object = nwbfile.trials.columns[2]
+
+    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(neurodata_object, dataset_name="data")
+
+    assert dataset_io_configuration.chunk_shape == (1,)
+    assert dataset_io_configuration.buffer_shape == (1,)
+    assert dataset_io_configuration.compression_method is None
