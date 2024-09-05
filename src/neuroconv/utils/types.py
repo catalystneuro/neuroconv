@@ -1,7 +1,7 @@
 from typing import Optional, Union
-from typing_extensions import Annotated
 
 import numpy as np
+from typing_extensions import Annotated
 
 ArrayType = Annotated[Union[list, np.ndarray]]
 OptionalArrayType = Optional[ArrayType]
