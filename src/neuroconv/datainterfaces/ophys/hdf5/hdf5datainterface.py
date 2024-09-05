@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import FilePath, validate_call, ConfigDict
+from pydantic import ConfigDict, FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType
