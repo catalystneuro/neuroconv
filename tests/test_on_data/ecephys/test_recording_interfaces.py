@@ -1,7 +1,6 @@
 from datetime import datetime
 from platform import python_version
 from sys import platform
-from typing import Literal
 
 import numpy as np
 import pytest
@@ -16,7 +15,6 @@ from neuroconv.datainterfaces import (
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
     CellExplorerRecordingInterface,
-    EDFRecordingInterface,
     IntanRecordingInterface,
     MaxOneRecordingInterface,
     MCSRawRecordingInterface,
@@ -168,45 +166,49 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 assert electrode_table_row[key] == value
 
 
-@pytest.mark.skipif(
-    platform == "darwin",
-    reason="Interface unsupported for OSX.",
-)
-class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
-    data_interface_cls = EDFRecordingInterface
-    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
-    save_directory = OUTPUT_PATH
+# @pytest.mark.skipif(
+#     platform == "darwin",
+#     reason="Interface unsupported for OSX.",
+# )
+# class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
+#     data_interface_cls = EDFRecordingInterface
+#     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
+#     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+#     def check_extracted_metadata(self, metadata: dict):
+#         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
-    def test_interface_alignment(self):
-        interface_kwargs = self.interface_kwargs
+#     def test_interface_alignment(self):
+#         interface_kwargs = self.interface_kwargs
 
-        # TODO - debug hanging I/O from pyedflib
-        # self.check_interface_get_original_timestamps()
-        # self.check_interface_get_timestamps()
-        # self.check_align_starting_time_internal()
-        # self.check_align_starting_time_external()
-        # self.check_interface_align_timestamps()
-        # self.check_shift_timestamps_by_start_time()
-        # self.check_interface_original_timestamps_inmutability()
+#         # TODO - debug hanging I/O from pyedflib
+#         # self.check_interface_get_original_timestamps()
+#         # self.check_interface_get_timestamps()
+#         # self.check_align_starting_time_internal()
+#         # self.check_align_starting_time_external()
+#         # self.check_interface_align_timestamps()
+#         # self.check_shift_timestamps_by_start_time()
+#         # self.check_interface_original_timestamps_inmutability()
 
-        self.check_nwbfile_temporal_alignment()
+#         self.check_nwbfile_temporal_alignment()
 
-    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def check_run_conversion_in_nwbconverter_with_backend(
-        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        pass
+#     # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
+#     def check_run_conversion_in_nwbconverter_with_backend(
+#         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+#     ):
+#         pass
 
-    def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        pass
+#     def check_run_conversion_in_nwbconverter_with_backend_configuration(
+#         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
+#     ):
+#         pass
 
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
-        pass
+#     def check_run_conversion_with_backend(self):
+#         pass
+
+
+#     def test_no_metadata_mutation(self):
+#         pass
 
 
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin):

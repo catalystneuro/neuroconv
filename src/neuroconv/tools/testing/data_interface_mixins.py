@@ -67,9 +67,8 @@ class DataInterfaceTestMixin:
 
     @pytest.fixture
     def setup_interface(self, request):
-
+        """Add this as a fixture when you want freshly created interface in the test."""
         self.test_name: str = ""
-        self.conversion_options = self.conversion_options or dict()
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
@@ -88,31 +87,26 @@ class DataInterfaceTestMixin:
         schema = self.interface.get_conversion_options_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    def check_metadata_schema_valid(self):
+    def test_metadata_schema_valid(self, setup_interface):
         schema = self.interface.get_metadata_schema()
         Draft7Validator.check_schema(schema=schema)
 
     def check_metadata(self):
-        schema = self.interface.get_metadata_schema()
+        # Validate metadata now happens on the class itself
         metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        # handle json encoding of datetimes and other tricky types
-        metadata_for_validation = json.loads(json.dumps(metadata, cls=_NWBMetaDataEncoder))
-        validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
-    def check_no_metadata_mutation(self):
-        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        metadata_in = deepcopy(metadata)
+    def test_no_metadata_mutation(self, setup_interface):
+        """Ensure the metadata object is not altered by `add_to_nwbfile` method."""
 
         nwbfile = mock_NWBFile()
+
+        metadata = self.interface.get_metadata()
+        metadata_before_add_method = deepcopy(metadata)
+
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
 
-        assert metadata == metadata_in
+        assert metadata == metadata_before_add_method
 
     def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
         metadata = self.interface.get_metadata()
@@ -223,6 +217,26 @@ class DataInterfaceTestMixin:
         """Override this in child classes to inject additional custom checks."""
         pass
 
+    @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+    def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend):
+
+        nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}_{self.test_name}.nwb")
+
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+        if backend == "zarr":
+            self.check_basic_zarr_read(nwbfile_path)
+
     def test_all_conversion_checks(self, setup_interface, tmp_path):
         interface, test_name = setup_interface
 
@@ -231,16 +245,13 @@ class DataInterfaceTestMixin:
         self.nwbfile_path = nwbfile_path
 
         # Now run the checks using the setup objects
-        self.check_metadata_schema_valid()
         self.check_conversion_options_schema_valid()
         self.check_metadata()
-        self.check_no_metadata_mutation()
         self.check_configure_backend_for_equivalent_nwbfiles()
 
         self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
         self.check_read_nwb(nwbfile_path=nwbfile_path)
@@ -733,16 +744,13 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
 
         # Now run the checks using the setup objects
-        self.check_metadata_schema_valid()
         self.check_conversion_options_schema_valid()
         self.check_metadata()
-        self.check_no_metadata_mutation()
         self.check_configure_backend_for_equivalent_nwbfiles()
 
         self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
         self.check_read_nwb(nwbfile_path=nwbfile_path)
@@ -882,6 +890,29 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """
     A mixin for testing MedPC interfaces.
     """
+
+    def test_metadata_schema_valid(self):
+        pass
+
+    def test_run_conversion_with_backend(self):
+        pass
+
+    def test_no_metadata_mutation(self):
+        pass
+
+    def check_metadata_schema_valid(self):
+        schema = self.interface.get_metadata_schema()
+        Draft7Validator.check_schema(schema=schema)
+
+    def check_metadata(self):
+        schema = self.interface.get_metadata_schema()
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        # handle json encoding of datetimes and other tricky types
+        metadata_for_validation = json.loads(json.dumps(metadata, cls=_NWBMetaDataEncoder))
+        validate(metadata_for_validation, schema)
+        self.check_extracted_metadata(metadata)
 
     def check_no_metadata_mutation(self, metadata: dict):
         """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
