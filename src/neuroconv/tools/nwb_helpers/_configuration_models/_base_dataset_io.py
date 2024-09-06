@@ -268,9 +268,17 @@ class DatasetIOConfiguration(BaseModel, ABC):
         if dtype == np.dtype(
             "object"
         ):  # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
-            is_string = all(isinstance(element, str) for element in candidate_dataset[:].flat)
-            if is_string:
-                dtype = np.str_
+            max_string_length = 1
+            all_elements_are_strings = True
+            for element in candidate_dataset[:].flat:
+                if not isinstance(element, str):
+                    all_elements_are_strings = False
+                    break
+                string_length = len(element)
+                if string_length > max_string_length:
+                    max_string_length = string_length
+            if all_elements_are_strings:
+                dtype = np.dtype(f"<U{max_string_length}")
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
