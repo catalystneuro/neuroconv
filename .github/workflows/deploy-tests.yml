@@ -1,7 +1,7 @@
 name: Deploy tests
 
 on:
-#  pull_request: # TODO: temporarily disabled to not waste resources
+  pull_request:
   merge_group:
   workflow_dispatch:
 
