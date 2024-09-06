@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import Optional
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter
@@ -26,6 +26,7 @@ class LightningPoseConverter(NWBConverter):
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

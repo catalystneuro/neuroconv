@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
@@ -24,6 +24,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         ] = "Path to the output Phy folder (containing the params.py)."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,

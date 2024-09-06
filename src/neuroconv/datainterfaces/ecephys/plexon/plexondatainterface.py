@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -25,6 +25,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
@@ -85,6 +86,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
+    @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Plexon.
@@ -136,6 +138,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the plexon spiking data (.plx file)."
         return source_schema
 
+    @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True):
         """
         Load and prepare data for Plexon.

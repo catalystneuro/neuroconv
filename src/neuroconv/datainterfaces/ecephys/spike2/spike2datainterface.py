@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
@@ -40,6 +40,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         _test_sonpy_installation()
         return cls.get_extractor().get_all_channels_info(file_path=file_path)
 
+    @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Initialize reading of Spike2 file.
