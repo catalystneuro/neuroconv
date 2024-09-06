@@ -265,6 +265,13 @@ class DatasetIOConfiguration(BaseModel, ABC):
         full_shape = get_data_shape(data=candidate_dataset)
         dtype = _infer_dtype(dataset=candidate_dataset)
 
+        if dtype == np.dtype(
+            "object"
+        ):  # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
+            is_string = all(isinstance(element, str) for element in candidate_dataset[:].flat)
+            if is_string:
+                dtype = np.str_
+
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
