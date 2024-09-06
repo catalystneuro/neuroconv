@@ -649,6 +649,7 @@ def _ensure_job_definition_exists_and_get_arn(
         containerProperties=dict(
             image=docker_image,
             resourceRequirements=resource_requirements,
+            # TODO: investigate if any IAM role is explicitly needed in conjunction with the credentials
             # jobRoleArn=role_info["Role"]["Arn"],
             # executionRoleArn=role_info["Role"]["Arn"],
             volumes=volumes,
