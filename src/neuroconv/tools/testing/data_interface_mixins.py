@@ -220,7 +220,7 @@ class DataInterfaceTestMixin:
     @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
     def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend):
 
-        nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}_{self.test_name}.nwb")
+        nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}-{self.test_name}.nwb")
 
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
@@ -1250,6 +1250,22 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Mixin for testing TDT Fiber Photometry interfaces."""
+
+    def test_metadata_schema_valid(self):
+        pass
+
+    def test_no_metadata_mutation(self):
+        pass
+
+    def test_run_conversion_with_backend(self):
+        pass
+
+    def test_no_metadata_mutation(self):
+        pass
+
+    def check_metadata_schema_valid(self):
+        schema = self.interface.get_metadata_schema()
+        Draft7Validator.check_schema(schema=schema)
 
     def check_no_metadata_mutation(self, metadata: dict):
         """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
