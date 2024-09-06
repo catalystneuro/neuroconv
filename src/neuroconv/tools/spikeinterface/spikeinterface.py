@@ -177,7 +177,7 @@ def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWB
             device_name = group_metadata.get("device", defaults[0]["device"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices(nwbfile=nwbfile, metadata=new_device_metadata)
+                add_devices_to_nwbfile(nwbfile=nwbfile, metadata=new_device_metadata)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to electrode group! Automatically generating."
