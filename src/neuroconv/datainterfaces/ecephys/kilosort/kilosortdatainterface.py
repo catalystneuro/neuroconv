@@ -11,7 +11,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
     info = "Interface for KiloSort sorting data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"

@@ -23,7 +23,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
         return source_schema
@@ -84,14 +84,14 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(**init_kwargs)
 
-    def get_metadata_schema(self) -> dict:
+    def get_metadata_schema(self) -> dict:  # noqa: D102
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 

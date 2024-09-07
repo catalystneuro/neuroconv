@@ -35,7 +35,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(folder_path=folder_path, stream_id="RAW", verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         metadata = super().get_metadata()
         annotation = self.recording_extractor.neo_reader.raw_annotations
         metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])

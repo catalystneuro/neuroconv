@@ -18,7 +18,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Blackrock recording data."
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls):  # noqa: D102
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
         source_schema["properties"]["file_path"][
             "description"
@@ -57,7 +57,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
@@ -77,7 +77,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     info = "Interface for Blackrock sorting data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         metadata_schema = get_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
@@ -98,7 +98,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])

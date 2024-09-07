@@ -289,7 +289,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     binary_file_extension = "dat"
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
         return source_schema
@@ -353,7 +353,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, folder_path=folder_path
         )
 
-    def get_original_timestamps(self):
+    def get_original_timestamps(self):  # noqa: D102
         num_frames = self.recording_extractor.get_num_frames()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
         timestamps = np.arange(num_frames) / sampling_frequency
@@ -385,7 +385,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
 
-    def add_to_nwbfile(
+    def add_to_nwbfile(  # noqa: D102
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
@@ -511,6 +511,33 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 )
 
     def generate_recording_with_channel_metadata(self):
+        """
+        Generate a dummy recording extractor with channel metadata from session data.
+
+        This method reads session data from a `.session.mat` file (if available) and generates a dummy recording
+        extractor. The recording extractor is then populated with channel metadata extracted from the session file.
+
+        Returns
+        -------
+        NumpyRecording
+            A `NumpyRecording` object representing the dummy recording extractor, containing the channel metadata.
+
+        Notes
+        -----
+        - The method reads the `.session.mat` file using `pymatreader` and extracts `extracellular` data.
+        - It creates a dummy recording extractor using `spikeinterface.core.numpyextractors.NumpyRecording`.
+        - The generated extractor includes channel IDs and other relevant metadata such as number of channels,
+        number of samples, and sampling frequency.
+        - Channel metadata is added to the dummy extractor using the `add_channel_metadata_to_recoder` function.
+        - If the `.session.mat` file is not found, no extractor is returned.
+
+        Warnings
+        --------
+        Ensure that the `.session.mat` file is correctly located in the expected session path, or the method will not generate
+        a recording extractor.
+
+        """
+
         session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
         if session_data_file_path.is_file():
             from pymatreader import read_mat
@@ -540,8 +567,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         return dummy_recording_extractor
 
-    def get_metadata(self) -> dict:
-        metadata = super().get_metadata()
+    def get_metadata(self) -> dict:  # noqa: D102
+        metadata = super().get_metadata()  # noqa: D102
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion

@@ -75,15 +75,15 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
-    def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
+    def register_recording(self, recording_interface: BaseRecordingExtractorInterface):  # noqa: D102
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
         raise NotImplementedError(
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
 
-    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
+    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:  # noqa: D102
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -167,7 +167,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 times=aligned_segment_timestamps[segment_index], segment_index=segment_index
             )
 
-    def set_aligned_starting_time(self, aligned_starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):  # noqa: D102
         if self.sorting_extractor.has_recording():
             if self._number_of_segments == 1:
                 self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
@@ -216,6 +216,19 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 sorting_segment._t_start = aligned_segment_starting_time
 
     def subset_sorting(self):
+        """
+        Generate a subset of the sorting extractor based on spike timing data.
+
+        This method identifies the earliest spike time across all units in the sorting extractor and creates a
+        subset of the sorting data up to 110% of the earliest spike time. If the sorting extractor is associated
+        with a recording, the subset is further limited by the total number of samples in the recording.
+
+        Returns
+        -------
+        SortingExtractor
+            A new `SortingExtractor` object representing the subset of the original sorting data,
+            sliced from the start frame to the calculated end frame.
+        """
         max_min_spike_time = max(
             [
                 min(x)
