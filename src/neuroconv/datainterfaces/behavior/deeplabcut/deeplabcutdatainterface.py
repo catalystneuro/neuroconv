@@ -19,7 +19,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     _timestamps = None
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .h5 file output by dlc."
         source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file"
@@ -60,7 +60,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
-    def get_metadata(self):
+    def get_metadata(self):  # noqa: D102
         metadata = super().get_metadata()
 
         if self.config_dict:
@@ -71,13 +71,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
         raise NotImplementedError(
             "Unable to retrieve the original unaltered timestamps for this interface! "
             "Define the `get_original_timestamps` method for this interface."
         )
 
-    def get_timestamps(self) -> np.ndarray:
+    def get_timestamps(self) -> np.ndarray:  # noqa: D102
         raise NotImplementedError(
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )

@@ -77,7 +77,7 @@ class VideoInterface(BaseDataInterface):
         self.metadata_key_name = metadata_key_name
         super().__init__(file_paths=file_paths)
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self):  # noqa: D102
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
@@ -93,7 +93,7 @@ class VideoInterface(BaseDataInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self):  # noqa: D102
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
@@ -256,7 +256,7 @@ class VideoInterface(BaseDataInterface):
         else:
             self._segment_starting_times = aligned_segment_starting_times
 
-    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):  # noqa: D102
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
 
     def add_to_nwbfile(

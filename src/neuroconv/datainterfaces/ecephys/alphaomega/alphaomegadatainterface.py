@@ -15,7 +15,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface class for converting AlphaOmega recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder of .mpx files."
         return source_schema

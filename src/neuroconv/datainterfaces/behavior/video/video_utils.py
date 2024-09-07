@@ -76,7 +76,7 @@ class VideoCaptureContext:
             return frame.shape
 
     @property
-    def frame_count(self):
+    def frame_count(self):  # noqa: D102
         if self._frame_count is None:
             self._frame_count = self._video_frame_count()
         return self._frame_count
@@ -89,7 +89,7 @@ class VideoCaptureContext:
         ), "Cannot set manual frame_count beyond length of video (received {val})."
         self._frame_count = val
 
-    def get_video_frame_count(self):
+    def get_video_frame_count(self):  # noqa: D102
         return self.frame_count
 
     def _video_frame_count(self):
@@ -99,7 +99,7 @@ class VideoCaptureContext:
         return int(self.vc.get(prop))
 
     @staticmethod
-    def get_cv_attribute(attribute_name: str):
+    def get_cv_attribute(attribute_name: str):  # noqa: D102
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
@@ -107,7 +107,7 @@ class VideoCaptureContext:
         return getattr(cv2, attribute_name)
 
     @property
-    def current_frame(self):
+    def current_frame(self):  # noqa: D102
         return self._current_frame
 
     @current_frame.setter
@@ -136,10 +136,10 @@ class VideoCaptureContext:
         if frame is not None:
             return frame.dtype
 
-    def release(self):
+    def release(self):  # noqa: D102
         self.vc.release()
 
-    def isOpened(self):
+    def isOpened(self):  # noqa: D102
         return self.vc.isOpened()
 
     def __iter__(self):

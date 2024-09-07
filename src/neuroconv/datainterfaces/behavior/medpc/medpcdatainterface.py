@@ -85,7 +85,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         )
         self.timestamps_dict = {}
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self) -> DeepDict:  # noqa: D102
         metadata = super().get_metadata()
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
@@ -98,7 +98,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
         return metadata
 
-    def get_metadata_schema(self) -> dict:
+    def get_metadata_schema(self) -> dict:  # noqa: D102
         metadata_schema = super().get_metadata_schema()
         medpc_name_to_info_dict = self.source_data["metadata_medpc_name_to_info_dict"]
         metadata_schema["properties"]["MedPC"] = {
@@ -178,11 +178,12 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             aligned_timestamps_dict[name] = original_timestamps + aligned_starting_time
         self.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
 
-    def add_to_nwbfile(
+    def add_to_nwbfile(  # noqa: D102
         self,
         nwbfile: NWBFile,
         metadata: dict,
     ) -> None:
+
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", None)
         assert medpc_name_to_info_dict is not None, "medpc_name_to_info_dict must be provided in metadata"
