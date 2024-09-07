@@ -16,6 +16,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the Bruker TIFF imaging data."""
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -28,6 +29,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         folder_path: DirectoryPath,
         plane_separation_type: Literal["contiguous", "disjoint"] = None,
     ) -> dict:
+        """get streams for the Bruker TIFF imaging data."""
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
@@ -117,6 +119,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
+        """get metadata for the Bruker TIFF imaging data."""
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
@@ -183,6 +186,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the Bruker TIFF imaging data."""
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -191,6 +195,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_streams(cls, folder_path: DirectoryPath) -> dict:
+        """get streams for the Bruker TIFF imaging data."""
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
@@ -263,6 +268,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
+        """get metadata for the Bruker TIFF imaging data."""
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata

@@ -50,6 +50,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the Suite2p segmentation interface."""
         schema = super().get_source_schema()
         schema["properties"]["folder_path"][
             "description"
@@ -61,13 +62,13 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         return schema
 
     @classmethod
-    def get_available_planes(cls, folder_path: DirectoryPath) -> dict:
+    def get_available_planes(cls, folder_path: DirectoryPath) -> dict:  # noqa: D102
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_planes(folder_path=folder_path)
 
     @classmethod
-    def get_available_channels(cls, folder_path: DirectoryPath) -> dict:
+    def get_available_channels(cls, folder_path: DirectoryPath) -> dict:  # noqa: D102
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
@@ -113,6 +114,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.verbose = verbose
 
     def get_metadata(self) -> DeepDict:
+        """get metadata for the Suite2p segmentation data"""
         metadata = super().get_metadata()
 
         # No need to update the metadata links for the default plane segmentation name
@@ -140,6 +142,31 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
+        """
+        Add segmentation data to the specified NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the segmentation data will be added.
+        metadata : dict, optional
+            Metadata containing information about the segmentation. If None, default metadata is used.
+        stub_test : bool, optional
+            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        include_roi_centroids : bool, optional
+            Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
+        include_roi_acceptance : bool, optional
+            Whether to include acceptance status of ROIs, by default True.
+        mask_type : str, optional
+            The type of mask used for segmentation, either "image", "pixel", or "voxel", by default "image".
+        plane_segmentation_name : str, optional
+            The name of the plane segmentation object, by default None.
+        iterator_options : dict, optional
+            Additional options for iterating over the data, by default None.
+        """
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,

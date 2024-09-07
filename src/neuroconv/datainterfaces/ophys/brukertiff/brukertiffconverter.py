@@ -138,6 +138,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
+        """Get the source schema for the Bruker imaging interface."""
         return get_schema_from_method_signature(cls)
 
     def get_conversion_options_schema(self):
@@ -205,6 +206,24 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ) -> None:
+        """
+        Run the NWB conversion process for all instantiated data interfaces.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePath, optional
+            The file path where the NWB file will be written. If None, the file is handled in-memory.
+        nwbfile : NWBFile, optional
+            An existing in-memory NWBFile object. If None, a new NWBFile object will be created.
+        metadata : dict, optional
+            Metadata dictionary used to create or validate the NWBFile. If None, metadata is automatically generated.
+        overwrite : bool, optional
+            If True, the NWBFile at `nwbfile_path` is overwritten if it exists. If False (default), data is appended.
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) is used for testing purposes. By default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True. By default 100.
+        """
         if metadata is None:
             metadata = self.get_metadata()
 

@@ -19,6 +19,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the Miniscope imaging interface."""
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -49,6 +50,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self.photon_series_type = "OnePhotonSeries"
 
     def get_metadata(self) -> DeepDict:
+        """Get metadata for the Miniscope imaging data."""
         from ....tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
@@ -74,11 +76,13 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
+        """Get the metadata schema for the Miniscope imaging data."""
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Get the original timestamps from the Miniscope data."""
         from ndx_miniscope.utils import get_timestamps
 
         timestamps = get_timestamps(folder_path=self.source_data["folder_path"])
@@ -92,6 +96,23 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add imaging data to the specified NWBFile, including device and photon series information.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the imaging data will be added.
+        metadata : dict, optional
+            Metadata containing information about the imaging device and photon series. If None, default metadata is used.
+        photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+            The type of photon series to be added, either "TwoPhotonSeries" or "OnePhotonSeries", by default "OnePhotonSeries".
+        stub_test : bool, optional
+            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include if `stub_test` is True, by default 100.
+        """
         from ndx_miniscope.utils import add_miniscope_device
 
         from ....tools.roiextractors import add_photon_series_to_nwbfile
