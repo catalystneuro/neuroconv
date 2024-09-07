@@ -24,6 +24,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
+        """Get the source schema for the Bruker imaging interface."""
         source_schema = get_schema_from_method_signature(cls)
         source_schema["properties"]["folder_path"][
             "description"
@@ -31,6 +32,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         return source_schema
 
     def get_conversion_options_schema(self):
+        """get the conversion options schema."""
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -91,6 +93,20 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add data from multiple data interfaces to the specified NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the data will be added.
+        metadata : dict
+            Metadata dictionary containing information to describe the data being added to the NWB file.
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) will be added for testing purposes. Default is False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True. Default is 100.
+        """
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
@@ -109,6 +125,24 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ) -> None:
+        """
+        Run the conversion process for the instantiated data interfaces and add data to the NWB file.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePath, optional
+            Path where the NWB file will be written. If None, the file will be handled in-memory.
+        nwbfile : NWBFile, optional
+            An in-memory NWBFile object. If None, a new NWBFile object will be created.
+        metadata : dict, optional
+            Metadata dictionary for describing the NWB file. If None, it will be auto-generated using the `get_metadata()` method.
+        overwrite : bool, optional
+            If True, overwrites the existing NWB file at `nwbfile_path`. If False, appends to the file (default is False).
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) will be added for testing purposes, by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        """
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -142,6 +176,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         return get_schema_from_method_signature(cls)
 
     def get_conversion_options_schema(self):
+        """Get the conversion options schema."""
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -188,6 +223,22 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add data from all instantiated data interfaces to the provided NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the data will be added.
+        metadata : dict
+            Metadata dictionary containing information about the data to be added.
+        stub_test : bool, optional
+            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+
+        """
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,

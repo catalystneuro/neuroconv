@@ -16,7 +16,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     info = "Interface for Phy sorting data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["exclude_cluster_groups"]["items"] = dict(type="string")
         source_schema["properties"]["folder_path"][

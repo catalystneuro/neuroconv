@@ -48,6 +48,17 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_metadata_schema(
         self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None
     ) -> dict:
+        """
+        Retrieve the metadata schema for the optical physiology (Ophys) data, with optional handling of photon series type.
+
+        Parameters
+        ----------
+        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
+            The type of photon series to include in the schema. If None, the value from the instance is used.
+            This argument is deprecated and will be removed in a future version. Set `photon_series_type` during
+            the initialization of the `BaseImagingExtractorInterface` instance.
+
+        """
 
         if photon_series_type is not None:
             warnings.warn(
@@ -102,6 +113,16 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_metadata(
         self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None
     ) -> DeepDict:
+        """
+        Retrieve the metadata for the imaging data, with optional handling of photon series type.
+
+        Parameters
+        ----------
+        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
+            The type of photon series to include in the metadata. If None, the value from the instance is used.
+            This argument is deprecated and will be removed in a future version. Instead, set `photon_series_type`
+            during the initialization of the `BaseImagingExtractorInterface` instance.
+        """
 
         if photon_series_type is not None:
             warnings.warn(
@@ -127,14 +148,15 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
         reinitialized_extractor = self.get_extractor()(**self.source_data)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
-    def get_timestamps(self) -> np.ndarray:
+    def get_timestamps(self) -> np.ndarray:  # noqa: D102
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """Replace all timestamps for this interface with those aligned to the common session start time."""
         self.imaging_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(
@@ -147,6 +169,28 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add imaging data to the NWBFile, including options for photon series and stubbing.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the imaging data will be added.
+        metadata : dict, optional
+            Metadata dictionary containing information about the imaging data. If None, default metadata is used.
+        photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+            The type of photon series to be added to the NWBFile. Default is "TwoPhotonSeries".
+        photon_series_index : int, optional
+            The index of the photon series in the NWBFile, used to differentiate between multiple series, by default 0.
+        parent_container : {"acquisition", "processing/ophys"}, optional
+            The container in the NWBFile where the data will be added, by default "acquisition".
+        stub_test : bool, optional
+            If True, only a subset of the imaging data (up to `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+
+        """
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
         if stub_test:

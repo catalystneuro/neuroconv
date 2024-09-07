@@ -23,6 +23,27 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self.segmentation_extractor = self.get_extractor()(**source_data)
 
     def get_metadata_schema(self) -> dict:
+        """
+        Generate the metadata schema for Ophys data, updating required fields and properties.
+
+        This method builds upon the base schema and customizes it for Ophys-specific metadata, including required
+        components such as devices, fluorescence data, imaging planes, and two-photon series. It also applies
+        temporary schema adjustments to handle certain use cases until a centralized metadata schema definition
+        is available.
+
+        Returns
+        -------
+        dict
+            A dictionary representing the updated Ophys metadata schema.
+
+        Notes
+        -----
+        - Ensures that `Device` and `ImageSegmentation` are marked as required.
+        - Updates various properties, including ensuring arrays for `ImagingPlane` and `TwoPhotonSeries`.
+        - Adjusts the schema for `Fluorescence`, including required fields and pattern properties.
+        - Adds schema definitions for `DfOverF`, segmentation images, and summary images.
+        - Applies temporary fixes, such as setting additional properties for `ImageSegmentation` to True.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
         metadata_schema["properties"]["Ophys"] = get_base_schema()
@@ -88,23 +109,24 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
         reinitialized_extractor = self.get_extractor()(**self.source_data)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
-    def get_timestamps(self) -> np.ndarray:
+    def get_timestamps(self) -> np.ndarray:  # noqa: D102
         return self.segmentation_extractor.frame_to_time(
             frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
         )
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """set the aligned timestamps for the segmentation extractor."""
         self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(

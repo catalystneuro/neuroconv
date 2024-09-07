@@ -253,7 +253,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     info = "Interface for converting NeuroScope recording data."
 
     @classmethod
-    def get_source_schema(self) -> dict:
+    def get_source_schema(self) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
         source_schema["properties"]["keep_mua_units"][
@@ -300,7 +300,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
