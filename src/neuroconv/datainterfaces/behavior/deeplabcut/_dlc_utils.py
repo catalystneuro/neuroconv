@@ -379,7 +379,9 @@ def add_subject_to_nwbfile(
     video_name, scorer = h5file.stem.split("DLC")
     scorer = "DLC" + scorer
 
-    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
+    data_frame_from_hdf5 = pd.read_hdf(h5file)
+
+    df = _ensure_individuals_in_header(data_frame_from_hdf5, individual_name)
 
     # Note the video here is a tuple of the video path and the image shape
     if config_file is not None:
