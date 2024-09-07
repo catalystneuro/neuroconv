@@ -143,7 +143,7 @@ class LocalPathExpander(AbstractPathExpander):
     See https://neuroconv.readthedocs.io/en/main/user_guide/expand_path.html for more information.
     """
 
-    def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:  # noqa: D101
+    def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:  # noqa: D101,D102
         base_directory = Path(base_directory)
         assert base_directory.is_dir(), f"The specified 'base_directory' ({base_directory}) is not a directory!"
         return (str(path.relative_to(base_directory)) for path in base_directory.rglob("*"))

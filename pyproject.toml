@@ -97,7 +97,7 @@ doctest_optionflags = "ELLIPSIS"
 
 [tool.black]
 line-length = 120
-target-version = ['py38', 'py39', 'py310']
+target-version = ['py39', 'py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -124,6 +124,7 @@ select = [
     "F401",  # Unused import
     "I",  # All isort rules
     "D101",  # Missing docstring in public class
+    "D102",  # Missing docstring in public method
     "D103",  # Missing docstring in public function
 ]
 fixable = ["ALL"]

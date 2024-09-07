@@ -50,6 +50,8 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
     def estimate_default_buffer_shape(
         buffer_gb: float, chunk_shape: tuple[int, ...], maxshape: tuple[int, ...], dtype: np.dtype
     ) -> tuple[int, ...]:
+        """ "Add docstring to this"""
+
         # Elevate any overflow warnings to trigger error.
         # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
         # avoided at all costs.

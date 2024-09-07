@@ -24,37 +24,84 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the data source, excluding the 'event_times' parameter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary for the data source, including additional properties for flexibility.
+        """
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
     def __init__(self, event_times: Optional[ArrayType] = None):
         """
-        Define event times for some behavior.
+        Initialize the interface with event times for behavior.
 
         Parameters
         ----------
         event_times : list of floats, optional
             The event times to set as timestamps for this interface.
-            The default is the array [1.2, 2.3, 3.4] for similarity to the timescale of the MockSpikeGLXNIDQInterface.
+            The default is the array [1.2, 2.3, 3.4] to simulate a time series similar to the
+            MockSpikeGLXNIDQInterface.
         """
         event_times = event_times or [1.2, 2.3, 3.4]
         self.event_times = np.array(event_times)
         self.original_event_times = np.array(event_times)  # Make a copy of the initial loaded timestamps
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original event times before any alignment or transformation.
+
+        Returns
+        -------
+        np.ndarray
+            The original event times as a NumPy array.
+        """
         return self.original_event_times
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Get the current (possibly aligned) event times.
+
+        Returns
+        -------
+        np.ndarray
+            The current event times as a NumPy array, possibly modified after alignment.
+        """
         return self.event_times
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Set the event times after alignment.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The aligned event timestamps to update the internal event times.
+        """
         self.event_times = aligned_timestamps
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
+        """
+        Add the event times to an NWBFile as a DynamicTable.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to which the event times will be added.
+        metadata : dict
+            Metadata to describe the event times in the NWB file.
+
+        Notes
+        -----
+        This method creates a DynamicTable to store event times and adds it to the NWBFile's acquisition.
+        """
         table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
         table.add_column(name="event_time", description="Time of each event.")
-        for timestamp in self.get_timestamps():  # adding data by column gives error
+        for timestamp in self.get_timestamps():
             table.add_row(event_time=timestamp)
         nwbfile.add_acquisition(table)
 
@@ -68,6 +115,9 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the mock SpikeGLX interface.
+        """
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
         source_schema["additionalProperties"] = True
         return source_schema
@@ -151,6 +201,9 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Returns the metadata dictionary for the current object.
+        """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -172,6 +225,25 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         verbose: bool = True,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
+        """
+        Parameters
+        ----------
+        num_frames : int, optional
+            Number of frames in the imaging data. Default is 30.
+        num_rows : int, optional
+            Number of rows in the imaging data. Default is 10.
+        num_columns : int, optional
+            Number of columns in the imaging data. Default is 10.
+        sampling_frequency : float, optional
+            Sampling frequency of the imaging data. Default is 30.
+        dtype : str, optional
+            Data type of the imaging data. Default is "uint16".
+        verbose : bool, optional
+            Whether to print verbose output. Default is True.
+        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
+            Type of photon series. Default is "TwoPhotonSeries".
+
+        """
         from roiextractors.testing import generate_dummy_imaging_extractor
 
         self.imaging_extractor = generate_dummy_imaging_extractor(
@@ -186,6 +258,20 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.photon_series_type = photon_series_type
 
     def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
+        """
+        Get the metadata for the imaging interface.
+
+        Parameters
+        ----------
+        photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
+            The type of photon series to include in the metadata.
+            If not specified, all photon series will be included.
+
+        Returns
+        -------
+        dict
+            The metadata for the imaging interface.
+        """
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(photon_series_type=photon_series_type)
         metadata["NWBFile"]["session_start_time"] = session_start_time
