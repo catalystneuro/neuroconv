@@ -217,6 +217,30 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
             dict(name="sh", description="The shank label of the best channel."),
         ]
 
+    def check_units_table_propagation(self):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        # example data does not contain n_spikes, fr, depth, amp, ch, and sh
+        assert (
+            nwbfile.units["Amplitude"].description
+            == "Per-template amplitudes, computed as the L2 norm of the template."
+        )
+        assert (
+            nwbfile.units["ContamPct"].description
+            == "Contamination rate for each template, computed as fraction of refractory period violations relative to expectation based on a Poisson process."
+        )
+        assert (
+            nwbfile.units["KSLabel"].description
+            == "Label indicating whether each template is 'mua' (multi-unit activity) or 'good' (refractory)."
+        )
+        assert nwbfile.units["original_cluster_id"].description == "Original cluster ID assigned by Kilosort."
+
+    def run_custom_checks(self):
+        self.check_units_table_propagation()
+
 
 class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = KiloSortSortingInterface
@@ -245,6 +269,30 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
             dict(name="ch", description="The channel label of the best channel, as defined by the user."),
             dict(name="sh", description="The shank label of the best channel."),
         ]
+
+    def check_units_table_propagation(self):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        # example data does not contain n_spikes, fr, depth, amp, ch, and sh
+        assert (
+            nwbfile.units["Amplitude"].description
+            == "Per-template amplitudes, computed as the L2 norm of the template."
+        )
+        assert (
+            nwbfile.units["ContamPct"].description
+            == "Contamination rate for each template, computed as fraction of refractory period violations relative to expectation based on a Poisson process."
+        )
+        assert (
+            nwbfile.units["KSLabel"].description
+            == "Label indicating whether each template is 'mua' (multi-unit activity) or 'good' (refractory)."
+        )
+        assert nwbfile.units["original_cluster_id"].description == "Original cluster ID assigned by Kilosort."
+
+    def run_custom_checks(self):
+        self.check_units_table_propagation()
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):
