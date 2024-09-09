@@ -377,6 +377,10 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
             assert all(expected_pose_estimation_series_are_in_nwb_file)
 
 
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10"),
+    reason="interface not supported on macOS with Python < 3.10",
+)
 class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
@@ -403,6 +407,10 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             assert all(expected_pose_estimation_series_are_in_nwb_file)
 
 
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10"),
+    reason="interface not supported on macOS with Python < 3.10",
+)
 class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
