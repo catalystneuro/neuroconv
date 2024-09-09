@@ -46,7 +46,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
         """
 
-        self.file_path = file_path
+        self.file_path = Path(file_path)
 
         init_kwargs = dict(
             file_path=self.file_path,
