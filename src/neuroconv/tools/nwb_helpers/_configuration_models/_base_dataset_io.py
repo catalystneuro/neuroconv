@@ -265,21 +265,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         full_shape = get_data_shape(data=candidate_dataset)
         dtype = _infer_dtype(dataset=candidate_dataset)
 
-        if dtype == np.dtype(
-            "object"
-        ):  # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
-            max_string_length = 1
-            all_elements_are_strings = True
-            for element in candidate_dataset[:].flat:
-                if not isinstance(element, str):
-                    all_elements_are_strings = False
-                    break
-                string_length = len(element)
-                if string_length > max_string_length:
-                    max_string_length = string_length
-            if all_elements_are_strings:
-                dtype = np.dtype(f"<U{max_string_length}")
-
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
@@ -293,13 +278,33 @@ class DatasetIOConfiguration(BaseModel, ABC):
             )
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
-            chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
-            buffer_shape = full_shape
-            compression_method = None
-            warnings.warn(
-                f"Default chunking and compression options for compound objects are not optimized. "
-                f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
-            )
+            # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
+            max_string_length = 1
+            all_elements_are_strings = True
+            for element in candidate_dataset[:].flat:
+                if not isinstance(element, str):
+                    all_elements_are_strings = False
+                    break
+                string_length = len(element)
+                if string_length > max_string_length:
+                    max_string_length = string_length
+            if all_elements_are_strings:
+                dtype = np.dtype(f"<U{max_string_length}")
+                chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
+                    chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
+                )
+                buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                    buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+                )
+                compression_method = "gzip"
+            else:
+                chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
+                buffer_shape = full_shape
+                compression_method = None
+                warnings.warn(
+                    f"Default chunking and compression options for compound objects are not optimized. "
+                    f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
+                )
 
         return cls(
             object_id=neurodata_object.object_id,
