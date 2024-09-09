@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import FilePath
 from pynwb.ecephys import ElectricalSeries
 
