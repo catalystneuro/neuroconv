@@ -22,6 +22,8 @@ from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     add_electrical_series_to_nwbfile,
     add_electrodes_to_nwbfile,
+    add_recording_to_nwbfile,
+    add_sorting_to_nwbfile,
     add_units_table_to_nwbfile,
     check_if_recording_traces_fit_into_memory,
     write_recording_to_nwbfile,
@@ -921,7 +923,7 @@ class TestAddElectrodes(TestCase):
             [["s", "t", "u"], ["v", "w", "x"]],
         ]
 
-        # We add another properyt to recording 2 tat is not in recording 1
+        # We add another property to recording 2 which is not in recording 1
         self.recording_2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
         add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
@@ -1424,6 +1426,38 @@ class TestAddUnitsTable(TestCase):
 
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
+    def test_add_electrodes(self):
+
+        sorting = generate_sorting(num_units=4)
+        sorting = sorting.rename_units(new_unit_ids=["a", "b", "c", "d"])
+
+        unit_electrode_indices = [[0], [1], [2], [0, 1, 2]]
+
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        assert self.nwbfile.electrodes is not None
+
+        # add units table
+        add_sorting_to_nwbfile(
+            sorting=sorting,
+            nwbfile=self.nwbfile,
+            unit_electrode_indices=unit_electrode_indices,
+        )
+
+        units_table = self.nwbfile.units
+        assert "electrodes" in units_table.colnames
+
+        electrode_table = self.nwbfile.electrodes
+        assert units_table["electrodes"].target.table == electrode_table
+
+        assert units_table["electrodes"][0]["channel_name"].item() == "A"
+        assert units_table["electrodes"][1]["channel_name"].item() == "B"
+        assert units_table["electrodes"][2]["channel_name"].item() == "C"
+        assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
 from neuroconv.tools import get_package_version
