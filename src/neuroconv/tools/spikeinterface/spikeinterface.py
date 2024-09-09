@@ -1542,8 +1542,9 @@ def add_units_table_to_nwbfile(
             unit_kwargs["waveform_mean"] = waveform_means[row]
             if waveform_sds is not None:
                 unit_kwargs["waveform_sd"] = waveform_sds[row]
-            if unit_electrode_indices is not None:
-                unit_kwargs["electrodes"] = unit_electrode_indices[row]
+        if unit_electrode_indices is not None:
+            unit_kwargs["electrodes"] = unit_electrode_indices[row]
+
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
