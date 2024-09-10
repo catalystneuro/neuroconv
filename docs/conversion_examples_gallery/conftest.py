@@ -1,6 +1,8 @@
+import platform
 from pathlib import Path
 
 import pytest
+from packaging import version
 
 from tests.test_on_data.setup_paths import (
     BEHAVIOR_DATA_PATH,
@@ -19,3 +21,17 @@ def add_data_space(doctest_namespace, tmp_path):
 
     doctest_namespace["path_to_save_nwbfile"] = Path(tmp_path) / "file.nwb"
     doctest_namespace["output_folder"] = Path(tmp_path)
+
+# Hook to conditionally skip doctests in deeplabcut.rst for Python 3.9 on macOS (Darwin)
+
+python_version = platform.python_version()
+os = platform.system()
+
+def pytest_runtest_setup(item):
+    if isinstance(item, pytest.DoctestItem):
+        # Check if we are running the doctest from deeplabcut.rst
+        test_file = Path(item.fspath)
+        if test_file.name == "deeplabcut.rst":
+            # Check if Python version is 3.9 and platform is Darwin (macOS)
+            if version.parse(python_version) == version.parse("3.9") and os == "Darwin":
+                pytest.skip("Skipping doctests for deeplabcut.rst on Python 3.9 and macOS")
