@@ -1,5 +1,10 @@
 # Upcoming
 
+### Features
+* Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
+
+
+
 ## v.0.6.2
 
 ### Bug Fixes
