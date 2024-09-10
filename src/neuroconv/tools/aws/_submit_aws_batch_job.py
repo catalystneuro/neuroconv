@@ -43,7 +43,7 @@ def submit_aws_batch_job(
         E.g., `commands=["echo", "'Hello, World!'"]`.
     environment_variables : dict, optional
         A dictionary of environment variables to pass to the Docker container.
-    efs_volume_name : str
+    efs_volume_name : str, optional
         The name of an EFS volume to be created and attached to the job.
         The path exposed to the container will always be `/mnt/efs`.
     job_dependencies : list of dict
