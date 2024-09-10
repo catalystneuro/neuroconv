@@ -214,7 +214,7 @@ Convert TDT Fiber Photometry data to NWB using
     >>> metadata = dict_deep_update(metadata, editable_metadata)
 
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = LOCAL_PATH / "example_tdtfp.nwb"
+    >>> nwbfile_path = output_folder / "example_tdtfp.nwb"
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0)
     NWB file saved at example_tdtfp.nwb!
