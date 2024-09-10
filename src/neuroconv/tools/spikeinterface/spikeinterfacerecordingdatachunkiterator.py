@@ -3,7 +3,7 @@ from typing import Iterable, Optional
 from spikeinterface import BaseRecording
 from tqdm import tqdm
 
-from neuroconv.tools import GenericDataChunkIterator
+from neuroconv.tools.hdmf import GenericDataChunkIterator
 
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):

@@ -7,7 +7,7 @@ import numpy as np
 from roiextractors import ImagingExtractor
 from tqdm import tqdm
 
-from neuroconv.tools import GenericDataChunkIterator
+from neuroconv.tools.hdmf import GenericDataChunkIterator
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):

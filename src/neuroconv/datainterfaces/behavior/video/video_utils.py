@@ -5,7 +5,7 @@ import numpy as np
 from pydantic import FilePath
 from tqdm import tqdm
 
-from neuroconv.tools import GenericDataChunkIterator
+from neuroconv.tools.hdmf import GenericDataChunkIterator
 
 from ....tools import get_package
 
