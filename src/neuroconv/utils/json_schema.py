@@ -298,7 +298,14 @@ def get_schema_from_hdmf_class(hdmf_class):
     return schema
 
 
-def get_metadata_schema_for_icephys():
+def get_metadata_schema_for_icephys() -> dict:
+    """
+    Returns the metadata schema for icephys data.
+
+    Returns:
+        dict: The metadata schema for icephys data.
+
+    """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(

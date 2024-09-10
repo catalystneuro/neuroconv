@@ -10,6 +10,7 @@ root = Path(__file__).parent
 
 
 def read_requirements(file):
+    """Read requirements from a file."""
     with open(root / file) as f:
         return f.readlines()
 
