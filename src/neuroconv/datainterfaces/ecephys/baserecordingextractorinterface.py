@@ -150,7 +150,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
 
-        self.recording_extractor.set_times(times=aligned_timestamps)
+        self.recording_extractor.set_times(times=aligned_timestamps, with_warning=False)
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
@@ -172,7 +172,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         for segment_index in range(self._number_of_segments):
             self.recording_extractor.set_times(
-                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
+                times=aligned_segment_timestamps[segment_index],
+                segment_index=segment_index,
+                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):  # noqa: D102
@@ -285,7 +287,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
         ]
         for segment_index in range(number_of_segments):
-            recording_extractor_stubbed.set_times(times=times_stubbed[segment_index], segment_index=segment_index)
+            recording_extractor_stubbed.set_times(
+                times=times_stubbed[segment_index],
+                segment_index=segment_index,
+                with_warning=False,
+            )
 
         return recording_extractor_stubbed
 

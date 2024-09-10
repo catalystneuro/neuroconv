@@ -124,7 +124,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         ), "This recording has multiple segments; please use 'set_aligned_segment_timestamps' instead."
 
         if self._number_of_segments == 1:
-            self.sorting_extractor._recording.set_times(times=aligned_timestamps)
+            self.sorting_extractor._recording.set_times(times=aligned_timestamps, with_warning=False)
         else:
             assert isinstance(
                 aligned_timestamps, list
@@ -135,7 +135,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
             for segment_index in range(self._number_of_segments):
                 self.sorting_extractor._recording.set_times(
-                    times=aligned_timestamps[segment_index], segment_index=segment_index
+                    times=aligned_timestamps[segment_index],
+                    segment_index=segment_index,
+                    with_warning=False,
                 )
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
@@ -164,7 +166,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         for segment_index in range(self._number_of_segments):
             self.sorting_extractor._recording.set_times(
-                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
+                times=aligned_segment_timestamps[segment_index],
+                segment_index=segment_index,
+                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):  # noqa: D102

@@ -82,7 +82,15 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
-        stream_id = "3"
+        # TODO: when neo version 0.14.4 is out or higher change this to stream_name for clarify
+        import neo
+        from packaging.version import Version
+
+        neo_version = Version(neo.__version__)
+        if neo_version <= Version("0.13.3"):
+            stream_id = "3"
+        else:
+            stream_id = "WB"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(
             file_path=file_path,
