@@ -1,6 +1,16 @@
 # Upcoming
 
-## v.0.6.2
+## Bug Fixes
+
+## Deprecations
+
+## Features
+
+## Improvements
+
+
+
+## v0.6.2 (September 10, 2024)
 
 ### Bug Fixes
 * Fixed a bug where `IntanRecordingInterface` added two devices [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
@@ -14,6 +24,7 @@
 * Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 * Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
 * All remaining data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1055](https://github.com/catalystneuro/neuroconv/pull/1055)
+
 
 ### Improvements
 * Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
