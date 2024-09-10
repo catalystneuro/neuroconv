@@ -4,6 +4,10 @@ from pathlib import Path
 
 from neuroconv.utils import load_dict_from_file
 
+# Output by default to a temporary directory
+OUTPUT_PATH = Path(tempfile.mkdtemp())
+
+
 # Load the configuration for the data tests
 
 
@@ -17,17 +21,14 @@ else:
     assert file_path.exists(), f"File not found: {file_path}"
     test_config_dict = load_dict_from_file(file_path)
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
-    print("Running GIN tests locally!")
+
+    if test_config_dict["SAVE_OUTPUTS"]:
+        OUTPUT_PATH = LOCAL_PATH / "neuroconv_test_outputs"
+        OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
+
 
 BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
 ECEPHY_DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 
 TEXT_DATA_PATH = Path(__file__).parent.parent.parent / "tests" / "test_text"
-
-
-if test_config_dict["SAVE_OUTPUTS"]:
-    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
-    OUTPUT_PATH.mkdir(exist_ok=True)
-else:
-    OUTPUT_PATH = Path(tempfile.mkdtemp())
