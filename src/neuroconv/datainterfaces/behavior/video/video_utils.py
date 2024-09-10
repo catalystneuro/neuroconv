@@ -2,9 +2,10 @@ import math
 from typing import Optional, Tuple
 
 import numpy as np
-from hdmf.data_utils import GenericDataChunkIterator
 from pydantic import FilePath
 from tqdm import tqdm
+
+from neuroconv.tools import GenericDataChunkIterator
 
 from ....tools import get_package
 

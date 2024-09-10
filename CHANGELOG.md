@@ -1,10 +1,12 @@
 # Upcoming
 
-## Bug Fixes
-
 ## Deprecations
 
+## Bug Fixes
+
+
 ## Features
+* Using in-house `GenericDataChunkIterator` [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
 
 ## Improvements
 

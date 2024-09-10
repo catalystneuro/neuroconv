@@ -4,9 +4,10 @@ import math
 from typing import Optional
 
 import numpy as np
-from hdmf.data_utils import GenericDataChunkIterator
 from roiextractors import ImagingExtractor
 from tqdm import tqdm
+
+from neuroconv.tools import GenericDataChunkIterator
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
