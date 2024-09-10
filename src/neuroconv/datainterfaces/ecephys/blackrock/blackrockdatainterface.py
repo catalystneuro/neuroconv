@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import FilePath
 
-from .header_tools import parse_nev_basic_header, parse_nsx_basic_header
+from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import get_schema_from_method_signature
@@ -60,7 +60,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = parse_nsx_basic_header(self.source_data["file_path"])
+        basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
         if "Comment" in basic_header:
@@ -101,7 +101,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = parse_nev_basic_header(self.source_data["file_path"])
+        basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
