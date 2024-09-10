@@ -29,7 +29,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
