@@ -2,6 +2,17 @@ import numpy as np
 
 
 def generate_mock_probe(num_channels: int, num_shanks: int = 3):
+    """
+    Generate a mock probe with specified number of channels and shanks.
+
+    Parameters:
+        num_channels (int): The number of channels in the probe.
+        num_shanks (int, optional): The number of shanks in the probe. Defaults to 3.
+
+    Returns:
+        pi.Probe: The generated mock probe.
+
+    """
     import probeinterface as pi
 
     # The shank ids will be 0, 0, 0, ..., 1, 1, 1, ..., 2, 2, 2, ...

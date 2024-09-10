@@ -2,6 +2,21 @@
 
 ### Bug fixes
 * Solved a bug of `PlexonRecordingInterface` where data with multiple streams could not be opened [PR #989](https://github.com/catalystneuro/neuroconv/pull/989)
+## Bug Fixes
+
+## Deprecations
+
+## Features
+
+## Improvements
+
+
+
+## v0.6.2 (September 10, 2024)
+
+### Bug Fixes
+* Fixed a bug where `IntanRecordingInterface` added two devices [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
+* Fix a bug in `add_sorting_to_nwbfile` where `unit_electrode_indices` was only propagated if `waveform_means` was passed [PR #1057](https://github.com/catalystneuro/neuroconv/pull/1057)
 
 ### Deprecations
 * The following classes and objects are now private `NWBMetaDataEncoder`, `NWBMetaDataEncoder`, `check_if_imaging_fits_into_memory`, `NoDatesSafeLoader` [PR #1050](https://github.com/catalystneuro/neuroconv/pull/1050)
@@ -9,12 +24,16 @@
 ### Features
 * Make `config_file_path` optional in `DeepLabCutInterface`[PR #1031](https://github.com/catalystneuro/neuroconv/pull/1031)
 * Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
+* Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
+* All remaining data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1055](https://github.com/catalystneuro/neuroconv/pull/1055)
 
 
 ### Improvements
 * Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
 * Separated tests that use external data by modality [PR #1049](https://github.com/catalystneuro/neuroconv/pull/1049)
-
+* Added Unit Table descriptions for phy and kilosort: [PR #1053](https://github.com/catalystneuro/neuroconv/pull/1053)
+* Using ruff to enforce existence of public functions's docstrings [PR #1062](https://github.com/catalystneuro/neuroconv/pull/1062)
+* Improved device metadata of `IntanRecordingInterface` by adding the type of controller used [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
 
 
 ## v0.6.1 (August 30, 2024)
@@ -45,7 +64,6 @@
 * Added helper function `neuroconv.tools.data_transfers.submit_aws_batch_job` for basic automated submission of AWS batch jobs. [PR #384](https://github.com/catalystneuro/neuroconv/pull/384)
 * Data interfaces `run_conversion` method now performs metadata validation before running the conversion. [PR #949](https://github.com/catalystneuro/neuroconv/pull/949)
 * Introduced `null_values_for_properties` to `add_units_table` to give user control over null values behavior [PR #989](https://github.com/catalystneuro/neuroconv/pull/989)
-* Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
 
 ### Bug fixes
 * Fixed the default naming of multiple electrical series in the `SpikeGLXConverterPipe`. [PR #957](https://github.com/catalystneuro/neuroconv/pull/957)
