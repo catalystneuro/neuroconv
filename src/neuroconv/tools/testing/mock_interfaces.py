@@ -175,7 +175,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         num_columns: int = 10,
         sampling_frequency: float = 30,
         dtype: str = "uint16",
-        verbose: bool = True,
+        verbose: bool = False,
         seed: int = 0,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
@@ -199,6 +199,8 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
             The type of photon series for the mock imaging data, either "OnePhotonSeries" or
             "TwoPhotonSeries", by default "TwoPhotonSeries".
+        verbose : bool, default True
+            controls verbosity
         """
 
         self.seed = seed
@@ -240,7 +242,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         has_deconvolved_signal: bool = True,
         has_neuropil_signal: bool = True,
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters

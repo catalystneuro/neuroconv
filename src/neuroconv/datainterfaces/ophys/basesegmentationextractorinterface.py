@@ -18,7 +18,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, verbose: bool = True, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
         self.segmentation_extractor = self.get_extractor()(**source_data)
