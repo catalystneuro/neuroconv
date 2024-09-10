@@ -177,7 +177,7 @@ def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWB
             device_name = group_metadata.get("device", defaults[0]["device"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices(nwbfile=nwbfile, metadata=new_device_metadata)
+                add_devices_to_nwbfile(nwbfile=nwbfile, metadata=new_device_metadata)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to electrode group! Automatically generating."
@@ -1992,7 +1992,7 @@ def add_sorting_analyzer_to_nwbfile(
                 sorting_copy.set_property(prop, tm[prop])
 
     add_electrodes_info_to_nwbfile(recording, nwbfile=nwbfile, metadata=metadata)
-    electrode_group_indices = get_electrode_group_indices(recording, nwbfile=nwbfile)
+    electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
 
     add_units_table_to_nwbfile(
@@ -2214,7 +2214,8 @@ def add_waveforms(
     )
 
 
-def get_electrode_group_indices(recording, nwbfile):
+def _get_electrode_group_indices(recording, nwbfile):
+    """ """
     if "group_name" in recording.get_property_keys():
         group_names = list(np.unique(recording.get_property("group_name")))
     elif "group" in recording.get_property_keys():

@@ -209,17 +209,22 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         pass
 
 
-class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin):
+class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
-    interface_kwargs = []
+    interface_kwargs = dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_rhs_test_1.rhs")
+
+
+class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = IntanRecordingInterface
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
         params=[
-            dict(file_path=str(ECEPHY_DATA_PATH / "intan" / "intan_rhd_test_1.rhd")),
-            dict(file_path=str(ECEPHY_DATA_PATH / "intan" / "intan_rhs_test_1.rhs")),
+            dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_rhd_test_1.rhd"),
+            dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_fpc_test_231117_052630/info.rhd"),
+            dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500/info.rhd"),
         ],
-        ids=["rhd", "rhs"],
+        ids=["rhd", "one-file-per-channel", "one-file-per-signal"],
     )
     def setup_interface(self, request):
 
@@ -229,6 +234,18 @@ class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
+
+    def test_devices_written_correctly(self, setup_interface):
+
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        nwbfile.devices["Intan"].name == "Intan"
+        len(nwbfile.devices) == 1
+
+        nwbfile.devices["Intan"].description == "RHD Recording System"
 
 
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
