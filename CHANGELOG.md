@@ -6,7 +6,7 @@
 
 
 ## Features
-* Using in-house `GenericDataChunkIterator` [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
+* Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
 
 ## Improvements
 
