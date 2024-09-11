@@ -6,6 +6,7 @@ Fixed a setup bug introduced in `v0.6.2` where installation process created a di
 ## Deprecations
 
 ## Features
+* Added chunking/compression for string-only compound objects: [PR #1042](https://github.com/catalystneuro/neuroconv/pull/1042)
 
 ## Improvements
 
@@ -21,7 +22,6 @@ Fixed a setup bug introduced in `v0.6.2` where installation process created a di
 * The following classes and objects are now private `NWBMetaDataEncoder`, `NWBMetaDataEncoder`, `check_if_imaging_fits_into_memory`, `NoDatesSafeLoader` [PR #1050](https://github.com/catalystneuro/neuroconv/pull/1050)
 
 ### Features
-* Added chunking/compression for compound objects: [PR #1042](https://github.com/catalystneuro/neuroconv/pull/1042)
 * Make `config_file_path` optional in `DeepLabCutInterface`[PR #1031](https://github.com/catalystneuro/neuroconv/pull/1031)
 * Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 * Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
