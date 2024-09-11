@@ -270,7 +270,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         seed: int, default 0
             seed for the random number generator, by default 0
         verbose : bool, optional
-            controls verbosity, by default True.
+            controls verbosity, by default False.
         """
 
         super().__init__(
