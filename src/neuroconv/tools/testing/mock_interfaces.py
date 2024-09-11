@@ -189,8 +189,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency of the mock imaging data in Hz, by default 30.
         dtype : str, optional
             The data type of the generated imaging data (e.g., 'uint16'), by default 'uint16'.
-        verbose : bool, optional
-            If True, prints additional information during processing, by default True.
         seed : int, optional
             Random seed for reproducibility, by default 0.
         photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
