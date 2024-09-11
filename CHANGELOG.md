@@ -1,13 +1,14 @@
 # Upcoming
 
 ## Bug Fixes
-Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
+* Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
 
 ## Deprecations
 
 ## Features
 
 ## Improvements
+* Modified the CI to avoid running doctests twice [PR #1077](https://github.com/catalystneuro/neuroconv/pull/#1077)
 
 
 
