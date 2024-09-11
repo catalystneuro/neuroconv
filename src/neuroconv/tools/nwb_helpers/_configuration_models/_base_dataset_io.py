@@ -278,11 +278,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
             # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
-            all_elements_are_strings = True
-            for element in candidate_dataset[:].flat:
-                if not isinstance(element, str):
-                    all_elements_are_strings = False
-                    break
+            all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset[:].flat])
             if all_elements_are_strings:
                 dtype = np.array([element for element in candidate_dataset[:].flat]).dtype
                 chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
