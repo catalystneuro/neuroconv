@@ -199,7 +199,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
             The type of photon series for the mock imaging data, either "OnePhotonSeries" or
             "TwoPhotonSeries", by default "TwoPhotonSeries".
-        verbose : bool, default True
+        verbose : bool, default False
             controls verbosity
         """
 
