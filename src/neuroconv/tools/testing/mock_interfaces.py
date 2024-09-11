@@ -162,6 +162,9 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     A mock imaging interface for testing purposes.
     """
 
+    ExtractorModuleName = "roiextractors.testing"
+    ExtractorName = "generate_dummy_imaging_extractor"
+
     def __init__(
         self,
         num_frames: int = 30,
