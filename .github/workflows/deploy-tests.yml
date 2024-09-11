@@ -2,6 +2,7 @@ name: Deploy tests
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
   merge_group:
   workflow_dispatch:
 
@@ -16,7 +17,7 @@ jobs:
 
   detect-changelog-updates:
     needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && github.event.pull_request.draft == 'false' }}
     name: Auto-detecting CHANGELOG.md updates
     runs-on: ubuntu-latest
     steps:
