@@ -1,6 +1,6 @@
 # Upcoming
 
-## v.0.6.3
+## v0.6.4
 
 ## Bug Fixes
 * Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
@@ -9,10 +9,12 @@
 ## Deprecations
 
 ## Features
+* Added chunking/compression for string-only compound objects: [PR #1042](https://github.com/catalystneuro/neuroconv/pull/1042)
 * Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 
 ## Improvements
 
+## v0.6.3
 
 
 ## v0.6.2 (September 10, 2024)
