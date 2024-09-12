@@ -27,8 +27,28 @@ from neuroconv.tools.testing.mock_interfaces import (
 
 python_version = Version(get_python_version())
 
+from neuroconv.tools.testing.data_interface_mixins import (
+    RecordingExtractorInterfaceTestMixin,
+    SortingExtractorInterfaceTestMixin,
+)
 
-class TestRecordingInterface(TestCase):
+
+class TestSortingInterface(SortingExtractorInterfaceTestMixin):
+
+    data_interface_cls = MockSortingInterface
+    interface_kwargs = dict(num_units=4, durations=[0.100])
+
+    def test_map_electrode_indices(self):
+
+        self.data_interface.create_nwbfile()
+
+
+class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = MockRecordingInterface
+    interface_kwargs = dict(durations=[0.100])
+
+
+class TestRecordingInterfaceOld(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.single_segment_recording_interface = MockRecordingInterface(durations=[0.100])
