@@ -3,6 +3,8 @@
 ## v.0.6.3
 
 ## Bug Fixes
+* Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
+* The method `get_extractor` now works for `MockImagingInterface`  [PR #1076](https://github.com/catalystneuro/neuroconv/pull/1076)
 
 ## Deprecations
 
