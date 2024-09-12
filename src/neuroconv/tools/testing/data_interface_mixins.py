@@ -821,7 +821,7 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             video_type = Path(self.interface_kwargs["file_paths"][0]).suffix[1:]
-            assert f"Video: video_{video_type}" in nwbfile.acquisition
+            assert f"Video video_{video_type}" in nwbfile.acquisition
 
     def check_interface_set_aligned_timestamps(self):
         all_unaligned_timestamps = self.interface.get_original_timestamps()
