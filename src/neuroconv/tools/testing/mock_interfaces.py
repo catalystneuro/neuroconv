@@ -162,6 +162,9 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     A mock imaging interface for testing purposes.
     """
 
+    ExtractorModuleName = "roiextractors.testing"
+    ExtractorName = "generate_dummy_imaging_extractor"
+
     def __init__(
         self,
         num_frames: int = 30,
@@ -169,17 +172,40 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         num_columns: int = 10,
         sampling_frequency: float = 30,
         dtype: str = "uint16",
-        verbose: bool = True,
+        verbose: bool = False,
+        seed: int = 0,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
-        from roiextractors.testing import generate_dummy_imaging_extractor
+        """
+        Parameters
+        ----------
+        num_frames : int, optional
+            The number of frames in the mock imaging data, by default 30.
+        num_rows : int, optional
+            The number of rows (height) in each frame of the mock imaging data, by default 10.
+        num_columns : int, optional
+            The number of columns (width) in each frame of the mock imaging data, by default 10.
+        sampling_frequency : float, optional
+            The sampling frequency of the mock imaging data in Hz, by default 30.
+        dtype : str, optional
+            The data type of the generated imaging data (e.g., 'uint16'), by default 'uint16'.
+        seed : int, optional
+            Random seed for reproducibility, by default 0.
+        photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
+            The type of photon series for the mock imaging data, either "OnePhotonSeries" or
+            "TwoPhotonSeries", by default "TwoPhotonSeries".
+        verbose : bool, default False
+            controls verbosity
+        """
 
-        self.imaging_extractor = generate_dummy_imaging_extractor(
+        self.seed = seed
+        super().__init__(
             num_frames=num_frames,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,
             dtype=dtype,
+            verbose=verbose,
         )
 
         self.verbose = verbose
