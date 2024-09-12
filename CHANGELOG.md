@@ -1,5 +1,7 @@
 # Upcoming
 
+## v.0.6.3
+
 ## Bug Fixes
 * Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
 * The method `get_extractor` now works for `MockImagingInterface`  [PR #1076](https://github.com/catalystneuro/neuroconv/pull/1076)
@@ -7,6 +9,7 @@
 ## Deprecations
 
 ## Features
+* Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 
 ## Improvements
 
@@ -27,6 +30,7 @@
 * Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
 * All remaining data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1055](https://github.com/catalystneuro/neuroconv/pull/1055)
 * Added a mock for segmentation extractors interfaces in ophys: `MockSegmentationInterface`  [PR #1067](https://github.com/catalystneuro/neuroconv/pull/1067)
+* Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 
 
 ### Improvements
