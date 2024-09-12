@@ -16,4 +16,3 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
 class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     data_interface_cls = MockSegmentationInterface
-    interface_kwargs = dict()
