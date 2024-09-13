@@ -58,7 +58,7 @@ jobs:
 
   run-doctests-only:
     needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' || needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
 
   check-final-status:
