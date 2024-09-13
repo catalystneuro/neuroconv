@@ -379,7 +379,6 @@ def add_subject_to_nwbfile(
     video_name, scorer = h5file.stem.split("DLC")
     scorer = "DLC" + scorer
 
-    data_frame_from_hdf5 = pd.read_hdf(h5file)
 
     df = _ensure_individuals_in_header(data_frame_from_hdf5, individual_name)
 
