@@ -3,7 +3,7 @@ name: Daily workflows
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 16 * * *" # Daily at noon EST
+    - cron: "0 5 * * *" # Daily at midnight EST
 
 jobs:
   update-s3-testing-data:

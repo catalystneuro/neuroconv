@@ -1,8 +1,6 @@
 name: Build and Upload Docker Image of Current Dev Branch to GHCR
 
 on:
-  # schedule:
-  #   - cron: "0 13 * * *" # Daily at 9 EST
   workflow_dispatch:
   workflow_call:
     secrets:

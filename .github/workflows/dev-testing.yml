@@ -1,7 +1,5 @@
 name: Dev Branch Testing
 on:
-  # schedule:
-  #   - cron: "0 16 * * *"  # Daily at noon EST
   workflow_dispatch:
   workflow_call:
     secrets:
