@@ -1,9 +1,12 @@
+import datetime
 import os
 import time
 
 import boto3
 
 from neuroconv.tools.aws import submit_aws_batch_job
+
+_RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
 
 def test_submit_aws_batch_job():
@@ -35,14 +38,24 @@ def test_submit_aws_batch_job():
     time.sleep(60)
 
     job_id = info["job_submission_info"]["jobId"]
+    job = None
+    max_retries = 10
+    retry = 0
+    while retry < max_retries:
+        job_description_response = batch_client.describe_jobs(jobs=[job_id])
+        assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    all_jobs_response = batch_client.describe_jobs(jobs=[job_id])
-    assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+        jobs = job_description_response["jobs"]
+        assert len(jobs) == 1
 
-    jobs = all_jobs_response["jobs"]
-    assert len(jobs) == 1
+        job = jobs[0]
 
-    job = jobs[0]
+        if job["status"] in _RETRY_STATES:
+            retry += 1
+            time.sleep(60)
+        else:
+            break
+
     assert job["jobName"] == job_name
     assert "neuroconv_batch_queue" in job["jobQueue"]
     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job["jobDefinition"]
@@ -106,18 +119,29 @@ def test_submit_aws_batch_job_with_dependencies():
     )
 
     # Wait for AWS to process the jobs
-    time.sleep(120)
+    time.sleep(60)
 
     job_id_1 = job_info_1["job_submission_info"]["jobId"]
     job_id_2 = job_info_2["job_submission_info"]["jobId"]
+    job_1 = None
+    max_retries = 10
+    retry = 0
+    while retry < max_retries:
+        all_job_descriptions_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
+        assert all_job_descriptions_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    all_jobs_response = batch_client.describe_jobs(jobs=[job_id_1, job_id_2])
-    assert all_jobs_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+        jobs_by_id = {job["jobId"]: job for job in all_job_descriptions_response["jobs"]}
+        assert len(jobs_by_id) == 2
 
-    jobs_by_id = {job["jobId"]: job for job in all_jobs_response["jobs"]}
-    assert len(jobs_by_id) == 2
+        job_1 = jobs_by_id[job_id_1]
+        job_2 = jobs_by_id[job_id_2]
 
-    job_1 = jobs_by_id[job_id_1]
+        if job_1["status"] in _RETRY_STATES or job_2["status"] in _RETRY_STATES:
+            retry += 1
+            time.sleep(60)
+        else:
+            break
+
     assert job_1["jobName"] == job_name_1
     assert "neuroconv_batch_queue" in job_1["jobQueue"]
     assert "neuroconv_batch_ubuntu-latest-image_4-GiB-RAM_4-CPU" in job_1["jobDefinition"]
@@ -155,4 +179,121 @@ def test_submit_aws_batch_job_with_dependencies():
     )
     table.update_item(
         Key={"id": table_submission_id_2}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
+    )
+
+
+def test_submit_aws_batch_job_with_efs_mount():
+    """
+    It was confirmed manually that a job using this definition will fail if the /mnt/efs/ directory does not exist.
+
+    It is, however, prohibitively difficult to automatically check if the file exists on the EFS volume.
+
+    If desired, you can manually check the EFS volume by following these instructions:
+        https://repost.aws/knowledge-center/efs-mount-automount-unmount-steps
+    """
+    region = "us-east-2"
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+
+    dynamodb_resource = boto3.resource(
+        service_name="dynamodb",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    batch_client = boto3.client(
+        service_name="batch",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    efs_client = boto3.client(
+        service_name="efs",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    job_name = "test_submit_aws_batch_job_with_efs"
+    docker_image = "ubuntu:latest"
+    date = datetime.datetime.now().date().strftime("%y%m%d")
+    commands = ["touch", f"/mnt/efs/test_{date}.txt"]
+
+    # TODO: to reduce costs even more, find a good combinations of memory/CPU to minimize size of instance
+    efs_volume_name = f"test_neuroconv_batch_with_efs_{date}"
+    info = submit_aws_batch_job(
+        job_name=job_name,
+        docker_image=docker_image,
+        commands=commands,
+        efs_volume_name=efs_volume_name,
+    )
+
+    # Wait for AWS to process the job
+    time.sleep(60)
+
+    job_id = info["job_submission_info"]["jobId"]
+    job = None
+    max_retries = 10
+    retry = 0
+    while retry < max_retries:
+        job_description_response = batch_client.describe_jobs(jobs=[job_id])
+        assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+        jobs = job_description_response["jobs"]
+        assert len(jobs) == 1
+
+        job = jobs[0]
+
+        if job["status"] in _RETRY_STATES:
+            retry += 1
+            time.sleep(60)
+        else:
+            break
+
+    # Check EFS specific details
+    efs_volumes = efs_client.describe_file_systems()
+    matching_efs_volumes = [
+        file_system
+        for file_system in efs_volumes["FileSystems"]
+        for tag in file_system["Tags"]
+        if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+    ]
+    assert len(matching_efs_volumes) == 1
+    efs_volume = matching_efs_volumes[0]
+    efs_id = efs_volume["FileSystemId"]
+
+    # Check normal job completion
+    assert job["jobName"] == job_name
+    assert "neuroconv_batch_queue" in job["jobQueue"]
+    assert "fs-" in job["jobDefinition"]
+    assert job["status"] == "SUCCEEDED"
+
+    status_tracker_table_name = "neuroconv_batch_status_tracker"
+    table = dynamodb_resource.Table(name=status_tracker_table_name)
+    table_submission_id = info["table_submission_info"]["id"]
+
+    table_item_response = table.get_item(Key={"id": table_submission_id})
+    assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    table_item = table_item_response["Item"]
+    assert table_item["job_name"] == job_name
+    assert table_item["job_id"] == job_id
+    assert table_item["status"] == "Job submitted..."
+
+    table.update_item(
+        Key={"id": table_submission_id},
+        AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed - cleaning up..."}},
+    )
+
+    # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
+    # TODO: cleanup job definitions? (since built daily)
+    mount_targets = efs_client.describe_mount_targets(FileSystemId=efs_id)
+    for mount_target in mount_targets["MountTargets"]:
+        efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
+
+    time.sleep(60)
+    efs_client.delete_file_system(FileSystemId=efs_id)
+
+    table.update_item(
+        Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
     )
