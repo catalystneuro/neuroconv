@@ -23,7 +23,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
     source_volume = os.getenv("NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME", "/home/runner/work/neuroconv/neuroconv")
 
     def test_run_conversion_from_yaml_cli(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
+        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
         output = deploy_process(
@@ -72,7 +72,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             assert "spike_times" in nwbfile.units
 
     def test_run_conversion_from_yaml_variable(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "conversion_specifications"
+        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
         with open(file=yaml_file_path, mode="r") as io:
