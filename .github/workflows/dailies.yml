@@ -7,7 +7,7 @@ on:
 
 jobs:
   update-s3-testing-data:
-    uses: ./.github/workflows/update_s3_testing_data.yml
+    uses: ./.github/workflows/update-s3-testing-data.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
