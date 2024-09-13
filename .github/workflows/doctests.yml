@@ -1,6 +1,12 @@
 name: Run doctests
 on:
   workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string'
+        required: true
+        type: string
+        default: '["3.9", "3.10", "3.11", "3.12"]'
 
 jobs:
   run:
@@ -9,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ${{ fromJson(inputs.python-versions) }}
         os: [ubuntu-latest, macos-13, windows-latest]
     steps:
       - uses: actions/checkout@v4

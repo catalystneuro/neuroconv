@@ -2,7 +2,9 @@ name: Deploy tests
 
 on:
   pull_request:
-    types: [synchronize, opened, reopened, ready_for_review] # defaults + ready_for_review
+    types: [synchronize, opened, reopened, ready_for_review]
+    # Synchronize, open and reopened are the defaults for pull request
+    # We add ready_for_review to trigger the check for changelog and full tests when ready for review is clicked
   merge_group:
   workflow_dispatch:
 
@@ -21,9 +23,9 @@ jobs:
     name: Auto-detecting CHANGELOG.md updates
     runs-on: ubuntu-latest
     steps:
-      - if:  ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
         run: echo "CHANGELOG.md has been updated."
-      - if:  ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
         run: |
           echo "CHANGELOG.md has not been updated."
           0
@@ -37,7 +39,12 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
+    with:
+      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
+        ${{github.event.pull_request.draft == true
+           && '["3.9"]'
+           || '["3.9", "3.10", "3.11", "3.12"]'
+        }}
 
   run-live-service-tests:
     needs: assess-file-changes
@@ -45,6 +52,12 @@ jobs:
     uses: ./.github/workflows/live-service-testing.yml
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+    with:
+      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
+        ${{github.event.pull_request.draft == true
+            && '["3.9"]'
+            || '["3.9", "3.10", "3.11", "3.12"]'
+        }}
 
   run-dev-tests:
     needs: assess-file-changes
@@ -55,11 +68,23 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+    with:
+      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
+        ${{github.event.pull_request.draft == true
+            && '["3.9"]'
+            || '["3.9", "3.10", "3.11", "3.12"]'
+        }}
 
   run-doctests-only:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
+    with:
+      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
+        ${{github.event.pull_request.draft == true
+            && '["3.9"]'
+            || '["3.9", "3.10", "3.11", "3.12"]'
+        }}
 
   check-final-status:
     name: All tests passing

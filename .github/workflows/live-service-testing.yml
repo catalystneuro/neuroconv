@@ -1,8 +1,12 @@
 name: Live service testing
 on:
-  schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
   workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string'
+        required: true
+        type: string
+        default: '["3.9", "3.10", "3.11", "3.12"]'
     secrets:
       DANDI_API_KEY:
         required: true
@@ -17,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ${{ fromJson(inputs.python-versions) }}
         os: [ubuntu-latest, macos-13, windows-latest]
     steps:
       - uses: actions/checkout@v4
