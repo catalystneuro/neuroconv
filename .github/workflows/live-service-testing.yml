@@ -1,7 +1,8 @@
 name: Live service testing
 on:
-  schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
+  # schedule:
+  #   - cron: "0 16 * * *"  # Daily at noon EST
+  workflow_dispatch:
   workflow_call:
     secrets:
       DANDI_API_KEY:
