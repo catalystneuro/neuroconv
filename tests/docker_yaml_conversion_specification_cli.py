@@ -31,9 +31,10 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 "docker run -t "
                 f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
+                f"--volume {DATA_PATH}:{DATA_PATH} "
                 f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
                 f"neuroconv {yaml_file_path} "
-                f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
+                f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             ),
             catch_output=True,
         )
