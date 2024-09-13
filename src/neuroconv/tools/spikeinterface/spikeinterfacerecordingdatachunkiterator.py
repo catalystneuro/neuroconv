@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional
 
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
@@ -48,8 +48,8 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
             The chunk_shape will be set implicitly by this argument.
             Cannot be set if `chunk_shape` is also specified.
-            The default is 1MB, as recommended by the HDF5 group. For more details, see
-            https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
+            The default is 10MB, as recommended by the HDF5 group.
+            For more details, search the hdf5 documentation for "Improving IO Performance Compressed Datasets".
         chunk_shape : tuple, optional
             Manual specification of the internal chunk shape for the HDF5 dataset.
             Cannot be set if `chunk_mb` is also specified.
@@ -77,7 +77,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             progress_bar_options=progress_bar_options,
         )
 
-    def _get_default_chunk_shape(self, chunk_mb: float = 10.0) -> Tuple[int, int]:
+    def _get_default_chunk_shape(self, chunk_mb: float = 10.0) -> tuple[int, int]:
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         chunk_channels = min(
@@ -91,7 +91,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         return (chunk_frames, chunk_channels)
 
-    def _get_data(self, selection: Tuple[slice]) -> Iterable:
+    def _get_data(self, selection: tuple[slice]) -> Iterable:
         return self.recording.get_traces(
             segment_index=self.segment_index,
             channel_ids=self.channel_ids[selection[1]],

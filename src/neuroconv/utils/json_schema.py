@@ -4,7 +4,7 @@ import json
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import docstring_parser
 import hdmf.data_utils
@@ -16,8 +16,18 @@ from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
 
-class NWBMetaDataEncoder(json.JSONEncoder):
+class _NWBMetaDataEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for NWB metadata.
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in NWB metadata.
+    """
+
     def default(self, obj):
+        """
+        Serialize custom data types to JSON. This overwrites the default method of the JSONEncoder class.
+        """
         # Over-write behaviors for datetime object
         if isinstance(obj, datetime):
             return obj.isoformat()
@@ -33,7 +43,13 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-class NWBSourceDataEncoder(NWBMetaDataEncoder):
+class _NWBSourceDataEncoder(_NWBMetaDataEncoder):
+    """
+    Custom JSON encoder for data interface source data (i.e. kwargs).
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in interface source data.
+    """
 
     def default(self, obj):
 
@@ -48,8 +64,8 @@ def get_base_schema(
     tag: Optional[str] = None,
     root: bool = False,
     id_: Optional[str] = None,
-    required: Optional[List] = None,
-    properties: Optional[Dict] = None,
+    required: Optional[list[str]] = None,
+    properties: Optional[dict] = None,
     **kwargs,
 ) -> dict:
     """Return the base schema used for all other schemas."""
@@ -69,7 +85,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
     """Deprecated version of `get_json_schema_from_method_signature`."""
     message = (
         "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
@@ -80,7 +96,7 @@ def get_schema_from_method_signature(method: Callable, exclude: Optional[List[st
     return get_json_schema_from_method_signature(method=method, exclude=exclude)
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: Optional[List[str]] = None) -> dict:
+def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -101,6 +117,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[Li
     """
     exclude = exclude or []
     exclude += ["self", "cls"]
+
+    split_qualname = method.__qualname__.split(".")[-2:]
+    method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
 
     signature = inspect.signature(obj=method)
     parameters = signature.parameters
@@ -140,10 +159,13 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[Li
     # Attempt to find descriptions within the docstring of the method
     parsed_docstring = docstring_parser.parse(method.__doc__)
     for parameter_in_docstring in parsed_docstring.params:
+        if parameter_in_docstring.arg_name in exclude:
+            continue
+
         if parameter_in_docstring.arg_name not in json_schema["properties"]:
             message = (
-                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring not occur in the "
-                "method signature, possibly due to a typo."
+                f"The argument_name '{parameter_in_docstring.arg_name}' from the docstring of method "
+                f"'{method_display}' does not occur in the signature, possibly due to a typo."
             )
             warnings.warn(message=message, stacklevel=2)
             continue
@@ -276,7 +298,14 @@ def get_schema_from_hdmf_class(hdmf_class):
     return schema
 
 
-def get_metadata_schema_for_icephys():
+def get_metadata_schema_for_icephys() -> dict:
+    """
+    Returns the metadata schema for icephys data.
+
+    Returns:
+        dict: The metadata schema for icephys data.
+
+    """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(
@@ -326,9 +355,9 @@ def get_metadata_schema_for_icephys():
     return schema
 
 
-def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbose: bool = False):
+def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
-    encoder = NWBMetaDataEncoder()
+    encoder = _NWBMetaDataEncoder()
     # The encoder produces a serialized object, so we deserialized it for comparison
 
     serialized_metadata = encoder.encode(metadata)

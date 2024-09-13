@@ -18,8 +18,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
+        self.verbose = verbose
         self.segmentation_extractor = self.get_extractor()(**source_data)
 
     def get_metadata_schema(self) -> dict:
@@ -165,7 +166,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         -------
 
         """
-        from ...tools.roiextractors import add_segmentation
+        from ...tools.roiextractors import add_segmentation_to_nwbfile
 
         if stub_test:
             stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
@@ -173,7 +174,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             segmentation_extractor = self.segmentation_extractor
 
-        add_segmentation(
+        add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,

@@ -3,15 +3,15 @@ from typing import Literal, Optional
 
 import numpy as np
 import scipy
+from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType
 
 
-def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPathType):
+def add_channel_metadata_to_recoder(recording_extractor, folder_path: DirectoryPath):
     """
     Main function to add channel metadata to a recording extractor from a CellExplorer session.
     The metadata is added as channel properties to the recording extractor.
@@ -73,7 +73,7 @@ def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPath
 
 def add_channel_metadata_to_recorder_from_session_file(
     recording_extractor,
-    folder_path: FolderPathType,
+    folder_path: DirectoryPath,
 ):
     """
     Extracts channel metadata from the CellExplorer's `session.mat` file and adds
@@ -177,7 +177,7 @@ def add_channel_metadata_to_recorder_from_session_file(
 
 def add_channel_metadata_to_recorder_from_channel_map_file(
     recording_extractor,
-    folder_path: FolderPathType,
+    folder_path: DirectoryPath,
 ):
     """
     Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds
@@ -294,7 +294,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
@@ -361,6 +361,14 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):
+    """
+    Adds lfp data from binary files with the new CellExplorer format:
+
+    https://cellexplorer.org/
+
+    See the `CellExplorerRecordingInterface` class for more information.
+    """
+
     display_name = "CellExplorer LFP"
     keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",
@@ -374,7 +382,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     sampling_frequency_key = "srLfp"
     binary_file_extension = "lfp"
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeriesLFP"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
 
     def add_to_nwbfile(
@@ -411,7 +419,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePath, verbose: bool = True):
         """
         Initialize read of Cell Explorer file.
 

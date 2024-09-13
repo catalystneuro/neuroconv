@@ -3,10 +3,11 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, FolderPathType, dict_deep_update
+from ....utils import DeepDict, dict_deep_update
 
 
 class MiniscopeImagingInterface(BaseImagingExtractorInterface):
@@ -25,13 +26,14 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType):
+    @validate_call
+    def __init__(self, folder_path: DirectoryPath):
         """
         Initialize reading the Miniscope imaging data.
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The main Miniscope folder.
             The microscope movie files are expected to be in sub folders within the main folder.
         """
@@ -92,7 +94,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     ):
         from ndx_miniscope.utils import add_miniscope_device
 
-        from ....tools.roiextractors import add_photon_series
+        from ....tools.roiextractors import add_photon_series_to_nwbfile
 
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
@@ -107,7 +109,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         device_metadata = metadata["Ophys"]["Device"][0]
         add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
 
-        add_photon_series(
+        add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,

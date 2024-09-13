@@ -2,16 +2,16 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....utils import (
     DeepDict,
-    FilePathType,
     calculate_regular_series_rate,
     get_base_schema,
 )
@@ -58,11 +58,12 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        original_video_file_path: FilePathType,
-        labeled_video_file_path: Optional[FilePathType] = None,
+        file_path: FilePath,
+        original_video_file_path: FilePath,
+        labeled_video_file_path: Optional[FilePath] = None,
         verbose: bool = True,
     ):
         """
@@ -70,9 +71,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : a string or a path
+        file_path : FilePath
             Path to the .csv file that contains the predictions from Lightning Pose.
-        original_video_file_path : a string or a path
+        original_video_file_path : FilePath
             Path to the original video file (.mp4).
         labeled_video_file_path : a string or a path, optional
             Path to the labeled video file (.mp4).
@@ -116,7 +117,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         pose_estimation_data = pd.read_csv(self.file_path, header=[0, 1, 2])
         return pose_estimation_data
 
-    def _get_original_video_shape(self) -> Tuple[int, int]:
+    def _get_original_video_shape(self) -> tuple[int, int]:
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             video_shape = video.get_frame_shape()
         # image size of the original video is in height x width

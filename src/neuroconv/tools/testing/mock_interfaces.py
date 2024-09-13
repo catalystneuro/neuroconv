@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -14,10 +14,17 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
+from ...datainterfaces.ophys.basesegmentationextractorinterface import (
+    BaseSegmentationExtractorInterface,
+)
 from ...utils import ArrayType, get_schema_from_method_signature
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
+    """
+    A mock behavior event interface for testing purposes.
+    """
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
@@ -56,6 +63,10 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
 
 
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
+    """
+    A mock SpikeGLX interface for testing purposes.
+    """
+
     ExtractorName = "NumpyRecording"
 
     @classmethod
@@ -65,7 +76,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: Optional[List[List[float]]] = None, ttl_duration: float = 1.0
+        self, signal_duration: float = 7.0, ttl_times: Optional[list[list[float]]] = None, ttl_duration: float = 1.0
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
@@ -128,8 +139,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
-        # durations: Tuple[float] = (1.0,),  # Uncomment when pydantic is integrated for schema validation
-        durations: tuple = (1.0,),
+        durations: tuple[float] = (1.0,),
         seed: int = 0,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
@@ -151,6 +161,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class MockImagingInterface(BaseImagingExtractorInterface):
+    """
+    A mock imaging interface for testing purposes.
+    """
+
+    ExtractorModuleName = "roiextractors.testing"
+    ExtractorName = "generate_dummy_imaging_extractor"
+
     def __init__(
         self,
         num_frames: int = 30,
@@ -158,17 +175,40 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         num_columns: int = 10,
         sampling_frequency: float = 30,
         dtype: str = "uint16",
-        verbose: bool = True,
+        verbose: bool = False,
+        seed: int = 0,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
-        from roiextractors.testing import generate_dummy_imaging_extractor
+        """
+        Parameters
+        ----------
+        num_frames : int, optional
+            The number of frames in the mock imaging data, by default 30.
+        num_rows : int, optional
+            The number of rows (height) in each frame of the mock imaging data, by default 10.
+        num_columns : int, optional
+            The number of columns (width) in each frame of the mock imaging data, by default 10.
+        sampling_frequency : float, optional
+            The sampling frequency of the mock imaging data in Hz, by default 30.
+        dtype : str, optional
+            The data type of the generated imaging data (e.g., 'uint16'), by default 'uint16'.
+        seed : int, optional
+            Random seed for reproducibility, by default 0.
+        photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
+            The type of photon series for the mock imaging data, either "OnePhotonSeries" or
+            "TwoPhotonSeries", by default "TwoPhotonSeries".
+        verbose : bool, default False
+            controls verbosity
+        """
 
-        self.imaging_extractor = generate_dummy_imaging_extractor(
+        self.seed = seed
+        super().__init__(
             num_frames=num_frames,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,
             dtype=dtype,
+            verbose=verbose,
         )
 
         self.verbose = verbose
@@ -177,5 +217,76 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(photon_series_type=photon_series_type)
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class MockSegmentationInterface(BaseSegmentationExtractorInterface):
+    """A mock segmentation interface for testing purposes."""
+
+    ExtractorModuleName = "roiextractors.testing"
+    ExtractorName = "generate_dummy_segmentation_extractor"
+
+    def __init__(
+        self,
+        num_rois: int = 10,
+        num_frames: int = 30,
+        num_rows: int = 25,
+        num_columns: int = 25,
+        sampling_frequency: float = 30.0,
+        has_summary_images: bool = True,
+        has_raw_signal: bool = True,
+        has_dff_signal: bool = True,
+        has_deconvolved_signal: bool = True,
+        has_neuropil_signal: bool = True,
+        seed: int = 0,
+        verbose: bool = False,
+    ):
+        """
+        Parameters
+        ----------
+        num_rois : int, optional
+            number of regions of interest, by default 10.
+        num_frames : int, optional
+            description, by default 30.
+        num_rows : int, optional
+            number of rows in the hypothetical video from which the data was extracted, by default 25.
+        num_columns : int, optional
+            number of columns in the hypothetical video from which the data was extracted, by default 25.
+        sampling_frequency : float, optional
+            sampling frequency of the hypothetical video from which the data was extracted, by default 30.0.
+        has_summary_images : bool, optional
+            whether the dummy segmentation extractor has summary images or not (mean and correlation).
+        has_raw_signal : bool, optional
+            whether a raw fluorescence signal is desired in the object, by default True.
+        has_dff_signal : bool, optional
+            whether a relative (df/f) fluorescence signal is desired in the object, by default True.
+        has_deconvolved_signal : bool, optional
+            whether a deconvolved signal is desired in the object, by default True.
+        has_neuropil_signal : bool, optional
+            whether a neuropil signal is desired in the object, by default True.
+        seed: int, default 0
+            seed for the random number generator, by default 0
+        verbose : bool, optional
+            controls verbosity, by default False.
+        """
+
+        super().__init__(
+            num_rois=num_rois,
+            num_frames=num_frames,
+            num_rows=num_rows,
+            num_columns=num_columns,
+            sampling_frequency=sampling_frequency,
+            has_summary_images=has_summary_images,
+            has_raw_signal=has_raw_signal,
+            has_dff_signal=has_dff_signal,
+            has_deconvolved_signal=has_deconvolved_signal,
+            has_neuropil_signal=has_neuropil_signal,
+            verbose=verbose,
+        )
+
+    def get_metadata(self) -> dict:
+        session_start_time = datetime.now().astimezone()
+        metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata

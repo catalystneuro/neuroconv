@@ -1,7 +1,7 @@
 import importlib.util
-from typing import Tuple
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ...baseextractorinterface import BaseExtractorInterface
@@ -25,7 +25,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=[])
         return source_schema
 
-    def __init__(self, file_paths: list):
+    @validate_call
+    def __init__(self, file_paths: list[FilePath]):
         # Check if the ndx_dandi_icephys module is available
         dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
         if dandi_icephys_spec is not None:
@@ -92,7 +93,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict = None,
         icephys_experiment_type: str = "voltage_clamp",
-        skip_electrodes: Tuple[int] = (),
+        skip_electrodes: tuple[int] = (),
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.

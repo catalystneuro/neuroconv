@@ -1,7 +1,8 @@
 from typing import Literal
 
+from pydantic import FilePath, validate_call
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
@@ -17,9 +18,10 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         sampling_frequency: float,
         verbose: bool = True,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",

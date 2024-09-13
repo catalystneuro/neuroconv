@@ -1,11 +1,12 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 import psutil
 from hdmf.data_utils import DataChunkIterator
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
@@ -27,9 +28,10 @@ class VideoInterface(BaseDataInterface):
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats."
 
+    @validate_call
     def __init__(
         self,
-        file_paths: list,
+        file_paths: list[FilePath],
         verbose: bool = False,
         *,
         metadata_key_name: str = "Videos",
@@ -39,7 +41,7 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths : list of FilePathTypes
+        file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         metadata_key_name : str, optional
@@ -95,7 +97,7 @@ class VideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
-                dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
+                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
         }
@@ -103,7 +105,7 @@ class VideoInterface(BaseDataInterface):
 
         return metadata
 
-    def get_original_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+    def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -158,7 +160,7 @@ class VideoInterface(BaseDataInterface):
                 "Please specify the temporal alignment of each video."
             )
 
-    def get_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+    def get_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -175,7 +177,7 @@ class VideoInterface(BaseDataInterface):
         """
         return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
 
-    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -220,7 +222,7 @@ class VideoInterface(BaseDataInterface):
         else:
             raise ValueError("There are no timestamps or starting times set to shift by a common value!")
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float], stub_test: bool = False):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
@@ -263,7 +265,7 @@ class VideoInterface(BaseDataInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_frames: Optional[List[int]] = None,
+        starting_frames: Optional[list[int]] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,

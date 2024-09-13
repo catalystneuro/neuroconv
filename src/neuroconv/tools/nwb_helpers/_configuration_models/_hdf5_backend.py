@@ -1,6 +1,6 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
 
-from typing import ClassVar, Dict, Literal, Type
+from typing import ClassVar, Literal, Type
 
 from pydantic import Field
 from pynwb import H5DataIO
@@ -16,7 +16,7 @@ class HDF5BackendConfiguration(BackendConfiguration):
     pretty_backend_name: ClassVar[Literal["HDF5"]] = "HDF5"
     data_io_class: ClassVar[Type[H5DataIO]] = H5DataIO
 
-    dataset_configurations: Dict[str, HDF5DatasetIOConfiguration] = Field(
+    dataset_configurations: dict[str, HDF5DatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations to their HDF5DatasetConfiguration specification that contains all "
             "information for writing the datasets to disk using the HDF5 backend."

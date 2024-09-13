@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 from pydantic import DirectoryPath
@@ -18,7 +18,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Neuralynx recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
@@ -94,6 +94,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    """
+    Primary data interface for converting Neuralynx sorting data. Uses
+    :py:class:`~spikeinterface.extractors.NeuralynxSortingExtractor`.
+    """
+
     display_name = "Neuralynx Sorting"
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
@@ -158,16 +163,16 @@ def extract_neo_header_metadata(neo_reader) -> dict:
     return common_header
 
 
-def _dict_intersection(dict_list: List) -> dict:
+def _dict_intersection(dict_list: list[dict]) -> dict:
     """
     Intersect dict_list and return only common keys and values
     Parameters
     ----------
-    dict_list: list of dicitionaries each representing a header
+    dict_list: list of dictionaries each representing a header
     Returns
     -------
     dict:
-        Dictionary containing key-value pairs common to all input dicitionary_list
+        Dictionary containing key-value pairs common to all input dictionary_list
     """
 
     # Collect keys appearing in all dictionaries

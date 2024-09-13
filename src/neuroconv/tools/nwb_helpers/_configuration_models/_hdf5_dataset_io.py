@@ -1,6 +1,6 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
 
-from typing import Any, Dict, Literal, Union
+from typing import Any, Literal, Union
 
 import h5py
 from pydantic import Field, InstanceOf
@@ -45,11 +45,11 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings - no annotation typing.
-    compression_options: Union[Dict[str, Any], None] = Field(
+    compression_options: Union[dict[str, Any], None] = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
-    def get_data_io_kwargs(self) -> Dict[str, Any]:
+    def get_data_io_kwargs(self) -> dict[str, Any]:
         if is_package_installed(package_name="hdf5plugin"):
             import hdf5plugin
 
