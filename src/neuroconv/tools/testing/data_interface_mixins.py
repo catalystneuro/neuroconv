@@ -105,6 +105,7 @@ class DataInterfaceTestMixin:
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+        assert metadata == metadata_before_add_method
 
     def check_run_conversion_with_backend_configuration(
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
