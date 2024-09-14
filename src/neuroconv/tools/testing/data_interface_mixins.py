@@ -106,32 +106,6 @@ class DataInterfaceTestMixin:
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
 
-        assert metadata == metadata_before_add_method
-
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
-        )
-
-    def check_configure_backend_for_equivalent_nwbfiles(self, backend: Literal["hdf5", "zarr"] = "hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-
-        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
-        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
-
     def check_run_conversion_with_backend_configuration(
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
@@ -204,11 +178,6 @@ class DataInterfaceTestMixin:
         """Read the produced NWB file and compare it to the interface."""
         pass
 
-    def check_basic_zarr_read(self, nwbfile_path: str):
-        """Ensure NWBZarrIO can read the file."""
-        with NWBZarrIO(path=nwbfile_path, mode="r") as io:
-            io.read()
-
     def check_extracted_metadata(self, metadata: dict):
         """Override this method to make assertions about specific extracted metadata values."""
         pass
@@ -235,7 +204,20 @@ class DataInterfaceTestMixin:
         )
 
         if backend == "zarr":
-            self.check_basic_zarr_read(nwbfile_path)
+            with NWBZarrIO(path=nwbfile_path, mode="r") as io:
+                io.read()
+
+    @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+    def test_configure_backend_for_equivalent_nwbfiles(self, setup_interface, tmp_path, backend):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
 
     def test_all_conversion_checks(self, setup_interface, tmp_path):
         interface, test_name = setup_interface
@@ -247,7 +229,6 @@ class DataInterfaceTestMixin:
         # Now run the checks using the setup objects
         self.check_conversion_options_schema_valid()
         self.check_metadata()
-        self.check_configure_backend_for_equivalent_nwbfiles()
 
         self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
@@ -746,7 +727,6 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         # Now run the checks using the setup objects
         self.check_conversion_options_schema_valid()
         self.check_metadata()
-        self.check_configure_backend_for_equivalent_nwbfiles()
 
         self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
@@ -999,6 +979,17 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             backend_configuration=backend_configuration,
             conversion_options=conversion_options,
         )
+
+    def check_configure_backend_for_equivalent_nwbfiles(self, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
 
     def test_all_conversion_checks(self, metadata: dict):
         interface_kwargs = self.interface_kwargs
@@ -1261,6 +1252,9 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         pass
 
     def test_no_metadata_mutation(self):
+        pass
+
+    def test_configure_backend_for_equivalent_nwbfiles(self):
         pass
 
     def check_metadata_schema_valid(self):
