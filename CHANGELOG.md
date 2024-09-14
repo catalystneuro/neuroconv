@@ -11,10 +11,12 @@
 ## Features
 * Added chunking/compression for string-only compound objects: [PR #1042](https://github.com/catalystneuro/neuroconv/pull/1042)
 * Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
+* Added a mock for segmentation extractors interfaces in ophys: `MockSegmentationInterface`  [PR #1067](https://github.com/catalystneuro/neuroconv/pull/1067)
 
 ## Improvements
 * Add writing to zarr test for to the test on data [PR #1056](https://github.com/catalystneuro/neuroconv/pull/1056)
-* Modified the CI to avoid running doctests twice [PR #1077](https://github.com/catalystneuro/neuroconv/pull/#1077)
+* Modified the CI to avoid running doctests twice
+* Added zarr tests for the test on data with checking equivalent backends [PR #1083](https://github.com/catalystneuro/neuroconv/pull/1083)
 
 ## v0.6.3
 
@@ -33,8 +35,6 @@
 * Added `get_stream_names` to `OpenEphysRecordingInterface`: [PR #1039](https://github.com/catalystneuro/neuroconv/pull/1039)
 * Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
 * All remaining data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1055](https://github.com/catalystneuro/neuroconv/pull/1055)
-* Added a mock for segmentation extractors interfaces in ophys: `MockSegmentationInterface`  [PR #1067](https://github.com/catalystneuro/neuroconv/pull/1067)
-* Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 
 
 ### Improvements
