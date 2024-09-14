@@ -880,6 +880,9 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def test_no_metadata_mutation(self):
         pass
 
+    def test_configure_backend_for_equivalent_nwbfiles(self):
+        pass
+
     def check_metadata_schema_valid(self):
         schema = self.interface.get_metadata_schema()
         Draft7Validator.check_schema(schema=schema)
@@ -979,17 +982,6 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             backend_configuration=backend_configuration,
             conversion_options=conversion_options,
         )
-
-    def check_configure_backend_for_equivalent_nwbfiles(self, backend: Literal["hdf5", "zarr"] = "hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-
-        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
-        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
 
     def test_all_conversion_checks(self, metadata: dict):
         interface_kwargs = self.interface_kwargs

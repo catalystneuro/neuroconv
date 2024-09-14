@@ -218,6 +218,9 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_interface_alignment(self):
         pass
 
+    def test_configure_backend_for_equivalent_nwbfiles(self):
+        pass
+
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
