@@ -21,13 +21,22 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
     test_folder = OUTPUT_PATH
     tag = os.getenv("NEUROCONV_DOCKER_TESTS_TAG", "latest")
     source_volume = os.getenv("NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME", "/home/runner/work/neuroconv/neuroconv")
+    # If running locally, export NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME=/path/to/neuroconv
 
     def test_run_conversion_from_yaml_cli(self):
         path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
-
-        output = deploy_process(
-            command=(
+        if self.source_volume == "/home/runner/work/neuroconv/neuroconv":  # in CI
+            command = (
+                "docker run -t "
+                f"--volume {self.source_volume}:{self.source_volume} "
+                f"--volume {self.test_folder}:{self.test_folder} "
+                f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
+                f"neuroconv {yaml_file_path} "
+                f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
+            )
+        else:  # running locally
+            command = (
                 "docker run -t "
                 f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
@@ -35,7 +44,10 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
                 f"neuroconv {yaml_file_path} "
                 f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
-            ),
+            )
+
+        output = deploy_process(
+            command=command,
             catch_output=True,
         )
         print(output)
@@ -81,11 +93,22 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
         yaml_string = "".join(yaml_lines)
         os.environ["NEUROCONV_YAML"] = yaml_string
-        os.environ["NEUROCONV_DATA_PATH"] = str(DATA_PATH)
         os.environ["NEUROCONV_OUTPUT_PATH"] = str(self.test_folder)
 
-        output = deploy_process(
-            command=(
+        if self.source_volume == "/home/runner/work/neuroconv/neuroconv":  # in CI
+            os.environ["NEUROCONV_DATA_PATH"] = self.source_volume + str(DATA_PATH)
+            command = (
+                "docker run -t "
+                f"--volume {self.source_volume}:{self.source_volume} "
+                f"--volume {self.test_folder}:{self.test_folder} "
+                '-e NEUROCONV_YAML="$NEUROCONV_YAML" '
+                '-e NEUROCONV_DATA_PATH="$NEUROCONV_DATA_PATH" '
+                '-e NEUROCONV_OUTPUT_PATH="$NEUROCONV_OUTPUT_PATH" '
+                "ghcr.io/catalystneuro/neuroconv:yaml_variable"
+            )
+        else:  # running locally
+            os.environ["NEUROCONV_DATA_PATH"] = str(DATA_PATH)
+            command = (
                 "docker run -t "
                 f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
@@ -94,7 +117,10 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 '-e NEUROCONV_DATA_PATH="$NEUROCONV_DATA_PATH" '
                 '-e NEUROCONV_OUTPUT_PATH="$NEUROCONV_OUTPUT_PATH" '
                 "ghcr.io/catalystneuro/neuroconv:yaml_variable"
-            ),
+            )
+
+        output = deploy_process(
+            command=command,
             catch_output=True,
         )
         print(output)
