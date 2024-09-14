@@ -1,6 +1,6 @@
 # Upcoming
 
-## v.0.6.3
+## v0.6.4
 
 ## Bug Fixes
 * Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
@@ -9,12 +9,16 @@
 ## Deprecations
 
 ## Features
+* Added chunking/compression for string-only compound objects: [PR #1042](https://github.com/catalystneuro/neuroconv/pull/1042)
 * Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 * Added a `MockSortingInterface` for testing purposes. [PR #1065](https://github.com/catalystneuro/neuroconv/pull/1065)
 
 
 ## Improvements
+* Add writing to zarr test for to the test on data [PR #1056](https://github.com/catalystneuro/neuroconv/pull/1056)
+* Modified the CI to avoid running doctests twice [PR #1077](https://github.com/catalystneuro/neuroconv/pull/#1077)
 
+## v0.6.3
 
 
 ## v0.6.2 (September 10, 2024)
@@ -32,12 +36,15 @@
 * Most data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1022](https://github.com/catalystneuro/neuroconv/pull/1022)
 * All remaining data interfaces and converters now use Pydantic to validate their inputs, including existence of file and folder paths. [PR #1055](https://github.com/catalystneuro/neuroconv/pull/1055)
 
+
 ### Improvements
 * Using ruff to enforce existence of public classes' docstrings [PR #1034](https://github.com/catalystneuro/neuroconv/pull/1034)
 * Separated tests that use external data by modality [PR #1049](https://github.com/catalystneuro/neuroconv/pull/1049)
 * Added Unit Table descriptions for phy and kilosort: [PR #1053](https://github.com/catalystneuro/neuroconv/pull/1053)
 * Using ruff to enforce existence of public functions's docstrings [PR #1062](https://github.com/catalystneuro/neuroconv/pull/1062)
 * Improved device metadata of `IntanRecordingInterface` by adding the type of controller used [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
+
+
 
 
 ## v0.6.1 (August 30, 2024)
