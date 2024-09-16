@@ -1,10 +1,15 @@
 import datetime
 import os
+import pathlib
 import time
 
 import boto3
 
-from neuroconv.tools.aws import rclone_transfer_batch_job, submit_aws_batch_job
+from neuroconv.tools.aws import (
+    deploy_neuroconv_batch_job,
+    rclone_transfer_batch_job,
+    submit_aws_batch_job,
+)
 
 _RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
@@ -374,6 +379,122 @@ class TestRcloneTransferBatchJob(TestCase):
         # Wait for AWS to process the job
         time.sleep(60)
 
+        job_id = info["job_submission_info"]["jobId"]
+        job = None
+        max_retries = 10
+        retry = 0
+        while retry < max_retries:
+            job_description_response = batch_client.describe_jobs(jobs=[job_id])
+            assert job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+            jobs = job_description_response["jobs"]
+            assert len(jobs) == 1
+
+            job = jobs[0]
+
+            if job["status"] in _RETRY_STATES:
+                retry += 1
+                time.sleep(60)
+            else:
+                break
+
+        # Check EFS specific details
+        efs_volumes = efs_client.describe_file_systems()
+        matching_efs_volumes = [
+            file_system
+            for file_system in efs_volumes["FileSystems"]
+            for tag in file_system["Tags"]
+            if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+        ]
+        assert len(matching_efs_volumes) == 1
+        efs_volume = matching_efs_volumes[0]
+        efs_id = efs_volume["FileSystemId"]
+
+        # Check normal job completion
+        assert job["jobName"] == job_name
+        assert "neuroconv_batch_queue" in job["jobQueue"]
+        assert "fs-" in job["jobDefinition"]
+        assert job["status"] == "SUCCEEDED"
+
+        status_tracker_table_name = "neuroconv_batch_status_tracker"
+        table = dynamodb_resource.Table(name=status_tracker_table_name)
+        table_submission_id = info["table_submission_info"]["id"]
+
+        table_item_response = table.get_item(Key={"id": table_submission_id})
+        assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+        table_item = table_item_response["Item"]
+        assert table_item["job_name"] == job_name
+        assert table_item["job_id"] == job_id
+        assert table_item["status"] == "Job submitted..."
+
+        table.update_item(
+            Key={"id": table_submission_id},
+            AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed - cleaning up..."}},
+        )
+
+        # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
+        # TODO: cleanup job definitions? (since built daily)
+        mount_targets = efs_client.describe_mount_targets(FileSystemId=efs_id)
+        for mount_target in mount_targets["MountTargets"]:
+            efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
+
+        time.sleep(60)
+        efs_client.delete_file_system(FileSystemId=efs_id)
+
+        table.update_item(
+            Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}
+        )
+
+    def test_deploy_neuroconv_batch_job(self):
+        region = "us-east-2"
+        aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+        aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+
+        dynamodb_resource = boto3.resource(
+            service_name="dynamodb",
+            region_name=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+        batch_client = boto3.client(
+            service_name="batch",
+            region_name=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+        efs_client = boto3.client(
+            service_name="efs",
+            region_name=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+
+        rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx /mnt/efs"
+
+        testing_base_folder_path = pathlib.Path(__file__).parent.parent.parent
+        yaml_specification_file_path = (
+            testing_base_folder_path
+            / "test_on_data"
+            / "test_yaml"
+            / "conversion_specifications"
+            / "GIN_conversion_specification.yml"
+        )
+
+        rclone_config_file_path = self.test_config_file_path
+
+        job_name = "test_deploy_neuroconv_batch_job"
+        all_info = deploy_neuroconv_batch_job(
+            rclone_command=rclone_command,
+            yaml_specification_file_path=yaml_specification_file_path,
+            job_name=job_name,
+            rclone_config_file_path=rclone_config_file_path,
+        )
+
+        # Wait for AWS to process the job
+        time.sleep(120)
+
+        info = all_info["neuroconv_job_submission_info"]
         job_id = info["job_submission_info"]["jobId"]
         job = None
         max_retries = 10

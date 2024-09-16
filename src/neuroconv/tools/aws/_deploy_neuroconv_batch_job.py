@@ -1,17 +1,19 @@
-"""Collection of helper functions for performing Rclone data transfers in EC2 Batch jobs on AWS."""
+"""Collection of helper functions for deploying NeuroConv in EC2 Batch jobs on AWS."""
 
-import warnings
+import uuid
 from typing import Optional
 
 from pydantic import FilePath, validate_call
 
+from ._rclone_transfer_batch_job import rclone_transfer_batch_job
 from ._submit_aws_batch_job import submit_aws_batch_job
 
 
 @validate_call
-def rclone_transfer_batch_job(
+def deploy_neuroconv_batch_job(
     *,
     rclone_command: str,
+    yaml_specification_file_path: FilePath,
     job_name: str,
     efs_volume_name: str,
     rclone_config_file_path: Optional[FilePath] = None,
@@ -19,9 +21,8 @@ def rclone_transfer_batch_job(
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
     job_definition_name: Optional[str] = None,
-    minimum_worker_ram_in_gib: int = 4,
+    minimum_worker_ram_in_gib: int = 16,  # Higher than previous recommendations for safer buffering room
     minimum_worker_cpus: int = 4,
-    submission_id: Optional[str] = None,
     region: Optional[str] = None,
 ) -> dict[str, str]:
     """
@@ -33,8 +34,10 @@ def rclone_transfer_batch_job(
     ----------
     rclone_command : str
         The command to pass directly to Rclone running on the EC2 instance.
-            E.g.: "rclone copy my_drive:testing_rclone /mnt/efs"
-        Must move data from or to '/mnt/efs'.
+            E.g.: "rclone copy my_drive:testing_rclone /mnt/efs/source"
+        Must move data from or to '/mnt/efs/source'.
+    yaml_specification_file_path : FilePath
+        The path to the YAML file containing the NeuroConv specification.
     job_name : str
         The name of the job to submit.
     efs_volume_name : str
@@ -59,9 +62,6 @@ def rclone_transfer_batch_job(
     minimum_worker_cpus : int, default: 4
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
-    submission_id : str, optional
-        The unique ID to pair with this job submission when tracking the status via DynamoDB.
-        Defaults to a random UUID4.
     region : str, optional
         The AWS region to use for the job.
         If not provided, we will attempt to load the region from your local AWS configuration.
@@ -72,42 +72,60 @@ def rclone_transfer_batch_job(
     info : dict
         A dictionary containing information about this AWS Batch job.
 
-        info["job_submission_info"] is the return value of `boto3.client.submit_job` which contains the job ID.
-        info["table_submission_info"] is the initial row data inserted into the DynamoDB status tracking table.
+        info["rclone_job_submission_info"] is the return value of `neuroconv.tools.aws.rclone_transfer_batch_job`.
+        info["neuroconv_job_submission_info"] is the return value of `neuroconv.tools.aws.submit_job`.
     """
-    docker_image = "ghcr.io/catalystneuro/rclone_with_config:latest"
-
-    if "/mnt/efs" not in rclone_command:
-        message = (
-            f"The Rclone command '{rclone_command}' does not contain a reference to '/mnt/efs'. "
-            "Without utilizing the EFS mount, the instance is unlikely to have enough local disk space."
-        )
-        warnings.warn(message=message, stacklevel=2)
-
-    rclone_config_file_path = rclone_config_file_path or pathlib.Path.home() / ".rclone" / "rclone.conf"
-    if not rclone_config_file_path.exists():
-        raise FileNotFoundError(
-            f"Rclone configuration file not found at: {rclone_config_file_path}! "
-            "Please check that `rclone config` successfully created the file."
-        )
-    with open(file=rclone_config_file_path, mode="r") as io:
-        rclone_config_file_stream = io.read()
-
+    efs_volume_name = efs_volume_name or f"neuroconv_batch_efs_volume_{uuid.uuid4().hex[:4]}"
     region = region or "us-east-2"
 
-    info = submit_aws_batch_job(
-        job_name=job_name,
-        docker_image=docker_image,
-        environment_variables={"RCLONE_CONFIG": rclone_config_file_stream, "RCLONE_COMMAND": rclone_command},
+    if "/mnt/efs/source" not in rclone_command:
+        message = (
+            f"The Rclone command '{rclone_command}' does not contain a reference to '/mnt/efs/source'. "
+            "Without utilizing the EFS mount, the instance is unlikely to have enough local disk space. "
+            "The subfolder 'source' is also required to eliminate ambiguity in the transfer process."
+        )
+        raise ValueError(message=message)
+
+    rclone_job_name = f"{job_name}_rclone_transfer"
+    rclone_job_submission_info = rclone_transfer_batch_job(
+        rclone_command=rclone_command,
+        job_name=rclone_job_name,
         efs_volume_name=efs_volume_name,
+        rclone_config_file_path=rclone_config_file_path,
+        region=region,
+    )
+    rclone_job_id = rclone_job_submission_info["job_submission_info"]["jobId"]
+
+    docker_image = "ghcr.io/catalystneuro/neuroconv_latest_yaml_variable:latest"
+
+    with open(file=yaml_specification_file_path, mode="r") as io:
+        yaml_specification_file_stream = io.read()
+
+    neuroconv_job_name = f"{job_name}_neuroconv_deployment"
+    neuroconv_job_submission_info = submit_aws_batch_job(
+        job_name=neuroconv_job_name,
+        docker_image=docker_image,
+        environment_variables={
+            "NEUROCONV_YAML": yaml_specification_file_stream,
+            "NEUROCONV_DATA_PATH": "/mnt/efs/source",
+            "NEUROCONV_OUTPUT_PATH": "/mnt/efs/output",
+        },
+        efs_volume_name=efs_volume_name,
+        job_dependencies=[rclone_job_id],
         status_tracker_table_name=status_tracker_table_name,
         compute_environment_name=compute_environment_name,
         job_queue_name=job_queue_name,
         job_definition_name=job_definition_name,
         minimum_worker_ram_in_gib=minimum_worker_ram_in_gib,
         minimum_worker_cpus=minimum_worker_cpus,
-        submission_id=submission_id,
         region=region,
     )
+
+    # TODO: spinup third dependent job to clean up EFS volume after neuroconv job is complete?
+
+    info = {
+        "rclone_job_submission_info": rclone_job_submission_info,
+        "neuroconv_job_submission_info": neuroconv_job_submission_info,
+    }
 
     return info
