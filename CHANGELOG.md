@@ -19,6 +19,7 @@
 * Testing on mac sillicon [PR #1061](https://github.com/catalystneuro/neuroconv/pull/1061)
 * Add writing to zarr test for to the test on data [PR #1056](https://github.com/catalystneuro/neuroconv/pull/1056)
 * Modified the CI to avoid running doctests twice [PR #1077](https://github.com/catalystneuro/neuroconv/pull/#1077)
+* Consolidated daily workflows into one workflow and added email notifications [PR #1081](https://github.com/catalystneuro/neuroconv/pull/1081)
 
 ## v0.6.3
 
