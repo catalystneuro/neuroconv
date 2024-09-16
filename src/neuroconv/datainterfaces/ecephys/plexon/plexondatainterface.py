@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import FilePath, validate_call
 
@@ -31,7 +30,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
-        stream_name: Optional[str] = None,
+        stream_name: str = "WB-Wideband",
     ):
         """
         Load and prepare data for Plexon.
@@ -47,9 +46,6 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the wideband data.
         """
-
-        if stream_name is None:
-            stream_name = "WB-Wideband"
 
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
