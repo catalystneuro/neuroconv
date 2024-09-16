@@ -3,7 +3,7 @@ name: Daily workflows
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 5 * * *" # Daily at midnight EST
+    - cron: "0 4 * * *" # Daily at 8PM PST, 11PM EST, 5AM CET to avoid working hours
 
 jobs:
   build-and-upload-docker-image-dev:
