@@ -50,22 +50,6 @@ jobs:
   run-daily-doc-link-checks:
     uses: ./.github/workflows/test-external-links.yml
 
-  notify-update-s3-testing-data:
-    runs-on: ubuntu-latest
-    needs: [update-s3-testing-data]
-    if: ${{ always() && needs.update-s3-testing-data.result == 'failure' }}
-    steps:
-      - uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: NeuroConv Daily S3 Testing Data Update Failure
-          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
-          from: NeuroConv
-          body: "The daily update of the S3 testing data failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
-
   notify-build-and-upload-docker-image-dev:
     runs-on: ubuntu-latest
     needs: [build-and-upload-docker-image-dev]
