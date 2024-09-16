@@ -40,10 +40,15 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
-      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
+      python-versions: >  # Ternary operator:  condition && value_if_true || value_if_false
         ${{github.event.pull_request.draft == true
            && '["3.9"]'
            || '["3.9", "3.10", "3.11", "3.12"]'
+        }}
+      os-versions: >
+        ${{github.event.pull_request.draft == true
+           && '["ubuntu-latest"]'
+           || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
         }}
 
   run-live-service-tests:
@@ -58,7 +63,11 @@ jobs:
             && '["3.9"]'
             || '["3.9", "3.10", "3.11", "3.12"]'
         }}
-
+      os-versions: >
+        ${{github.event.pull_request.draft == true
+           && '["ubuntu-latest"]'
+           || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
+        }}
   run-dev-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
@@ -80,12 +89,16 @@ jobs:
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
     with:
-      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
+      python-versions: >  # Ternary operator:  condition && value_if_true || value_if_false
         ${{github.event.pull_request.draft == true
             && '["3.9"]'
             || '["3.9", "3.10", "3.11", "3.12"]'
         }}
-
+      os-versions: >
+        ${{github.event.pull_request.draft == true
+           && '["ubuntu-latest"]'
+           || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
+        }}
   check-final-status:
     name: All tests passing
     if: always()
