@@ -17,6 +17,7 @@ on:
         required: true
       CODECOV_TOKEN:
         required: true
+  workflow_dispatch:
 
 jobs:
   run:
