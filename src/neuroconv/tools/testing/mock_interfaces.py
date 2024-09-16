@@ -11,6 +11,9 @@ from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
+from ...datainterfaces.ecephys.basesortingextractorinterface import (
+    BaseSortingExtractorInterface,
+)
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -154,6 +157,54 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class MockSortingInterface(BaseSortingExtractorInterface):
+    """A mock sorting extractor interface for generating synthetic sorting data."""
+
+    # TODO: Implement this class with the lazy generator once is merged
+    # https://github.com/SpikeInterface/spikeinterface/pull/2227
+
+    ExtractorModuleName = "spikeinterface.core.generate"
+    ExtractorName = "generate_sorting"
+
+    def __init__(
+        self,
+        num_units: int = 4,
+        sampling_frequency: float = 30_000.0,
+        durations: tuple[float] = (1.0,),
+        seed: int = 0,
+        verbose: bool = True,
+    ):
+        """
+        Parameters
+        ----------
+        num_units : int, optional
+            Number of units to generate, by default 4.
+        sampling_frequency : float, optional
+            Sampling frequency of the generated data in Hz, by default 30,000.0 Hz.
+        durations : tuple of float, optional
+            Durations of the segments in seconds, by default (1.0,).
+        seed : int, optional
+            Seed for the random number generator, by default 0.
+        verbose : bool, optional
+            Control whether to display verbose messages during writing, by default True.
+
+        """
+
+        super().__init__(
+            num_units=num_units,
+            sampling_frequency=sampling_frequency,
+            durations=durations,
+            seed=seed,
+            verbose=verbose,
+        )
+
+    def get_metadata(self) -> dict:  # noqa D102
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
