@@ -1,5 +1,10 @@
 # Upcoming
 
+## Features
+* Added the `rclone_transfer_batch_job` helper function for executing Rclone data transfers in AWS Batch jobs. [PR #]()
+
+
+
 ## v0.6.4
 
 ## Bug Fixes

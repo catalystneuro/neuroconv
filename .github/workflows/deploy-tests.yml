@@ -1,9 +1,10 @@
 name: Deploy tests
 
 on:
-  pull_request:
-    types: [synchronize, opened, reopened, ready_for_review] # defaults + ready_for_review
-  merge_group:
+  # TODO: disabled to save resources
+#  pull_request:
+#    types: [synchronize, opened, reopened, ready_for_review] # defaults + ready_for_review
+#  merge_group:
   workflow_dispatch:
 
 concurrency:  # Cancel previous workflows on the same pull request
