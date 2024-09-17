@@ -1,5 +1,6 @@
+from pydantic import FilePath
+
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils import FilePathType
 
 
 class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
@@ -15,12 +16,12 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
         source_metadata["properties"]["file_path"]["description"] = "Path to .hdf5 file."
         return source_metadata
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePath, verbose: bool = True):
         """
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .hdf5 file.
         verbose : bool, default True
             Whether to print progress

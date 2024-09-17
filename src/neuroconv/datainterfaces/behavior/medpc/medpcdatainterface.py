@@ -1,12 +1,13 @@
 from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package, nwb_helpers
-from neuroconv.utils import DeepDict, FilePathType
+from neuroconv.utils import DeepDict
 
 from .medpc_helpers import read_medpc_file
 
@@ -40,9 +41,10 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     info = "Interface for handling MedPC output files."
     associated_suffixes = (".txt",)
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         session_conditions: dict,
         start_variable: str,
         metadata_medpc_name_to_info_dict: dict,
@@ -54,7 +56,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to the MedPC file.
         session_conditions : dict
             The conditions that define the session. The keys are the names of the single-line variables (ex. 'Start Date')

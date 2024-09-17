@@ -2,42 +2,41 @@ import importlib
 import pickle
 import warnings
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 import yaml
+from pydantic import FilePath
 from pynwb import NWBFile
 from ruamel.yaml import YAML
 
-from ....utils import FilePathType
 
-
-def _read_config(config_file_path):
+def _read_config(config_file_path: FilePath) -> dict:
     """
     Reads structured config file defining a project.
     """
+
     ruamelFile = YAML()
     path = Path(config_file_path)
-    if path.exists():
-        try:
-            with open(path, "r") as f:
-                cfg = ruamelFile.load(f)
-                curr_dir = config_file_path.parent
-                if cfg["project_path"] != curr_dir:
-                    cfg["project_path"] = curr_dir
-        except Exception as err:
-            if len(err.args) > 2:
-                if err.args[2] == "could not determine a constructor for the tag '!!python/tuple'":
-                    with open(path, "r") as ymlfile:
-                        cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
-                else:
-                    raise
 
-    else:
-        raise FileNotFoundError(
-            "Config file is not found. Please make sure that the file exists and/or that you passed the path of the config file correctly!"
-        )
+    if not path.exists():
+        raise FileNotFoundError(f"Config file {path} not found.")
+
+    try:
+        with open(path, "r") as f:
+            cfg = ruamelFile.load(f)
+            curr_dir = config_file_path.parent
+            if cfg["project_path"] != curr_dir:
+                cfg["project_path"] = curr_dir
+    except Exception as err:
+        if len(err.args) > 2:
+            if err.args[2] == "could not determine a constructor for the tag '!!python/tuple'":
+                with open(path, "r") as ymlfile:
+                    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+            else:
+                raise
+
     return cfg
 
 
@@ -155,49 +154,50 @@ def _infer_nan_timestamps(timestamps):
     return timestamps
 
 
-def _ensure_individuals_in_header(df, individual_name):
+def _ensure_individuals_in_header(df, individual_name: str):
+    """
+    Ensure that the 'individuals' column is present in the header of the given DataFrame.
+
+    Parameters:
+        df (pandas.DataFrame): The DataFrame to modify.
+        individual_name (str): The name of the individual to add to the header.
+
+    Returns:
+        pandas.DataFrame: The modified DataFrame with the 'individuals' column added to the header.
+
+    Notes:
+        - If the 'individuals' column is already present in the header, no modifications are made.
+        - If the 'individuals' column is not present, a new DataFrame is created with the 'individual_name'
+        as the column name, and the 'individuals' column is added to the header of the DataFrame.
+        - The order of the columns in the header is preserved.
+
+    """
     if "individuals" not in df.columns.names:
         # Single animal project -> add individual row to
         # the header of single animal projects.
         temp = pd.concat({individual_name: df}, names=["individuals"], axis=1)
         df = temp.reorder_levels(["scorer", "individuals", "bodyparts", "coords"], axis=1)
+
     return df
 
 
-def _get_pes_args(
-    *,
-    config_file: Path,
-    h5file: Path,
-    individual_name: str,
-    timestamps_available: bool = False,
-    infer_timestamps: bool = True,
-):
-    config_file = Path(config_file)
-    h5file = Path(h5file)
+def _get_graph_edges(metadata_file_path: Path):
+    """
+    Extracts the part affinity field graph from the metadata pickle file.
 
-    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
-        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+    Parameters
+    ----------
+    metadata_file_path : Path
+        The path to the metadata pickle file.
 
-    cfg = _read_config(config_file)
-
-    vidname, scorer = h5file.stem.split("DLC")
-    scorer = "DLC" + scorer
-    video = None
-
-    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
-
-    # Fetch the corresponding metadata pickle file
+    Returns
+    -------
+    list
+        The part affinity field graph, which defines the edges between the keypoints in the pose estimation.
+    """
     paf_graph = []
-    filename = str(h5file.parent / h5file.stem)
-    for i, c in enumerate(filename[::-1]):
-        if c.isnumeric():
-            break
-    if i > 0:
-        filename = filename[:-i]
-    metadata_file = Path(filename + "_meta.pickle")
-
-    if metadata_file.exists():
-        with open(metadata_file, "rb") as file:
+    if metadata_file_path.exists():
+        with open(metadata_file_path, "rb") as file:
             metadata = pickle.load(file)
 
         test_cfg = metadata["data"]["DLC-model-config file"]
@@ -209,25 +209,61 @@ def _get_pes_args(
     else:
         warnings.warn("Metadata not found...")
 
+    return paf_graph
+
+
+def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
+    """
+    Get the video information from the project config file.
+
+    Parameters
+    ----------
+    config_file_path : Path
+        The path to the project config file.
+    vidname : str
+        The name of the video.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the video file path and the image shape.
+    """
+    config_file_path = Path(config_file_path)
+    cfg = _read_config(config_file_path)
+
+    video = None
     for video_path, params in cfg["video_sets"].items():
         if vidname in video_path:
             video = video_path, params["crop"]
             break
 
-    # find timestamps only if required:
-    if timestamps_available:
-        timestamps = None
-    else:
-        if video is None:
-            timestamps = df.index.tolist()  # setting timestamps to dummy TODO: extract timestamps in DLC?
-        else:
-            timestamps = _get_movie_timestamps(video[0], infer_timestamps=infer_timestamps)
-
     if video is None:
-        warnings.warn(f"The video file corresponding to {h5file} could not be found...")
-        video = "fake_path", "0, 0, 0, 0"
+        warnings.warn(f"The corresponding video file could not be found in the config file")
+        video = None, "0, 0, 0, 0"
 
-    return scorer, df, video, paf_graph, timestamps, cfg
+    # The video in the config_file looks like this:
+    # video_sets:
+    #    /Data/openfield-Pranav-2018-08-20/videos/m1s1.mp4:
+    #        crop: 0, 640, 0, 480
+
+    video_file_path, image_shape = video
+
+    return video_file_path, image_shape
+
+
+def _get_pes_args(
+    *,
+    h5file: Path,
+    individual_name: str,
+):
+    h5file = Path(h5file)
+
+    _, scorer = h5file.stem.split("DLC")
+    scorer = "DLC" + scorer
+
+    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
+
+    return scorer, df
 
 
 def _write_pes_to_nwbfile(
@@ -235,7 +271,8 @@ def _write_pes_to_nwbfile(
     animal,
     df_animal,
     scorer,
-    video,  # Expects this to be a tuple; first index is string path, second is the image shape as "0, width, 0, height"
+    video_file_path,
+    image_shape,
     paf_graph,
     timestamps,
     exclude_nans,
@@ -274,12 +311,13 @@ def _write_pes_to_nwbfile(
     if is_deeplabcut_installed:
         deeplabcut_version = importlib.metadata.version(distribution_name="deeplabcut")
 
+    # TODO, taken from the original implementation, improve it if the video is passed
+    dimensions = [list(map(int, image_shape.split(",")))[1::2]]
     pose_estimation_default_kwargs = dict(
         pose_estimation_series=pose_estimation_series,
         description="2D keypoint coordinates estimated using DeepLabCut.",
-        original_videos=[video[0]],
-        # TODO check if this is a mandatory arg in ndx-pose (can skip if video is not found_
-        dimensions=[list(map(int, video[1].split(",")))[1::2]],
+        original_videos=[video_file_path],
+        dimensions=dimensions,
         scorer=scorer,
         source_software="DeepLabCut",
         source_software_version=deeplabcut_version,
@@ -303,10 +341,10 @@ def _write_pes_to_nwbfile(
 
 def add_subject_to_nwbfile(
     nwbfile: NWBFile,
-    h5file: FilePathType,
+    h5file: FilePath,
     individual_name: str,
-    config_file: FilePathType,
-    timestamps: Optional[Union[List, np.ndarray]] = None,
+    config_file: Optional[FilePath] = None,
+    timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """
@@ -321,7 +359,7 @@ def add_subject_to_nwbfile(
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str or path
+    config_file : str or path, optional
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
         Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
@@ -333,15 +371,45 @@ def add_subject_to_nwbfile(
     nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
+    h5file = Path(h5file)
+
+    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
+        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+
+    video_name, scorer = h5file.stem.split("DLC")
+    scorer = "DLC" + scorer
+
+    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
+
+    # Note the video here is a tuple of the video path and the image shape
+    if config_file is not None:
+        video_file_path, image_shape = _get_video_info_from_config_file(
+            config_file_path=config_file,
+            vidname=video_name,
+        )
+    else:
+        video_file_path = None
+        image_shape = "0, 0, 0, 0"
+
+    # find timestamps only if required:``
     timestamps_available = timestamps is not None
-    scorer, df, video, paf_graph, dlc_timestamps, _ = _get_pes_args(
-        config_file=config_file,
-        h5file=h5file,
-        individual_name=individual_name,
-        timestamps_available=timestamps_available,
-    )
-    if timestamps is None:
-        timestamps = dlc_timestamps
+    if not timestamps_available:
+        if video_file_path is None:
+            timestamps = df.index.tolist()  # setting timestamps to dummy
+        else:
+            timestamps = _get_movie_timestamps(video_file_path, infer_timestamps=True)
+
+    # Fetch the corresponding metadata pickle file, we extract the edges graph from here
+    # TODO: This is the original implementation way to extract the file name but looks very brittle. Improve it
+    filename = str(h5file.parent / h5file.stem)
+    for i, c in enumerate(filename[::-1]):
+        if c.isnumeric():
+            break
+    if i > 0:
+        filename = filename[:-i]
+
+    metadata_file_path = Path(filename + "_meta.pickle")
+    paf_graph = _get_graph_edges(metadata_file_path=metadata_file_path)
 
     df_animal = df.xs(individual_name, level="individuals", axis=1)
 
@@ -350,7 +418,8 @@ def add_subject_to_nwbfile(
         individual_name,
         df_animal,
         scorer,
-        video,
+        video_file_path,
+        image_shape,
         paf_graph,
         timestamps,
         exclude_nans=False,

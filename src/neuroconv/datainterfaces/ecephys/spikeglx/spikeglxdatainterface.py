@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 
 from .spikeglx_utils import (
     add_recording_extractor_properties,
@@ -12,10 +13,14 @@ from .spikeglx_utils import (
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
+    """
+    Primary SpikeGLX interface for converting raw SpikeGLX data using a :py:class:`~spikeinterface.extractors.SpikeGLXRecordingExtractor`.
+    """
+
     display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
@@ -37,9 +42,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         verbose: bool = True,
         es_key: Optional[str] = None,
     ):

@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from .sleap_utils import extract_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
-from ....utils import FilePathType
 
 
 class SLEAPInterface(BaseTemporalAlignmentInterface):
@@ -27,10 +27,11 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         ] = "Path of the video for extracting timestamps (optional)."
         return source_schema
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        video_file_path: Optional[FilePathType] = None,
+        file_path: FilePath,
+        video_file_path: Optional[FilePath] = None,
         verbose: bool = True,
         frames_per_second: Optional[float] = None,
     ):
@@ -39,7 +40,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to the .slp file (the output of sleap)
         verbose : bool, default: True
             controls verbosity. ``True`` by default.

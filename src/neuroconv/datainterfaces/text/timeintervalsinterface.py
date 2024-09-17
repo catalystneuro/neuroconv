@@ -1,14 +1,14 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import load_dict_from_file
-from ...utils.types import FilePathType
 
 
 class TimeIntervalsInterface(BaseDataInterface):
@@ -16,9 +16,10 @@ class TimeIntervalsInterface(BaseDataInterface):
 
     keywords = ("table", "trials", "epochs", "time intervals")
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         read_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
@@ -120,8 +121,8 @@ class TimeIntervalsInterface(BaseDataInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         tag: str = "trials",
-        column_name_mapping: Dict[str, str] = None,
-        column_descriptions: Dict[str, str] = None,
+        column_name_mapping: dict[str, str] = None,
+        column_descriptions: dict[str, str] = None,
     ) -> NWBFile:
         """
         Run the NWB conversion for the instantiated data interface.
@@ -152,5 +153,5 @@ class TimeIntervalsInterface(BaseDataInterface):
         return nwbfile
 
     @abstractmethod
-    def _read_file(self, file_path: FilePathType, **read_kwargs):
+    def _read_file(self, file_path: FilePath, **read_kwargs):
         pass

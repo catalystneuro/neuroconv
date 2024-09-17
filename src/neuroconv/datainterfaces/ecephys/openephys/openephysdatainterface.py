@@ -1,10 +1,11 @@
 from pathlib import Path
 from typing import Optional
 
+from pydantic import DirectoryPath
+
 from .openephysbinarydatainterface import OpenEphysBinaryRecordingInterface
 from .openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FolderPathType
 
 
 class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
@@ -24,9 +25,18 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         ] = "Path to OpenEphys directory (.continuous or .dat files)."
         return source_schema
 
+    @classmethod
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        if any(Path(folder_path).rglob("*.continuous")):
+            return OpenEphysLegacyRecordingInterface.get_stream_names(folder_path=folder_path)
+        elif any(Path(folder_path).rglob("*.dat")):
+            return OpenEphysBinaryRecordingInterface.get_stream_names(folder_path=folder_path)
+        else:
+            raise AssertionError("The Open Ephys data must be in 'legacy' (.continuous) or in 'binary' (.dat) format.")
+
     def __new__(
         cls,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
         verbose: bool = True,

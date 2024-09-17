@@ -56,19 +56,9 @@ class TestMiniscopeConverter(TestCase):
 
     def test_converter_metadata(self):
         metadata = self.converter.get_metadata()
-        self.assertEqual(
-            metadata["NWBFile"]["session_start_time"],
-            datetime(2021, 10, 7, 15, 3, 28, 635),
-        )
-        self.assertDictEqual(
-            metadata["Ophys"]["Device"][0],
-            self.device_metadata,
-        )
-
-        self.assertDictEqual(
-            metadata["Behavior"]["Device"][0],
-            self.behavcam_metadata,
-        )
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert metadata["Ophys"]["Device"][0] == self.device_metadata
+        assert metadata["Behavior"]["Device"][0] == self.behavcam_metadata
 
     def test_run_conversion(self):
         nwbfile_path = str(self.test_dir / "test_miniscope_converter.nwb")
