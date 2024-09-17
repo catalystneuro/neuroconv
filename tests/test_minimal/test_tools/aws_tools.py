@@ -302,13 +302,17 @@ def test_submit_aws_batch_job_with_efs_mount():
 class TestRcloneTransferBatchJob(TestCase):
     """
     To allow this test to work, the developer must create a folder on the outer level of their personal Google Drive
-    called 'testing_rclone_spikeglx' with the following structure:
+    called 'testing_rclone_spikegl_and_phy' with the following structure:
 
-    testing_rclone_spikeglx
+    testing_rclone_spikeglx_and_phy
     ├── ci_tests
+    ├──── spikeglx
     ├────── Noise4Sam_g0
+    ├──── phy
+    ├────── phy_example_0
 
-    Where 'Noise4Sam' is from the 'spikeglx/Noise4Sam_g0' GIN ephys dataset.
+    Where 'Noise4Sam' is from the 'spikeglx/Noise4Sam_g0' GIN ephys dataset and 'phy_example_0' is likewise from the
+    'phy' folder of the same dataset.
 
     Then the developer must install Rclone and call `rclone config` to generate tokens in their own `rclone.conf` file.
     The developer can easily find the location of the config file on their system using `rclone config file`.
