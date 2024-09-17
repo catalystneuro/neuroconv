@@ -43,6 +43,16 @@ jobs:
       python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
 
+  # If the conversion gallery is the only thing that changed, run doctests only
+  run-doctests-only:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
+    uses: ./.github/workflows/doctests.yml
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+
+
   run-live-service-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
@@ -53,25 +63,6 @@ jobs:
       python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
 
-  run-dev-tests:
-    needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: ./.github/workflows/dev-testing.yml
-    secrets:
-      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
-    with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-
-  run-doctests-only:
-    needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
-    uses: ./.github/workflows/doctests.yml
-    with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
 
   check-final-status:
     name: All tests passing
