@@ -791,6 +791,7 @@ def add_electrical_series_to_nwbfile(
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -833,6 +834,11 @@ def add_electrical_series_to_nwbfile(
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Notes
     -----
@@ -928,25 +934,31 @@ def add_electrical_series_to_nwbfile(
     )
     eseries_kwargs.update(data=ephys_data_iterator)
 
-    # Now we decide whether to store the timestamps as a regular series or as an irregular series.
-    if recording.has_time_vector(segment_index=segment_index):
-        # First we check if the recording has a time vector to avoid creating artificial timestamps
-        timestamps = recording.get_times(segment_index=segment_index)
-        rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
-        recording_t_start = timestamps[0]
-    else:
-        rate = recording.get_sampling_frequency()
-        recording_t_start = recording._recording_segments[segment_index].t_start or 0
-
     starting_time = starting_time if starting_time is not None else 0
-    if rate:
-        starting_time = float(starting_time + recording_t_start)
-        # Note that we call the sampling frequency again because the estimated rate might be different from the
-        # sampling frequency of the recording extractor by some epsilon.
-        eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
-    else:
+    if always_write_timestamps:
+        timestamps = recording.get_times(segment_index=segment_index)
         shifted_timestamps = starting_time + timestamps
         eseries_kwargs.update(timestamps=shifted_timestamps)
+    else:
+        # By default we write the rate if the timestamps are regular
+        recording_has_timestamps = recording.has_timestamps(segment_index=segment_index)
+        if recording_has_timestamps:
+            timestamps = recording.get_times(segment_index=segment_index)
+            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+            recording_t_start = timestamps[0]
+        else:
+            rate = recording.get_sampling_frequency()
+            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+
+        # Shift timestamps if starting_time is set
+        if rate:
+            starting_time = float(starting_time + recording_t_start)
+            # Note that we call the sampling frequency again because the estimated rate might be different from the
+            # sampling frequency of the recording extractor by some epsilon.
+            eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+        else:
+            shifted_timestamps = starting_time + timestamps
+            eseries_kwargs.update(timestamps=shifted_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -1048,6 +1060,7 @@ def add_recording_to_nwbfile(
     compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ):
     """
     Add traces from a recording object as an ElectricalSeries to an NWBFile object.
@@ -1074,7 +1087,6 @@ def add_recording_to_nwbfile(
         the starting time is taken from the recording extractor.
     write_as : {'raw', 'processed', 'lfp'}, default='raw'
         Specifies how to save the trace data in the NWB file. Options are:
-
         - 'raw': Save the data in the acquisition group.
         - 'processed': Save the data as FilteredEphys in a processing module.
         - 'lfp': Save the data as LFP in a processing module.
@@ -1094,6 +1106,15 @@ def add_recording_to_nwbfile(
         Dictionary of options for the iterator. Refer to the documentation at
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for a full list of available options.
+    force_timestamps_writing : bool, default: False
+        By default, this function checks if the timestamps have an uniform sampling rate and if it does, it writes
+        the object with a rate instead of the timestamps. If this parameter is set to True, the timestamps will always
+        be written.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Notes
     -----
@@ -1125,6 +1146,7 @@ def add_recording_to_nwbfile(
                 compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
+                always_write_timestamps=always_write_timestamps,
             )
 
 
