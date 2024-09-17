@@ -11,6 +11,8 @@
 ## Bug Fixes
 * Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
 * The method `get_extractor` now works for `MockImagingInterface`  [PR #1076](https://github.com/catalystneuro/neuroconv/pull/1076)
+* Updated opencv version for security [PR #1087](https://github.com/catalystneuro/neuroconv/pull/1087)
+* Solved a bug of `PlexonRecordingInterface` where data with multiple streams could not be opened [PR #989](https://github.com/catalystneuro/neuroconv/pull/989)
 
 ## Deprecations
 
@@ -24,6 +26,7 @@
 * Testing on mac sillicon [PR #1061](https://github.com/catalystneuro/neuroconv/pull/1061)
 * Add writing to zarr test for to the test on data [PR #1056](https://github.com/catalystneuro/neuroconv/pull/1056)
 * Modified the CI to avoid running doctests twice [PR #1077](https://github.com/catalystneuro/neuroconv/pull/#1077)
+* Consolidated daily workflows into one workflow and added email notifications [PR #1081](https://github.com/catalystneuro/neuroconv/pull/1081)
 
 ## v0.6.3
 
