@@ -179,6 +179,19 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
+    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
+
     def test_all_conversion_checks(self, setup_interface, tmp_path):
         # Create a unique test name and file path
         nwbfile_path = str(tmp_path / f"{self.__class__.__name__}.nwb")
@@ -203,6 +216,9 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         pass
 
     def test_interface_alignment(self):
+        pass
+
+    def test_configure_backend_for_equivalent_nwbfiles(self):
         pass
 
 
