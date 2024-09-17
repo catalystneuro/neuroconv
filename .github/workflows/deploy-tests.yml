@@ -13,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DRAFT_CONDITION: ${{ github.event.pull_request.draft == true }}
   PYTHON_VERSIONS: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
   OS_VERSIONS: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
 
@@ -24,7 +23,7 @@ jobs:
 
   detect-changelog-updates:
     needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && !env.DRAFT_CONDITION }}
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && github.event.pull_request.draft == false  }}
     name: Auto-detecting CHANGELOG.md updates
     runs-on: ubuntu-latest
     steps:
