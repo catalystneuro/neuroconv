@@ -8,7 +8,8 @@
 * Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
 
 ## Improvements
-* Run only the most basic testing while a PR is on draft  [PR #1082](https://github.com/catalystneuro/neuroconv/pull/1082)
+* Do not run dev tests on PRs [PR #1092](https://github.com/catalystneuro/neuroconv/pull/1082)
+* Run only the most basic testing while a PR is on draft  [PR #1092](https://github.com/catalystneuro/neuroconv/pull/1082)
 
 # v0.6.4 (September 17, 2024)
 
