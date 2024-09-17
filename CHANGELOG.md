@@ -5,6 +5,7 @@
 ## Bug Fixes
 * Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
 * The method `get_extractor` now works for `MockImagingInterface`  [PR #1076](https://github.com/catalystneuro/neuroconv/pull/1076)
+* Updated opencv version for security [PR #1087](https://github.com/catalystneuro/neuroconv/pull/1087)
 * Solved a bug of `PlexonRecordingInterface` where data with multiple streams could not be opened [PR #989](https://github.com/catalystneuro/neuroconv/pull/989)
 
 ## Deprecations
