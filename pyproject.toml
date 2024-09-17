@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.6.4"
+version = "0.6.5"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -56,7 +56,7 @@ dependencies = [
 
 [project.urls]
 "Homepage" = "https://github.com/catalystneuro/neuroconv"
-"Documentation" = "https://neuroconv.readthedocs.io/en/latest/"
+"Documentation" = "https://neuroconv.readthedocs.io/"
 "Changelog" = "https://github.com/catalystneuro/neuroconv/blob/main/CHANGELOG.md"
 
 
