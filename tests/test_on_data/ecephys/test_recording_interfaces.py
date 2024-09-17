@@ -709,10 +709,9 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonRecordingInterface
     interface_kwargs = dict(
-        # Only File_plexon_3.plx has an ecephys recording stream
-        file_path=str(ECEPHY_DATA_PATH / "plexon" / "File_plexon_3.plx"),
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2010, 2, 22, 20, 0, 57)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
