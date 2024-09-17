@@ -34,7 +34,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ${{ fromJson(inputs.python-versions) }}
-        os: ${{ fromJson(inputs.python-versions) }}
+        os: ${{ fromJson(inputs.os-versions) }}
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
