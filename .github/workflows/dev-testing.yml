@@ -2,6 +2,12 @@ name: Dev Branch Testing
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string'
+        required: true
+        type: string
+        default: '["3.9", "3.10", "3.11", "3.12"]'
     secrets:
       DANDI_API_KEY:
         required: true
@@ -22,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ${{ fromJson(inputs.python-versions) }}
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
