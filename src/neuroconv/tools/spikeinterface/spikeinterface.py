@@ -941,7 +941,7 @@ def add_electrical_series_to_nwbfile(
         eseries_kwargs.update(timestamps=shifted_timestamps)
     else:
         # By default we write the rate if the timestamps are regular
-        recording_has_timestamps = recording.has_timestamps(segment_index=segment_index)
+        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
         if recording_has_timestamps:
             timestamps = recording.get_times(segment_index=segment_index)
             rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
