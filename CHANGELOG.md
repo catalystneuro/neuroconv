@@ -1,6 +1,6 @@
 # Upcoming
 
-## v0.6.4
+# v0.6.4 (September 17, 2024)
 
 ## Bug Fixes
 * Fixed a setup bug introduced in `v0.6.2` where installation process created a directory instead of a file for test configuration file  [PR #1070](https://github.com/catalystneuro/neuroconv/pull/1070)
@@ -26,10 +26,10 @@
 
 
 
-## v0.6.3
+# v0.6.3
 
 
-## v0.6.2 (September 10, 2024)
+# v0.6.2 (September 10, 2024)
 
 ### Bug Fixes
 * Fixed a bug where `IntanRecordingInterface` added two devices [PR #1059](https://github.com/catalystneuro/neuroconv/pull/1059)
@@ -55,14 +55,14 @@
 
 
 
-## v0.6.1 (August 30, 2024)
+# v0.6.1 (August 30, 2024)
 
 ### Bug fixes
 * Fixed the JSON schema inference warning on excluded fields; also improved error message reporting of which method triggered the error. [PR #1037](https://github.com/catalystneuro/neuroconv/pull/1037)
 
 
 
-## v0.6.0 (August 27, 2024)
+# v0.6.0 (August 27, 2024)
 
 ### Deprecations
 * Deprecated  `WaveformExtractor` usage. [PR #821](https://github.com/catalystneuro/neuroconv/pull/821)
