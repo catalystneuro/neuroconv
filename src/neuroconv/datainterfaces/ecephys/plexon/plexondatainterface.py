@@ -25,7 +25,13 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
+        stream_name: str = "WB-Wideband",
+    ):
         """
         Load and prepare data for Plexon.
 
@@ -36,8 +42,15 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        stream_name: str, optional
+            Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
+            the wideband data.
         """
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+
+        invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
+        assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
