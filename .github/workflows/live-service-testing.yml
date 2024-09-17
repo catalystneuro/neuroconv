@@ -1,5 +1,6 @@
 name: Live service testing
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       python-versions:
