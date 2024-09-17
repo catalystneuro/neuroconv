@@ -3,14 +3,19 @@ name: Deploy tests
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-    # Synchronize, open and reopened are the defaults for pull request
+    # Synchronize, open and reopened are the default types for pull request
     # We add ready_for_review to trigger the check for changelog and full tests when ready for review is clicked
   merge_group:
   workflow_dispatch:
 
-concurrency:  # Cancel previous workflows on the same pull request
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  DRAFT_CONDITION: ${{ github.event.pull_request.draft == true }}
+  PYTHON_VERSIONS: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
+  OS_VERSIONS: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
 
 jobs:
 
@@ -19,7 +24,7 @@ jobs:
 
   detect-changelog-updates:
     needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && github.event.pull_request.draft == false }}
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && !env.DRAFT_CONDITION }}
     name: Auto-detecting CHANGELOG.md updates
     runs-on: ubuntu-latest
     steps:
@@ -40,16 +45,8 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
-      python-versions: >  # Ternary operator:  condition && value_if_true || value_if_false
-        ${{github.event.pull_request.draft == true
-           && '["3.9"]'
-           || '["3.9", "3.10", "3.11", "3.12"]'
-        }}
-      os-versions: >
-        ${{github.event.pull_request.draft == true
-           && '["ubuntu-latest"]'
-           || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
-        }}
+      python-versions: ${{ env.PYTHON_VERSIONS }}
+      os-versions: ${{ env.OS_VERSIONS }}
 
   run-live-service-tests:
     needs: assess-file-changes
@@ -58,16 +55,9 @@ jobs:
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
     with:
-      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
-        ${{github.event.pull_request.draft == true
-            && '["3.9"]'
-            || '["3.9", "3.10", "3.11", "3.12"]'
-        }}
-      os-versions: >
-        ${{github.event.pull_request.draft == true
-           && '["ubuntu-latest"]'
-           || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
-        }}
+      python-versions: ${{ env.PYTHON_VERSIONS }}
+      os-versions: ${{ env.OS_VERSIONS }}
+
   run-dev-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
@@ -78,40 +68,26 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
     with:
-      python-versions: >  # Ternary operator,  condition && value_if_true || value_if_false
-        ${{github.event.pull_request.draft == true
-            && '["3.9"]'
-            || '["3.9", "3.10", "3.11", "3.12"]'
-        }}
+      python-versions: ${{ env.PYTHON_VERSIONS }}
 
   run-doctests-only:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
     with:
-      python-versions: >  # Ternary operator:  condition && value_if_true || value_if_false
-        ${{github.event.pull_request.draft == true
-            && '["3.9"]'
-            || '["3.9", "3.10", "3.11", "3.12"]'
-        }}
-      os-versions: >
-        ${{github.event.pull_request.draft == true
-           && '["ubuntu-latest"]'
-           || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
-        }}
+      python-versions: ${{ env.PYTHON_VERSIONS }}
+      os-versions: ${{ env.OS_VERSIONS }}
+
   check-final-status:
     name: All tests passing
     if: always()
-
     needs:
-    - run-tests
-    - run-doctests-only
-
+      - run-tests
+      - run-doctests-only
     runs-on: ubuntu-latest
-
     steps:
-    - name: Decide whether the all jobs succeeded or at least one failed
-      uses: re-actors/alls-green@release/v1
-      with:
-        allowed-skips: run-tests, run-doctests-only  # Each has the option to skip depending on whether src changed
-        jobs: ${{ toJSON(needs) }}
+      - name: Decide whether all jobs succeeded or at least one failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          allowed-skips: run-tests, run-doctests-only
+          jobs: ${{ toJSON(needs) }}
