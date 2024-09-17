@@ -97,7 +97,7 @@ class VideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
-                dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
+                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
         }

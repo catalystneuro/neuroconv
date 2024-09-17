@@ -16,7 +16,7 @@ Convert Plexon recording data to NWB using :py:class:`~neuroconv.datainterfaces.
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import PlexonRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/plexon/File_plexon_3.plx"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/plexon/4chDemoPLX.plx"
     >>> # Change the file_path to the location in your system
     >>> interface = PlexonRecordingInterface(file_path=file_path, verbose=False)
     >>>

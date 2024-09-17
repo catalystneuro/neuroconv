@@ -1,2 +1,2 @@
 spikeinterface>=0.101.0
-neo>=0.13.2
+neo>=0.13.3
