@@ -1,7 +1,6 @@
 from datetime import datetime
 from platform import python_version
 from sys import platform
-from typing import Literal
 
 import numpy as np
 import pytest
@@ -180,32 +179,46 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
-    def test_interface_alignment(self):
-        interface_kwargs = self.interface_kwargs
+    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
-        # TODO - debug hanging I/O from pyedflib
-        # self.check_interface_get_original_timestamps()
-        # self.check_interface_get_timestamps()
-        # self.check_align_starting_time_internal()
-        # self.check_align_starting_time_external()
-        # self.check_interface_align_timestamps()
-        # self.check_shift_timestamps_by_start_time()
-        # self.check_interface_original_timestamps_inmutability()
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
 
-        self.check_nwbfile_temporal_alignment()
+    def test_all_conversion_checks(self, setup_interface, tmp_path):
+        # Create a unique test name and file path
+        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}.nwb")
+        self.nwbfile_path = nwbfile_path
+
+        # Now run the checks using the setup objects
+        self.check_conversion_options_schema_valid()
+        self.check_metadata()
+
+        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
+
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
 
     # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def check_run_conversion_in_nwbconverter_with_backend(
-        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
+    def test_metadata_schema_valid(self):
         pass
 
-    def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
+    def test_no_metadata_mutation(self):
         pass
 
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+    def test_run_conversion_with_backend(self):
+        pass
+
+    def test_interface_alignment(self):
+        pass
+
+    def test_configure_backend_for_equivalent_nwbfiles(self):
         pass
 
 
@@ -696,10 +709,9 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonRecordingInterface
     interface_kwargs = dict(
-        # Only File_plexon_3.plx has an ecephys recording stream
-        file_path=str(ECEPHY_DATA_PATH / "plexon" / "File_plexon_3.plx"),
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2010, 2, 22, 20, 0, 57)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
