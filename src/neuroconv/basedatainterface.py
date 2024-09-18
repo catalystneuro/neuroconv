@@ -41,11 +41,11 @@ class BaseDataInterface(ABC):
         return get_json_schema_from_method_signature(cls, exclude=["source_data"])
 
     @classmethod
-    def validate_source(cls, source_data: dict, verbose: bool = True):
+    def validate_source(cls, source_data: dict, verbose: bool = False):
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def _validate_source_data(self, source_data: dict, verbose: bool = True):
+    def _validate_source_data(self, source_data: dict, verbose: bool = False):
 
         encoder = _NWBSourceDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
