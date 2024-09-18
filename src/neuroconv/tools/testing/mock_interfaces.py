@@ -403,7 +403,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa D102
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
