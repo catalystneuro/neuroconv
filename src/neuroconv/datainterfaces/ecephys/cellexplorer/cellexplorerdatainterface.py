@@ -534,7 +534,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         Warnings
         --------
         Ensure that the `.session.mat` file is correctly located in the expected session path, or the method will not generate
-        a recording extractor.
+        a recording extractor. The expected session is self.session_path / f"{self.session_id}.session.mat"
 
         """
 
