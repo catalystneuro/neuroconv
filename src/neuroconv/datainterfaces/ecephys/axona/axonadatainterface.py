@@ -30,6 +30,12 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+
+        return extractor_kwargs
+
     def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 
@@ -41,7 +47,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str, default: "ElectricalSeries"
         """
 
-        super().__init__(file_path=file_path, all_annotations=True, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 

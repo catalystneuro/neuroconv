@@ -41,7 +41,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         **source_data,
     ):
         super().__init__(**source_data)
-        self.imaging_extractor = self.get_extractor()(**source_data)
+        self.imaging_extractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 

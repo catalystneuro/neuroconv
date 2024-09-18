@@ -32,8 +32,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The key-value pairs of extractor-specific arguments.
 
         """
+
         super().__init__(**source_data)
-        self.recording_extractor = self.get_extractor()(**source_data)
+
+        self.recording_extractor = self._extractor_instance
         property_names = self.recording_extractor.get_property_keys()
         # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.101.0 is released
         if "channel_name" not in property_names and "channel_names" in property_names:
@@ -118,7 +120,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
         new_recording = self.get_extractor()(
-            **{keyword: value for keyword, value in self.source_data.items() if keyword not in ["verbose", "es_key"]}
+            **{
+                keyword: value
+                for keyword, value in self.extractor_kwargs.items()
+                if keyword not in ["verbose", "es_key"]
+            }
         )
         if self._number_of_segments == 1:
             return new_recording.get_times()
