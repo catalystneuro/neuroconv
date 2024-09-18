@@ -1,5 +1,5 @@
 name: 'Prepare Datasets'
-description: 'Restores data form caches or downloads it from S3.'
+description: 'Restores data from caches or downloads it from S3.'
 inputs:
   aws-access-key-id:
     description: 'AWS Access Key ID'
@@ -60,6 +60,7 @@ runs:
 
     - name: Determine if downloads are required
       id: download-check
+      shell: bash  # Added shell property
       run: |
         if [[ "${{ steps.cache-ephys-datasets.outputs.cache-hit }}" != 'true' || \
               "${{ steps.cache-ophys-datasets.outputs.cache-hit }}" != 'true' || \
