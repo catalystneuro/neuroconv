@@ -34,7 +34,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
 
         super().__init__(**source_data)
-
         self.recording_extractor = self._extractor_instance
         property_names = self.recording_extractor.get_property_keys()
         # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.101.0 is released

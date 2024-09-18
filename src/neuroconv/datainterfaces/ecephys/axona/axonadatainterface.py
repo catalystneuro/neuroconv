@@ -140,6 +140,7 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     """
     Primary data interface class for converting Axona LFP data.
+    Note that this interface is not lazy and will load all data into memory.
     """
 
     display_name = "Axona LFP"
@@ -157,10 +158,20 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
             additionalProperties=False,
         )
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("file_path")
+        extractor_kwargs["traces_list"] = self.traces_list
+        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        return extractor_kwargs
+
     def __init__(self, file_path: FilePath):
         data = read_all_eeg_file_lfp_data(file_path).T
-        sampling_frequency = get_eeg_sampling_frequency(file_path)
-        super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)
+        self.traces_list = [data]
+        self.sampling_frequency = get_eeg_sampling_frequency(file_path)
+        super().__init__(file_path=file_path)
 
         self.source_data = dict(file_path=file_path)
 

@@ -18,7 +18,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     info = "Interface for NIDQ board recording data."
 
     ExtractorName = "SpikeGLXRecordingExtractor"
-    stream_id = ("nidq",)
+    stream_id = "nidq"
 
     @classmethod
     def get_source_schema(cls) -> dict:
