@@ -87,8 +87,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
-    def get_source_schema(cls) -> dict:
-        """ " "Get the source schema for the ScanImage legacy imaging interface."""
+    def get_source_schema(cls) -> dict:  # noqa: D102 , should inherit docstrnig from the base class
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema

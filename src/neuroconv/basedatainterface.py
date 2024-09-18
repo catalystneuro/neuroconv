@@ -36,7 +36,14 @@ class BaseDataInterface(ABC):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
+        """
+        Infer the JSON schema for the source_data from the method signature (annotation typing).
+
+        Returns
+        -------
+        dict
+            The JSON schema for the source_data.
+        """
         return get_json_schema_from_method_signature(cls, exclude=["source_data"])
 
     @validate_call
