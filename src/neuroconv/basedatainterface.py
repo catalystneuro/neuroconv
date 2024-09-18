@@ -24,7 +24,7 @@ from .utils import (
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import NWBSourceDataEncoder
+from .utils.json_schema import _NWBSourceDataEncoder
 
 
 class BaseDataInterface(ABC):
@@ -47,7 +47,7 @@ class BaseDataInterface(ABC):
 
     def _validate_source_data(self, source_data: dict, verbose: bool = True):
 
-        encoder = NWBSourceDataEncoder()
+        encoder = _NWBSourceDataEncoder()
         # The encoder produces a serialized object, so we deserialized it for comparison
 
         serialized_source_data = encoder.encode(source_data)
@@ -100,10 +100,6 @@ class BaseDataInterface(ABC):
             nwbfile_schema.pop("required", None)
 
         validate(instance=decoded_metadata, schema=metdata_schema)
-
-    def get_conversion_options_schema(self) -> dict:
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
         """
