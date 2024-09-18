@@ -211,7 +211,19 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_streams(cls, folder_path: DirectoryPath) -> dict:
-        """get streams for the Bruker TIFF imaging data."""
+        """
+        Get streams for the Bruker TIFF imaging data.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing the Bruker TIFF files.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the streams extracted from the Bruker TIFF files.
+        """
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
