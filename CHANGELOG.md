@@ -9,7 +9,10 @@
 
 ## Improvements
 * Run only the most basic testing while a PR is on draft  [PR #1082](https://github.com/catalystneuro/neuroconv/pull/1082)
-* Check that passing zarr with backend_configuration works for most data interfaces  [PR #1094](https://github.com/catalystneuro/neuroconv/pull/1094)
+* Test that zarr backend_configuration works in gin data tests  [PR #1094](https://github.com/catalystneuro/neuroconv/pull/1094)
+* Avoid running link test when the PR is on draft  [PR #1093](https://github.com/catalystneuro/neuroconv/pull/1093)
+
+
 # v0.6.4 (September 17, 2024)
 
 ## Bug Fixes
