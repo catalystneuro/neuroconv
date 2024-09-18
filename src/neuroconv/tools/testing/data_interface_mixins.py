@@ -232,9 +232,9 @@ class DataInterfaceTestMixin:
         self.check_metadata()
 
         self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
         self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
+        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
 
         self.check_read_nwb(nwbfile_path=nwbfile_path)
 
