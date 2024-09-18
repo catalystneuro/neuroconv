@@ -1249,7 +1249,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
     def check_metadata(self):
         # Validate metadata now happens on the class itself
         metadata = self.interface.get_metadata()
-        self
+        self.check_extracted_metadata(metadata)
 
     def check_metadata_schema_valid(self):
         schema = self.interface.get_metadata_schema()
