@@ -52,8 +52,8 @@ class BaseDataInterface(ABC):
 
         serialized_source_data = encoder.encode(source_data)
         decoded_source_data = json.loads(serialized_source_data)
-        schema = self.get_source_schema()
-        validate(instance=decoded_source_data, schema=schema)
+        source_schema = self.get_source_schema()
+        validate(instance=decoded_source_data, schema=source_schema)
         if verbose:
             print("Source data is valid!")
 

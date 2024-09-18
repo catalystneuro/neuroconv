@@ -237,6 +237,13 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     ExtractorName = "ScanImageTiffMultiPlaneImagingExtractor"
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("image_metadata")
+        extractor_kwargs["metadata"] = self.image_metadata
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(
         self,
@@ -286,10 +293,12 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
+        self.metadata = image_metadata
+        self.parsed_metadata = parsed_metadata
         super().__init__(
             file_path=file_path,
             channel_name=channel_name,
-            metadata=image_metadata,
+            image_metadata=image_metadata,
             parsed_metadata=parsed_metadata,
             verbose=verbose,
         )
