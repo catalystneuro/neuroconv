@@ -9,6 +9,8 @@
 
 ## Improvements
 * Run only the most basic testing while a PR is on draft  [PR #1082](https://github.com/catalystneuro/neuroconv/pull/1082)
+* Avoid running link test when the PR is on draft  [PR #1093](https://github.com/catalystneuro/neuroconv/pull/1093)
+
 
 # v0.6.4 (September 17, 2024)
 
