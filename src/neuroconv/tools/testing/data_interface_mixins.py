@@ -1145,9 +1145,8 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             assert one_photon_series.starting_frame is None
             assert one_photon_series.timestamps.shape == (15,)
 
-            imaging_extractor = self.interface.imaging_extractor
-            times_from_extractor = imaging_extractor._times
-            assert_array_equal(one_photon_series.timestamps, times_from_extractor)
+            interface_times = self.interface.get_original_timestamps()
+            assert_array_equal(one_photon_series.timestamps, interface_times)
 
 
 class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
