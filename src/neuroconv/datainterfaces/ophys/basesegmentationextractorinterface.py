@@ -126,8 +126,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
         )
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        """set the aligned timestamps for the segmentation extractor."""
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
         self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(

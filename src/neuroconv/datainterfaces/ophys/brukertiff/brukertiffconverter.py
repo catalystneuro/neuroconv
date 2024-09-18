@@ -237,7 +237,6 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
             by default False.
         stub_frames : int, optional
             The number of frames to include in the subset if `stub_test` is True, by default 100.
-
         """
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
