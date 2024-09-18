@@ -160,9 +160,18 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
             Whether to include acceptance status of ROIs, by default True.
-        mask_type : str, optional
-            The type of mask used for segmentation, either "image", "pixel", or "voxel", by default "image".
-        plane_segmentation_name : str, optional
+        mask_type : str, default: 'image'
+            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+            of pixels in each ROI.
+            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+            of voxels in each ROI.
+
+            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
+            plane_segmentation_name : str, optional
             The name of the plane segmentation object, by default None.
         iterator_options : dict, optional
             Additional options for iterating over the data, by default None.
