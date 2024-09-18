@@ -155,8 +155,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_timestamps(self) -> np.ndarray:  # noqa: D102
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        """Replace all timestamps for this interface with those aligned to the common session start time."""
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
         self.imaging_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(
