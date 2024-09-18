@@ -1106,10 +1106,6 @@ def add_recording_to_nwbfile(
         Dictionary of options for the iterator. Refer to the documentation at
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for a full list of available options.
-    force_timestamps_writing : bool, default: False
-        By default, this function checks if the timestamps have an uniform sampling rate and if it does, it writes
-        the object with a rate instead of the timestamps. If this parameter is set to True, the timestamps will always
-        be written.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
