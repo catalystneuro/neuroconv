@@ -81,8 +81,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
-    def get_original_timestamps(self) -> np.ndarray:
-        """Get the original timestamps from the Miniscope data."""
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102, should inherit docstring from base class
         from ndx_miniscope.utils import get_timestamps
 
         timestamps = get_timestamps(folder_path=self.source_data["folder_path"])
