@@ -64,10 +64,6 @@ class BaseDataInterface(ABC):
 
         self._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def get_conversion_options_schema(self) -> dict:
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
-
     def get_metadata_schema(self) -> dict:
         """Retrieve JSON schema for metadata."""
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
@@ -100,6 +96,10 @@ class BaseDataInterface(ABC):
             nwbfile_schema.pop("required", None)
 
         validate(instance=decoded_metadata, schema=metdata_schema)
+
+    def get_conversion_options_schema(self) -> dict:
+        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
+        return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
         """
@@ -147,11 +147,8 @@ class BaseDataInterface(ABC):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
-        # backend: Union[Literal["hdf5", "zarr"]],
-        # backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
-        backend: Optional[Literal["hdf5"]] = None,
-        backend_configuration: Optional[HDF5BackendConfiguration] = None,
+        backend: Optional[Literal["hdf5", "zarr"]] = None,
+        backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
         **conversion_options,
     ):
         """
@@ -168,11 +165,11 @@ class BaseDataInterface(ABC):
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        backend : "hdf5", optional
+        backend : {"hdf5", "zarr"}, optional
             The type of backend to use when writing the file.
             If a `backend_configuration` is not specified, the default type will be "hdf5".
             If a `backend_configuration` is specified, then the type will be auto-detected.
-        backend_configuration : HDF5BackendConfiguration, optional
+        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
             The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
