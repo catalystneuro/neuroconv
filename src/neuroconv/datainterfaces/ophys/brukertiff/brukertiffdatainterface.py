@@ -29,7 +29,23 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         folder_path: DirectoryPath,
         plane_separation_type: Literal["contiguous", "disjoint"] = None,
     ) -> dict:
-        """get streams for the Bruker TIFF imaging data."""
+        """
+        Get streams for the Bruker TIFF imaging data.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing the Bruker TIFF files.
+        plane_separation_type : Literal["contiguous", "disjoint"], optional
+            Type of plane separation to apply. If "contiguous", only the first plane stream for each channel is retained.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the streams for the Bruker TIFF imaging data. The dictionary has the following keys:
+            - "channel_streams": List of channel stream names.
+            - "plane_streams": Dictionary where keys are channel stream names and values are lists of plane streams.
+        """
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
