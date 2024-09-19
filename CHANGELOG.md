@@ -9,6 +9,7 @@
 
 ## Improvements
 * Run only the most basic testing while a PR is on draft  [PR #1082](https://github.com/catalystneuro/neuroconv/pull/1082)
+* Consolidated weekly workflows into one workflow and added email notifications [PR #1088](https://github.com/catalystneuro/neuroconv/pull/1088)
 * Avoid running link test when the PR is on draft  [PR #1093](https://github.com/catalystneuro/neuroconv/pull/1093)
 * Centralize gin data preparation in a github action  [PR #1095](https://github.com/catalystneuro/neuroconv/pull/1095)
 
@@ -27,6 +28,7 @@
 * Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 * Added a mock for segmentation extractors interfaces in ophys: `MockSegmentationInterface`  [PR #1067](https://github.com/catalystneuro/neuroconv/pull/1067)
 * Added a `MockSortingInterface` for testing purposes. [PR #1065](https://github.com/catalystneuro/neuroconv/pull/1065)
+* BaseRecordingInterfaces have a new conversion options `always_write_timestamps` that ca be used to force writing timestamps even if neuroconv heuristic indicates regular sampling rate [PR #1091](https://github.com/catalystneuro/neuroconv/pull/1091)
 
 
 ## Improvements
