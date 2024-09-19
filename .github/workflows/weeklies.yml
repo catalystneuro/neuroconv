@@ -1,0 +1,29 @@
+name: Weekly workflows
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 0" # Weekly at 6PM PST, 9PM EST, 3AM CET on Sunday to avoid working hours
+
+jobs:
+  build-and-upload-docker-image-rclone-with-config:
+    uses: ./.github/workflows/build_and_upload_docker_image_rclone_with_config.yml
+    secrets:
+      DOCKER_UPLOADER_USERNAME: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
+      DOCKER_UPLOADER_PASSWORD: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
+
+  notify-build-and-upload-docker-image-rclone-with-config:
+    runs-on: ubuntu-latest
+    needs: [build-and-upload-docker-image-rclone-with-config]
+    if: ${{ always() && needs.build-and-upload-docker-image-rclone-with-config.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Weekly Docker Image Build and Upload Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The weekly build and upload of the Docker image failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/weeklies.yml"
