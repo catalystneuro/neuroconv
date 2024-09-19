@@ -307,6 +307,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
+        always_write_timestamps: bool = False,
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -325,7 +326,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'lfp', 'processed'}
+        write_as : {'raw', 'processed', 'lfp'}, default='raw'
+            Specifies how to save the trace data in the NWB file. Options are:
+            - 'raw': Save the data in the acquisition group.
+            - 'processed': Save the data as FilteredEphys in a processing module.
+            - 'lfp': Save the data as LFP in a processing module.
+
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
@@ -353,6 +359,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             * progress_bar_options : dict, optional
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
+        always_write_timestamps : bool, default: False
+            Set to True to always write timestamps.
+            By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+            using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+            explicitly, regardless of whether the sampling rate is uniform.
         """
         from ...tools.spikeinterface import add_recording_to_nwbfile
 
@@ -376,4 +387,5 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
         )
