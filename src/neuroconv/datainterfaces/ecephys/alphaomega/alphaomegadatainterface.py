@@ -13,12 +13,18 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     display_name = "AlphaOmega Recording"
     associated_suffixes = (".mpx",)
     info = "Interface class for converting AlphaOmega recording data."
+    stream_id = "RAW"
 
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder of .mpx files."
         return source_schema
+
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["stream_id"] = self.stream_id
+        return extractor_kwargs
 
     def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -33,7 +39,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
             Default is True.
         es_key: str, default: "ElectricalSeries"
         """
-        super().__init__(folder_path=folder_path, stream_id="RAW", verbose=verbose, es_key=es_key)
+        super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
