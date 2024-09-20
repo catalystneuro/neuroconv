@@ -41,7 +41,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
         from ...tools.neo import get_number_of_electrodes, get_number_of_segments
 
-        super().__init__(file_paths=file_paths)
+        self.source_data = dict()
+        self.source_data["file_paths"] = file_paths
 
         self.readers_list = list()
         for f in file_paths:
