@@ -25,6 +25,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["stream_id"] = self.stream_id
+
+        return extractor_kwargs
+
     def __init__(
         self,
         file_path: FilePath,
@@ -55,7 +61,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             nsx_to_load = int(file_path.suffix[-1])
             self.file_path = file_path
 
-        super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
+        self.stream_id = str(nsx_to_load)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
@@ -83,7 +90,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = True):
         """
         Parameters
         ----------
