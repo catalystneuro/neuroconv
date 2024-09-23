@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from .spikeglx_utils import (
     add_recording_extractor_properties,
@@ -13,10 +13,14 @@ from .spikeglx_utils import (
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
+    """
+    Primary SpikeGLX interface for converting raw SpikeGLX data using a :py:class:`~spikeinterface.extractors.SpikeGLXRecordingExtractor`.
+    """
+
     display_name = "SpikeGLX Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
@@ -34,10 +38,20 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("file_path")
+        extractor_kwargs["folder_path"] = self.folder_path
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["stream_id"] = self.stream_id
+        return extractor_kwargs
+
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
@@ -63,13 +77,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             else:
                 raise ValueError("Cannot automatically determine es_key from path")
         file_path = Path(file_path)
-        folder_path = file_path.parent
+        self.folder_path = file_path.parent
+
         super().__init__(
-            folder_path=folder_path,
-            stream_id=self.stream_id,
+            file_path=file_path,
             verbose=verbose,
             es_key=es_key,
-            all_annotations=True,
         )
         self.source_data["file_path"] = str(file_path)
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
@@ -119,7 +132,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         new_recording = self.get_extractor()(
-            folder_path=self.source_data["folder_path"], stream_id=self.source_data["stream_id"]
+            folder_path=self.folder_path,
+            stream_id=self.stream_id,
         )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
         if self._number_of_segments == 1:
             return new_recording.get_times()

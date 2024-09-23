@@ -32,8 +32,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The key-value pairs of extractor-specific arguments.
 
         """
+
         super().__init__(**source_data)
-        self.recording_extractor = self.get_extractor()(**source_data)
+        self.recording_extractor = self._extractor_instance
         property_names = self.recording_extractor.get_property_keys()
         # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.101.0 is released
         if "channel_name" not in property_names and "channel_names" in property_names:
@@ -118,7 +119,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
         new_recording = self.get_extractor()(
-            **{keyword: value for keyword, value in self.source_data.items() if keyword not in ["verbose", "es_key"]}
+            **{
+                keyword: value
+                for keyword, value in self.extractor_kwargs.items()
+                if keyword not in ["verbose", "es_key"]
+            }
         )
         if self._number_of_segments == 1:
             return new_recording.get_times()
@@ -150,7 +155,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
 
-        self.recording_extractor.set_times(times=aligned_timestamps)
+        self.recording_extractor.set_times(times=aligned_timestamps, with_warning=False)
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
@@ -172,7 +177,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         for segment_index in range(self._number_of_segments):
             self.recording_extractor.set_times(
-                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
+                times=aligned_segment_timestamps[segment_index],
+                segment_index=segment_index,
+                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -285,7 +292,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
         ]
         for segment_index in range(number_of_segments):
-            recording_extractor_stubbed.set_times(times=times_stubbed[segment_index], segment_index=segment_index)
+            recording_extractor_stubbed.set_times(
+                times=times_stubbed[segment_index],
+                segment_index=segment_index,
+                with_warning=False,
+            )
 
         return recording_extractor_stubbed
 
@@ -301,6 +312,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
+        always_write_timestamps: bool = False,
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -319,7 +331,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'lfp', 'processed'}
+        write_as : {'raw', 'processed', 'lfp'}, default='raw'
+            Specifies how to save the trace data in the NWB file. Options are:
+            - 'raw': Save the data in the acquisition group.
+            - 'processed': Save the data as FilteredEphys in a processing module.
+            - 'lfp': Save the data as LFP in a processing module.
+
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
@@ -347,6 +364,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             * progress_bar_options : dict, optional
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
+        always_write_timestamps : bool, default: False
+            Set to True to always write timestamps.
+            By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+            using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+            explicitly, regardless of whether the sampling rate is uniform.
         """
         from ...tools.spikeinterface import add_recording_to_nwbfile
 
@@ -370,4 +392,5 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
         )

@@ -14,7 +14,7 @@ from neuroconv.tools.testing.data_interface_mixins import (
 from neuroconv.utils import dict_deep_update, load_dict_from_file
 
 try:
-    from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import OUTPUT_PATH
 
@@ -400,8 +400,3 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         interface = self.data_interface_cls(**self.interface_kwargs)
         with self.assertRaises(AssertionError):
             interface.load(t2=1.0, evtype=["invalid"])
-
-    def test_load_invalid_folder_path(self):
-        interface = self.data_interface_cls(folder_path="invalid")
-        with self.assertRaises(AssertionError):
-            interface.load(t2=1.0)

@@ -4,20 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.6.2"
+version = "0.6.5"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
-    {name = "Cody Baker"},
-    {name = "Szonja Weigl"},
-    {name = "Heberto Mayorquin"},
-    {name = "Paul Adkisson"},
-    {name = "Luiz Tauffer"},
-    {name = "Ben Dichter",  email = "ben.dichter@catalystneuro.com"}
+    { name = "Cody Baker" },
+    { name = "Szonja Weigl" },
+    { name = "Heberto Mayorquin" },
+    { name = "Paul Adkisson" },
+    { name = "Luiz Tauffer" },
+    { name = "Ben Dichter", email = "ben.dichter@catalystneuro.com" },
 ]
-urls = { "Homepage" = "https://github.com/catalystneuro/neuroconv" }
-license = {file = "license.txt"}
-keywords = ["nwb"]
+
+
+license = { file = "license.txt" }
+keywords = ["nwb", "NeurodataWithoutBorders"]
 classifiers = [
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3.9",
@@ -51,6 +52,12 @@ dependencies = [
     "docstring-parser",
     "packaging"  # Issue 903
 ]
+
+
+[project.urls]
+"Homepage" = "https://github.com/catalystneuro/neuroconv"
+"Documentation" = "https://neuroconv.readthedocs.io/"
+"Changelog" = "https://github.com/catalystneuro/neuroconv/blob/main/CHANGELOG.md"
 
 
 [project.optional-dependencies]
@@ -91,12 +98,8 @@ neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_spec
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra --doctest-glob='*.rst'"
-testpaths = [
-  "docs/conversion_examples_gallery/",
-  "tests"
-]
+testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
-
 
 
 [tool.black]
@@ -121,20 +124,27 @@ extend-exclude = '''
 '''
 
 
-
 [tool.ruff]
-exclude = [
-  "*/__init__.py"
-]
 
 [tool.ruff.lint]
-select = ["F401", "I"]  # TODO: eventually, expand to other 'F' linting
+select = [
+    "F401",  # Unused import
+    "I",  # All isort rules
+    "D101",  # Missing docstring in public class
+    "D103",  # Missing docstring in public function
+]
 fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"**__init__.py" = ["F401", "I"]
+"tests/**" = ["D"] # We are not enforcing docstrings in tests
+"src/neuroconv/tools/testing/data_interface_mixins.py" = ["D"]  # We are not enforcing docstrings in the interface mixings
+"docs/conf.py" = ["D"]  # We are not enforcing docstrings in the conf.py file
+"docs/conversion_examples_gallery/conftest.py" = ["D"]  # We are not enforcing docstrings in the conversion examples
 
 [tool.ruff.lint.isort]
 relative-imports-order = "closest-to-furthest"
 known-first-party = ["neuroconv"]
-
 
 
 [tool.codespell]

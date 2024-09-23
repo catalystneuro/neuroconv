@@ -10,12 +10,13 @@ root = Path(__file__).parent
 
 
 def read_requirements(file):
+    """Read requirements from a file."""
     with open(root / file) as f:
         return f.readlines()
 
 
 extras_require = defaultdict(list)
-extras_require["full"] = ["dandi>=0.58.1", "hdf5plugin"]
+extras_require["full"] = ["dandi>=0.58.1", "hdf5plugin", "boto3"]
 
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
@@ -41,6 +42,7 @@ for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
 gin_config_file_base = root / "base_gin_test_config.json"
 gin_config_file_local = root / "tests/test_on_data/gin_test_config.json"
 if not gin_config_file_local.exists():
+    gin_config_file_local.parent.mkdir(parents=True, exist_ok=True)
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
 # Bug related to sonpy on M1 Mac being installed but not running properly

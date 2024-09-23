@@ -7,6 +7,7 @@ from neuroconv.datainterfaces import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
     CellExplorerSortingInterface,
+    KiloSortSortingInterface,
     NeuralynxSortingInterface,
     NeuroScopeSortingInterface,
     PhySortingInterface,
@@ -17,8 +18,8 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 
 try:
-    from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-    from .setup_paths import OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+    from ..setup_paths import OUTPUT_PATH
 except ImportError:
     from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     from setup_paths import OUTPUT_PATH
@@ -192,6 +193,106 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = PhySortingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["Ecephys"]["UnitProperties"] == [
+            dict(name="n_spikes", description="Number of spikes recorded from each unit."),
+            dict(name="fr", description="Average firing rate of each unit."),
+            dict(name="depth", description="Estimated depth of each unit in micrometers."),
+            dict(name="Amplitude", description="Per-template amplitudes, computed as the L2 norm of the template."),
+            dict(
+                name="ContamPct",
+                description="Contamination rate for each template, computed as fraction of refractory period violations relative to expectation based on a Poisson process.",
+            ),
+            dict(
+                name="KSLabel",
+                description="Label indicating whether each template is 'mua' (multi-unit activity) or 'good' (refractory).",
+            ),
+            dict(name="original_cluster_id", description="Original cluster ID assigned by Kilosort."),
+            dict(
+                name="amp",
+                description="For every template, the maximum amplitude of the template waveforms across all channels.",
+            ),
+            dict(name="ch", description="The channel label of the best channel, as defined by the user."),
+            dict(name="sh", description="The shank label of the best channel."),
+        ]
+
+    def check_units_table_propagation(self):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        # example data does not contain n_spikes, fr, depth, amp, ch, and sh
+        assert (
+            nwbfile.units["Amplitude"].description
+            == "Per-template amplitudes, computed as the L2 norm of the template."
+        )
+        assert (
+            nwbfile.units["ContamPct"].description
+            == "Contamination rate for each template, computed as fraction of refractory period violations relative to expectation based on a Poisson process."
+        )
+        assert (
+            nwbfile.units["KSLabel"].description
+            == "Label indicating whether each template is 'mua' (multi-unit activity) or 'good' (refractory)."
+        )
+        assert nwbfile.units["original_cluster_id"].description == "Original cluster ID assigned by Kilosort."
+
+    def run_custom_checks(self):
+        self.check_units_table_propagation()
+
+
+class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
+    data_interface_cls = KiloSortSortingInterface
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["Ecephys"]["UnitProperties"] == [
+            dict(name="n_spikes", description="Number of spikes recorded from each unit."),
+            dict(name="fr", description="Average firing rate of each unit."),
+            dict(name="depth", description="Estimated depth of each unit in micrometers."),
+            dict(name="Amplitude", description="Per-template amplitudes, computed as the L2 norm of the template."),
+            dict(
+                name="ContamPct",
+                description="Contamination rate for each template, computed as fraction of refractory period violations relative to expectation based on a Poisson process.",
+            ),
+            dict(
+                name="KSLabel",
+                description="Label indicating whether each template is 'mua' (multi-unit activity) or 'good' (refractory).",
+            ),
+            dict(name="original_cluster_id", description="Original cluster ID assigned by Kilosort."),
+            dict(
+                name="amp",
+                description="For every template, the maximum amplitude of the template waveforms across all channels.",
+            ),
+            dict(name="ch", description="The channel label of the best channel, as defined by the user."),
+            dict(name="sh", description="The shank label of the best channel."),
+        ]
+
+    def check_units_table_propagation(self):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        # example data does not contain n_spikes, fr, depth, amp, ch, and sh
+        assert (
+            nwbfile.units["Amplitude"].description
+            == "Per-template amplitudes, computed as the L2 norm of the template."
+        )
+        assert (
+            nwbfile.units["ContamPct"].description
+            == "Contamination rate for each template, computed as fraction of refractory period violations relative to expectation based on a Poisson process."
+        )
+        assert (
+            nwbfile.units["KSLabel"].description
+            == "Label indicating whether each template is 'mua' (multi-unit activity) or 'good' (refractory)."
+        )
+        assert nwbfile.units["original_cluster_id"].description == "Original cluster ID assigned by Kilosort."
+
+    def run_custom_checks(self):
+        self.check_units_table_propagation()
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):

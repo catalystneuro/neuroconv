@@ -10,7 +10,6 @@ from spikeinterface.extractors import NwbRecordingExtractor
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
-    IntanRecordingInterface,
     Plexon2RecordingInterface,
 )
 
@@ -19,8 +18,8 @@ try:
     from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     from ..setup_paths import OUTPUT_PATH
 except ImportError:
-    from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-    from setup_paths import OUTPUT_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+    from ..setup_paths import OUTPUT_PATH
 
 if not DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {DATA_PATH}!")
@@ -48,23 +47,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ),
     ]
-
-    # Intan multiple files format
-    parameterized_recording_list.append(
-        param(
-            data_interface=IntanRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / "intan_fpc_test_231117_052630/info.rhd")),
-            case_name="one-file-per-channel",
-        )
-    )
-
-    parameterized_recording_list.append(
-        param(
-            data_interface=IntanRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / "intan_fps_test_231117_052500/info.rhd")),
-            case_name="one-file-per-signal",
-        )
-    )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):

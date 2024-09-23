@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Literal, Optional
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
@@ -12,10 +12,11 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".sbx",)
     info = "Interface for Scanbox imaging data."
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,
-        sampling_frequency: float = None,
+        sampling_frequency: Optional[float] = None,
         verbose: bool = True,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):

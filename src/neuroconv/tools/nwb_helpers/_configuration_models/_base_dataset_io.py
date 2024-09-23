@@ -9,7 +9,6 @@ import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
-from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from pydantic import (
     BaseModel,
@@ -25,7 +24,7 @@ from typing_extensions import Self
 from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from ...hdmf import SliceableDataChunkIterator
+from ...hdmf import GenericDataChunkIterator, SliceableDataChunkIterator
 
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
@@ -277,10 +276,30 @@ class DatasetIOConfiguration(BaseModel, ABC):
             )
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
-            raise NotImplementedError(
-                f"Unable to create a `DatasetIOConfiguration` for the dataset at '{location_in_file}'"
-                f"for neurodata object '{neurodata_object}' of type '{type(neurodata_object)}'!"
-            )
+            # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
+            all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset[:].flat])
+            if all_elements_are_strings:
+                dtype = np.array([element for element in candidate_dataset[:].flat]).dtype
+                chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
+                    chunk_mb=10.0, maxshape=full_shape, dtype=dtype
+                )
+                buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                    buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=dtype
+                )
+                compression_method = "gzip"
+            else:
+                raise NotImplementedError(
+                    f"Unable to create a `DatasetIOConfiguration` for the dataset at '{location_in_file}'"
+                    f"for neurodata object '{neurodata_object}' of type '{type(neurodata_object)}'!"
+                )
+                # TODO: Add support for compound objects with non-string elements
+                # chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
+                # buffer_shape = full_shape
+                # compression_method = None
+                # warnings.warn(
+                #     f"Default chunking and compression options for compound objects are not optimized. "
+                #     f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
+                # )
 
         return cls(
             object_id=neurodata_object.object_id,

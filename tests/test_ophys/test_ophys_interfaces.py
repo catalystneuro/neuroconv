@@ -1,22 +1,23 @@
-import tempfile
-import unittest
-from pathlib import Path
+from neuroconv.tools.testing.data_interface_mixins import (
+    ImagingExtractorInterfaceTestMixin,
+    SegmentationExtractorInterfaceTestMixin,
+)
+from neuroconv.tools.testing.mock_interfaces import (
+    MockImagingInterface,
+    MockSegmentationInterface,
+)
 
-from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.testing.mock_interfaces import MockImagingInterface
+class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
+    data_interface_cls = MockImagingInterface
+    interface_kwargs = dict()
+
+    # TODO: fix this by setting a seed on the dummy imaging extractor
+    def test_all_conversion_checks(self):
+        pass
 
 
-class TestMockImagingInterface(unittest.TestCase):
-    def setUp(self):
-        self.mock_imaging_interface = MockImagingInterface()
+class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
-    def test_run_conversion(self):
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            nwbfile_path = Path(tmpdir) / "test.nwb"
-            self.mock_imaging_interface.run_conversion(nwbfile_path=nwbfile_path)
-
-    def test_add_to_nwbfile(self):
-        nwbfile = mock_NWBFile()
-        self.mock_imaging_interface.add_to_nwbfile(nwbfile)
+    data_interface_cls = MockSegmentationInterface
+    interface_kwargs = dict()

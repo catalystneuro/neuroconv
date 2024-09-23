@@ -2,13 +2,13 @@ import json
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import DeepDict, NWBMetaDataEncoder, get_base_schema
+from ....utils import DeepDict, _NWBMetaDataEncoder, get_base_schema
 from ....utils.path import infer_path
 
 
@@ -20,6 +20,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".nvt",)
     info = "Interface for writing Neuralynx position tracking .nvt files to NWB."
 
+    @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True):
         """
         Interface for writing Neuralynx .nvt files to nwb.
@@ -136,7 +137,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                 unit="pixels",
                 conversion=1.0,
                 timestamps=self.get_timestamps(),
-                description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}",
+                description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=_NWBMetaDataEncoder)}",
             )
 
             nwbfile.add_acquisition(Position([spatial_series], name="NvtPosition"))
@@ -151,7 +152,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                         unit="degrees",
                         conversion=1.0,
                         timestamps=spatial_series if add_position else self.get_timestamps(),
-                        description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}",
+                        description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=_NWBMetaDataEncoder)}",
                     ),
                     name="NvtCompassDirection",
                 )

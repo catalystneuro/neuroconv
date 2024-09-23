@@ -33,7 +33,7 @@ from neuroconv.tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
 )
-from neuroconv.utils import NWBMetaDataEncoder
+from neuroconv.utils import _NWBMetaDataEncoder
 
 
 class DataInterfaceTestMixin:
@@ -67,9 +67,8 @@ class DataInterfaceTestMixin:
 
     @pytest.fixture
     def setup_interface(self, request):
-
+        """Add this as a fixture when you want freshly created interface in the test."""
         self.test_name: str = ""
-        self.conversion_options = self.conversion_options or dict()
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
@@ -84,37 +83,39 @@ class DataInterfaceTestMixin:
         schema = self.data_interface_cls.get_source_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    def check_conversion_options_schema_valid(self):
+    def test_conversion_options_schema_valid(self, setup_interface):
         schema = self.interface.get_conversion_options_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    def check_metadata_schema_valid(self):
+    def test_metadata_schema_valid(self, setup_interface):
         schema = self.interface.get_metadata_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    def check_metadata(self):
-        schema = self.interface.get_metadata_schema()
+    def test_metadata(self, setup_interface):
+        # Validate metadata now happens on the class itself
         metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        # handle json encoding of datetimes and other tricky types
-        metadata_for_validation = json.loads(json.dumps(metadata, cls=NWBMetaDataEncoder))
-        validate(metadata_for_validation, schema)
         self.check_extracted_metadata(metadata)
 
-    def check_no_metadata_mutation(self):
-        """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+    def check_extracted_metadata(self, metadata: dict):
+        """Override this method to make assertions about specific extracted metadata values."""
+        pass
 
-        metadata_in = deepcopy(metadata)
+    def test_no_metadata_mutation(self, setup_interface):
+        """Ensure the metadata object is not altered by `add_to_nwbfile` method."""
 
         nwbfile = mock_NWBFile()
+
+        metadata = self.interface.get_metadata()
+        metadata_before_add_method = deepcopy(metadata)
+
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+        assert metadata == metadata_before_add_method
 
-        assert metadata == metadata_in
+    @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+    def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend):
 
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}-{self.test_name}.nwb")
+
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
@@ -127,23 +128,17 @@ class DataInterfaceTestMixin:
             **self.conversion_options,
         )
 
-    def check_configure_backend_for_equivalent_nwbfiles(self, backend: Literal["hdf5", "zarr"] = "hdf5"):
+        if backend == "zarr":
+            with NWBZarrIO(path=nwbfile_path, mode="r") as io:
+                io.read()
+
+    @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+    def test_run_conversion_with_backend_configuration(self, setup_interface, tmp_path, backend):
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
-        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-
-        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
-        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
-
-    def check_run_conversion_with_backend_configuration(
-        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile_path = str(tmp_path / f"conversion_with_backend_configuration{backend}-{self.test_name}.nwb")
 
         nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
@@ -155,6 +150,42 @@ class DataInterfaceTestMixin:
             backend_configuration=backend_configuration,
             **self.conversion_options,
         )
+
+    @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+    def test_configure_backend_for_equivalent_nwbfiles(self, setup_interface, tmp_path, backend):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
+        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
+
+    def test_all_conversion_checks(self, setup_interface, tmp_path):
+        interface, test_name = setup_interface
+
+        # Create a unique test name and file path
+        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
+        self.nwbfile_path = nwbfile_path
+
+        self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
+        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
+
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
+
+        # Any extra custom checks to run
+        self.run_custom_checks()
+
+    @abstractmethod
+    def check_read_nwb(self, nwbfile_path: str):
+        """Read the produced NWB file and compare it to the interface."""
+        pass
+
+    def run_custom_checks(self):
+        """Override this in child classes to inject additional custom checks."""
+        pass
 
     def check_run_conversion_in_nwbconverter_with_backend(
         self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
@@ -204,49 +235,6 @@ class DataInterfaceTestMixin:
             backend_configuration=backend_configuration,
             conversion_options=conversion_options,
         )
-
-    @abstractmethod
-    def check_read_nwb(self, nwbfile_path: str):
-        """Read the produced NWB file and compare it to the interface."""
-        pass
-
-    def check_basic_zarr_read(self, nwbfile_path: str):
-        """Ensure NWBZarrIO can read the file."""
-        with NWBZarrIO(path=nwbfile_path, mode="r") as io:
-            io.read()
-
-    def check_extracted_metadata(self, metadata: dict):
-        """Override this method to make assertions about specific extracted metadata values."""
-        pass
-
-    def run_custom_checks(self):
-        """Override this in child classes to inject additional custom checks."""
-        pass
-
-    def test_all_conversion_checks(self, setup_interface, tmp_path):
-        interface, test_name = setup_interface
-
-        # Create a unique test name and file path
-        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
-        self.nwbfile_path = nwbfile_path
-
-        # Now run the checks using the setup objects
-        self.check_metadata_schema_valid()
-        self.check_conversion_options_schema_valid()
-        self.check_metadata()
-        self.check_no_metadata_mutation()
-        self.check_configure_backend_for_equivalent_nwbfiles()
-
-        self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
-
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
-
-        self.check_read_nwb(nwbfile_path=nwbfile_path)
-
-        # Any extra custom checks to run
-        self.run_custom_checks()
 
 
 class TemporalAlignmentMixin:
@@ -725,31 +713,6 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             ):
                 assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
 
-    def test_all_conversion_checks(self, setup_interface, tmp_path):
-        # The fixture `setup_interface` sets up the necessary objects
-        interface, test_name = setup_interface
-
-        # Create a unique test name and file path
-        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}.nwb")
-
-        # Now run the checks using the setup objects
-        self.check_metadata_schema_valid()
-        self.check_conversion_options_schema_valid()
-        self.check_metadata()
-        self.check_no_metadata_mutation()
-        self.check_configure_backend_for_equivalent_nwbfiles()
-
-        self.check_run_conversion_in_nwbconverter_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_run_conversion_in_nwbconverter_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
-
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, backend="hdf5")
-
-        self.check_read_nwb(nwbfile_path=nwbfile_path)
-
-        # Any extra custom checks to run
-        self.run_custom_checks()
-
     def test_interface_alignment(self, setup_interface):
 
         # TODO sorting can have times without associated recordings, test this later
@@ -767,6 +730,10 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing Audio interfaces.
+    """
+
     # Currently asserted in the downstream testing suite; could be refactored in future PR
     def check_read_nwb(self, nwbfile_path: str):
         pass
@@ -777,6 +744,10 @@ class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing DeepLabCut interfaces.
+    """
+
     def check_interface_get_original_timestamps(self):
         pass  # TODO in separate PR
 
@@ -797,11 +768,15 @@ class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing Video interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             video_type = Path(self.interface_kwargs["file_paths"][0]).suffix[1:]
-            assert f"Video: video_{video_type}" in nwbfile.acquisition
+            assert f"Video video_{video_type}" in nwbfile.acquisition
 
     def check_interface_set_aligned_timestamps(self):
         all_unaligned_timestamps = self.interface.get_original_timestamps()
@@ -867,6 +842,49 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing MedPC interfaces.
+    """
+
+    def test_metadata(self):
+        pass
+
+    def test_conversion_options_schema_valid(self):
+        pass
+
+    def test_metadata_schema_valid(self):
+        pass
+
+    def test_run_conversion_with_backend(self):
+        pass
+
+    def test_run_conversion_with_backend_configuration(self):
+        pass
+
+    def test_no_metadata_mutation(self):
+        pass
+
+    def test_configure_backend_for_equivalent_nwbfiles(self):
+        pass
+
+    def check_metadata_schema_valid(self):
+        schema = self.interface.get_metadata_schema()
+        Draft7Validator.check_schema(schema=schema)
+
+    def check_conversion_options_schema_valid(self):
+        schema = self.interface.get_conversion_options_schema()
+        Draft7Validator.check_schema(schema=schema)
+
+    def check_metadata(self):
+        schema = self.interface.get_metadata_schema()
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        # handle json encoding of datetimes and other tricky types
+        metadata_for_validation = json.loads(json.dumps(metadata, cls=_NWBMetaDataEncoder))
+        validate(metadata_for_validation, schema)
+        self.check_extracted_metadata(metadata)
+
     def check_no_metadata_mutation(self, metadata: dict):
         """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
 
@@ -1101,6 +1119,10 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing Miniscope Imaging interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
 
@@ -1123,12 +1145,15 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             assert one_photon_series.starting_frame is None
             assert one_photon_series.timestamps.shape == (15,)
 
-            imaging_extractor = self.interface.imaging_extractor
-            times_from_extractor = imaging_extractor._times
-            assert_array_equal(one_photon_series.timestamps, times_from_extractor)
+            interface_times = self.interface.get_original_timestamps()
+            assert_array_equal(one_photon_series.timestamps, interface_times)
 
 
 class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixing for testing ScanImage Single Plane Imaging interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
@@ -1160,6 +1185,10 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
 
 
 class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    A mixin for testing ScanImage MultiPlane Imaging interfaces.
+    """
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
@@ -1190,6 +1219,45 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
 
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """Mixin for testing TDT Fiber Photometry interfaces."""
+
+    def test_metadata(self):
+        pass
+
+    def test_metadata_schema_valid(self):
+        pass
+
+    def test_no_metadata_mutation(self):
+        pass
+
+    def test_conversion_options_schema_valid(self):
+        pass
+
+    def test_run_conversion_with_backend(self):
+        pass
+
+    def test_run_conversion_with_backend_configuration(self):
+        pass
+
+    def test_no_metadata_mutation(self):
+        pass
+
+    def test_configure_backend_for_equivalent_nwbfiles(self):
+        pass
+
+    def check_metadata(self):
+        # Validate metadata now happens on the class itself
+        metadata = self.interface.get_metadata()
+        self.check_extracted_metadata(metadata)
+
+    def check_metadata_schema_valid(self):
+        schema = self.interface.get_metadata_schema()
+        Draft7Validator.check_schema(schema=schema)
+
+    def check_conversion_options_schema_valid(self):
+        schema = self.interface.get_conversion_options_schema()
+        Draft7Validator.check_schema(schema=schema)
+
     def check_no_metadata_mutation(self, metadata: dict):
         """Ensure the metadata object was not altered by `add_to_nwbfile` method."""
 

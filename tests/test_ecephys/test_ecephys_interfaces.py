@@ -20,7 +20,10 @@ from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
 from neuroconv.tools.nwb_helpers import get_module
-from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+from neuroconv.tools.testing.mock_interfaces import (
+    MockRecordingInterface,
+    MockSortingInterface,
+)
 
 python_version = Version(get_python_version())
 
@@ -49,6 +52,20 @@ class TestRecordingInterface(TestCase):
             interface.validate_metadata(metadata)
 
 
+class TestAlwaysWriteTimestamps:
+
+    def test_always_write_timestamps(self):
+        # By default the MockRecordingInterface has a uniform sampling rate
+        interface = MockRecordingInterface(durations=[1.0], sampling_frequency=30_000.0)
+
+        nwbfile = interface.create_nwbfile(always_write_timestamps=True)
+        electrical_series = nwbfile.acquisition["ElectricalSeries"]
+
+        expected_timestamps = interface.recording_extractor.get_times()
+
+        np.testing.assert_array_equal(electrical_series.timestamps[:], expected_timestamps)
+
+
 class TestAssertions(TestCase):
     @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
     def test_spike2_import_assertions_3_10(self):
@@ -67,7 +84,33 @@ class TestAssertions(TestCase):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
 
-class TestSortingInterface(unittest.TestCase):
+class TestSortingInterface:
+
+    def test_run_conversion(self, tmp_path):
+
+        nwbfile_path = Path(tmp_path) / "test_sorting.nwb"
+        num_units = 4
+        interface = MockSortingInterface(num_units=num_units, durations=(1.0,))
+        interface.sorting_extractor = interface.sorting_extractor.rename_units(new_unit_ids=["a", "b", "c", "d"])
+
+        interface.run_conversion(nwbfile_path=nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            units = nwbfile.units
+            assert len(units) == num_units
+            units_df = units.to_dataframe()
+            # Get index in units table
+            for unit_id in interface.sorting_extractor.unit_ids:
+                # In pynwb we write unit name as unit_id
+                row = units_df.query(f"unit_name == '{unit_id}'")
+                spike_times = interface.sorting_extractor.get_unit_spike_train(unit_id=unit_id, return_times=True)
+                written_spike_times = row["spike_times"].iloc[0]
+
+                np.testing.assert_array_equal(spike_times, written_spike_times)
+
+
+class TestSortingInterfaceOld(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.test_dir = Path(mkdtemp())

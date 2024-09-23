@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from warnings import warn
 
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
@@ -35,6 +35,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
         return source_schema
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,

@@ -13,6 +13,15 @@ from ..utils import DeepDict
 
 
 class AbstractPathExpander(abc.ABC):
+    """
+    Abstract base class for expanding file paths and extracting metadata.
+
+    This class provides methods to extract metadata from file paths within a directory
+    and to expand paths based on a specified data specification. It is designed to be
+    subclassed, with the `list_directory` method needing to be implemented by any
+    subclass to provide the specific logic for listing files in a directory.
+    """
+
     def extract_metadata(self, base_directory: DirectoryPath, format_: str):
         """
         Uses the parse library to extract metadata from file paths in the base_directory.
@@ -128,7 +137,13 @@ class AbstractPathExpander(abc.ABC):
 
 
 class LocalPathExpander(AbstractPathExpander):
-    def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:
+    """
+    Class for expanding file paths and extracting metadata on a local filesystem.
+
+    See https://neuroconv.readthedocs.io/en/main/user_guide/expand_path.html for more information.
+    """
+
+    def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:  # noqa: D101
         base_directory = Path(base_directory)
         assert base_directory.is_dir(), f"The specified 'base_directory' ({base_directory}) is not a directory!"
         return (str(path.relative_to(base_directory)) for path in base_directory.rglob("*"))

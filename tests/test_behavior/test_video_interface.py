@@ -137,8 +137,8 @@ class TestExternalVideoInterface(TestVideoInterface):
             nwbfile = io.read()
             module = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            self.assertListEqual(list1=list(module["Video: test1"].external_file[:]), list2=self.video_files[0:2])
-            self.assertListEqual(list1=list(module["Video: test3"].external_file[:]), list2=[self.video_files[2]])
+            self.assertListEqual(list1=list(module["Video test1"].external_file[:]), list2=self.video_files[0:2])
+            self.assertListEqual(list1=list(module["Video test3"].external_file[:]), list2=[self.video_files[2]])
 
     def test_video_irregular_timestamps(self):
         aligned_timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
@@ -157,7 +157,7 @@ class TestExternalVideoInterface(TestVideoInterface):
         expected_timestamps = timestamps = np.array([1.0, 2.0, 4.0, 55.0, 56.0, 57.0])
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video: test1"].timestamps[:])
+            np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
 
     def test_starting_frames_type_error(self):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]

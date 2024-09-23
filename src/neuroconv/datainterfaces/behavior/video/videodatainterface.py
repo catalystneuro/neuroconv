@@ -6,7 +6,7 @@ from typing import Literal, Optional
 import numpy as np
 import psutil
 from hdmf.data_utils import DataChunkIterator
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
@@ -28,6 +28,7 @@ class VideoInterface(BaseDataInterface):
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats."
 
+    @validate_call
     def __init__(
         self,
         file_paths: list[FilePath],
@@ -96,7 +97,7 @@ class VideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
-                dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
+                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
         }

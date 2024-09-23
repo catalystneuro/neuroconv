@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import FilePath
 
-from .header_tools import parse_nev_basic_header, parse_nsx_basic_header
+from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import get_schema_from_method_signature
@@ -24,6 +24,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             "description"
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
+
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["stream_id"] = self.stream_id
+
+        return extractor_kwargs
 
     def __init__(
         self,
@@ -55,12 +61,13 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             nsx_to_load = int(file_path.suffix[-1])
             self.file_path = file_path
 
-        super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
+        self.stream_id = str(nsx_to_load)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = parse_nsx_basic_header(self.source_data["file_path"])
+        basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
         if "Comment" in basic_header:
@@ -83,7 +90,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = True):
         """
         Parameters
         ----------
@@ -101,7 +108,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = parse_nev_basic_header(self.source_data["file_path"])
+        basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))

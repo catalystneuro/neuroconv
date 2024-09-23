@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -58,6 +58,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

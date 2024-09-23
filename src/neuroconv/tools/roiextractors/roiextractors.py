@@ -558,7 +558,7 @@ def add_photon_series_to_nwbfile(
     return nwbfile
 
 
-def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
+def _check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     """
     Raise an error if the full traces of an imaging extractor are larger than available memory.
 
@@ -625,7 +625,7 @@ def _imaging_frames_to_hdmf_iterator(
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
-        check_if_imaging_fits_into_memory(imaging=imaging)
+        _check_if_imaging_fits_into_memory(imaging=imaging)
         return imaging.get_video().transpose((0, 2, 1))
 
     if iterator_type == "v1":
@@ -682,9 +682,38 @@ def add_imaging_to_nwbfile(
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
-):
+) -> NWBFile:
+    """
+    Add imaging data from an ImagingExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The extractor object containing the imaging data.
+    nwbfile : NWBFile
+        The NWB file where the imaging data will be added.
+    metadata : dict, optional
+        Metadata for the NWBFile, by default None.
+    photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+        The type of photon series to be added, by default "TwoPhotonSeries".
+    photon_series_index : int, optional
+        The index of the photon series in the provided imaging data, by default 0.
+    iterator_type : str, optional
+        The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
+    iterator_options : dict, optional
+        Additional options for controlling the iteration process, by default None.
+    parent_container : {"acquisition", "processing/ophys"}, optional
+        Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
+        under the "processing/ophys" module, by default "acquisition".
+
+    Returns
+    -------
+    NWBFile
+        The NWB file with the imaging data added
+
+    """
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-    add_photon_series_to_nwbfile(
+    nwbfile = add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -694,6 +723,8 @@ def add_imaging_to_nwbfile(
         iterator_options=iterator_options,
         parent_container=parent_container,
     )
+
+    return nwbfile
 
 
 def write_imaging(
@@ -1158,8 +1189,31 @@ def add_background_plane_segmentation_to_nwbfile(
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
-    # TODO needs docstring
+    """
+    Add background plane segmentation data from a SegmentationExtractor object to an NWBFile.
 
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The extractor object containing background segmentation data.
+    nwbfile : NWBFile
+        The NWB file to which the background plane segmentation will be added.
+    metadata : dict, optional
+        Metadata for the NWBFile, by default None.
+    background_plane_segmentation_name : str, optional
+        The name of the background PlaneSegmentation object to be added, by default None.
+    mask_type : str, optional
+        Type of mask to use for segmentation; options are "image", "pixel", or "voxel", by default "image".
+    iterator_options : dict, optional
+        Options for iterating over the segmentation data, by default None.
+    compression_options : dict, optional
+        Deprecated: options for compression; will be removed after 2024-10-01, by default None.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile with the added background plane segmentation data.
+    """
     # TODO: remove completely after 10/1/2024
     if compression_options is not None:
         warnings.warn(
@@ -1724,6 +1778,40 @@ def add_segmentation_to_nwbfile(
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
+    """
+    Add segmentation data from a SegmentationExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The extractor object containing segmentation data.
+    nwbfile : NWBFile
+        The NWB file where the segmentation data will be added.
+    metadata : dict, optional
+        Metadata for the NWBFile, by default None.
+    plane_segmentation_name : str, optional
+        The name of the PlaneSegmentation object to be added, by default None.
+    background_plane_segmentation_name : str, optional
+        The name of the background PlaneSegmentation, if any, by default None.
+    include_background_segmentation : bool, optional
+        If True, includes background plane segmentation, by default False.
+    include_roi_centroids : bool, optional
+        If True, includes the centroids of the regions of interest (ROIs), by default True.
+    include_roi_acceptance : bool, optional
+        If True, includes the acceptance status of ROIs, by default True.
+    mask_type : str, optional
+        Type of mask to use for segmentation; can be either "image" or "pixel", by default "image".
+    iterator_options : dict, optional
+        Options for iterating over the data, by default None.
+    compression_options : dict, optional
+        Deprecated: options for compression; will be removed after 2024-10-01, by default None.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile with the added segmentation data.
+    """
+
     # TODO: remove completely after 10/1/2024
     if compression_options is not None:
         warnings.warn(

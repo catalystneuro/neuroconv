@@ -16,8 +16,18 @@ from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
 
-class NWBMetaDataEncoder(json.JSONEncoder):
+class _NWBMetaDataEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for NWB metadata.
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in NWB metadata.
+    """
+
     def default(self, obj):
+        """
+        Serialize custom data types to JSON. This overwrites the default method of the JSONEncoder class.
+        """
         # Over-write behaviors for datetime object
         if isinstance(obj, datetime):
             return obj.isoformat()
@@ -33,7 +43,13 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-class NWBSourceDataEncoder(NWBMetaDataEncoder):
+class _NWBSourceDataEncoder(_NWBMetaDataEncoder):
+    """
+    Custom JSON encoder for data interface source data (i.e. kwargs).
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in interface source data.
+    """
 
     def default(self, obj):
 
@@ -282,7 +298,14 @@ def get_schema_from_hdmf_class(hdmf_class):
     return schema
 
 
-def get_metadata_schema_for_icephys():
+def get_metadata_schema_for_icephys() -> dict:
+    """
+    Returns the metadata schema for icephys data.
+
+    Returns:
+        dict: The metadata schema for icephys data.
+
+    """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(
@@ -334,7 +357,7 @@ def get_metadata_schema_for_icephys():
 
 def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
-    encoder = NWBMetaDataEncoder()
+    encoder = _NWBMetaDataEncoder()
     # The encoder produces a serialized object, so we deserialized it for comparison
 
     serialized_metadata = encoder.encode(metadata)
