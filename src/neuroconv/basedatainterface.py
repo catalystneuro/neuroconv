@@ -70,7 +70,7 @@ class BaseDataInterface(ABC):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """Child DataInterface classes should override this to match their metadata."""
+        """Extract metadata from source files and return it as a DeepDict."""
         metadata = DeepDict()
         metadata["NWBFile"]["session_description"] = ""
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
