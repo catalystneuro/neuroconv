@@ -10,6 +10,13 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
     info = "Interface for TDT recording data."
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("gain")
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(
         self,
@@ -44,6 +51,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             stream_id=stream_id,
             verbose=verbose,
             es_key=es_key,
+            gain=gain,
         )
 
         # Fix channel name format

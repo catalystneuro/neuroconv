@@ -30,7 +30,7 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
 
 3. Create a file in this folder named ``demo_neuroconv_docker_yaml.yml`` with the following content...
 
-.. code::
+.. code-block:: yaml
 
     metadata:
       NWBFile:
