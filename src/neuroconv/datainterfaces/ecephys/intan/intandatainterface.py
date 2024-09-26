@@ -25,6 +25,13 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["stream_id"] = self.stream_id
+
+        return extractor_kwargs
+
     def __init__(
         self,
         file_path: FilePath,
@@ -52,10 +59,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         init_kwargs = dict(
             file_path=self.file_path,
-            stream_id=self.stream_id,
             verbose=verbose,
             es_key=es_key,
-            all_annotations=True,
             ignore_integrity_checks=ignore_integrity_checks,
         )
 

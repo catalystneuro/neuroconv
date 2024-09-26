@@ -41,7 +41,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         **source_data,
     ):
         super().__init__(**source_data)
-        self.imaging_extractor = self.get_extractor()(**source_data)
+        self.imaging_extractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
@@ -149,7 +149,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
-        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
     def get_timestamps(self) -> np.ndarray:  # noqa: D102

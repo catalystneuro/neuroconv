@@ -18,12 +18,21 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     info = "Interface for NIDQ board recording data."
 
     ExtractorName = "SpikeGLXRecordingExtractor"
+    stream_id = "nidq"
 
     @classmethod
     def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
+
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("file_path")
+        extractor_kwargs["folder_path"] = self.folder_path
+        extractor_kwargs["stream_id"] = self.stream_id
+        return extractor_kwargs
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
@@ -50,10 +59,10 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
 
-        folder_path = Path(file_path).parent
+        self.file_path = Path(file_path)
+        self.folder_path = self.file_path.parent
         super().__init__(
-            folder_path=folder_path,
-            stream_id="nidq",
+            file_path=self.file_path,
             verbose=verbose,
             load_sync_channel=load_sync_channel,
             es_key=es_key,

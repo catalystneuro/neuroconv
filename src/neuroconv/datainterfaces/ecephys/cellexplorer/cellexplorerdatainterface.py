@@ -419,6 +419,12 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        return extractor_kwargs
+
     def __init__(self, file_path: FilePath, verbose: bool = True):
         """
         Initialize read of Cell Explorer file.
@@ -454,7 +460,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "extracellular" in session_data.keys():
                 sampling_frequency = session_data["extracellular"].get("sr", None)
 
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        self.sampling_frequency = sampling_frequency
+        super().__init__(file_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 

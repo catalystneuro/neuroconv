@@ -23,7 +23,7 @@ Convert LightningPose pose estimation data to NWB using :py:class:`~neuroconv.da
     >>> labeled_video_file_path = str(folder_path / "labeled_videos/test_vid_labeled.mp4")
 
     >>> converter = LightningPoseConverter(file_path=file_path, original_video_file_path=original_video_file_path, labeled_video_file_path=labeled_video_file_path, verbose=False)
-
+    Source data is valid!
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]

@@ -82,6 +82,13 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["stream_id"] = self.stream_id
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -101,16 +108,14 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
 
         neo_version = Version(neo.__version__)
         if neo_version <= Version("0.13.3"):
-            stream_id = "3"
+            self.stream_id = "3"
         else:
-            stream_id = "WB"
+            self.stream_id = "WB"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(
             file_path=file_path,
             verbose=verbose,
             es_key=es_key,
-            stream_id=stream_id,
-            all_annotations=True,
         )
 
     def get_metadata(self) -> DeepDict:  # noqa: D102

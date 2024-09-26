@@ -92,6 +92,13 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("fallback_sampling_frequency", None)
+        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(
         self,
@@ -129,7 +136,8 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             assert fallback_sampling_frequency is not None, assert_msg
             sampling_frequency = fallback_sampling_frequency
 
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        self.sampling_frequency = sampling_frequency
+        super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
 
     def get_metadata(self) -> dict:
         """get metadata for the ScanImage imaging data"""
@@ -232,6 +240,13 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     ExtractorName = "ScanImageTiffMultiPlaneImagingExtractor"
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("image_metadata")
+        extractor_kwargs["metadata"] = self.image_metadata
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(
         self,
@@ -281,10 +296,12 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
+        self.metadata = image_metadata
+        self.parsed_metadata = parsed_metadata
         super().__init__(
             file_path=file_path,
             channel_name=channel_name,
-            metadata=image_metadata,
+            image_metadata=image_metadata,
             parsed_metadata=parsed_metadata,
             verbose=verbose,
         )
@@ -453,6 +470,13 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     ExtractorName = "ScanImageTiffSinglePlaneImagingExtractor"
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("image_metadata")
+        extractor_kwargs["metadata"] = self.image_metadata
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(
         self,
@@ -517,11 +541,13 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
+        self.metadata = image_metadata
+        self.parsed_metadata = parsed_metadata
         super().__init__(
             file_path=file_path,
             channel_name=channel_name,
             plane_name=plane_name,
-            metadata=image_metadata,
+            image_metadata=image_metadata,
             parsed_metadata=parsed_metadata,
             verbose=verbose,
         )

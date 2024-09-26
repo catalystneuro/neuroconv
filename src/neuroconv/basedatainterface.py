@@ -24,6 +24,7 @@ from .utils import (
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
+from .utils.json_schema import _NWBSourceDataEncoder
 
 
 class BaseDataInterface(ABC):
@@ -46,10 +47,29 @@ class BaseDataInterface(ABC):
         """
         return get_json_schema_from_method_signature(cls, exclude=["source_data"])
 
+    @classmethod
+    def validate_source(cls, source_data: dict, verbose: bool = False):
+        """Validate source_data against Converter source_schema."""
+        cls._validate_source_data(source_data=source_data, verbose=verbose)
+
+    def _validate_source_data(self, source_data: dict, verbose: bool = False):
+
+        encoder = _NWBSourceDataEncoder()
+        # The encoder produces a serialized object, so we deserialized it for comparison
+
+        serialized_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(serialized_source_data)
+        source_schema = self.get_source_schema()
+        validate(instance=decoded_source_data, schema=source_schema)
+        if verbose:
+            print("Source data is valid!")
+
     @validate_call
     def __init__(self, verbose: bool = False, **source_data):
         self.verbose = verbose
         self.source_data = source_data
+
+        self._validate_source_data(source_data=source_data, verbose=verbose)
 
     def get_metadata_schema(self) -> dict:
         """Retrieve JSON schema for metadata."""
