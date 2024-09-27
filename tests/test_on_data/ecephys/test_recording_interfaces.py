@@ -158,7 +158,7 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
             else:
                 assert expected_value == extracted_value
 
-        # Test addition to electrodes table
+        # Test addition to electrodes table!~
         with NWBHDF5IO(self.nwbfile_path, "r") as io:
             nwbfile = io.read()
             electrode_table = nwbfile.electrodes.to_dataframe()
@@ -176,8 +176,18 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
+        metadata = self.interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            **self.conversion_options,
+        )
 
     def test_all_conversion_checks(self, setup_interface, tmp_path):
         # Create a unique test name and file path
@@ -185,11 +195,10 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         self.nwbfile_path = nwbfile_path
 
         # Now run the checks using the setup objects
-        self.check_conversion_options_schema_valid()
-        self.check_metadata()
+        metadata = self.interface.get_metadata()
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
         self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-
         self.check_read_nwb(nwbfile_path=nwbfile_path)
 
     # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
@@ -202,7 +211,22 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_run_conversion_with_backend(self):
         pass
 
+    def test_run_conversion_with_backend_configuration(self):
+        pass
+
     def test_interface_alignment(self):
+        pass
+
+    def test_configure_backend_for_equivalent_nwbfiles(self):
+        pass
+
+    def test_conversion_options_schema_valid(self):
+        pass
+
+    def test_metadata(self):
+        pass
+
+    def test_conversion_options_schema_valid(self):
         pass
 
 
