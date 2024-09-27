@@ -80,6 +80,7 @@ def run_conversion_from_yaml(
         output_folder_path = Path(specification_file_path).parent
     else:
         output_folder_path = Path(output_folder_path)
+
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
