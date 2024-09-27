@@ -11,7 +11,7 @@ data_interfaces:
   lf: SpikeGLXRecordingInterface
   phy: PhySortingInterface
 
-upload_to_dandiset: 200560
+upload_to_dandiset: "200560"
 
 experiments:
   ymaze:
