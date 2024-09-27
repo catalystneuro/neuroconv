@@ -1,0 +1,97 @@
+name: 'Prepare Datasets'
+description: 'Restores data from caches or downloads it from S3.'
+inputs:
+  aws-access-key-id:
+    description: 'AWS Access Key ID'
+    required: true
+  aws-secret-access-key:
+    description: 'AWS Secret Access Key'
+    required: true
+  s3-gin-bucket:
+    description: 'S3 GIN Bucket URL'
+    required: true
+  os:
+    description: 'Operating system'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Get ephy_testing_data current head hash
+      id: ephys
+      shell: bash
+      run: |
+        HASH=$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)
+        echo "HASH_EPHY_DATASET=$HASH" >> $GITHUB_OUTPUT
+
+    - name: Cache ephys dataset
+      uses: actions/cache@v4
+      id: cache-ephys-datasets
+      with:
+        path: ./ephy_testing_data
+        key: ephys-datasets-${{ inputs.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+
+    - name: Get ophys_testing_data current head hash
+      id: ophys
+      shell: bash
+      run: |
+        HASH=$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)
+        echo "HASH_OPHYS_DATASET=$HASH" >> $GITHUB_OUTPUT
+
+    - name: Cache ophys dataset
+      uses: actions/cache@v4
+      id: cache-ophys-datasets
+      with:
+        path: ./ophys_testing_data
+        key: ophys-datasets-${{ inputs.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+
+    - name: Get behavior_testing_data current head hash
+      id: behavior
+      shell: bash
+      run: |
+        HASH=$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)
+        echo "HASH_BEHAVIOR_DATASET=$HASH" >> $GITHUB_OUTPUT
+
+    - name: Cache behavior dataset
+      uses: actions/cache@v4
+      id: cache-behavior-datasets
+      with:
+        path: ./behavior_testing_data
+        key: behavior-datasets-${{ inputs.os }}-${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+
+    - name: Determine if downloads are required
+      id: download-check
+      shell: bash  # Added shell property
+      run: |
+        if [[ "${{ steps.cache-ephys-datasets.outputs.cache-hit }}" != 'true' || \
+              "${{ steps.cache-ophys-datasets.outputs.cache-hit }}" != 'true' || \
+              "${{ steps.cache-behavior-datasets.outputs.cache-hit }}" != 'true' ]]; then
+          echo "DOWNLOAD_REQUIRED=true" >> $GITHUB_OUTPUT
+        else
+          echo "DOWNLOAD_REQUIRED=false" >> $GITHUB_OUTPUT
+        fi
+
+    - if: ${{ steps.download-check.outputs.DOWNLOAD_REQUIRED == 'true' }}
+      name: Install and configure AWS CLI
+      shell: bash
+      run: |
+        pip install awscli
+        aws configure set aws_access_key_id "${{ inputs.aws-access-key-id }}"
+        aws configure set aws_secret_access_key "${{ inputs.aws-secret-access-key }}"
+
+    - if: ${{ steps.cache-ephys-datasets.outputs.cache-hit != 'true' }}
+      name: Download ephys dataset from S3
+      shell: bash
+      run: |
+        aws s3 cp --recursive "${{ inputs.s3-gin-bucket }}/ephy_testing_data" ./ephy_testing_data
+
+    - if: ${{ steps.cache-ophys-datasets.outputs.cache-hit != 'true' }}
+      name: Download ophys dataset from S3
+      shell: bash
+      run: |
+        aws s3 cp --recursive "${{ inputs.s3-gin-bucket }}/ophys_testing_data" ./ophys_testing_data
+
+    - if: ${{ steps.cache-behavior-datasets.outputs.cache-hit != 'true' }}
+      name: Download behavior dataset from S3
+      shell: bash
+      run: |
+        aws s3 cp --recursive "${{ inputs.s3-gin-bucket }}/behavior_testing_data" ./behavior_testing_data

@@ -208,6 +208,7 @@ Convert TDT Fiber Photometry data to NWB using
     >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_on_data" / "ophys" / "fiber_photometry_metadata.yaml"
 
     >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=True)
+    Source data is valid!
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
     >>> editable_metadata = load_dict_from_file(editable_metadata_path)

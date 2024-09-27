@@ -32,6 +32,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+
+        return extractor_kwargs
+
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -53,7 +59,10 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         """
         super().__init__(
-            folder_path=folder_path, stream_name=stream_name, verbose=verbose, all_annotations=True, es_key=es_key
+            folder_path=folder_path,
+            stream_name=stream_name,
+            verbose=verbose,
+            es_key=es_key,
         )
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
@@ -103,7 +112,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-    def __init__(self, folder_path: DirectoryPath, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, sampling_frequency: Optional[float] = None, verbose: bool = True):
         """_summary_
 
         Parameters
