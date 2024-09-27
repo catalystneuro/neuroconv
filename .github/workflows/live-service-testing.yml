@@ -49,5 +49,7 @@ jobs:
 
       - name: Run subset of tests that use DANDI live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/dandi_transfer_tools.py
+      - name: Run subset of tests that use DANDI live services with YAML
+        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_dandi_transfer_tools.py
       - name: Run subset of tests that use Globus live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/globus_transfer_tools.py
