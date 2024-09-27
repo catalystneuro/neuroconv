@@ -92,7 +92,7 @@ def run_conversion_from_yaml(
     )
 
     upload_to_dandiset = "upload_to_dandiset" in specification
-    if upload_to_dandiset and "DANDI_API_KEY" in os.environ:
+    if upload_to_dandiset and "DANDI_API_KEY" not in os.environ:
         message = (
             "The 'upload_to_dandiset' prompt was found in the YAML specification, "
             "but the environment variable 'DANDI_API_KEY' was not set."
