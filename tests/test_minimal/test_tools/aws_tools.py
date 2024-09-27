@@ -1,6 +1,7 @@
 import datetime
 import os
 import time
+import unittest
 
 import boto3
 
@@ -299,7 +300,7 @@ def test_submit_aws_batch_job_with_efs_mount():
     )
 
 
-class TestRcloneTransferBatchJob(TestCase):
+class TestRcloneTransferBatchJob(unittest.TestCase):
     """
     To allow this test to work, the developer must create a folder on the outer level of their personal Google Drive
     called 'testing_rclone_spikegl_and_phy' with the following structure:
