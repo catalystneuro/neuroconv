@@ -18,6 +18,9 @@ from neuroconv.tools.nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 
+from ...test_on_data.setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+from ...test_on_data.setup_paths import OUTPUT_PATH
+
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
 
