@@ -106,7 +106,8 @@ class TestAutomaticDANDIUploadNonParallelNonThreaded(TestCase):
 
 
 def test_run_conversion_from_yaml_with_dandi_upload():
-    path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
+    data_tests_base_folder_path = Path(__file__).parent.parent.parent / "test_on_data"
+    path_to_test_yml_files = data_tests_base_folder_path / "test_yaml" / "conversion_specifications"
     yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_dandi_upload.yml"
     run_conversion_from_yaml(
         specification_file_path=yaml_file_path,
