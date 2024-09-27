@@ -7,8 +7,7 @@ import pytest
 
 from neuroconv import run_conversion_from_yaml
 
-from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from ..setup_paths import OUTPUT_PATH
+from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
@@ -23,12 +22,12 @@ def test_run_conversion_from_yaml_with_dandi_upload():
     yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_dandi_upload.yml"
     run_conversion_from_yaml(
         specification_file_path=yaml_file_path,
-        data_folder_path=DATA_PATH,
+        data_folder_path=ECEPHY_DATA_PATH,
         output_folder_path=OUTPUT_PATH,
         overwrite=True,
     )
 
-    time.sleep(20)  # Give some buffer room for server to process before making assertions against DANDI API
+    time.sleep(60)  # Give some buffer room for server to process before making assertions against DANDI API
 
     client = dandi.dandiapi.DandiAPIClient(api_url="https://api-staging.dandiarchive.org/api")
     dandiset = client.get_dandiset("200560")
