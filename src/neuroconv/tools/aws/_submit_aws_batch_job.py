@@ -464,11 +464,14 @@ def _create_or_get_efs_id(
         if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
     ]
 
-    if len(matching_efs_volumes) > 1:
+    if len(matching_efs_volumes) == 1:
         efs_volume = matching_efs_volumes[0]
         efs_id = efs_volume["FileSystemId"]
 
         return efs_id
+    elif len(matching_efs_volumes) > 1:
+        message = f"Multiple EFS volumes with the name '{efs_volume_name}' were found!\n\n{matching_efs_volumes=}\n"
+        raise ValueError(message)
 
     # Existing volume not found - must create a fresh one and set mount targets on it
     efs_volume = efs_client.create_file_system(
