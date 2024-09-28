@@ -1,9 +1,11 @@
 """Collection of helper functions for deploying NeuroConv in EC2 Batch jobs on AWS."""
 
+import os
 import time
 import uuid
 from typing import Optional
 
+import boto3
 from pydantic import FilePath, validate_call
 
 from ._rclone_transfer_batch_job import rclone_transfer_batch_job
@@ -99,6 +101,17 @@ def deploy_neuroconv_batch_job(
 
     # Give the EFS and other aspects time to spin up before submitting next dependent job
     # (Otherwise, good chance that duplicate EFS will be created)
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+
+    efs_client = boto3.client(
+        service_name="efs",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    available_efs_volumes = efs_client.describe_file_systems()
     matching_efs_volumes = [
         file_system
         for file_system in available_efs_volumes["FileSystems"]
