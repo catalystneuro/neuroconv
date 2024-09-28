@@ -71,7 +71,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
 
         # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
         # TODO: cleanup job definitions? (since built daily)
-        mount_targets = efs_client.describe_mount_targets(FileSystemId=efs_id)
+        mount_targets = efs_client.describe_mount_targets(FileSystemId=self.efs_id)
         for mount_target in mount_targets["MountTargets"]:
             efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
 
@@ -146,7 +146,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         ]
         assert len(matching_efs_volumes) == 1
         efs_volume = matching_efs_volumes[0]
-        efs_id = efs_volume["FileSystemId"]
+        self.efs_id = efs_volume["FileSystemId"]
 
         # Check normal job completion
         assert job["jobName"] == job_name
