@@ -135,7 +135,7 @@ def deploy_neuroconv_batch_job(
         message = f"Unable to create EFS volume '{efs_volume_name}' after {max_iterations} attempts!"
         raise ValueError(message)
 
-    docker_image = "ghcr.io/catalystneuro/neuroconv_latest_yaml_variable:latest"
+    docker_image = "ghcr.io/catalystneuro/neuroconv_yaml_variable:latest"
 
     with open(file=yaml_specification_file_path, mode="r") as io:
         yaml_specification_file_stream = io.read()
@@ -147,6 +147,8 @@ def deploy_neuroconv_batch_job(
         docker_image=docker_image,
         environment_variables={
             "NEUROCONV_YAML": yaml_specification_file_stream,
+            # TODO: would prefer this to use subfolders for source and output, but need logic for YAML
+            # related code to create them if missing (hard to send EFS this command directly)
             "NEUROCONV_DATA_PATH": "/mnt/efs/source",
             "NEUROCONV_OUTPUT_PATH": "/mnt/efs/output",
         },

@@ -642,7 +642,7 @@ def _ensure_job_definition_exists_and_get_arn(
                 },
             },
         ]
-        mountPoints = [{"containerPath": "/mnt/efs/", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
+        mountPoints = [{"containerPath": "/mnt/efs", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
 
     # batch_client.register_job_definition is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(

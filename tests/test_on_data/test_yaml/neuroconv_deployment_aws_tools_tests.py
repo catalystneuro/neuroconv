@@ -168,7 +168,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         self.efs_id = efs_volume["FileSystemId"]
 
         # Check normal job completion
-        assert job["jobName"] == job_name
+        assert job["jobName"] == f"{job_name}_neuroconv_deployment"
         assert "neuroconv_batch_queue" in job["jobQueue"]
         assert "fs-" in job["jobDefinition"]
         assert job["status"] == "SUCCEEDED"
