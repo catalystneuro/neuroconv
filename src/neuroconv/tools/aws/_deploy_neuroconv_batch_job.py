@@ -102,6 +102,7 @@ def deploy_neuroconv_batch_job(
         yaml_specification_file_stream = io.read()
 
     neuroconv_job_name = f"{job_name}_neuroconv_deployment"
+    job_dependencies = [{"jobId": rclone_job_id, "type": "SEQUENTIAL"}]
     neuroconv_job_submission_info = submit_aws_batch_job(
         job_name=neuroconv_job_name,
         docker_image=docker_image,
@@ -111,7 +112,7 @@ def deploy_neuroconv_batch_job(
             "NEUROCONV_OUTPUT_PATH": "/mnt/efs/output",
         },
         efs_volume_name=efs_volume_name,
-        job_dependencies=[rclone_job_id],
+        job_dependencies=job_dependencies,
         status_tracker_table_name=status_tracker_table_name,
         compute_environment_name=compute_environment_name,
         job_queue_name=job_queue_name,
