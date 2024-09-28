@@ -76,7 +76,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
 
         time.sleep(60)
-        efs_client.delete_file_system(FileSystemId=efs_id)
+        efs_client.delete_file_system(FileSystemId=self.efs_id)
 
     def test_rclone_transfer_batch_job(self):
         region = self.region
