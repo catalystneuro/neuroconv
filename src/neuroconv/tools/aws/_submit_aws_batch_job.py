@@ -532,8 +532,9 @@ def _generate_job_definition_name(
     docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
 
     # AWS Batch does not allow colons, slashes, or periods in job definition names
-    for disallowed_character in [":", "/", "."]:
-        parsed_docker_image_name = docker_image.replace(disallowed_character, "-")
+    parsed_docker_image_name = str(docker_image)
+    for disallowed_character in [":", r"/", "."]:
+        parsed_docker_image_name = parsed_docker_image_name.replace(disallowed_character, "-")
 
     job_definition_name = f"neuroconv_batch"
     job_definition_name += f"_{parsed_docker_image_name}-image"
