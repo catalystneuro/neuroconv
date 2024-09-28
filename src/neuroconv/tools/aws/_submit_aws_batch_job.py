@@ -171,7 +171,9 @@ def submit_aws_batch_job(
     job_dependencies = job_dependencies or []
     container_overrides = dict()
     if environment_variables is not None:
-        container_overrides["environment"] = [{key: value} for key, value in environment_variables.items()]
+        container_overrides["environment"] = [
+            {"name": key, "value": value} for key, value in environment_variables.items()
+        ]
     if commands is not None:
         container_overrides["command"] = commands
 
