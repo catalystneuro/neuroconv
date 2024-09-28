@@ -2,11 +2,11 @@ import os
 import platform
 import time
 from datetime import datetime, timedelta
-from packaging.version import Version
 from pathlib import Path
 
 import dandi.dandiapi
 import pytest
+from packaging.version import Version
 
 from neuroconv import run_conversion_from_yaml
 
