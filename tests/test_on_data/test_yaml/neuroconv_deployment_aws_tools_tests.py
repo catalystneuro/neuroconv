@@ -116,10 +116,12 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         rclone_config_file_path = self.test_config_file_path
 
         job_name = "test_deploy_neuroconv_batch_job"
+        efs_volume_name = "test_deploy_neuroconv_batch_job"
         all_info = deploy_neuroconv_batch_job(
             rclone_command=rclone_command,
             yaml_specification_file_path=yaml_specification_file_path,
             job_name=job_name,
+            efs_volume_name=efs_volume_name,
             rclone_config_file_path=rclone_config_file_path,
         )
 

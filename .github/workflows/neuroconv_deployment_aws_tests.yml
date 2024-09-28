@@ -43,5 +43,5 @@ jobs:
       - name: Install AWS requirements
         run: pip install .[aws,test]
 
-      - name: Run RClone on AWS tests
+      - name: Run NeuroConv Deployment on AWS tests
         run: pytest -rsx -n auto tests/test_on_data/test_yaml/neuroconv_deployment_aws_tools_tests.py
