@@ -1,7 +1,7 @@
 name: NeuroConv Deployment AWS Tests
 on:
   schedule:
-    - cron: "0 16 * * 2"  # Weekly at noon on Tuesday
+    - cron: "0 16 * * 3"  # Weekly at noon on Wednesday
   workflow_dispatch:
   push:
 
