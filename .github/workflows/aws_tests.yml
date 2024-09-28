@@ -39,7 +39,7 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
 
-      - name: Install full requirements
+      - name: Install AWS requirements
         run: pip install .[aws,test]
 
       # TODO: when passing, reverse order of tests from minimal to data

@@ -97,7 +97,10 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         )
         efs_client = self.efs_client
 
-        rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx /mnt/efs --config ./rclone.conf"
+        rclone_command = (
+            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy /mnt/efs "
+            "--verbose --progress --config ./rclone.conf"  # TODO: should just include this in helper function?
+        )
         rclone_config_file_path = self.test_config_file_path
 
         today = datetime.datetime.now().date().isoformat()
