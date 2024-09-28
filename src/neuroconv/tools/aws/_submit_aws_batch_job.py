@@ -530,7 +530,9 @@ def _generate_job_definition_name(
     """
     docker_tags = docker_image.split(":")[1:]
     docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
-    parsed_docker_image_name = docker_image.replace(":", "-")  # AWS Batch does not allow colons in job definition names
+
+    # AWS Batch does not allow colons or slashes in job definition names
+    parsed_docker_image_name = docker_image.replace(":", "-").replace("/", "-")
 
     job_definition_name = f"neuroconv_batch"
     job_definition_name += f"_{parsed_docker_image_name}-image"
@@ -641,7 +643,7 @@ def _ensure_job_definition_exists_and_get_arn(
         ]
         mountPoints = [{"containerPath": "/mnt/efs/", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
 
-    # batch_client.register_job_definition() is not synchronous and so we need to wait a bit afterwards
+    # batch_client.register_job_definition is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(
         jobDefinitionName=job_definition_name,
         type="container",
