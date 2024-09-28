@@ -36,7 +36,7 @@ def test_run_conversion_from_yaml_with_dandi_upload():
     expected_asset_paths = [
         "sub-yaml-1/sub-yaml-1_ses-test-yaml-1_ecephys.nwb",
         "sub-yaml-002/sub-yaml-002_ses-test-yaml-2_ecephys.nwb",
-        "sub-YAML-Subject-Name/sub-YAML-Subject-Name_ses-test-yaml-3_ecephys.nwb",
+        "sub-YAML-Subject-Name/sub-YAML-Subject-Name_ses-test-YAML-3_ecephys.nwb",
     ]
     for asset_path in expected_asset_paths:
         test_asset = dandiset.get_asset_by_path(path=asset_path)  # Will error if not found
