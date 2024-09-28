@@ -83,8 +83,8 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx /mnt/efs"
         rclone_config_file_path = self.test_config_file_path
 
-        now = datetime.datetime.now().isoformat()
-        job_name = f"test_rclone_transfer_batch_job_{now}"
+        today = datetime.datetime.now().date().isoformat()
+        job_name = f"test_rclone_transfer_batch_job_{today}"
         efs_volume_name = "test_rclone_transfer_batch_efs"
 
         info = rclone_transfer_batch_job(

@@ -44,7 +44,7 @@ jobs:
 
       # TODO: when passing, reverse order of tests from minimal to data
       - name: Run subset of tests that use S3 live services
-        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_aws_tools.py
+        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_aws_tools_tests.py
 
       - name: Run subset of tests that use S3 live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools.py
+        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools_tests.py
