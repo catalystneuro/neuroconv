@@ -147,13 +147,12 @@ def deploy_neuroconv_batch_job(
         docker_image=docker_image,
         environment_variables={
             "NEUROCONV_YAML": yaml_specification_file_stream,
+            "NEUROCONV_DATA_PATH": "/mnt/efs/source",
             # TODO: would prefer this to use subfolders for source and output, but need logic for YAML
             # related code to create them if missing (hard to send EFS this command directly)
             # (the code was included in this PR, but a release cycle needs to complete for the docker images before
             # it can be used here)
-            # "NEUROCONV_DATA_PATH": "/mnt/efs/source",
             # "NEUROCONV_OUTPUT_PATH": "/mnt/efs/output",
-            "NEUROCONV_DATA_PATH": "/mnt/efs",
             "NEUROCONV_OUTPUT_PATH": "/mnt/efs",
         },
         efs_volume_name=efs_volume_name,

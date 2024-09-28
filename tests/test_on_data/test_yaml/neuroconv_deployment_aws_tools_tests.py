@@ -107,7 +107,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         )
 
         rclone_command = (
-            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy/ci_tests /mnt/efs/source"
+            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy/ci_tests /mnt/efs/source "
             "--verbose --progress --config ./rclone.conf"  # TODO: should just include this in helper function?
         )
 
