@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import dandi.dandiapi
@@ -47,4 +47,4 @@ def test_run_conversion_from_yaml_with_dandi_upload():
         date_modified = datetime.fromisoformat(
             test_asset_metadata["dateModified"].split("Z")[0]  # Timezones look a little messy
         )
-        assert datetime.now() - date_modified < datetime.timedelta(minutes=10)
+        assert datetime.now() - date_modified < timedelta(minutes=10)
