@@ -1,3 +1,4 @@
+import datetime
 import os
 import time
 import unittest
@@ -32,6 +33,9 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
 
     test_folder = OUTPUT_PATH / "aws_rclone_tests"
     test_config_file_path = test_folder / "rclone.conf"
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+    region = "us-east-2"
 
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
@@ -55,10 +59,29 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         with open(file=self.test_config_file_path, mode="w") as io:
             io.writelines(rclone_config_contents)
 
+        self.efs_client = boto3.client(
+            service_name="efs",
+            region_name=self.region,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+        )
+
+    def tearDown(self):
+        efs_client = self.efs_client
+
+        # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
+        # TODO: cleanup job definitions? (since built daily)
+        mount_targets = efs_client.describe_mount_targets(FileSystemId=self.efs_id)
+        for mount_target in mount_targets["MountTargets"]:
+            efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
+
+        time.sleep(60)
+        efs_client.delete_file_system(FileSystemId=self.efs_id)
+
     def test_rclone_transfer_batch_job(self):
-        region = "us-east-2"
-        aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
-        aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+        region = self.region
+        aws_access_key_id = self.aws_access_key_id
+        aws_secret_access_key = self.aws_secret_access_key
 
         dynamodb_resource = boto3.resource(
             service_name="dynamodb",
@@ -72,18 +95,22 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-        efs_client = boto3.client(
-            service_name="efs",
-            region_name=region,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
+        efs_client = self.efs_client
 
-        rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx /mnt/efs"
+        rclone_command = (
+            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy /mnt/efs "
+            "--verbose --progress --config ./rclone.conf"  # TODO: should just include this in helper function?
+        )
         rclone_config_file_path = self.test_config_file_path
+
+        today = datetime.datetime.now().date().isoformat()
+        job_name = f"test_rclone_transfer_batch_job_{today}"
+        efs_volume_name = "test_rclone_transfer_batch_efs"
 
         info = rclone_transfer_batch_job(
             rclone_command=rclone_command,
+            job_name=job_name,
+            efs_volume_name=efs_volume_name,
             rclone_config_file_path=rclone_config_file_path,
         )
 
@@ -119,7 +146,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         ]
         assert len(matching_efs_volumes) == 1
         efs_volume = matching_efs_volumes[0]
-        efs_id = efs_volume["FileSystemId"]
+        self.efs_id = efs_volume["FileSystemId"]
 
         # Check normal job completion
         assert job["jobName"] == job_name
@@ -143,15 +170,6 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             Key={"id": table_submission_id},
             AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed - cleaning up..."}},
         )
-
-        # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
-        # TODO: cleanup job definitions? (since built daily)
-        mount_targets = efs_client.describe_mount_targets(FileSystemId=efs_id)
-        for mount_target in mount_targets["MountTargets"]:
-            efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
-
-        time.sleep(60)
-        efs_client.delete_file_system(FileSystemId=efs_id)
 
         table.update_item(
             Key={"id": table_submission_id}, AttributeUpdates={"status": {"Action": "PUT", "Value": "Test passed."}}

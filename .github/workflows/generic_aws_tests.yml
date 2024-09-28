@@ -11,10 +11,6 @@ concurrency:  # Cancel previous workflows on the same pull request
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  RCLONE_DRIVE_ACCESS_TOKEN: ${{ secrets.RCLONE_DRIVE_ACCESS_TOKEN }}
-  RCLONE_DRIVE_REFRESH_TOKEN: ${{ secrets.RCLONE_DRIVE_REFRESH_TOKEN }}
-  RCLONE_EXPIRY_TOKEN: ${{ secrets.RCLONE_EXPIRY_TOKEN }}
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
 jobs:
   run:
@@ -39,12 +35,8 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
 
-      - name: Install full requirements
+      - name: Install AWS requirements
         run: pip install .[aws,test]
 
-      # TODO: when passing, reverse order of tests from minimal to data
-      - name: Run subset of tests that use S3 live services
-        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_aws_tools.py
-
-      - name: Run subset of tests that use S3 live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools.py
+      - name: Run generic AWS tests
+        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools_tests.py

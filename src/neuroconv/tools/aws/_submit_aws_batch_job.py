@@ -171,7 +171,9 @@ def submit_aws_batch_job(
     job_dependencies = job_dependencies or []
     container_overrides = dict()
     if environment_variables is not None:
-        container_overrides["environment"] = [{key: value} for key, value in environment_variables.items()]
+        container_overrides["environment"] = [
+            {"name": key, "value": value} for key, value in environment_variables.items()
+        ]
     if commands is not None:
         container_overrides["command"] = commands
 
@@ -294,7 +296,7 @@ def _ensure_compute_environment_exists(
         The AWS Batch client to use for the job.
     max_retries : int, default: 12
         If the compute environment does not already exist, then this is the maximum number of times to synchronously
-        check for its successful creation before erroring.
+        check for its successful creation before raising an error.
         This is essential for a clean setup of the entire pipeline, or else later steps might error because they tried
         to launch before the compute environment was ready.
     """
@@ -530,7 +532,11 @@ def _generate_job_definition_name(
     """
     docker_tags = docker_image.split(":")[1:]
     docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
-    parsed_docker_image_name = docker_image.replace(":", "-")  # AWS Batch does not allow colons in job definition names
+
+    # AWS Batch does not allow colons, slashes, or periods in job definition names
+    parsed_docker_image_name = str(docker_image)
+    for disallowed_character in [":", r"/", "."]:
+        parsed_docker_image_name = parsed_docker_image_name.replace(disallowed_character, "-")
 
     job_definition_name = f"neuroconv_batch"
     job_definition_name += f"_{parsed_docker_image_name}-image"
@@ -540,7 +546,6 @@ def _generate_job_definition_name(
         job_definition_name += f"_{efs_id}"
     if docker_tag is None or docker_tag == "latest":
         date = datetime.now().strftime("%Y-%m-%d")
-        job_definition_name += f"_created-on-{date}"
 
     return job_definition_name
 
@@ -641,7 +646,7 @@ def _ensure_job_definition_exists_and_get_arn(
         ]
         mountPoints = [{"containerPath": "/mnt/efs/", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
 
-    # batch_client.register_job_definition() is not synchronous and so we need to wait a bit afterwards
+    # batch_client.register_job_definition is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(
         jobDefinitionName=job_definition_name,
         type="container",
