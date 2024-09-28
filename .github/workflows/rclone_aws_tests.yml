@@ -1,9 +1,8 @@
 name: Rclone AWS Tests
 on:
   schedule:
-    - cron: "0 16 * * 1"  # Weekly at noon on Monday
+    - cron: "0 16 * * 2"  # Weekly at noon on Tuesday
   workflow_dispatch:
-  push:
 
 concurrency:  # Cancel previous workflows on the same pull request
   group: ${{ github.workflow }}-${{ github.ref }}
