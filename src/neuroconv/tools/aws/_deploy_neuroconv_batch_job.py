@@ -99,7 +99,28 @@ def deploy_neuroconv_batch_job(
 
     # Give the EFS and other aspects time to spin up before submitting next dependent job
     # (Otherwise, good chance that duplicate EFS will be created)
-    time.sleep(30)
+    matching_efs_volumes = [
+        file_system
+        for file_system in available_efs_volumes["FileSystems"]
+        for tag in file_system["Tags"]
+        if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+    ]
+    max_iterations = 10
+    iteration = 0
+    while len(matching_efs_volumes) == 0 and iteration < max_iterations:
+        iteration += 1
+        time.sleep(30)
+
+        matching_efs_volumes = [
+            file_system
+            for file_system in available_efs_volumes["FileSystems"]
+            for tag in file_system["Tags"]
+            if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+        ]
+
+    if len(matching_efs_volumes) == 0:
+        message = f"Unable to create EFS volume '{efs_volume_name}' after {max_iterations} attempts!"
+        raise ValueError(message)
 
     docker_image = "ghcr.io/catalystneuro/neuroconv_latest_yaml_variable:latest"
 
