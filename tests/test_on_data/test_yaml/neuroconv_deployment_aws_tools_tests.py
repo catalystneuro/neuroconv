@@ -67,20 +67,20 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             aws_secret_access_key=self.aws_secret_access_key,
         )
 
-    def tearDown(self):
-        if self.efs_id is None:
-            return None
-
-        efs_client = self.efs_client
-
-        # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
-        # TODO: cleanup job definitions? (since built daily)
-        mount_targets = efs_client.describe_mount_targets(FileSystemId=self.efs_id)
-        for mount_target in mount_targets["MountTargets"]:
-            efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
-
-        time.sleep(60)
-        efs_client.delete_file_system(FileSystemId=self.efs_id)
+    # def tearDown(self):
+    #     if self.efs_id is None:
+    #         return None
+    #
+    #     efs_client = self.efs_client
+    #
+    #     # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
+    #     # TODO: cleanup job definitions? (since built daily)
+    #     mount_targets = efs_client.describe_mount_targets(FileSystemId=self.efs_id)
+    #     for mount_target in mount_targets["MountTargets"]:
+    #         efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
+    #
+    #     time.sleep(60)
+    #     efs_client.delete_file_system(FileSystemId=self.efs_id)
 
     def test_deploy_neuroconv_batch_job(self):
         region = "us-east-2"
