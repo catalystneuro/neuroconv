@@ -102,7 +102,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx/ci_tests /mnt/efs"
+        rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx/ci_tests /mnt/efs/source"
 
         testing_base_folder_path = pathlib.Path(__file__).parent.parent.parent
         yaml_specification_file_path = (

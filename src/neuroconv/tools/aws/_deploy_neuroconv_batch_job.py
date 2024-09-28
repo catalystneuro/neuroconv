@@ -84,7 +84,7 @@ def deploy_neuroconv_batch_job(
             "Without utilizing the EFS mount, the instance is unlikely to have enough local disk space. "
             "The subfolder 'source' is also required to eliminate ambiguity in the transfer process."
         )
-        raise ValueError(message=message)
+        raise ValueError(message)
 
     rclone_job_name = f"{job_name}_rclone_transfer"
     rclone_job_submission_info = rclone_transfer_batch_job(
