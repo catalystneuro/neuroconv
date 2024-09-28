@@ -530,12 +530,9 @@ def _generate_job_definition_name(
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
     """
-    docker_tags = docker_image.split(":")[1:]
-    docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
-
     # AWS Batch does not allow colons, slashes, or periods in job definition names
     parsed_docker_image_name = str(docker_image)
-    for disallowed_character in [":", r"/", "."]:
+    for disallowed_character in [":", "/", "."]:
         parsed_docker_image_name = parsed_docker_image_name.replace(disallowed_character, "-")
 
     job_definition_name = f"neuroconv_batch"
@@ -544,8 +541,6 @@ def _generate_job_definition_name(
     job_definition_name += f"_{minimum_worker_cpus}-CPU"
     if efs_id is not None:
         job_definition_name += f"_{efs_id}"
-    if docker_tag is None or docker_tag == "latest":
-        date = datetime.now().strftime("%Y-%m-%d")
 
     return job_definition_name
 

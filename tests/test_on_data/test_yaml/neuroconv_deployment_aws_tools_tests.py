@@ -36,6 +36,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
     region = "us-east-2"
+    efs_id = None
 
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
@@ -67,6 +68,9 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         )
 
     def tearDown(self):
+        if self.efs_id is None:
+            return None
+
         efs_client = self.efs_client
 
         # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume

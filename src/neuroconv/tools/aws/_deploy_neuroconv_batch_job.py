@@ -1,5 +1,6 @@
 """Collection of helper functions for deploying NeuroConv in EC2 Batch jobs on AWS."""
 
+import time
 import uuid
 from typing import Optional
 
@@ -95,6 +96,10 @@ def deploy_neuroconv_batch_job(
         region=region,
     )
     rclone_job_id = rclone_job_submission_info["job_submission_info"]["jobId"]
+
+    # Give the EFS and other aspects time to spin up before submitting next dependent job
+    # (Otherwise, good chance that duplicate EFS will be created)
+    time.sleep(30)
 
     docker_image = "ghcr.io/catalystneuro/neuroconv_latest_yaml_variable:latest"
 
