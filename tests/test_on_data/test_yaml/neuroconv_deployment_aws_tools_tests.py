@@ -1,18 +1,17 @@
-import datetime
 import os
 import time
 import unittest
 
 import boto3
 
-from neuroconv.tools.aws import rclone_transfer_batch_job
+from neuroconv.tools.aws import deploy_neuroconv_batch_job
 
 from ..setup_paths import OUTPUT_PATH
 
 _RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
 
-class TestRcloneTransferBatchJob(unittest.TestCase):
+class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
     """
     To allow this test to work, the developer must create a folder on the outer level of their personal Google Drive
     called 'testing_rclone_spikegl_and_phy' with the following structure:
@@ -78,10 +77,10 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         time.sleep(60)
         efs_client.delete_file_system(FileSystemId=self.efs_id)
 
-    def test_rclone_transfer_batch_job(self):
-        region = self.region
-        aws_access_key_id = self.aws_access_key_id
-        aws_secret_access_key = self.aws_secret_access_key
+    def test_deploy_neuroconv_batch_job(self):
+        region = "us-east-2"
+        aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+        aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
 
         dynamodb_resource = boto3.resource(
             service_name="dynamodb",
@@ -95,28 +94,38 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-        efs_client = self.efs_client
-
-        rclone_command = (
-            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy /mnt/efs "
-            "--verbose --progress --config ./rclone.conf"  # TODO: should just include this in helper function?
+        efs_client = boto3.client(
+            service_name="efs",
+            region_name=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
         )
+
+        rclone_command = "rclone copy test_google_drive_remote:testing_rclone_spikeglx/ci_tests /mnt/efs"
+
+        testing_base_folder_path = pathlib.Path(__file__).parent.parent.parent
+        yaml_specification_file_path = (
+            testing_base_folder_path
+            / "test_on_data"
+            / "test_yaml"
+            / "conversion_specifications"
+            / "GIN_conversion_specification.yml"
+        )
+
         rclone_config_file_path = self.test_config_file_path
 
-        today = datetime.datetime.now().date().isoformat()
-        job_name = f"test_rclone_transfer_batch_job_{today}"
-        efs_volume_name = "test_rclone_transfer_batch_efs"
-
-        info = rclone_transfer_batch_job(
+        job_name = "test_deploy_neuroconv_batch_job"
+        all_info = deploy_neuroconv_batch_job(
             rclone_command=rclone_command,
+            yaml_specification_file_path=yaml_specification_file_path,
             job_name=job_name,
-            efs_volume_name=efs_volume_name,
             rclone_config_file_path=rclone_config_file_path,
         )
 
         # Wait for AWS to process the job
-        time.sleep(60)
+        time.sleep(120)
 
+        info = all_info["neuroconv_job_submission_info"]
         job_id = info["job_submission_info"]["jobId"]
         job = None
         max_retries = 10
@@ -146,7 +155,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         ]
         assert len(matching_efs_volumes) == 1
         efs_volume = matching_efs_volumes[0]
-        self.efs_id = efs_volume["FileSystemId"]
+        efs_id = efs_volume["FileSystemId"]
 
         # Check normal job completion
         assert job["jobName"] == job_name

@@ -4,9 +4,7 @@ import time
 
 import boto3
 
-from neuroconv.tools.aws import (
-    submit_aws_batch_job,
-)
+from neuroconv.tools.aws import submit_aws_batch_job
 
 _RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
