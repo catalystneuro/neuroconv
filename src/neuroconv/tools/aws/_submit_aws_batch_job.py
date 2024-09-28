@@ -296,7 +296,7 @@ def _ensure_compute_environment_exists(
         The AWS Batch client to use for the job.
     max_retries : int, default: 12
         If the compute environment does not already exist, then this is the maximum number of times to synchronously
-        check for its successful creation before erroring.
+        check for its successful creation before raising an error.
         This is essential for a clean setup of the entire pipeline, or else later steps might error because they tried
         to launch before the compute environment was ready.
     """
@@ -546,7 +546,6 @@ def _generate_job_definition_name(
         job_definition_name += f"_{efs_id}"
     if docker_tag is None or docker_tag == "latest":
         date = datetime.now().strftime("%Y-%m-%d")
-        job_definition_name += f"_created-on-{date}"
 
     return job_definition_name
 
