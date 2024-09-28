@@ -1,6 +1,6 @@
 import os
-import time
 import platform
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -15,8 +15,9 @@ DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
 _PYTHON_VERSION = platform.python_version()
 
+
 @pytest.mark.skipif(
-    not HAVE_DANDI_KEY or Version(".".join(_PYTHON_VERSION.split(".")[:2])) != Version("3.12") ,
+    not HAVE_DANDI_KEY or Version(".".join(_PYTHON_VERSION.split(".")[:2])) != Version("3.12"),
     reason="You must set your DANDI_API_KEY to run this test!",
 )
 def test_run_conversion_from_yaml_with_dandi_upload():
