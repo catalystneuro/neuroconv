@@ -27,19 +27,14 @@ generate some credentials by creating a new user with programmatic access. Save 
 somewhere safe (such as installing the `AWS CLI <https://aws.amazon.com/cli>`_ and running ``aws configure``
 to store the values on your local device).
 
-e. Have access to an account on both the `staging/testing server <https://gui-staging.dandiarchive.org/>` (you
+e. Have access to an account on both the `staging/testing server <https://gui-staging.dandiarchive.org/>`_ (you
 will probably want one on the main archive as well, but please do not upload demonstration data to the primary
 server). This request can take a few days for the admin team to process. Once you have access, you will need
 to create a new Dandiset on the staging server and record the six-digit Dandiset ID.
 
 .. warning::
 
-    *Cloud costs*. While the operations deployed on your behalf by NeuroConv are optimized to the best extent we can,
-cloud services can still become expensive. Please be aware of the costs associated with running these services and
-ensure you have the necessary permissions and budget to run these operations. While NeuroConv makes every effort to
-ensure there are no stalled resources, it is ultimately your responsibility to monitor and manage these resources. We
-recommend checking the AWS dashboards regularly while running these operations, manually removing any spurious
-resources, and setting up billing alerts to ensure you do not exceed your budget.
+    *Cloud costs*. While the operations deployed on your behalf by NeuroConv are optimized to the best extent we can, cloud services can still become expensive. Please be aware of the costs associated with running these services and ensure you have the necessary permissions and budget to run these operations. While NeuroConv makes every effort to ensure there are no stalled resources, it is ultimately your responsibility to monitor and manage these resources. We recommend checking the AWS dashboards regularly while running these operations, manually removing any spurious resources, and setting up billing alerts to ensure you do not exceed your budget.
 
 Then, to setup the remaining steps of the tutorial:
 
