@@ -21,8 +21,8 @@ remote the name ``test_google_drive_remote``. This step is necessary to provide 
 the Google Drive folder from other locations by creating a file called ``rclone.conf``. You can find the path to
 file, which you will need for a later step, by running ``rclone config file``.
 
-d. Have access to an `AWS account <https://aws.amazon.com/account/sign-up>`_. Then, from
-the `AWS console <https://console.amazon.com/console/home>`_, sign in and navigate to the "IAM" page. Here, you will
+d. Have access to an `AWS account <https://aws.amazon.com/resources/create-account/>`_. Then, from
+the `AWS console <https://aws.amazon.com/console/>`_, sign in and navigate to the "IAM" page. Here, you will
 generate some credentials by creating a new user with programmatic access. Save your access key and secret key
 somewhere safe (such as installing the `AWS CLI <https://aws.amazon.com/cli>`_ and running ``aws configure``
 to store the values on your local device).
