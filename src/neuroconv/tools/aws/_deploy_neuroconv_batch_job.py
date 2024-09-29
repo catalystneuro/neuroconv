@@ -3,6 +3,7 @@
 import os
 import time
 import uuid
+import warnings
 from typing import Optional
 
 import boto3
@@ -10,6 +11,8 @@ from pydantic import FilePath, validate_call
 
 from ._rclone_transfer_batch_job import rclone_transfer_batch_job
 from ._submit_aws_batch_job import submit_aws_batch_job
+
+_RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
 
 @validate_call
@@ -104,6 +107,12 @@ def deploy_neuroconv_batch_job(
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
 
+    batch_client = boto3.client(
+        service_name="batch",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
     efs_client = boto3.client(
         service_name="efs",
         region_name=region,
@@ -166,11 +175,67 @@ def deploy_neuroconv_batch_job(
         region=region,
     )
 
-    # TODO: spinup third dependent job to clean up EFS volume after neuroconv job is complete?
-
     info = {
         "rclone_job_submission_info": rclone_job_submission_info,
         "neuroconv_job_submission_info": neuroconv_job_submission_info,
     }
+
+    # TODO: would be better to spin up third dependent job to clean up EFS volume after neuroconv job completes
+    neuroconv_job_id = neuroconv_job_submission_info["jobId"]
+    job = None
+    max_retries = 60 * 12  # roughly 12 hours max runtime (aside from internet loss) for checking cleanup
+    sleep_time = 60  # 1 minute
+    retry = 0.0
+    time.sleep(sleep_time)
+    while retry < max_retries:
+        job_description_response = batch_client.describe_jobs(jobs=[neuroconv_job_id])
+        if job_description_response["ResponseMetadata"]["HTTPStatusCode"] == 200:
+            # sleep but only increment retry by a small amount
+            # (really should only apply if internet connection is temporarily lost)
+            retry += 0.1
+            time.sleep(sleep_time)
+
+        job = job_description_response["jobs"][0]
+        if job["status"] in _RETRY_STATES:
+            retry += 1.0
+            time.sleep(sleep_time)
+        elif job["status"] == "SUCCEEDED":
+            break
+
+    if retry >= max_retries:
+        message = (
+            "Maximum retries reached for checking job completion for automatic EFS cleanup! "
+            "Please delete the EFS volume manually."
+        )
+        warnings.warn(message=message, stacklevel=2)
+
+        return info
+
+    # Cleanup EFS after job is complete - must clear mount targets first, then wait before deleting the volume
+    efs_volumes = efs_client.describe_file_systems()
+    matching_efs_volumes = [
+        file_system
+        for file_system in efs_volumes["FileSystems"]
+        for tag in file_system["Tags"]
+        if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
+    ]
+    if len(matching_efs_volumes) != 1:
+        message = (
+            f"Expected to find exactly one EFS volume with name '{efs_volume_name}', "
+            f"but found {len(matching_efs_volumes)}\n\n{matching_efs_volumes=}\n\n!"
+            "You will have to delete these manually."
+        )
+        warnings.warn(message=message, stacklevel=2)
+
+        return info
+
+    efs_volume = matching_efs_volumes[0]
+    efs_id = efs_volume["FileSystemId"]
+    mount_targets = efs_client.describe_mount_targets(FileSystemId=efs_id)
+    for mount_target in mount_targets["MountTargets"]:
+        efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
+
+    time.sleep(sleep_time)
+    efs_client.delete_file_system(FileSystemId=efs_id)
 
     return info

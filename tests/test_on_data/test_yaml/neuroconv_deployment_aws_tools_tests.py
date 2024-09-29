@@ -36,7 +36,6 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
     region = "us-east-2"
-    efs_id = None
 
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
@@ -59,28 +58,6 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         ]
         with open(file=self.test_config_file_path, mode="w") as io:
             io.writelines(rclone_config_contents)
-
-        self.efs_client = boto3.client(
-            service_name="efs",
-            region_name=self.region,
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
-        )
-
-    # def tearDown(self):
-    #     if self.efs_id is None:
-    #         return None
-    #
-    #     efs_client = self.efs_client
-    #
-    #     # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
-    #     # TODO: cleanup job definitions? (since built daily)
-    #     mount_targets = efs_client.describe_mount_targets(FileSystemId=self.efs_id)
-    #     for mount_target in mount_targets["MountTargets"]:
-    #         efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
-    #
-    #     time.sleep(60)
-    #     efs_client.delete_file_system(FileSystemId=self.efs_id)
 
     def test_deploy_neuroconv_batch_job(self):
         region = "us-east-2"
@@ -105,6 +82,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
+        efs_volumes_before = efs_client.describe_file_systems()
 
         rclone_command = (
             "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy/ci_tests /mnt/efs/source "
@@ -132,7 +110,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             rclone_config_file_path=rclone_config_file_path,
         )
 
-        # Wait for AWS to process the job
+        # Wait additional time for AWS to clean up resources
         time.sleep(120)
 
         info = all_info["neuroconv_job_submission_info"]
@@ -155,17 +133,9 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             else:
                 break
 
-        # Check EFS specific details
-        efs_volumes = efs_client.describe_file_systems()
-        matching_efs_volumes = [
-            file_system
-            for file_system in efs_volumes["FileSystems"]
-            for tag in file_system["Tags"]
-            if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
-        ]
-        assert len(matching_efs_volumes) == 1
-        efs_volume = matching_efs_volumes[0]
-        self.efs_id = efs_volume["FileSystemId"]
+        # Check EFS cleaned up automatically
+        efs_volumes_after = efs_client.describe_file_systems()
+        assert len(efs_volumes_after["FileSystems"]) == len(efs_volumes_before["FileSystems"])
 
         # Check normal job completion
         expected_job_name = f"{job_name}_neuroconv_deployment"
