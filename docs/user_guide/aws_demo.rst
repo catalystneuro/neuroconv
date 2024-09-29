@@ -12,7 +12,7 @@ This tutorial relies on setting up several cloud-based aspects ahead of time:
 a. Download some of the GIN data from the main testing suite, see :ref:`example_data` for more
 details. Specifically, you will need the ``spikeglx`` and ``phy`` folders.
 
-b. Have access to a `Google Drive <https://wwww.google.com/drive>`_ folder to mimic a typical remote storage
+b. Have access to a `Google Drive <https://wwww.drive.google.com>`_ folder to mimic a typical remote storage
 location. The example data from (a) only takes up about 20 MB of space, so ensure you have that available. In
 practice, any `cloud storage provider that can be accessed via Rclone <https://rclone.org/#providers>`_ can be used.
 
