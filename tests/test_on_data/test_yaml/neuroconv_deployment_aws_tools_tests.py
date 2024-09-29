@@ -82,6 +82,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
+        # Assume no other tests of EFS volumes are fluctuating at the same time, otherwise make this more specific
         efs_volumes_before = efs_client.describe_file_systems()
 
         rclone_command = (
