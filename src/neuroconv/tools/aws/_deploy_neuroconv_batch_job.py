@@ -181,7 +181,7 @@ def deploy_neuroconv_batch_job(
     }
 
     # TODO: would be better to spin up third dependent job to clean up EFS volume after neuroconv job completes
-    neuroconv_job_id = neuroconv_job_submission_info["jobId"]
+    neuroconv_job_id = neuroconv_job_submission_info["job_submission_info"]["jobId"]
     job = None
     max_retries = 60 * 12  # roughly 12 hours max runtime (aside from internet loss) for checking cleanup
     sleep_time = 60  # 1 minute
