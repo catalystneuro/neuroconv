@@ -114,6 +114,8 @@ folder so that you have the following structure...
 
 .. code:: python
 
+        from neuroconv.tools.aws import deploy_neuroconv_batch_job
+
         rclone_command = (
             "rclone copy test_google_drive_remote:demo_neuroconv_aws /mnt/efs/source "
             "--verbose --progress --config ./rclone.conf"
