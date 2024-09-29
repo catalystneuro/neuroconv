@@ -1,4 +1,4 @@
-"""Collection of helper functions for assessing and performing automated data transfers related to AWS."""
+"""Collection of helper functions for performing Rclone data transfers in EC2 Batch jobs on AWS."""
 
 import warnings
 from typing import Optional

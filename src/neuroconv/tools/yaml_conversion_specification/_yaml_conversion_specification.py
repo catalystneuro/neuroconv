@@ -73,10 +73,16 @@ def run_conversion_from_yaml(
 
     if data_folder_path is None:
         data_folder_path = Path(specification_file_path).parent
+    else:
+        data_folder_path = Path(data_folder_path)
+        data_folder_path.mkdir(exist_ok=True)
+
     if output_folder_path is None:
-        output_folder_path = Path(specification_file_path).parent
+        output_folder_path = specification_file_path.parent
     else:
         output_folder_path = Path(output_folder_path)
+        output_folder_path.mkdir(exist_ok=True)
+
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")

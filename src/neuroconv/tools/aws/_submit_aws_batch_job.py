@@ -464,11 +464,14 @@ def _create_or_get_efs_id(
         if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
     ]
 
-    if len(matching_efs_volumes) > 1:
+    if len(matching_efs_volumes) == 1:
         efs_volume = matching_efs_volumes[0]
         efs_id = efs_volume["FileSystemId"]
 
         return efs_id
+    elif len(matching_efs_volumes) > 1:
+        message = f"Multiple EFS volumes with the name '{efs_volume_name}' were found!\n\n{matching_efs_volumes=}\n"
+        raise ValueError(message)
 
     # Existing volume not found - must create a fresh one and set mount targets on it
     efs_volume = efs_client.create_file_system(
@@ -530,12 +533,9 @@ def _generate_job_definition_name(
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
     """
-    docker_tags = docker_image.split(":")[1:]
-    docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
-
     # AWS Batch does not allow colons, slashes, or periods in job definition names
     parsed_docker_image_name = str(docker_image)
-    for disallowed_character in [":", r"/", "."]:
+    for disallowed_character in [":", "/", "."]:
         parsed_docker_image_name = parsed_docker_image_name.replace(disallowed_character, "-")
 
     job_definition_name = f"neuroconv_batch"
@@ -544,8 +544,6 @@ def _generate_job_definition_name(
     job_definition_name += f"_{minimum_worker_cpus}-CPU"
     if efs_id is not None:
         job_definition_name += f"_{efs_id}"
-    if docker_tag is None or docker_tag == "latest":
-        date = datetime.now().strftime("%Y-%m-%d")
 
     return job_definition_name
 
@@ -644,7 +642,7 @@ def _ensure_job_definition_exists_and_get_arn(
                 },
             },
         ]
-        mountPoints = [{"containerPath": "/mnt/efs/", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
+        mountPoints = [{"containerPath": "/mnt/efs", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
 
     # batch_client.register_job_definition is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(
