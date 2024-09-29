@@ -9,10 +9,10 @@ The following is an explicit demonstration of how to use these to create a pipel
 
 This tutorial relies on setting up several cloud-based aspects ahead of time:
 
-a. You will need some of the GIN data from the main testing suite, see :ref:`example_data` for more
+a. Download some of the GIN data from the main testing suite, see :ref:`example_data` for more
 details. Specifically, you will need the ``spikeglx`` and ``phy`` folders.
 
-b. You will need access to a `Google Drive <https://wwww.google.com/drive>`_ folder to mimic a typical remote storage
+b. Have access to a `Google Drive <https://wwww.google.com/drive>`_ folder to mimic a typical remote storage
 location. The example data from (a) only takes up about 20 MB of space, so ensure you have that available. In
 practice, any `cloud storage provider that can be accessed via Rclone <https://rclone.org/#providers>`_ can be used.
 
@@ -21,15 +21,15 @@ remote the name ``test_google_drive_remote``. This step is necessary to provide 
 the Google Drive folder from other locations by creating a file called ``rclone.conf``. You can find the path to
 file, which you will need for a later step, by running ``rclone config file``.
 
-d. You will need access to an `AWS account <https://aws.amazon.com/account/sign-up>`_. Then, from
+d. Have access to an `AWS account <https://aws.amazon.com/account/sign-up>`_. Then, from
 the `AWS console <https://console.amazon.com/console/home>`_, sign in and navigate to the "IAM" page. Here, you will
 generate some credentials by creating a new user with programmatic access. Save your access key and secret key
 somewhere safe (such as installing the `AWS CLI <https://aws.amazon.com/cli>`_ and running ``aws configure``
 to store the values on your local device).
 
-e. You will need to make an account on both the main `Dandi Archive <https://dandiarchive.org/>`_ and its
-`staging/testing server <https://gui-staging.dandiarchive.org/>` (please do not upload demonstration data to the
-primary server). This request can take a few days for the admin team to process. Once you have access, you will need
+e. Have access to an account on both the `staging/testing server <https://gui-staging.dandiarchive.org/>` (you
+will probably want one on the main archive as well, but please do not upload demonstration data to the primary
+server). This request can take a few days for the admin team to process. Once you have access, you will need
 to create a new Dandiset on the staging server and record the six-digit Dandiset ID.
 
 .. warning::
