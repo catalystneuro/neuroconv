@@ -168,7 +168,8 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         self.efs_id = efs_volume["FileSystemId"]
 
         # Check normal job completion
-        assert job["jobName"] == f"{job_name}_neuroconv_deployment"
+        expected_job_name = f"{job_name}_neuroconv_deployment"
+        assert job["jobName"] == expected_job_name
         assert "neuroconv_batch_queue" in job["jobQueue"]
         assert "fs-" in job["jobDefinition"]
         assert job["status"] == "SUCCEEDED"
@@ -181,7 +182,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
         assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
         table_item = table_item_response["Item"]
-        assert table_item["job_name"] == job_name
+        assert table_item["job_name"] == expected_job_name
         assert table_item["job_id"] == job_id
         assert table_item["status"] == "Job submitted..."
 
