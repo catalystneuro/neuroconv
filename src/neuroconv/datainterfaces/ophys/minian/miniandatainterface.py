@@ -1,4 +1,5 @@
 from roiextractors.extraction_tools import PathType
+
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
@@ -9,7 +10,6 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".zarr",)
     info = "Interface for Minian segmentation data."
 
-    
     @classmethod
     def get_source_schema(cls) -> dict:
         source_metadata = super().get_source_schema()
