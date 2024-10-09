@@ -61,7 +61,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         super().__init__(file_paths=file_paths)
         self._segment_starting_times = None
 
-    def get_metadata_schema(self) -> dict:
+    def get_metadata_schema(self) -> dict:  # noqa: D102
         metadata_schema = super().get_metadata_schema()
 
         time_series_metadata_schema_path = (
@@ -84,7 +84,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [
@@ -96,17 +96,17 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         ]
         behavior_metadata = dict(Audio=audio_metadata)
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata()  # noqa: D102
         metadata.update(Behavior=behavior_metadata)
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def get_timestamps(self) -> Optional[np.ndarray]:
+    def get_timestamps(self) -> Optional[np.ndarray]:  # noqa: D102
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):  # noqa: D102
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -155,7 +155,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         self._segment_starting_times = aligned_segment_starting_times
 
-    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):  # noqa: D102
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def add_to_nwbfile(

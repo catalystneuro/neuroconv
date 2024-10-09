@@ -15,7 +15,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for MCSRaw recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .raw file."
         return source_schema

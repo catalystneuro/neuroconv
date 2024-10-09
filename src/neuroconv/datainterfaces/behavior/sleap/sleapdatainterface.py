@@ -19,7 +19,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     info = "Interface for SLEAP pose estimation datasets."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .slp file (the output of sleap)"
         source_schema["properties"]["video_file_path"][
@@ -57,7 +57,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         self._timestamps = None
         super().__init__(file_path=file_path)
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
         if self.video_file_path is None:
             raise ValueError(
                 "Unable to fetch the original timestamps from the video! "
@@ -65,11 +65,11 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
             )
         return np.array(extract_timestamps(self.video_file_path))
 
-    def get_timestamps(self) -> np.ndarray:
+    def get_timestamps(self) -> np.ndarray:  # noqa: D102
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         return timestamps
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
         self._timestamps = aligned_timestamps
 
     def add_to_nwbfile(

@@ -149,7 +149,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     }
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .dat file (the output of fictrac)"
         return source_schema
@@ -194,7 +194,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self._timestamps = None
         self._starting_time = None
 
-    def get_metadata(self):
+    def get_metadata(self):  # noqa: D102
         metadata = super().get_metadata()
 
         session_start_time = extract_session_start_time(
@@ -345,17 +345,17 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         return timestamps
 
-    def get_timestamps(self):
+    def get_timestamps(self):  # noqa: D102
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         if self._starting_time is not None:
             timestamps = timestamps + self._starting_time
 
         return timestamps
 
-    def set_aligned_timestamps(self, aligned_timestamps):
+    def set_aligned_timestamps(self, aligned_timestamps):  # noqa: D102
         self._timestamps = aligned_timestamps
 
-    def set_aligned_starting_time(self, aligned_starting_time):
+    def set_aligned_starting_time(self, aligned_starting_time):  # noqa: D102
         self._starting_time = aligned_starting_time
 
 

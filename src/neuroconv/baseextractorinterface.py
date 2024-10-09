@@ -19,7 +19,7 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     Extractor = None  # Class loads dynamically on first call to .get_extractor()
 
     @classmethod
-    def get_extractor(cls):
+    def get_extractor(cls):  # noqa: D102
         if cls.Extractor is not None:
             return cls.Extractor
         extractor_module = get_package(package_name=cls.ExtractorModuleName)

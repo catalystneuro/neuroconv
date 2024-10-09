@@ -23,7 +23,7 @@ class LightningPoseConverter(NWBConverter):
     info = "Interface for handling multiple streams of lightning pose data."
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls):  # noqa: D102
         return get_schema_from_method_signature(cls)
 
     @validate_call
@@ -70,14 +70,14 @@ class LightningPoseConverter(NWBConverter):
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
             self.data_interface_objects.update(dict(LabeledVideo=VideoInterface(file_paths=[labeled_video_file_path])))
 
-    def get_conversion_options_schema(self) -> dict:
+    def get_conversion_options_schema(self) -> dict:  # noqa: D102
         conversion_options_schema = get_schema_from_method_signature(
             method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
         )
 
         return conversion_options_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self) -> DeepDict:  # noqa: D102
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
@@ -111,6 +111,28 @@ class LightningPoseConverter(NWBConverter):
         starting_frames_labeled_videos: Optional[list[int]] = None,
         stub_test: bool = False,
     ):
+        """
+        Add behavior and pose estimation data, including original and labeled videos, to the specified NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the data will be added.
+        metadata : dict
+            Metadata dictionary containing information about the behavior and videos.
+        reference_frame : str, optional
+            Description of the reference frame for pose estimation, by default None.
+        confidence_definition : str, optional
+            Definition for the confidence levels in pose estimation, by default None.
+        external_mode : bool, optional
+            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
+        starting_frames_original_videos : list of int, optional
+            List of starting frames for the original videos, by default None.
+        starting_frames_labeled_videos : list of int, optional
+            List of starting frames for the labeled videos, by default None.
+        stub_test : bool, optional
+            If True, only a subset of the data will be added for testing purposes, by default False.
+        """
         original_video_interface = self.data_interface_objects["OriginalVideo"]
 
         original_video_metadata = next(
@@ -172,6 +194,33 @@ class LightningPoseConverter(NWBConverter):
         starting_frames_labeled_videos: Optional[list] = None,
         stub_test: bool = False,
     ) -> None:
+        """
+        Run the full conversion process, adding behavior, video, and pose estimation data to an NWB file.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePath, optional
+            The file path where the NWB file will be saved. If None, the file is handled in memory.
+        nwbfile : NWBFile, optional
+            An in-memory NWBFile object. If None, a new NWBFile object will be created.
+        metadata : dict, optional
+            Metadata dictionary for describing the NWB file contents. If None, it is auto-generated.
+        overwrite : bool, optional
+            If True, overwrites the NWB file at `nwbfile_path` if it exists. If False, appends to the file, by default False.
+        reference_frame : str, optional
+            Description of the reference frame for pose estimation, by default None.
+        confidence_definition : str, optional
+            Definition for confidence levels in pose estimation, by default None.
+        external_mode : bool, optional
+            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
+        starting_frames_original_videos : list of int, optional
+            List of starting frames for the original videos, by default None.
+        starting_frames_labeled_videos : list of int, optional
+            List of starting frames for the labeled videos, by default None.
+        stub_test : bool, optional
+            If True, only a subset of the data will be added for testing purposes, by default False.
+
+        """
         if metadata is None:
             metadata = self.get_metadata()
 

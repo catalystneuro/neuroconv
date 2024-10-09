@@ -22,13 +22,13 @@ class SpikeGLXConverterPipe(ConverterPipe):
     info = "Converter for multi-stream SpikeGLX recording data."
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls):  # noqa: D102
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing SpikeGLX streams."
         return source_schema
 
     @classmethod
-    def get_streams(cls, folder_path: DirectoryPath) -> list[str]:
+    def get_streams(cls, folder_path: DirectoryPath) -> list[str]:  # noqa: D102
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
         return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
@@ -86,7 +86,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def get_conversion_options_schema(self) -> dict:
+    def get_conversion_options_schema(self) -> dict:  # noqa: D102
         conversion_options_schema = super().get_conversion_options_schema()
         conversion_options_schema["properties"].update(
             {name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()}

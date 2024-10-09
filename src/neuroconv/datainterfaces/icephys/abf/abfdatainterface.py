@@ -35,7 +35,7 @@ class AbfInterface(BaseIcephysInterface):
     ExtractorName = "AxonIO"
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_paths"] = dict(
             type="array",
@@ -76,7 +76,7 @@ class AbfInterface(BaseIcephysInterface):
             icephys_metadata_file_path=icephys_metadata_file_path,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
         metadata = super().get_metadata()
@@ -158,7 +158,7 @@ class AbfInterface(BaseIcephysInterface):
 
         return metadata
 
-    def set_aligned_starting_time(self, aligned_starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):  # noqa: D102
         for reader in self.readers_list:
             number_of_segments = reader.header["nb_segment"][0]
             for segment_index in range(number_of_segments):

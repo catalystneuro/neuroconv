@@ -12,6 +12,7 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the Caiman segmentation interface."""
         source_metadata = super().get_source_schema()
         source_metadata["properties"]["file_path"]["description"] = "Path to .hdf5 file."
         return source_metadata

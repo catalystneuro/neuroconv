@@ -209,12 +209,29 @@ class DeepDict(defaultdict):
     """A defaultdict of defaultdicts"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """A defaultdict of defaultdicts"""
         super().__init__(lambda: DeepDict(), *args, **kwargs)
         for key, value in self.items():
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
     def deep_update(self, other: Optional[Union[dict, "DeepDict"]] = None, **kwargs) -> None:
+        """
+        Recursively update the DeepDict with another dictionary or DeepDict.
+
+        Parameters
+        ----------
+        other : dict or DeepDict, optional
+            The dictionary or DeepDict to update the current instance with.
+        **kwargs : Any
+            Additional keyword arguments representing key-value pairs to update the DeepDict.
+
+        Notes
+        -----
+        For any keys that exist in both the current instance and the provided dictionary, the values are merged
+        recursively if both are dictionaries. Otherwise, the value from `other` or `kwargs` will overwrite the
+        existing value.
+        """
         for key, value in (other or kwargs).items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
                 self[key].deep_update(value)

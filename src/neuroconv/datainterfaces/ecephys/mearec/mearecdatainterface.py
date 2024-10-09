@@ -18,7 +18,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for MEArec recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:
+    def get_source_schema(cls) -> dict:  # noqa: D102
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the MEArec .h5 file."
         return source_schema
@@ -37,7 +37,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> dict:  # noqa: D102
         metadata = super().get_metadata()
 
         # TODO: improve ProbeInterface integration in our writing procedures

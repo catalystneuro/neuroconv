@@ -1,8 +1,8 @@
 # Upcoming
 
-## Deprecations
-
 ## Bug Fixes
+
+## Deprecations
 
 ## Features
 * Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
@@ -11,6 +11,7 @@
 ## Improvements
 * Remove dev test from PR  [PR #1092](https://github.com/catalystneuro/neuroconv/pull/1092)
 * Run only the most basic testing while a PR is on draft  [PR #1082](https://github.com/catalystneuro/neuroconv/pull/1082)
+* Using ruff to enforce existence of public functions's docstrings [PR #1062](https://github.com/catalystneuro/neuroconv/pull/1062)
 * Test that zarr backend_configuration works in gin data tests  [PR #1094](https://github.com/catalystneuro/neuroconv/pull/1094)
 * Consolidated weekly workflows into one workflow and added email notifications [PR #1088](https://github.com/catalystneuro/neuroconv/pull/1088)
 * Avoid running link test when the PR is on draft  [PR #1093](https://github.com/catalystneuro/neuroconv/pull/1093)
