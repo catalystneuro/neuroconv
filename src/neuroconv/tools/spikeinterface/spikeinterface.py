@@ -778,6 +778,35 @@ def add_electrical_series(
     )
 
 
+def _report_variable_offset(channel_offset, channel_ids):
+    """
+    Helper function to report variable offsets per channel IDs.
+    Groups the different available offsets per channel IDs and raises a ValueError.
+
+    Parameters:
+    - channel_offset: array-like of channel offsets
+    - channel_ids: array-like of channel IDs
+
+    Raises:
+    - ValueError: if multiple offsets are found
+    """
+    # Group the different offsets per channel IDs
+    offset_to_channel_ids = {}
+    for offset, channel_id in zip(channel_offset, channel_ids):
+        if offset not in offset_to_channel_ids:
+            offset_to_channel_ids[offset] = []
+        offset_to_channel_ids[offset].append(channel_id)
+
+    # Create a user-friendly message
+    message_lines = ["Recording extractors with heterogeneous offsets are not supported."]
+    message_lines.append("Multiple offsets were found per channel IDs:")
+    for offset, ids in offset_to_channel_ids.items():
+        message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message = "\n".join(message_lines)
+
+    raise ValueError(message)
+
+
 def add_electrical_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -912,6 +941,9 @@ def add_electrical_series_to_nwbfile(
 
     unique_offset = np.unique(channel_offset)
     if unique_offset.size > 1:
+        channel_ids = recording.get_channel_ids()
+        # This prints a friendly error where the user is provided with a map from offset to channels
+        _report_variable_offset(channel_offset, channel_ids)
         raise ValueError("Recording extractors with heterogeneous offsets are not supported")
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
