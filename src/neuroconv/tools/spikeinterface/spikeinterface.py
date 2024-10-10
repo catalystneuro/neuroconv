@@ -778,21 +778,14 @@ def add_electrical_series(
     )
 
 
-def _report_variable_offset(channel_offset, channel_ids):
+def _report_variable_offset(channel_offsets, channel_ids):
     """
     Helper function to report variable offsets per channel IDs.
     Groups the different available offsets per channel IDs and raises a ValueError.
-
-    Parameters:
-    - channel_offset: array-like of channel offsets
-    - channel_ids: array-like of channel IDs
-
-    Raises:
-    - ValueError: if multiple offsets are found
     """
     # Group the different offsets per channel IDs
     offset_to_channel_ids = {}
-    for offset, channel_id in zip(channel_offset, channel_ids):
+    for offset, channel_id in zip(channel_offsets, channel_ids):
         if offset not in offset_to_channel_ids:
             offset_to_channel_ids[offset] = []
         offset_to_channel_ids[offset].append(channel_id)
@@ -934,17 +927,16 @@ def add_electrical_series_to_nwbfile(
     # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
     # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
+    channel_offsets = recording.get_channel_offsets()
 
     unique_channel_conversion = np.unique(channel_conversion)
     unique_channel_conversion = unique_channel_conversion[0] if len(unique_channel_conversion) == 1 else None
 
-    unique_offset = np.unique(channel_offset)
+    unique_offset = np.unique(channel_offsets)
     if unique_offset.size > 1:
         channel_ids = recording.get_channel_ids()
-        # This prints a friendly error where the user is provided with a map from offset to channels
-        _report_variable_offset(channel_offset, channel_ids)
-        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+        # This prints a user friendly error where the user is provided with a map from offset to channels
+        _report_variable_offset(channel_offsets, channel_ids)
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
     micro_to_volts_conversion_factor = 1e-6
