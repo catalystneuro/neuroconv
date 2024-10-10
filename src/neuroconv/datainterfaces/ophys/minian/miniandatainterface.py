@@ -1,7 +1,6 @@
 from typing import Optional
 
 from pynwb import NWBFile
-
 from roiextractors.extraction_tools import PathType
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface

@@ -4,8 +4,8 @@ from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
-    Suite2pSegmentationInterface,
     MinianSegmentationInterface,
+    Suite2pSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     SegmentationExtractorInterfaceTestMixin,
@@ -209,9 +209,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 
 class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = MinianSegmentationInterface
-    interface_kwargs = dict(
-        folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "minian"
-    )
+    interface_kwargs = dict(folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian")
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
