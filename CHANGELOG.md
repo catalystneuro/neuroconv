@@ -7,6 +7,7 @@
 ## Features
 * Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
 * Data interfaces now perform source (argument inputs) validation with the json schema  [PR #1020](https://github.com/catalystneuro/neuroconv/pull/1020)
+* Improve the error message when writing a recording extractor with multiple offsets [PR #1101](https://github.com/catalystneuro/neuroconv/pull/1101)
 
 ## Improvements
 * Remove dev test from PR  [PR #1092](https://github.com/catalystneuro/neuroconv/pull/1092)
