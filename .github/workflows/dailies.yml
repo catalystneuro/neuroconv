@@ -19,6 +19,9 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      python-versions: '["3.9", "3.10", "3.11", "3.12"]'
+      os-versions: '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]'
 
   run-daily-dev-tests:
     uses: ./.github/workflows/dev-testing.yml
