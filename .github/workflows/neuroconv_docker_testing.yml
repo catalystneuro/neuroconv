@@ -81,7 +81,7 @@ jobs:
 
       - name: Pull docker image
         run: |
-          docker pull ghcr.io/catalystneuro/neuroconv:latest
+          docker pull ghcr.io/catalystneuro/neuroconv:v0.6.4
           docker pull ghcr.io/catalystneuro/neuroconv:yaml_variable
 
       - name: Run docker tests
