@@ -99,7 +99,8 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] 
         metadata["Ecephys"]["Device"] = [defaults]
     for device_metadata in metadata["Ecephys"]["Device"]:
         if device_metadata.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **device_metadata))
+            device_kwargs = dict(defaults, **device_metadata)
+            nwbfile.create_device(**device_kwargs)
 
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
@@ -778,6 +779,28 @@ def add_electrical_series(
     )
 
 
+def _report_variable_offset(channel_offsets, channel_ids):
+    """
+    Helper function to report variable offsets per channel IDs.
+    Groups the different available offsets per channel IDs and raises a ValueError.
+    """
+    # Group the different offsets per channel IDs
+    offset_to_channel_ids = {}
+    for offset, channel_id in zip(channel_offsets, channel_ids):
+        if offset not in offset_to_channel_ids:
+            offset_to_channel_ids[offset] = []
+        offset_to_channel_ids[offset].append(channel_id)
+
+    # Create a user-friendly message
+    message_lines = ["Recording extractors with heterogeneous offsets are not supported."]
+    message_lines.append("Multiple offsets were found per channel IDs:")
+    for offset, ids in offset_to_channel_ids.items():
+        message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message = "\n".join(message_lines)
+
+    raise ValueError(message)
+
+
 def add_electrical_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -905,14 +928,16 @@ def add_electrical_series_to_nwbfile(
     # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
     # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
+    channel_offsets = recording.get_channel_offsets()
 
     unique_channel_conversion = np.unique(channel_conversion)
     unique_channel_conversion = unique_channel_conversion[0] if len(unique_channel_conversion) == 1 else None
 
-    unique_offset = np.unique(channel_offset)
+    unique_offset = np.unique(channel_offsets)
     if unique_offset.size > 1:
-        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+        channel_ids = recording.get_channel_ids()
+        # This prints a user friendly error where the user is provided with a map from offset to channels
+        _report_variable_offset(channel_offsets, channel_ids)
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
     micro_to_volts_conversion_factor = 1e-6
