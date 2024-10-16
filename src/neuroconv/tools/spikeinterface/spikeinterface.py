@@ -99,7 +99,8 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] 
         metadata["Ecephys"]["Device"] = [defaults]
     for device_metadata in metadata["Ecephys"]["Device"]:
         if device_metadata.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **device_metadata))
+            device_kwargs = dict(defaults, **device_metadata)
+            nwbfile.create_device(**device_kwargs)
 
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
