@@ -265,7 +265,7 @@ abf = [
     "neo>=0.13.2",
 ]
 icephys = [
-    ".[abf]",
+    "neuroconv[abf]",
 ]
 
 ## Ophys
@@ -331,6 +331,7 @@ ophys = [
     "neuroconv[tdt_fp]",
     "neuroconv[tiff]",
 ]
+# Note these are references to the package in pipy (not local)
 full = [
     "neuroconv[aws]",
     "neuroconv[compressors]",
