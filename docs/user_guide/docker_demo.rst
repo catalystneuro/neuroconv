@@ -30,7 +30,7 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
 
 3. Create a file in this folder named ``demo_neuroconv_docker_yaml.yml`` with the following content...
 
-.. code::
+.. code-block:: yaml
 
     metadata:
       NWBFile:
@@ -102,7 +102,11 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
 
 .. code::
 
-    docker run -t --volume /home/user/demo_neuroconv_docker:/demo_neuroconv_docker ghcr.io/catalystneuro/neuroconv:latest neuroconv /demo_neuroconv_docker/demo_neuroconv_docker_yaml.yml --output-folder-path /demo_neuroconv_docker/demo_output
+    docker run -t \
+        --volume /home/user/demo_neuroconv_docker:/demo_neuroconv_docker \
+        ghcr.io/catalystneuro/neuroconv:latest \
+        neuroconv /demo_neuroconv_docker/demo_neuroconv_docker_yaml.yml \
+        --output-folder-path /demo_neuroconv_docker/demo_output
 
 Voilà! If everything occurred successfully, you should see...
 
@@ -142,6 +146,10 @@ Then, you can use the following command to run the Rclone Docker image:
 
 .. code::
 
-    docker run -t --volume destination_folder:destination_folder -e RCLONE_CONFIG="$RCLONE_CONFIG" -e RCLONE_COMMAND="$RCLONE_COMMAND" ghcr.io/catalystneuro/rclone_with_config:latest
+    docker run -t \
+        --volume destination_folder:destination_folder \
+        -e RCLONE_CONFIG="$RCLONE_CONFIG" \
+        -e RCLONE_COMMAND="$RCLONE_COMMAND" \
+        ghcr.io/catalystneuro/rclone_with_config:latest
 
 This image is particularly designed for convenience with AWS Batch (EC2) tools that rely heavily on atomic Docker operations. Alternative AWS approaches would have relied on transferring the Rclone configuration file to the EC2 instances using separate transfer protocols or dependent steps, both of which add complexity to the workflow.
