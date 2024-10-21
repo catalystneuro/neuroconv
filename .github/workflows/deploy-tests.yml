@@ -60,7 +60,7 @@ jobs:
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.12"]' }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
 
 
