@@ -3,6 +3,7 @@
 ## Deprecations
 
 ## Bug Fixes
+* Fixed formatwise installation from pipy [PR #1118](https://github.com/catalystneuro/neuroconv/pull/1118)
 
 ## Features
 * Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
