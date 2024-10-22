@@ -27,6 +27,15 @@ on:
   workflow_dispatch:
 
 jobs:
+  debug:
+    name: Debugging
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Python versions: ${{ inputs.python-versions }}"
+          echo "OS versions: ${{ inputs.os-versions }}"
+          echo "parsed python-version: ${{ fromJson(inputs.python-versions) }}"
+          echo "parsed os-version: ${{ fromJson(inputs.os-versions) }}"
   run:
     name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}

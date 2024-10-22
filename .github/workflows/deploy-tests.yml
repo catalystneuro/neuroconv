@@ -30,14 +30,6 @@ jobs:
           echo "CHANGELOG.md has not been updated."
           0
 
-  debug:
-    needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo $ALL_PYTHON_VERSIONS
-      - run: echo $ALL_OS_VERSIONS
-
   run-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
