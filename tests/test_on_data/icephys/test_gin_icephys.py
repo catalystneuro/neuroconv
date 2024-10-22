@@ -9,7 +9,7 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces import AbfInterface
 from neuroconv.tools.neo import get_number_of_electrodes, get_number_of_segments
 
-from ..setup_paths import OUTPUT_PATH
+from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 try:
     from parameterized import param, parameterized
@@ -36,7 +36,7 @@ class TestIcephysNwbConversions(unittest.TestCase):
         param(
             data_interface=AbfInterface,
             interface_kwargs=dict(
-                file_paths=[str(DATA_PATH / "axon" / "File_axon_1.abf")],
+                file_paths=[str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf")],
                 icephys_metadata={
                     "recording_sessions": [
                         {"abf_file_name": "File_axon_1.abf", "icephys_experiment_type": "voltage_clamp"}
