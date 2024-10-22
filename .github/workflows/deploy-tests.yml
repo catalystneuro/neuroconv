@@ -40,8 +40,8 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || vars.ALL_PYTHON_VERSIONS }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || vars.ALL_OS_VERSIONS }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9"]' }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest"]' }}
 
   # If the conversion gallery is the only thing that changed, run doctests only
   run-doctests-only:
