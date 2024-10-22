@@ -1,6 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
+from shutil import copy
 
 from neuroconv.utils import load_dict_from_file
 
@@ -17,9 +18,17 @@ if os.getenv("CI"):
 else:
     # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    file_path = Path(__file__).parent / "gin_test_config.json"
-    assert file_path.exists(), f"File not found: {file_path}"
-    test_config_dict = load_dict_from_file(file_path)
+    test_config_path = Path(__file__).parent / "gin_test_config.json"
+    config_file_exists = test_config_path.exists()
+    if not config_file_exists:
+
+        root = test_config_path.parent.parent
+        base_test_config_path = root / "base_gin_test_config.json"
+
+        test_config_path.parent.mkdir(parents=True, exist_ok=True)
+        copy(src=base_test_config_path, dst=test_config_path)
+
+    test_config_dict = load_dict_from_file(test_config_path)
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
 
     if test_config_dict["SAVE_OUTPUTS"]:
