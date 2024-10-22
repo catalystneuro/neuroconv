@@ -40,8 +40,8 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '' }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '' }}
 
   # If the conversion gallery is the only thing that changed, run doctests only
   run-doctests-only:
@@ -49,8 +49,8 @@ jobs:
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '' }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '' }}
 
 
   run-live-service-tests:
@@ -60,8 +60,8 @@ jobs:
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '' }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '' }}
 
 
   check-final-status:

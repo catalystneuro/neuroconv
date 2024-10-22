@@ -5,9 +5,9 @@ on:
     inputs:
       python-versions:
         description: 'List of Python versions to use in matrix, as JSON string'
-        required: true
+        required: false
         type: string
-        default: '["3.9", "3.10", "3.11", "3.12"]'
+        default: ${{ vars.ALL_PYTHON_VERSIONS }}
     secrets:
       DANDI_API_KEY:
         required: true
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJson(inputs.python-versions) }}
+        python-version: ${{ fromJson(!inputs.python-versions && vars.ALL_PYTHON_VERSIONS || inputs.python-versions) }}
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags

@@ -4,14 +4,14 @@ on:
     inputs:
       python-versions:
         description: 'List of Python versions to use in matrix, as JSON string'
-        required: true
+        required: false
         type: string
-        default: '["3.9", "3.10", "3.11", "3.12"]'
+        default: ${{ vars.ALL_PYTHON_VERSIONS }}
       os-versions:
         description: 'List of OS versions to use in matrix, as JSON string'
-        required: true
+        required: false
         type: string
-        default: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+        default: ${{ vars.ALL_OS_VERSIONS }}
 
 
 jobs:
@@ -21,8 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJson(inputs.python-versions) }}
-        os: ${{ fromJson(inputs.os-versions) }}
+        python-version: ${{ fromJson(!inputs.python-versions && vars.ALL_PYTHON_VERSIONS || inputs.python-versions) }}
+        os: ${{ fromJson(!inputs.os-versions && vars.ALL_OS_VERSIONS || inputs.os-versions) }}
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
