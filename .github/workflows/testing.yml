@@ -5,12 +5,12 @@ on:
     inputs:
       python-versions:
         description: 'List of Python versions to use in matrix, as JSON string'
-        required: false
+        required: true
         type: string
         default: ${{ vars.ALL_PYTHON_VERSIONS }}
       os-versions:
         description: 'List of OS versions to use in matrix, as JSON string'
-        required: false
+        required: true
         type: string
         default: ${{ vars.ALL_OS_VERSIONS }}
 
