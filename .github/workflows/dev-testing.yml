@@ -5,9 +5,8 @@ on:
     inputs:
       python-versions:
         description: 'List of Python versions to use in matrix, as JSON string'
-        required: false
+        required: true
         type: string
-        default: ${{ vars.ALL_PYTHON_VERSIONS }}
     secrets:
       DANDI_API_KEY:
         required: true
