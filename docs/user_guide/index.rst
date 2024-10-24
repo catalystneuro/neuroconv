@@ -27,3 +27,4 @@ and synchronize data across multiple sources.
   backend_configuration
   yaml
   docker_demo
+  aws_demo
