@@ -7,7 +7,6 @@ on:
         description: 'List of Python versions to use in matrix, as JSON string'
         required: true
         type: string
-        default: '["3.9", "3.10", "3.11", "3.12"]'
     secrets:
       DANDI_API_KEY:
         required: true

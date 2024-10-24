@@ -3,6 +3,7 @@
 ## Deprecations
 
 ## Bug Fixes
+* Fixed dailies [PR #1113](https://github.com/catalystneuro/neuroconv/pull/1113)
 
 ## Features
 * Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
