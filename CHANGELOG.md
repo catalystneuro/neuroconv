@@ -1,5 +1,7 @@
 # Upcoming
 
+# v0.6.5 (November 1, 2024)
+
 ## Deprecations
 
 ## Bug Fixes
