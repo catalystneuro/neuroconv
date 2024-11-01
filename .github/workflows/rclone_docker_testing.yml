@@ -1,8 +1,14 @@
 name: Rclone Docker Tests
 on:
-  schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      RCLONE_DRIVE_ACCESS_TOKEN:
+        required: true
+      RCLONE_DRIVE_REFRESH_TOKEN:
+        required: true
+      RCLONE_EXPIRY_TOKEN:
+        required: true
 
 jobs:
   run:

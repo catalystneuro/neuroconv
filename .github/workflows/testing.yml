@@ -1,6 +1,17 @@
 name: Minimal and Full Tests
+
 on:
   workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string'
+        required: true
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string'
+        required: true
+        type: string
+
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -19,8 +30,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-        os: [ubuntu-latest, macos-13, windows-latest]
+        python-version: ${{ fromJson(inputs.python-versions) }}
+        os: ${{ fromJson(inputs.os-versions) }}
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
@@ -79,58 +90,16 @@ jobs:
       #- name: Run icephys tests  # There are no icephys specific tests without data
       #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
 
-
+      - name: Prepare data for tests
+        uses: ./.github/actions/load-data
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
+          os: ${{ matrix.os }}
 
       - name: Install full requirements
         run: pip install .[full]
-
-
-
-      - name: Get ephy_testing_data current head hash
-        id: ephys
-        run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
-      - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v4
-        id: cache-ephys-datasets
-        with:
-          path: ./ephy_testing_data
-          key: ephys-datasets-2024-08-07-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-      - name: Get ophys_testing_data current head hash
-        id: ophys
-        run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
-      - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v4
-        id: cache-ophys-datasets
-        with:
-          path: ./ophys_testing_data
-          key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-      - name: Get behavior_testing_data current head hash
-        id: behavior
-        run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
-      - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v4
-        id: cache-behavior-datasets
-        with:
-          path: ./behavior_testing_data
-          key: behavior-datasets-2023-07-26-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-
-
-
-      - if: steps.cache-ephys-datasets.outputs.cache-hit != 'true' || steps.cache-ophys-datasets.outputs.cache-hit != 'true' || steps.cache-behavior-datasets.outputs.cache-hit != 'true'
-        name: Install and configure AWS CLI
-        run: |
-          pip install awscli
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - if: steps.cache-ephys-datasets.outputs.cache-hit != 'true'
-        name: Download ephys dataset from S3
-        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
-      - if: steps.cache-ophys-datasets.outputs.cache-hit != 'true'
-        name: Download ophys dataset from S3
-        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data ./ophys_testing_data
-      - if: steps.cache-behavior-datasets.outputs.cache-hit != 'true'
-        name: Download behavior dataset from S3
-        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
       - name: Run full pytest with coverage
         run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml

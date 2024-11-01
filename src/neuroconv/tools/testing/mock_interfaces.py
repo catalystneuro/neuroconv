@@ -17,6 +17,9 @@ from ...datainterfaces.ecephys.basesortingextractorinterface import (
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
+from ...datainterfaces.ophys.basesegmentationextractorinterface import (
+    BaseSegmentationExtractorInterface,
+)
 from ...utils import ArrayType, get_schema_from_method_signature
 
 
@@ -139,7 +142,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
-        durations: tuple[float] = (1.0,),
+        durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
@@ -173,7 +176,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         self,
         num_units: int = 4,
         sampling_frequency: float = 30_000.0,
-        durations: tuple[float] = (1.0,),
+        durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = True,
     ):
@@ -265,5 +268,76 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(photon_series_type=photon_series_type)
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class MockSegmentationInterface(BaseSegmentationExtractorInterface):
+    """A mock segmentation interface for testing purposes."""
+
+    ExtractorModuleName = "roiextractors.testing"
+    ExtractorName = "generate_dummy_segmentation_extractor"
+
+    def __init__(
+        self,
+        num_rois: int = 10,
+        num_frames: int = 30,
+        num_rows: int = 25,
+        num_columns: int = 25,
+        sampling_frequency: float = 30.0,
+        has_summary_images: bool = True,
+        has_raw_signal: bool = True,
+        has_dff_signal: bool = True,
+        has_deconvolved_signal: bool = True,
+        has_neuropil_signal: bool = True,
+        seed: int = 0,
+        verbose: bool = False,
+    ):
+        """
+        Parameters
+        ----------
+        num_rois : int, optional
+            number of regions of interest, by default 10.
+        num_frames : int, optional
+            description, by default 30.
+        num_rows : int, optional
+            number of rows in the hypothetical video from which the data was extracted, by default 25.
+        num_columns : int, optional
+            number of columns in the hypothetical video from which the data was extracted, by default 25.
+        sampling_frequency : float, optional
+            sampling frequency of the hypothetical video from which the data was extracted, by default 30.0.
+        has_summary_images : bool, optional
+            whether the dummy segmentation extractor has summary images or not (mean and correlation).
+        has_raw_signal : bool, optional
+            whether a raw fluorescence signal is desired in the object, by default True.
+        has_dff_signal : bool, optional
+            whether a relative (df/f) fluorescence signal is desired in the object, by default True.
+        has_deconvolved_signal : bool, optional
+            whether a deconvolved signal is desired in the object, by default True.
+        has_neuropil_signal : bool, optional
+            whether a neuropil signal is desired in the object, by default True.
+        seed: int, default 0
+            seed for the random number generator, by default 0
+        verbose : bool, optional
+            controls verbosity, by default False.
+        """
+
+        super().__init__(
+            num_rois=num_rois,
+            num_frames=num_frames,
+            num_rows=num_rows,
+            num_columns=num_columns,
+            sampling_frequency=sampling_frequency,
+            has_summary_images=has_summary_images,
+            has_raw_signal=has_raw_signal,
+            has_dff_signal=has_dff_signal,
+            has_deconvolved_signal=has_deconvolved_signal,
+            has_neuropil_signal=has_neuropil_signal,
+            verbose=verbose,
+        )
+
+    def get_metadata(self) -> dict:
+        session_start_time = datetime.now().astimezone()
+        metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata

@@ -99,7 +99,8 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] 
         metadata["Ecephys"]["Device"] = [defaults]
     for device_metadata in metadata["Ecephys"]["Device"]:
         if device_metadata.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **device_metadata))
+            device_kwargs = dict(defaults, **device_metadata)
+            nwbfile.create_device(**device_kwargs)
 
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
@@ -778,6 +779,28 @@ def add_electrical_series(
     )
 
 
+def _report_variable_offset(channel_offsets, channel_ids):
+    """
+    Helper function to report variable offsets per channel IDs.
+    Groups the different available offsets per channel IDs and raises a ValueError.
+    """
+    # Group the different offsets per channel IDs
+    offset_to_channel_ids = {}
+    for offset, channel_id in zip(channel_offsets, channel_ids):
+        if offset not in offset_to_channel_ids:
+            offset_to_channel_ids[offset] = []
+        offset_to_channel_ids[offset].append(channel_id)
+
+    # Create a user-friendly message
+    message_lines = ["Recording extractors with heterogeneous offsets are not supported."]
+    message_lines.append("Multiple offsets were found per channel IDs:")
+    for offset, ids in offset_to_channel_ids.items():
+        message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message = "\n".join(message_lines)
+
+    raise ValueError(message)
+
+
 def add_electrical_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -791,6 +814,7 @@ def add_electrical_series_to_nwbfile(
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -833,6 +857,11 @@ def add_electrical_series_to_nwbfile(
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Notes
     -----
@@ -899,14 +928,16 @@ def add_electrical_series_to_nwbfile(
     # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
     # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
+    channel_offsets = recording.get_channel_offsets()
 
     unique_channel_conversion = np.unique(channel_conversion)
     unique_channel_conversion = unique_channel_conversion[0] if len(unique_channel_conversion) == 1 else None
 
-    unique_offset = np.unique(channel_offset)
+    unique_offset = np.unique(channel_offsets)
     if unique_offset.size > 1:
-        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+        channel_ids = recording.get_channel_ids()
+        # This prints a user friendly error where the user is provided with a map from offset to channels
+        _report_variable_offset(channel_offsets, channel_ids)
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
     micro_to_volts_conversion_factor = 1e-6
@@ -928,25 +959,31 @@ def add_electrical_series_to_nwbfile(
     )
     eseries_kwargs.update(data=ephys_data_iterator)
 
-    # Now we decide whether to store the timestamps as a regular series or as an irregular series.
-    if recording.has_time_vector(segment_index=segment_index):
-        # First we check if the recording has a time vector to avoid creating artificial timestamps
-        timestamps = recording.get_times(segment_index=segment_index)
-        rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
-        recording_t_start = timestamps[0]
-    else:
-        rate = recording.get_sampling_frequency()
-        recording_t_start = recording._recording_segments[segment_index].t_start or 0
-
     starting_time = starting_time if starting_time is not None else 0
-    if rate:
-        starting_time = float(starting_time + recording_t_start)
-        # Note that we call the sampling frequency again because the estimated rate might be different from the
-        # sampling frequency of the recording extractor by some epsilon.
-        eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
-    else:
+    if always_write_timestamps:
+        timestamps = recording.get_times(segment_index=segment_index)
         shifted_timestamps = starting_time + timestamps
         eseries_kwargs.update(timestamps=shifted_timestamps)
+    else:
+        # By default we write the rate if the timestamps are regular
+        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
+        if recording_has_timestamps:
+            timestamps = recording.get_times(segment_index=segment_index)
+            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+            recording_t_start = timestamps[0]
+        else:
+            rate = recording.get_sampling_frequency()
+            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+
+        # Shift timestamps if starting_time is set
+        if rate:
+            starting_time = float(starting_time + recording_t_start)
+            # Note that we call the sampling frequency again because the estimated rate might be different from the
+            # sampling frequency of the recording extractor by some epsilon.
+            eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+        else:
+            shifted_timestamps = starting_time + timestamps
+            eseries_kwargs.update(timestamps=shifted_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -1048,6 +1085,7 @@ def add_recording_to_nwbfile(
     compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ):
     """
     Add traces from a recording object as an ElectricalSeries to an NWBFile object.
@@ -1074,7 +1112,6 @@ def add_recording_to_nwbfile(
         the starting time is taken from the recording extractor.
     write_as : {'raw', 'processed', 'lfp'}, default='raw'
         Specifies how to save the trace data in the NWB file. Options are:
-
         - 'raw': Save the data in the acquisition group.
         - 'processed': Save the data as FilteredEphys in a processing module.
         - 'lfp': Save the data as LFP in a processing module.
@@ -1094,6 +1131,11 @@ def add_recording_to_nwbfile(
         Dictionary of options for the iterator. Refer to the documentation at
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for a full list of available options.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Notes
     -----
@@ -1125,6 +1167,7 @@ def add_recording_to_nwbfile(
                 compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
+                always_write_timestamps=always_write_timestamps,
             )
 
 

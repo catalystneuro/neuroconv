@@ -25,7 +25,13 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
+        stream_name: str = "WB-Wideband",
+    ):
         """
         Load and prepare data for Plexon.
 
@@ -36,8 +42,15 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        stream_name: str, optional
+            Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
+            the wideband data.
         """
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+
+        invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
+        assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -69,6 +82,13 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["stream_id"] = self.stream_id
+
+        return extractor_kwargs
+
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -88,16 +108,14 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
 
         neo_version = Version(neo.__version__)
         if neo_version <= Version("0.13.3"):
-            stream_id = "3"
+            self.stream_id = "3"
         else:
-            stream_id = "WB"
+            self.stream_id = "WB"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(
             file_path=file_path,
             verbose=verbose,
             es_key=es_key,
-            stream_id=stream_id,
-            all_annotations=True,
         )
 
     def get_metadata(self) -> DeepDict:

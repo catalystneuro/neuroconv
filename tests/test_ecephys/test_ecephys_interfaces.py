@@ -72,6 +72,20 @@ class TestRecordingInterfaceOld(TestCase):
             interface.validate_metadata(metadata)
 
 
+class TestAlwaysWriteTimestamps:
+
+    def test_always_write_timestamps(self):
+        # By default the MockRecordingInterface has a uniform sampling rate
+        interface = MockRecordingInterface(durations=[1.0], sampling_frequency=30_000.0)
+
+        nwbfile = interface.create_nwbfile(always_write_timestamps=True)
+        electrical_series = nwbfile.acquisition["ElectricalSeries"]
+
+        expected_timestamps = interface.recording_extractor.get_times()
+
+        np.testing.assert_array_equal(electrical_series.timestamps[:], expected_timestamps)
+
+
 class TestAssertions(TestCase):
     @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
     def test_spike2_import_assertions_3_10(self):

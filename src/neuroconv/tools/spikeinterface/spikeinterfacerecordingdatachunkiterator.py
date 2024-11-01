@@ -1,8 +1,9 @@
 from typing import Iterable, Optional
 
-from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
 from tqdm import tqdm
+
+from neuroconv.tools.hdmf import GenericDataChunkIterator
 
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
