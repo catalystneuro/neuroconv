@@ -810,8 +810,6 @@ def add_electrical_series_to_nwbfile(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
     always_write_timestamps: bool = False,
@@ -868,16 +866,6 @@ def add_electrical_series_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression is not None or compression_opts is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     assert write_as in [
         "raw",
@@ -1081,8 +1069,6 @@ def add_recording_to_nwbfile(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
     always_write_timestamps: bool = False,
@@ -1163,8 +1149,6 @@ def add_recording_to_nwbfile(
                 write_as=write_as,
                 es_key=es_key,
                 write_scaled=write_scaled,
-                compression=compression,
-                compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
                 always_write_timestamps=always_write_timestamps,
