@@ -38,9 +38,56 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_map_electrode_indices(self):
+    def test_use_electrode_indices(self, setup_interface):
 
-        self.data_interface.create_nwbfile()
+        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+        recording_extractor = recording_interface.recording_extractor
+        recording_extractor = recording_extractor.rename_channels(new_channel_ids=["a", "b", "c", "d"])
+        recording_extractor.set_property(key="property", values=["A", "B", "C", "D"])
+        recording_interface.recording_extractor = recording_extractor
+
+        nwbfile = recording_interface.create_nwbfile()
+
+        unit_electrode_indices = [[3], [0, 1], [1], [2]]
+        expected_properties_matching = [["D"], ["A", "B"], ["B"], ["C"]]
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, unit_electrode_indices=unit_electrode_indices)
+
+        unit_table = nwbfile.units
+
+        for unit_row, electrode_indices, property in zip(
+            unit_table.to_dataframe().itertuples(index=False),
+            unit_electrode_indices,
+            expected_properties_matching,
+        ):
+            electrode_table_region = unit_row.electrodes
+            electrode_table_region_indices = electrode_table_region.index.to_list()
+            assert electrode_table_region_indices == electrode_indices
+
+            electrode_table_region_properties = electrode_table_region["property"].to_list()
+            assert electrode_table_region_properties == property
+
+    def test_run_conversion(self, tmp_path):
+
+        nwbfile_path = Path(tmp_path) / "test_sorting.nwb"
+        num_units = 4
+        interface = MockSortingInterface(num_units=num_units, durations=(1.0,))
+        interface.sorting_extractor = interface.sorting_extractor.rename_units(new_unit_ids=["a", "b", "c", "d"])
+
+        interface.run_conversion(nwbfile_path=nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            units = nwbfile.units
+            assert len(units) == num_units
+            units_df = units.to_dataframe()
+            # Get index in units table
+            for unit_id in interface.sorting_extractor.unit_ids:
+                # In pynwb we write unit name as unit_id
+                row = units_df.query(f"unit_name == '{unit_id}'")
+                spike_times = interface.sorting_extractor.get_unit_spike_train(unit_id=unit_id, return_times=True)
+                written_spike_times = row["spike_times"].iloc[0]
+
+                np.testing.assert_array_equal(spike_times, written_spike_times)
 
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -102,32 +149,6 @@ class TestAssertions(TestCase):
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
-
-
-class TestSortingInterface:
-
-    def test_run_conversion(self, tmp_path):
-
-        nwbfile_path = Path(tmp_path) / "test_sorting.nwb"
-        num_units = 4
-        interface = MockSortingInterface(num_units=num_units, durations=(1.0,))
-        interface.sorting_extractor = interface.sorting_extractor.rename_units(new_unit_ids=["a", "b", "c", "d"])
-
-        interface.run_conversion(nwbfile_path=nwbfile_path)
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            units = nwbfile.units
-            assert len(units) == num_units
-            units_df = units.to_dataframe()
-            # Get index in units table
-            for unit_id in interface.sorting_extractor.unit_ids:
-                # In pynwb we write unit name as unit_id
-                row = units_df.query(f"unit_name == '{unit_id}'")
-                spike_times = interface.sorting_extractor.get_unit_spike_train(unit_id=unit_id, return_times=True)
-                written_spike_times = row["spike_times"].iloc[0]
-
-                np.testing.assert_array_equal(spike_times, written_spike_times)
 
 
 class TestSortingInterfaceOld(unittest.TestCase):
