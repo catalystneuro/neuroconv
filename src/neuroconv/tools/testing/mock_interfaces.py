@@ -20,7 +20,7 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-from ...utils import ArrayType, get_schema_from_method_signature
+from ...utils import ArrayType, get_json_schema_from_method_signature
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
@@ -30,7 +30,7 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
@@ -74,7 +74,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
