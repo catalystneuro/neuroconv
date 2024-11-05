@@ -24,6 +24,10 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         np.testing.assert_array_equal(two_photon_series.timestamps[:], expected_timestamps)
 
+    # Remove this after roiextractors 0.5.10 is released
+    def test_all_conversion_checks(self):
+        pass
+
 
 class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
