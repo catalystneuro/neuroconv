@@ -146,6 +146,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int = 100,
+        always_write_timestamps: bool = False,
     ):
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
@@ -162,4 +163,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
             parent_container=parent_container,
+            always_write_timestamps=always_write_timestamps,
         )
