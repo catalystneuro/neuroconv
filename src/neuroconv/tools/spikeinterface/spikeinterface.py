@@ -749,8 +749,6 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -772,8 +770,6 @@ def add_electrical_series(
         write_as=write_as,
         es_key=es_key,
         write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
@@ -845,7 +841,6 @@ def add_electrical_series_to_nwbfile(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-        Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -1030,8 +1025,6 @@ def add_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -1053,8 +1046,6 @@ def add_recording(
         es_key=es_key,
         write_electrical_series=write_electrical_series,
         write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
@@ -1167,8 +1158,6 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -1193,8 +1182,6 @@ def write_recording(
         es_key=es_key,
         write_electrical_series=write_electrical_series,
         write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
@@ -1212,8 +1199,6 @@ def write_recording_to_nwbfile(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ) -> pynwb.NWBFile:
@@ -1287,11 +1272,6 @@ def write_recording_to_nwbfile(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}, default: 'gzip'
-        Type of compression to use. Set to None to disable all compression.
-        To use the `configure_backend` function, you should set this to None.
-    compression_opts: int, optional, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -1332,8 +1312,6 @@ def write_recording_to_nwbfile(
             es_key=es_key,
             write_electrical_series=write_electrical_series,
             write_scaled=write_scaled,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
         )
