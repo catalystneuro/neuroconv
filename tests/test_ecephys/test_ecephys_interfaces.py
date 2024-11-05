@@ -38,7 +38,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_use_electrode_indices(self, setup_interface):
+    def test_electrode_indices(self, setup_interface):
 
         recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
         recording_extractor = recording_interface.recording_extractor
@@ -65,6 +65,13 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
             electrode_table_region_properties = electrode_table_region["property"].to_list()
             assert electrode_table_region_properties == property
+
+    def test_electrode_indices_assertion_error_when_missing_table(self, setup_interface):
+        with pytest.raises(
+            ValueError,
+            match="Electrodes table is required to map units to electrodes. Add an electrode table to the NWBFile first.",
+        ):
+            self.interface.create_nwbfile(unit_electrode_indices=[[0], [1], [2], [3]])
 
     def test_run_conversion(self, tmp_path):
 

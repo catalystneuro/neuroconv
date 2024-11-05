@@ -1453,6 +1453,13 @@ def add_units_table_to_nwbfile(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
 
+    if unit_electrode_indices is not None:
+        electrodes_table = nwbfile.electrodes
+        if electrodes_table is None:
+            raise ValueError(
+                "Electrodes table is required to map units to electrodes. Add an electrode table to the NWBFile first."
+            )
+
     null_values_for_properties = dict() if null_values_for_properties is None else null_values_for_properties
 
     if not write_in_processing_module and units_table_name != "units":
