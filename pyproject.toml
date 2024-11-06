@@ -270,20 +270,20 @@ icephys = [
 
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 cnmfe = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 extract = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 hdf5 = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 micromanagertiff = [
     "roiextractors>=0.5.9",
