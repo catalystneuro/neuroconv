@@ -1,6 +1,7 @@
 # Upcoming
 
 ## Deprecations
+* Completeley removed compression setting from most places[PR #1126](https://github.com/catalystneuro/neuroconv/pull/1126)
 
 ## Bug Fixes
 
