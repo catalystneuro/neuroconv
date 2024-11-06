@@ -286,30 +286,30 @@ hdf5 = [
     "roiextractors>=0.5.10",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 sbx = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 scanimage = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 suite2p = [
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.9",
+    "roiextractors>=0.5.10",
     "tdt",
 ]
 tiff = [
