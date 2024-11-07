@@ -6,7 +6,7 @@ from pydantic import DirectoryPath, validate_call
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class SpikeGLXConverterPipe(ConverterPipe):
@@ -23,7 +23,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing SpikeGLX streams."
         return source_schema
 

@@ -9,7 +9,7 @@ from ... import (
 )
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class BrukerTiffMultiPlaneConverter(NWBConverter):
@@ -24,7 +24,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(cls)
+        source_schema = get_json_schema_from_method_signature(cls)
         source_schema["properties"]["folder_path"][
             "description"
         ] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
@@ -138,7 +138,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls)
+        return get_json_schema_from_method_signature(cls)
 
     def get_conversion_options_schema(self):
         interface_name = list(self.data_interface_objects.keys())[0]
