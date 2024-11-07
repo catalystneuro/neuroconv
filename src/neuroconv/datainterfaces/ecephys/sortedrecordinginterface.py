@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -27,7 +27,7 @@ class SortedRecordingConverter(ConverterPipe):
         self,
         recording_interface: BaseRecordingExtractorInterface,
         sorting_interface: BaseSortingExtractorInterface,
-        unit_ids_to_channel_ids: dict[str | int, list[str | int]],
+        unit_ids_to_channel_ids: dict[Union[str, int], list[Union[str | int]]],
     ):
         """
         Parameters
