@@ -23,6 +23,8 @@ class SortedRecordingConverter(ConverterPipe):
     associated with electrodes from their corresponding recording interface.
     """
 
+    display_name = "SortedRecordingConverter"
+
     def __init__(
         self,
         recording_interface: BaseRecordingExtractorInterface,
