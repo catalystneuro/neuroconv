@@ -1,7 +1,7 @@
 # Upcoming
 
 ## Deprecations
-
+* Removed use of `jsonschema.RefResolver` as it will be deprecated from the jsonschema library [PR #1133](https://github.com/catalystneuro/neuroconv/pull/1133)
 ## Bug Fixes
 
 ## Features
