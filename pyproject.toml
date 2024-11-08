@@ -50,7 +50,8 @@ dependencies = [
     "parse>=1.20.0",
     "click",
     "docstring-parser",
-    "packaging"  # Issue 903
+    "packaging",  # Issue 903
+    "referencing",
 ]
 
 
