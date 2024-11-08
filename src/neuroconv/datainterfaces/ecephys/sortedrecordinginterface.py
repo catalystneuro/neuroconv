@@ -23,7 +23,13 @@ class SortedRecordingConverter(ConverterPipe):
     associated with electrodes from their corresponding recording interface.
     """
 
+    keywords = (
+        "electrophysiology",
+        "spike sorting",
+    )
     display_name = "SortedRecordingConverter"
+    associated_suffixes = ("None",)
+    info = "A converter for handling simultaneous recording and sorting data linking metadata properly."
 
     def __init__(
         self,
