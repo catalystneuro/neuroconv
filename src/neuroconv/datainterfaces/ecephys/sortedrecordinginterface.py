@@ -27,7 +27,7 @@ class SortedRecordingConverter(ConverterPipe):
         self,
         recording_interface: BaseRecordingExtractorInterface,
         sorting_interface: BaseSortingExtractorInterface,
-        unit_ids_to_channel_ids: dict[Union[str, int], list[Union[str | int]]],
+        unit_ids_to_channel_ids: dict[Union[str, int], list[Union[str, int]]],
     ):
         """
         Parameters
