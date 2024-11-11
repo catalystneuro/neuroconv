@@ -128,6 +128,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int = 100,
+        always_write_timestamps: bool = False,
     ):
         """
         Add imaging data to the NWB file
@@ -167,4 +168,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
             parent_container=parent_container,
+            always_write_timestamps=always_write_timestamps,
         )

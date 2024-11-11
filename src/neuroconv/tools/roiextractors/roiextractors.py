@@ -445,6 +445,7 @@ def add_photon_series_to_nwbfile(
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
     Auxiliary static method for nwbextractor.
@@ -472,6 +473,11 @@ def add_photon_series_to_nwbfile(
     iterator_type: str, default: 'v2'
         The type of iterator to use when adding the photon series to the NWB file.
     iterator_options: dict, optional
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Returns
     -------
@@ -530,16 +536,23 @@ def add_photon_series_to_nwbfile(
     photon_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
-    if imaging.has_time_vector():
+    if always_write_timestamps:
         timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-        estimated_rate = calculate_regular_series_rate(series=timestamps)
-        if estimated_rate:
-            photon_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
-        else:
-            photon_series_kwargs.update(timestamps=timestamps, rate=None)
+        photon_series_kwargs.update(timestamps=timestamps)
     else:
-        rate = float(imaging.get_sampling_frequency())
-        photon_series_kwargs.update(rate=rate)
+        imaging_has_timestamps = imaging.has_time_vector()
+        if imaging_has_timestamps:
+            timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+            estimated_rate = calculate_regular_series_rate(series=timestamps)
+            starting_time = timestamps[0]
+        else:
+            estimated_rate = float(imaging.get_sampling_frequency())
+            starting_time = 0.0
+
+        if estimated_rate:
+            photon_series_kwargs.update(rate=estimated_rate, starting_time=starting_time)
+        else:
+            photon_series_kwargs.update(timestamps=timestamps)
 
     # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
     photon_series = dict(
@@ -682,6 +695,7 @@ def add_imaging_to_nwbfile(
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
     Add imaging data from an ImagingExtractor object to an NWBFile.
@@ -705,6 +719,11 @@ def add_imaging_to_nwbfile(
     parent_container : {"acquisition", "processing/ophys"}, optional
         Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
         under the "processing/ophys" module, by default "acquisition".
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Returns
     -------
@@ -722,6 +741,7 @@ def add_imaging_to_nwbfile(
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
+        always_write_timestamps=always_write_timestamps,
     )
 
     return nwbfile

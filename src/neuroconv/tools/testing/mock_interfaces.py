@@ -260,6 +260,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             sampling_frequency=sampling_frequency,
             dtype=dtype,
             verbose=verbose,
+            seed=seed,
         )
 
         self.verbose = verbose
@@ -334,6 +335,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_deconvolved_signal=has_deconvolved_signal,
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
+            seed=seed,
         )
 
     def get_metadata(self) -> dict:
