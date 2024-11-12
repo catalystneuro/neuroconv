@@ -103,8 +103,8 @@ def get_default_dataset_io_configurations(
     known_dataset_fields = ("data", "timestamps")
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
-            dynamic_table = neurodata_object  # For readability
 
+            dynamic_table = neurodata_object  # For readability
             for column in (*dynamic_table.columns, dynamic_table.id):
                 dataset_name = "data"
                 candidate_dataset = getattr(column, dataset_name)  # Safer way to access data attribute

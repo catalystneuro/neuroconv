@@ -780,8 +780,6 @@ class TestAddElectrodes(TestCase):
             nwbfile_read = io.read()
 
             add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=nwbfile_read)
-            backend_configuration = get_default_backend_configuration(nwbfile=self.nwbfile, backend="hdf5")
-            dataset_configurations = backend_configuration.dataset_configurations
 
             expected_ids = [123, 124, 2, 3, 4, 5]
             expected_names = ["123", "124", "a", "b", "c", "d"]

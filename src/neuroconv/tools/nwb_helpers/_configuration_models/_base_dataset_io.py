@@ -296,7 +296,8 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 compression_method = "gzip"
             else:
 
-                chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
+                # chunk_shape = (1,) * len(full_shape)  # Worse possible chunking
+                chunk_shape = full_shape
                 buffer_shape = full_shape
                 compression_method = None
                 import warnings
