@@ -771,18 +771,6 @@ class TestAddElectrodes(TestCase):
         )
 
         backend_configuration = get_default_backend_configuration(nwbfile=self.nwbfile, backend="hdf5")
-        dataset_configurations = backend_configuration.dataset_configurations
-
-        electrodes_location_dataset = dataset_configurations["electrodes/location/data"]
-        electrodes_group_dataset = dataset_configurations["electrodes/group/data"]
-        electrodes_group_name_dataset = dataset_configurations["electrodes/group_name/data"]
-        electrodes_id_dataset = dataset_configurations["electrodes/id/data"]
-
-        # Make expandable
-        electrodes_location_dataset.full_shape = (None,)
-        electrodes_group_name_dataset.full_shape = (None,)
-        electrodes_id_dataset.full_shape = (None,)
-        electrodes_group_dataset.full_shape = (None,)
 
         configure_backend(nwbfile=self.nwbfile, backend_configuration=backend_configuration)
         with NWBHDF5IO("test.nwb", "w") as io:
