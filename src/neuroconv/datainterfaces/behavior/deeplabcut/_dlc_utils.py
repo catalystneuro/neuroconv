@@ -373,7 +373,8 @@ def add_subject_to_nwbfile(
     """
     h5file = Path(h5file)
 
-    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
+    suffix_is_valid = ".h5" in h5file.suffixes or ".csv" in h5file.suffixes
+    if not "DLC" in h5file.stem or not suffix_is_valid:
         raise IOError("The file passed in is not a DeepLabCut h5 data file.")
 
     video_name, scorer = h5file.stem.split("DLC")
@@ -381,7 +382,12 @@ def add_subject_to_nwbfile(
 
     # TODO probably could be read directly with h5py
     # This requires pytables
-    data_frame_from_hdf5 = pd.read_hdf(h5file)
+    if ".h5" in h5file.suffixes:
+        data_frame_from_hdf5 = pd.read_hdf(h5file)
+    elif ".csv" in h5file.suffixes:
+        data_frame_from_hdf5 = pd.read_csv(h5file, header=[0, 1, 2], index_col=0)
+    else:
+        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
     df = _ensure_individuals_in_header(data_frame_from_hdf5, individual_name)
 
     # Note the video here is a tuple of the video path and the image shape

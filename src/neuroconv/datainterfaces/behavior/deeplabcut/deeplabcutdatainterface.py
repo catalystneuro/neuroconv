@@ -5,6 +5,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+# import ndx_pose
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 
 
@@ -50,7 +51,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         from ._dlc_utils import _read_config
 
         file_path = Path(file_path)
-        if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
+        suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
+        if not "DLC" in file_path.stem or not suffix_is_valid:
             raise IOError("The file passed in is not a DeepLabCut h5 data file.")
 
         self.config_dict = dict()
