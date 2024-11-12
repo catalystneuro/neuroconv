@@ -238,7 +238,7 @@ def make_or_load_nwbfile(
         else:
             load_kwargs.update(mode="w")
 
-        io = backend_io_class(**load_kwargs)
+        read_io = backend_io_class(**load_kwargs)
 
     read_nwbfile = nwbfile_path_is_provided and append_mode
     create_nwbfile = not read_nwbfile and not nwbfile_is_provided
@@ -249,7 +249,7 @@ def make_or_load_nwbfile(
         if nwbfile_is_provided:
             nwbfile = nwbfile_in
         elif read_nwbfile:
-            nwbfile = io.read()
+            nwbfile = read_io.read()
         elif create_nwbfile:
             if metadata is None:
                 error_msg = "Metadata is required for creating an nwbfile "
@@ -266,7 +266,13 @@ def make_or_load_nwbfile(
     finally:
         if nwbfile_path_is_provided and nwbfile_loaded_succesfully:
             try:
-                io.write(nwbfile)
+                read_io.close()
+                if read_nwbfile:
+                    warn("Appending to an existing on-disk NWB file may be slow for large files.")
+                    load_kwargs.update(mode="w")
+                # read_io CANNOT be used for writing bc it may not have access to all of the namespaces (extensions) added to the nwbfile -- see: https://github.com/rly/ndx-pose/issues/36
+                with backend_io_class(**load_kwargs) as write_io:
+                    write_io.write(nwbfile)
 
                 if verbose:
                     print(f"NWB file saved at {nwbfile_path_in}!")
@@ -274,8 +280,7 @@ def make_or_load_nwbfile(
                 nwbfile_written_succesfully = False
                 raise write_error
             finally:
-                io.close()
-                del io
+                del read_io
 
                 if not nwbfile_written_succesfully:
                     _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
