@@ -5,7 +5,6 @@ from typing import Generator, Literal, Union
 import h5py
 import numpy as np
 import zarr
-from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
@@ -106,8 +105,9 @@ def get_default_dataset_io_configurations(
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
 
-            for column in dynamic_table.columns:
-                candidate_dataset = column.data  # VectorData object
+            for column in (*dynamic_table.columns, dynamic_table.id):
+                dataset_name = "data"
+                candidate_dataset = getattr(column, dataset_name)  # Safer way to access data attribute
                 # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
@@ -119,16 +119,14 @@ def get_default_dataset_io_configurations(
                     continue  # Skip
 
                 # Skip over columns whose values are links, such as the 'group' of an ElectrodesTable
-                if any(isinstance(value, Container) for value in candidate_dataset):
-                    continue  # Skip
+                # if any(isinstance(value, Container) for value in candidate_dataset):
+                #     continue  # Skip
 
                 # Skip when columns whose values are a reference type
                 if isinstance(column, TimeSeriesReferenceVectorData):
                     continue
 
                 # Skip datasets with any zero-length axes
-                dataset_name = "data"
-                candidate_dataset = getattr(column, dataset_name)
                 full_shape = get_data_shape(data=candidate_dataset)
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue

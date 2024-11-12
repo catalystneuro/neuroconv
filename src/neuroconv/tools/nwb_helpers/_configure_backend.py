@@ -27,7 +27,7 @@ def configure_backend(
     is_ndx_events_installed = is_package_installed(package_name="ndx_events")
     ndx_events = importlib.import_module("ndx_events") if is_ndx_events_installed else None
 
-    # A remapping of the object IDs in the backend configuration might necessary
+    # A remapping of the object IDs in the backend configuration might be necessary
     locations_to_remap = backend_configuration.find_locations_requiring_remapping(nwbfile=nwbfile)
     if any(locations_to_remap):
         backend_configuration = backend_configuration.build_remapped_backend(locations_to_remap=locations_to_remap)

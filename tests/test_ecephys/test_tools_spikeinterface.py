@@ -753,6 +753,53 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
+    def test_add_electrodes_with_previously_written_nwbfile(self):
+        """Add electrodes to a file that was already written"""
+        values_dic = self.defaults
+
+        values_dic.update(id=123)
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=124)
+        self.nwbfile.add_electrode(**values_dic)
+
+        from pynwb import NWBHDF5IO
+
+        from neuroconv.tools.nwb_helpers import (
+            configure_backend,
+            get_default_backend_configuration,
+        )
+
+        backend_configuration = get_default_backend_configuration(nwbfile=self.nwbfile, backend="hdf5")
+        dataset_configurations = backend_configuration.dataset_configurations
+
+        electrodes_location_dataset = dataset_configurations["electrodes/location/data"]
+        electrodes_group_dataset = dataset_configurations["electrodes/group/data"]
+        electrodes_group_name_dataset = dataset_configurations["electrodes/group_name/data"]
+        electrodes_id_dataset = dataset_configurations["electrodes/id/data"]
+
+        # Make expandable
+        electrodes_location_dataset.full_shape = (None,)
+        electrodes_group_name_dataset.full_shape = (None,)
+        electrodes_id_dataset.full_shape = (None,)
+        electrodes_group_dataset.full_shape = (None,)
+
+        configure_backend(nwbfile=self.nwbfile, backend_configuration=backend_configuration)
+        with NWBHDF5IO("test.nwb", "w") as io:
+            io.write(self.nwbfile)
+
+        with NWBHDF5IO("test.nwb", "a") as io:
+            nwbfile_read = io.read()
+
+            add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=nwbfile_read)
+            backend_configuration = get_default_backend_configuration(nwbfile=self.nwbfile, backend="hdf5")
+            dataset_configurations = backend_configuration.dataset_configurations
+
+            expected_ids = [123, 124, 2, 3, 4, 5]
+            expected_names = ["123", "124", "a", "b", "c", "d"]
+            self.assertListEqual(list(nwbfile_read.electrodes.id.data), expected_ids)
+            self.assertListEqual(list(nwbfile_read.electrodes["channel_name"].data), expected_names)
+
     def test_manual_row_adition_after_add_electrodes_function_to_nwbfile(self):
         """Add some rows to the electrode table after using the add_electrodes_to_nwbfile function"""
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)

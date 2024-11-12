@@ -77,4 +77,4 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
                 compression_opts = list(self.compression_options.values())[0]
             compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
-        return dict(chunks=self.chunk_shape, **compression_bundle)
+        return dict(chunks=self.chunk_shape, maxshape=self.full_shape, **compression_bundle)
