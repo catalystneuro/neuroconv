@@ -251,21 +251,6 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
     return video_file_path, image_shape
 
 
-def _get_pes_args(
-    *,
-    h5file: Path,
-    individual_name: str,
-):
-    h5file = Path(h5file)
-
-    _, scorer = h5file.stem.split("DLC")
-    scorer = "DLC" + scorer
-
-    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
-
-    return scorer, df
-
-
 def _write_pes_to_nwbfile(
     nwbfile,
     animal,
@@ -386,8 +371,6 @@ def add_subject_to_nwbfile(
         df = pd.read_hdf(file_path)
     elif ".csv" in file_path.suffixes:
         df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
-    else:
-        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
     df = _ensure_individuals_in_header(df, individual_name)
 
     # Note the video here is a tuple of the video path and the image shape
