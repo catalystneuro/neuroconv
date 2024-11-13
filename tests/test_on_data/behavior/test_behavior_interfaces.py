@@ -29,7 +29,6 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
-    DeepLabCutInterfaceMixin,
     MedPCInterfaceMixin,
     TemporalAlignmentMixin,
     VideoInterfaceMixin,
@@ -332,7 +331,7 @@ from sys import platform
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
+class TestDeepLabCutInterface(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
@@ -411,7 +410,7 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
+class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
