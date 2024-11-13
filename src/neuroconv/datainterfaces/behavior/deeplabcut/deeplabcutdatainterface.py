@@ -115,7 +115,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         add_subject_to_nwbfile(
             nwbfile=nwbfile,
-            h5file=str(self.source_data["file_path"]),
+            file_path=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
             config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,

@@ -341,21 +341,21 @@ def _write_pes_to_nwbfile(
 
 def add_subject_to_nwbfile(
     nwbfile: NWBFile,
-    h5file: FilePath,
+    file_path: FilePath,
     individual_name: str,
     config_file: Optional[FilePath] = None,
     timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """
-    Given the subject name, add the DLC .h5 file to an in-memory NWBFile object.
+    Given the subject name, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.
 
     Parameters
     ----------
     nwbfile : pynwb.NWBFile
         The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    h5file : str or path
-        Path to the DeepLabCut .h5 output file.
+    file_path : str or path
+        Path to the DeepLabCut .h5 or .csv output file.
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
@@ -371,24 +371,24 @@ def add_subject_to_nwbfile(
     nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
-    h5file = Path(h5file)
+    file_path = Path(file_path)
 
-    suffix_is_valid = ".h5" in h5file.suffixes or ".csv" in h5file.suffixes
-    if not "DLC" in h5file.stem or not suffix_is_valid:
-        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+    suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
+    if not "DLC" in file_path.stem or not suffix_is_valid:
+        raise IOError("The file passed in is not a valid DeepLabCut output data file.")
 
-    video_name, scorer = h5file.stem.split("DLC")
+    video_name, scorer = file_path.stem.split("DLC")
     scorer = "DLC" + scorer
 
     # TODO probably could be read directly with h5py
     # This requires pytables
-    if ".h5" in h5file.suffixes:
-        data_frame_from_hdf5 = pd.read_hdf(h5file)
-    elif ".csv" in h5file.suffixes:
-        data_frame_from_hdf5 = pd.read_csv(h5file, header=[0, 1, 2], index_col=0)
+    if ".h5" in file_path.suffixes:
+        df = pd.read_hdf(file_path)
+    elif ".csv" in file_path.suffixes:
+        df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
     else:
         raise IOError("The file passed in is not a DeepLabCut h5 data file.")
-    df = _ensure_individuals_in_header(data_frame_from_hdf5, individual_name)
+    df = _ensure_individuals_in_header(df, individual_name)
 
     # Note the video here is a tuple of the video path and the image shape
     if config_file is not None:
@@ -410,7 +410,7 @@ def add_subject_to_nwbfile(
 
     # Fetch the corresponding metadata pickle file, we extract the edges graph from here
     # TODO: This is the original implementation way to extract the file name but looks very brittle. Improve it
-    filename = str(h5file.parent / h5file.stem)
+    filename = str(file_path.parent / file_path.stem)
     for i, c in enumerate(filename[::-1]):
         if c.isnumeric():
             break
