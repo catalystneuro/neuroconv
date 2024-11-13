@@ -1,10 +1,12 @@
 # Upcoming
 
 ## Deprecations
+* Completely removed compression settings from most places[PR #1126](https://github.com/catalystneuro/neuroconv/pull/1126)
 
 ## Bug Fixes
 
 ## Features
+* Imaging interfaces have a new conversion option `always_write_timestamps` that can be used to force writing timestamps even if neuroconv's heuristics indicates regular sampling rate [PR #1125](https://github.com/catalystneuro/neuroconv/pull/1125)
 * Added .csv support to DeepLabCutInterface [PR #1140](https://github.com/catalystneuro/neuroconv/pull/1140)
 
 ## Improvements
@@ -46,7 +48,7 @@
 * Added automated EFS volume creation and mounting to the `submit_aws_job` helper function. [PR #1018](https://github.com/catalystneuro/neuroconv/pull/1018)
 * Added a mock for segmentation extractors interfaces in ophys: `MockSegmentationInterface` [PR #1067](https://github.com/catalystneuro/neuroconv/pull/1067)
 * Added a `MockSortingInterface` for testing purposes. [PR #1065](https://github.com/catalystneuro/neuroconv/pull/1065)
-* BaseRecordingInterfaces have a new conversion options `always_write_timestamps` that ca be used to force writing timestamps even if neuroconv heuristic indicates regular sampling rate [PR #1091](https://github.com/catalystneuro/neuroconv/pull/1091)
+* BaseRecordingInterfaces have a new conversion options `always_write_timestamps` that can be used to force writing timestamps even if neuroconv heuristic indicates regular sampling rate [PR #1091](https://github.com/catalystneuro/neuroconv/pull/1091)
 
 
 ## Improvements
