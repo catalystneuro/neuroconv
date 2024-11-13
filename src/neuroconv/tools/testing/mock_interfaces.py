@@ -39,7 +39,7 @@ class MockInterface(BaseDataInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile, **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options):
 
         return None
 
