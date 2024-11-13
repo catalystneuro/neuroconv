@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Added .csv support to DeepLabCutInterface [PR #1140](https://github.com/catalystneuro/neuroconv/pull/1140)
 
 ## Improvements
 
