@@ -92,7 +92,6 @@ class DataInterfaceTestMixin:
         Draft7Validator.check_schema(schema=schema)
 
     def test_metadata(self, setup_interface):
-        # Validate metadata now happens on the class itself
         metadata = self.interface.get_metadata()
         self.check_extracted_metadata(metadata)
 
