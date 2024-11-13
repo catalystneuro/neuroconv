@@ -14,7 +14,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
     display_name = "DeepLabCut"
     keywords = ("DLC",)
-    associated_suffixes = (".h5",)
+    associated_suffixes = (".h5", ".csv")
     info = "Interface for handling data from DeepLabCut."
 
     _timestamps = None
