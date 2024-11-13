@@ -60,6 +60,23 @@ class _NWBSourceDataEncoder(_NWBMetaDataEncoder):
         return super().default(obj)
 
 
+class _NWBConversionOptionsEncoder(_NWBMetaDataEncoder):
+    """
+    Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
+
+    This encoder extends the default JSONEncoder class and provides custom serialization
+    for certain data types commonly used in interface source data.
+    """
+
+    def default(self, obj):
+
+        # Over-write behaviors for Paths
+        if isinstance(obj, Path):
+            return str(obj)
+
+        return super().default(obj)
+
+
 def get_base_schema(
     tag: Optional[str] = None,
     root: bool = False,
