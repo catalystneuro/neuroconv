@@ -111,9 +111,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         """
-        from ._dlc_utils import add_subject_to_nwbfile
+        from ._dlc_utils import _add_subject_to_nwbfile
 
-        add_subject_to_nwbfile(
+        _add_subject_to_nwbfile(
             nwbfile=nwbfile,
             file_path=str(self.source_data["file_path"]),
             individual_name=self.subject_name,

@@ -324,7 +324,7 @@ def _write_pes_to_nwbfile(
     return nwbfile
 
 
-def add_subject_to_nwbfile(
+def _add_subject_to_nwbfile(
     nwbfile: NWBFile,
     file_path: FilePath,
     individual_name: str,
