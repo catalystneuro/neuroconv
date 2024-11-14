@@ -48,8 +48,6 @@ class _NWBMetaDataEncoder(_GenericNeuroconvEncoder):
     Custom JSON encoder for NWB metadata.
     """
 
-    # This is used in the Guide so we will keep it public.
-
 
 class _NWBSourceDataEncoder(_GenericNeuroconvEncoder):
     """
@@ -63,7 +61,7 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     """
 
 
-# We make it public for the guide
+# This is used in the Guide so we will keep it public.
 NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
