@@ -65,9 +65,9 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def test_no_slash_in_name(self, setup_interface):
         interface = self.interface
-        metadata = interface.interface()
+        metadata = interface.get_metadata()
         metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
-        with self.assertRaises(jsonschema.exceptions.ValidationError):
+        with pytest.raises(jsonschema.exceptions.ValidationError):
             interface.validate_metadata(metadata)
 
     def test_stub_multi_segment(self):
