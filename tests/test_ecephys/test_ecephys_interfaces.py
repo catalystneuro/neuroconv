@@ -50,8 +50,9 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         )
 
         ecephys = get_module(nwbfile, "ecephys")
-        self.assertIsNone(nwbfile.units)
-        self.assertIn("processed_units", ecephys.data_interfaces)
+
+        assert nwbfile.units is None
+        assert "processed_units" in ecephys.data_interfaces
 
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
