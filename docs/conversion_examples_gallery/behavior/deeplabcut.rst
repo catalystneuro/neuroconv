@@ -8,6 +8,7 @@ Install NeuroConv with the additional dependencies necessary for reading DeepLab
     pip install "neuroconv[deeplabcut]"
 
 Convert DeepLabCut pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
+This interface supports both .h5 and .csv output files from DeepLabCut.
 
 .. code-block:: python
 
