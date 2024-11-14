@@ -110,6 +110,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
+        container_name: str, default: "PoseEstimation"
+            Name of the container to store the pose estimation.
         """
         from ._dlc_utils import _add_subject_to_nwbfile
 
