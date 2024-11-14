@@ -43,36 +43,28 @@ class _GenericNeuroconvEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-class NWBMetaDataEncoder(_GenericNeuroconvEncoder):
+class _NWBMetaDataEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for NWB metadata.
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in NWB metadata.
     """
 
     # This is used in the Guide so we will keep it public.
 
 
-_NWBMetaDataEncoder = NWBMetaDataEncoder
-
-
 class _NWBSourceDataEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for data interface source data (i.e. kwargs).
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in interface source data.
     """
 
 
 class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in interface source data.
     """
+
+
+# We make it public for the guide
+NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
 def get_base_schema(
