@@ -80,9 +80,18 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
+        from importlib.metadata import version
+
+        from packaging import version as version_parse
+
         from neuroconv.datainterfaces.behavior.video.video_utils import (
             VideoCaptureContext,
         )
+
+        ndx_pose_version = version("ndx-pose")
+
+        if version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2.0"):
+            raise ImportError("The ndx-pose version must be less than 0.2.0.")
 
         self._vc = VideoCaptureContext
 

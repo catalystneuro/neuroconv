@@ -41,7 +41,16 @@ try:
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
+from importlib.metadata import version
 
+from packaging import version as version_parse
+
+ndx_pose_version = version("ndx-pose")
+
+
+@pytest.mark.skipif(
+    version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2"), reason="ndx_pose version is smaller than 0.2"
+)
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -155,6 +164,9 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
 
 
+@pytest.mark.skipif(
+    version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2"), reason="ndx_pose version is smaller than 0.2"
+)
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -357,7 +369,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
-            assert "PoseEstimation" not in nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimationDeepLabCut" not in nwbfile.processing["behavior"].data_interfaces
             assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -365,9 +377,11 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
             expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
 
             expected_pose_estimation_series_are_in_nwb_file = [
@@ -395,9 +409,11 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
             expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
 
             expected_pose_estimation_series_are_in_nwb_file = [
@@ -441,9 +457,11 @@ class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
 
             for pose_estimation in pose_estimation_series_in_nwb.values():
                 pose_timestamps = pose_estimation.timestamps
