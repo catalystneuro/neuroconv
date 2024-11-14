@@ -29,7 +29,6 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
-    DeepLabCutInterfaceMixin,
     MedPCInterfaceMixin,
     TemporalAlignmentMixin,
     VideoInterfaceMixin,
@@ -332,11 +331,16 @@ from sys import platform
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
+class TestDeepLabCutInterface(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
     )
     save_directory = OUTPUT_PATH
@@ -384,7 +388,12 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
 class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
         config_file_path=None,
         subject_name="ind1",
     )
@@ -411,11 +420,16 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
+class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
     )
 
@@ -452,6 +466,41 @@ class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
     # This was tested in the other test
     def check_read_nwb(self, nwbfile_path: str):
         pass
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10"),
+    reason="interface not supported on macOS with Python < 3.10",
+)
+class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "SL18_csv"
+            / "SL18_D19_S01_F01_BOX_SLP_20230503_112642.1DLC_resnet50_SubLearnSleepBoxRedLightJun26shuffle1_100000_stubbed.csv"
+        ),
+        config_file_path=None,
+        subject_name="SL18",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimation" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
+
+            expected_pose_estimation_series_are_in_nwb_file = [
+                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            ]
+
+            assert all(expected_pose_estimation_series_are_in_nwb_file)
 
 
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
