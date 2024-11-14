@@ -358,10 +358,6 @@ def add_subject_to_nwbfile(
     """
     file_path = Path(file_path)
 
-    suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
-    if not "DLC" in file_path.stem or not suffix_is_valid:
-        raise IOError("The file passed in is not a valid DeepLabCut output data file.")
-
     video_name, scorer = file_path.stem.split("DLC")
     scorer = "DLC" + scorer
 
