@@ -43,7 +43,7 @@ class _GenericNeuroconvEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-class NWBMetaDataEncoder(json.JSONEncoder):
+class NWBMetaDataEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for NWB metadata.
 
@@ -57,7 +57,7 @@ class NWBMetaDataEncoder(json.JSONEncoder):
 _NWBMetaDataEncoder = NWBMetaDataEncoder
 
 
-class _NWBSourceDataEncoder(NWBMetaDataEncoder):
+class _NWBSourceDataEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for data interface source data (i.e. kwargs).
 
@@ -66,7 +66,7 @@ class _NWBSourceDataEncoder(NWBMetaDataEncoder):
     """
 
 
-class _NWBConversionOptionsEncoder(NWBMetaDataEncoder):
+class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
 
