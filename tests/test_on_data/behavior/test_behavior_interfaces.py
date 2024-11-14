@@ -331,7 +331,7 @@ from sys import platform
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterface(DataInterfaceTestMixin):
+class TestDeepLabCutInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(
@@ -420,7 +420,7 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
+class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(
