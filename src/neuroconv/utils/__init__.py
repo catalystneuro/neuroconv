@@ -62,7 +62,3 @@ def __getattr__(name):
         warn(message=message, category=DeprecationWarning, stacklevel=2)
 
         return Optional[DirectoryPath]
-
-    if name in globals():
-        return globals()[name]
-    raise ImportError(f"cannot import name '{name}' from '{__name__}'")
