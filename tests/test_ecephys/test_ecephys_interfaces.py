@@ -54,6 +54,41 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert nwbfile.units is None
         assert "processed_units" in ecephys.data_interfaces
 
+    def test_electrode_indices(self, setup_interface):
+
+        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+        recording_extractor = recording_interface.recording_extractor
+        recording_extractor = recording_extractor.rename_channels(new_channel_ids=["a", "b", "c", "d"])
+        recording_extractor.set_property(key="property", values=["A", "B", "C", "D"])
+        recording_interface.recording_extractor = recording_extractor
+
+        nwbfile = recording_interface.create_nwbfile()
+
+        unit_electrode_indices = [[3], [0, 1], [1], [2]]
+        expected_properties_matching = [["D"], ["A", "B"], ["B"], ["C"]]
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, unit_electrode_indices=unit_electrode_indices)
+
+        unit_table = nwbfile.units
+
+        for unit_row, electrode_indices, property in zip(
+            unit_table.to_dataframe().itertuples(index=False),
+            unit_electrode_indices,
+            expected_properties_matching,
+        ):
+            electrode_table_region = unit_row.electrodes
+            electrode_table_region_indices = electrode_table_region.index.to_list()
+            assert electrode_table_region_indices == electrode_indices
+
+            electrode_table_region_properties = electrode_table_region["property"].to_list()
+            assert electrode_table_region_properties == property
+
+    def test_electrode_indices_assertion_error_when_missing_table(self, setup_interface):
+        with pytest.raises(
+            ValueError,
+            match="Electrodes table is required to map units to electrodes. Add an electrode table to the NWBFile first.",
+        ):
+            self.interface.create_nwbfile(unit_electrode_indices=[[0], [1], [2], [3]])
+
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
