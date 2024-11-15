@@ -411,7 +411,7 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
 
     interface = DeepLabCutInterface(**interface_kwargs)
     metadata = interface.get_metadata()
-    metadata["NWBFile"]["session_start_time"] = "2021-01-01T12:00:00"
+    metadata["NWBFile"]["session_start_time"] = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=timezone.utc)
 
     nwbfile_path = tmp_path / "test.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)

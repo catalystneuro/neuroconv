@@ -279,13 +279,14 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
+        timestamps = np.asarray(timestamps).astype("float64", copy=False)
         pes = PoseEstimationSeries(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
-            timestamps=timestamps_cleaned,
+            timestamps=timestamps,
             confidence=data[:, 2],
             confidence_definition="Softmax output of the deep neural network.",
         )
@@ -298,6 +299,7 @@ def _write_pes_to_nwbfile(
 
     # TODO, taken from the original implementation, improve it if the video is passed
     dimensions = [list(map(int, image_shape.split(",")))[1::2]]
+    dimensions = np.array(dimensions, dtype="uint32")
     pose_estimation_default_kwargs = dict(
         pose_estimation_series=pose_estimation_series,
         description="2D keypoint coordinates estimated using DeepLabCut.",

@@ -73,6 +73,8 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print verbose output, by default True
         """
+        # This import is to assure that the ndx_events is in the global namespace when an pynwb.io object is created
+        import ndx_events  # noqa: F401
 
         if aligned_timestamp_names is None:
             aligned_timestamp_names = []
