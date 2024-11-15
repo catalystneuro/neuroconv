@@ -80,6 +80,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
+
         from neuroconv.datainterfaces.behavior.video.video_utils import (
             VideoCaptureContext,
         )

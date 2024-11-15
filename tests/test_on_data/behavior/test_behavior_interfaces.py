@@ -1,3 +1,4 @@
+import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,7 +11,6 @@ from hdmf.testing import TestCase
 from natsort import natsorted
 from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
-from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
@@ -105,6 +105,8 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
         assert metadata["Behavior"][self.pose_estimation_name] == self.expected_metadata[self.pose_estimation_name]
 
     def check_read_nwb(self, nwbfile_path: str):
+        from ndx_pose import PoseEstimation, PoseEstimationSeries
+
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
@@ -379,6 +381,38 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             ]
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
+
+
+@pytest.fixture
+def clean_pose_extension_import():
+    modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
+    for module in modules_to_remove:
+        del sys.modules[module]
+
+
+def test_ndx_proper_loading_deeplabcut(clean_pose_extension_import, tmp_path):
+
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+    )
+
+    interface = DeepLabCutInterface(**interface_kwargs)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"]["session_start_time"] = "2021-01-01T12:00:00"
+    interface.run_conversion(nwbfile_path="test.nwb", metadata=metadata, overwrite=True)
+
+    nwbfile_path = tmp_path / "test.nwb"
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        read_nwbfile = io.read()
+        pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimation"]
+
+        assert len(pose_estimation_container.fields) > 0
 
 
 @pytest.mark.skipif(

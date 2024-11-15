@@ -73,6 +73,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print verbose output, by default True
         """
+
         if aligned_timestamp_names is None:
             aligned_timestamp_names = []
         super().__init__(
