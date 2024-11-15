@@ -92,7 +92,6 @@ class DataInterfaceTestMixin:
         Draft7Validator.check_schema(schema=schema)
 
     def test_metadata(self, setup_interface):
-        # Validate metadata now happens on the class itself
         metadata = self.interface.get_metadata()
         self.check_extracted_metadata(metadata)
 
@@ -741,30 +740,6 @@ class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     # Currently asserted in the downstream testing suite
     def test_interface_alignment(self):
         pass
-
-
-class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """
-    A mixin for testing DeepLabCut interfaces.
-    """
-
-    def check_interface_get_original_timestamps(self):
-        pass  # TODO in separate PR
-
-    def check_interface_get_timestamps(self):
-        pass  # TODO in separate PR
-
-    def check_interface_set_aligned_timestamps(self):
-        pass  # TODO in separate PR
-
-    def check_shift_timestamps_by_start_time(self):
-        pass  # TODO in separate PR
-
-    def check_interface_original_timestamps_inmutability(self):
-        pass  # TODO in separate PR
-
-    def check_nwbfile_temporal_alignment(self):
-        pass  # TODO in separate PR
 
 
 class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
