@@ -38,6 +38,22 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
+    def test_propagate_conversion_options(self, setup_interface):
+        interface = self.interface
+        metadata = interface.get_metadata()
+        nwbfile = interface.create_nwbfile(
+            stub_test=True,
+            metadata=metadata,
+            write_as="processing",
+            units_name="processed_units",
+            units_description="The processed units.",
+        )
+
+        ecephys = get_module(nwbfile, "ecephys")
+
+        assert nwbfile.units is None
+        assert "processed_units" in ecephys.data_interfaces
+
     def test_electrode_indices(self, setup_interface):
 
         recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
@@ -78,42 +94,29 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
     interface_kwargs = dict(durations=[0.100])
 
-
-class TestRecordingInterfaceOld(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.single_segment_recording_interface = MockRecordingInterface(durations=[0.100])
-        cls.multi_segment_recording_interface = MockRecordingInterface(durations=[0.100, 0.100])
-
-    def test_stub_single_segment(self):
-        interface = self.single_segment_recording_interface
+    def test_stub(self, setup_interface):
+        interface = self.interface
         metadata = interface.get_metadata()
         interface.create_nwbfile(stub_test=True, metadata=metadata)
 
-    def test_stub_multi_segment(self):
-        interface = self.multi_segment_recording_interface
-        metadata = interface.get_metadata()
-        interface.create_nwbfile(stub_test=True, metadata=metadata)
-
-    def test_no_slash_in_name(self):
-        interface = self.single_segment_recording_interface
+    def test_no_slash_in_name(self, setup_interface):
+        interface = self.interface
         metadata = interface.get_metadata()
         metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
-        with self.assertRaises(jsonschema.exceptions.ValidationError):
+        with pytest.raises(jsonschema.exceptions.ValidationError):
             interface.validate_metadata(metadata)
 
+    def test_stub_multi_segment(self):
 
-class TestAlwaysWriteTimestamps:
+        interface = MockRecordingInterface(durations=[0.100, 0.100])
+        metadata = interface.get_metadata()
+        interface.create_nwbfile(stub_test=True, metadata=metadata)
 
-    def test_always_write_timestamps(self):
-        # By default the MockRecordingInterface has a uniform sampling rate
-        interface = MockRecordingInterface(durations=[1.0], sampling_frequency=30_000.0)
+    def test_always_write_timestamps(self, setup_interface):
 
-        nwbfile = interface.create_nwbfile(always_write_timestamps=True)
+        nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)
         electrical_series = nwbfile.acquisition["ElectricalSeries"]
-
-        expected_timestamps = interface.recording_extractor.get_times()
-
+        expected_timestamps = self.interface.recording_extractor.get_times()
         np.testing.assert_array_equal(electrical_series.timestamps[:], expected_timestamps)
 
 
@@ -136,6 +139,8 @@ class TestAssertions(TestCase):
 
 
 class TestSortingInterfaceOld(unittest.TestCase):
+    """Old-style tests for the SortingInterface. Remove once we we are sure all the behaviors are covered by the mock."""
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.test_dir = Path(mkdtemp())
@@ -219,28 +224,3 @@ class TestSortingInterfaceOld(unittest.TestCase):
             nwbfile = io.read()
             for i, start_times in enumerate(self.sorting_start_frames):
                 assert len(nwbfile.units["spike_times"][i]) == self.num_frames - start_times
-
-    def test_sorting_propagate_conversion_options(self):
-        minimal_nwbfile = self.test_dir / "temp2.nwb"
-        metadata = self.test_sorting_interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        units_description = "The processed units."
-        conversion_options = dict(
-            TestSortingInterface=dict(
-                write_as="processing",
-                units_name="processed_units",
-                units_description=units_description,
-            )
-        )
-        self.test_sorting_interface.run_conversion(
-            nwbfile_path=minimal_nwbfile,
-            metadata=metadata,
-            conversion_options=conversion_options,
-        )
-
-        with NWBHDF5IO(minimal_nwbfile, "r") as io:
-            nwbfile = io.read()
-            ecephys = get_module(nwbfile, "ecephys")
-            self.assertIsNone(nwbfile.units)
-            self.assertIn("processed_units", ecephys.data_interfaces)
-            self.assertEqual(ecephys["processed_units"].description, units_description)
