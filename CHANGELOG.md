@@ -11,6 +11,7 @@
 * Added .csv support to DeepLabCutInterface [PR #1140](https://github.com/catalystneuro/neuroconv/pull/1140)
 
 ## Improvements
+* Use mixing tests for ecephy's mocks [PR #1136](https://github.com/catalystneuro/neuroconv/pull/1136)
 
 # v0.6.5 (November 1, 2024)
 
