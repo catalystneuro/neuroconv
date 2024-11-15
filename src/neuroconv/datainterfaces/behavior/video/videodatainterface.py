@@ -269,8 +269,6 @@ class VideoInterface(BaseDataInterface):
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
-        compression: Optional[str] = "gzip",
-        compression_options: Optional[int] = None,
     ):
         """
         Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
@@ -430,17 +428,6 @@ class VideoInterface(BaseDataInterface):
                                 video[n, :, :, :] = frame
                                 pbar.update(1)
                     iterable = video
-
-            # TODO: remove completely after 03/1/2024
-            if compression is not None or compression_options is not None:
-                warnings.warn(
-                    message=(
-                        "Specifying compression methods and their options for this interface has been deprecated. "
-                        "Please use the `configure_backend` tool function for this purpose."
-                    ),
-                    category=DeprecationWarning,
-                    stacklevel=2,
-                )
 
                 image_series_kwargs.update(data=iterable)
 
