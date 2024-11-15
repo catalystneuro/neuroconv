@@ -390,7 +390,14 @@ def clean_pose_extension_import():
         del sys.modules[module]
 
 
-def test_ndx_proper_loading_deeplabcut(clean_pose_extension_import, tmp_path):
+def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
+    """
+    Test that the DeepLabCutInterface writes correctly without importing the ndx-pose extension.
+    See issues:
+    https://github.com/catalystneuro/neuroconv/issues/1114
+    https://github.com/rly/ndx-pose/issues/36
+
+    """
 
     interface_kwargs = dict(
         file_path=str(
@@ -405,9 +412,9 @@ def test_ndx_proper_loading_deeplabcut(clean_pose_extension_import, tmp_path):
     interface = DeepLabCutInterface(**interface_kwargs)
     metadata = interface.get_metadata()
     metadata["NWBFile"]["session_start_time"] = "2021-01-01T12:00:00"
-    interface.run_conversion(nwbfile_path="test.nwb", metadata=metadata, overwrite=True)
 
     nwbfile_path = tmp_path / "test.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         read_nwbfile = io.read()
         pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimation"]

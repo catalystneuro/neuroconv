@@ -47,7 +47,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         verbose: bool, default: True
             Controls verbosity.
         """
-        # from ndx_pose import PoseEstimation, PoseEstimationSeries
 
         from ._dlc_utils import _read_config
 
