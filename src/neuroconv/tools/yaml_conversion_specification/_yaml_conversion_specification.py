@@ -84,19 +84,12 @@ def run_conversion_from_yaml(
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
     metadata_schema = load_dict_from_file(file_path=schema_folder / "metadata_schema.json")
 
-    # Create registry and add schemas starting with the metadata schema
-    registry = Registry().with_resource(
-        "metadata_schema.json", Resource.from_contents(metadata_schema)  # Base name without './'
+    # Create registry and add schemas
+    registry = (
+        Registry()
+        .with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
+        .with_resource("yaml_conversion_specification_schema.json", Resource.from_contents(specification_schema))
     )
-
-    # Then add the specification schema with the metadata schema reference
-    registry = registry.with_resource(
-        "yaml_conversion_specification_schema.json",  # This will be the base URI
-        Resource.from_contents(specification_schema),
-    )
-
-    # Also add with relative path since that's how it's referenced
-    registry = registry.with_resource("./metadata_schema.json", Resource.from_contents(metadata_schema))
 
     # Validate using the registry
     validate(

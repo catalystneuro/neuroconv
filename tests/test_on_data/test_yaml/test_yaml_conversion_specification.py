@@ -33,12 +33,7 @@ def test_validate_example_specifications(fname):
     metadata_schema = load_dict_from_file(file_path=schema_folder / "metadata_schema.json")
 
     # Create registry and add schemas
-    registry = (
-        Registry()
-        .with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
-        .with_resource("yaml_conversion_specification_schema.json", Resource.from_contents(specification_schema))
-        .with_resource("./metadata_schema.json", Resource.from_contents(metadata_schema))
-    )
+    registry = Registry().with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
 
     yaml_file_path = path_to_test_yml_files / fname
     validate(
