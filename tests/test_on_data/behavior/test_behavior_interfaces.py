@@ -390,6 +390,10 @@ def clean_pose_extension_import():
         del sys.modules[module]
 
 
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10"),
+    reason="interface not supported on macOS with Python < 3.10",
+)
 def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
     """
     Test that the DeepLabCutInterface writes correctly without importing the ndx-pose extension.
