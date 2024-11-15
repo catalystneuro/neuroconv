@@ -84,12 +84,8 @@ def run_conversion_from_yaml(
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
     metadata_schema = load_dict_from_file(file_path=schema_folder / "metadata_schema.json")
 
-    # Create registry and add schemas
-    registry = (
-        Registry()
-        .with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
-        .with_resource("yaml_conversion_specification_schema.json", Resource.from_contents(specification_schema))
-    )
+    # The yaml specification references the metadata schema, so we need to load it into the registry
+    registry = Registry().with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
 
     # Validate using the registry
     validate(
