@@ -81,6 +81,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             controls verbosity. ``True`` by default.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_pose  # noqa: F401
 
         from neuroconv.datainterfaces.behavior.video.video_utils import (

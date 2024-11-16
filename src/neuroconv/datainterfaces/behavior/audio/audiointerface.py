@@ -46,7 +46,8 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         verbose : bool, default: False
         """
-        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
 
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
