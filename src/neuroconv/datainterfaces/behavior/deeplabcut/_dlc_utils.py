@@ -279,7 +279,7 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
-        timestamps = np.asarray(timestamps).astype("float64", copy=False)
+        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
         pes = PoseEstimationSeries(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
