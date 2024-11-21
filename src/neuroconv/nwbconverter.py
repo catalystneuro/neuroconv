@@ -297,11 +297,11 @@ class ConverterPipe(NWBConverter):
     """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class."""
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa D102
+    def get_source_schema(cls) -> dict:
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
     @classmethod
-    def validate_source(cls):  # noqa D102
+    def validate_source(cls):
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
     def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=True):
