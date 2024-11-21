@@ -18,7 +18,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for European Data Format (EDF) recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
@@ -45,7 +45,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
-    def extract_nwb_file_metadata(self) -> dict:  # noqa: D102
+    def extract_nwb_file_metadata(self) -> dict:
         nwbfile_metadata = dict(
             session_start_time=self.edf_header["startdate"],
             experimenter=self.edf_header["technician"],
@@ -56,7 +56,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata
 
-    def extract_subject_metadata(self) -> dict:  # noqa: D102
+    def extract_subject_metadata(self) -> dict:
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
             date_of_birth=self.edf_header["birthdate"],
@@ -67,7 +67,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)

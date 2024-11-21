@@ -18,7 +18,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeriesLFP", **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
 
-    def add_to_nwbfile(  # noqa: D102
+    def add_to_nwbfile(
         self,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,

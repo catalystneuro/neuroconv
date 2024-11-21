@@ -17,7 +17,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
     info = "Interface for Miniscope behavior video data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -66,7 +66,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         assert len(self._starting_frames) == len(self._behav_avi_file_paths)
         self._timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         metadata["NWBFile"].update(session_start_time=self._recording_start_times[0])
 

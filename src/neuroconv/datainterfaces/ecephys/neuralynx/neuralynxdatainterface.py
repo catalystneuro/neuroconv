@@ -18,14 +18,14 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Neuralynx recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:  # noqa: D102
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -71,7 +71,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`

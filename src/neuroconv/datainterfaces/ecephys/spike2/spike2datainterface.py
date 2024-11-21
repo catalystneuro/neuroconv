@@ -28,7 +28,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "CedRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["smrx_channel_ids"])
         source_schema.update(additionalProperties=True)
         source_schema["properties"]["file_path"].update(description="Path to .smrx file.")

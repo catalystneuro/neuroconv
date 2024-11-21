@@ -41,7 +41,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
 
         super().__init__(file_path=file_path)
 
-    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self) -> np.ndarray:
         data = read_data(self.file_path)
 
         times = data["TimeStamp"] / 1000000  # Neuralynx stores times in microseconds
@@ -49,13 +49,13 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
 
         return times
 
-    def get_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_timestamps(self) -> np.ndarray:
         return self._timestamps
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:  # noqa: D102
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         self._timestamps = aligned_timestamps
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         metadata["NWBFile"].update(session_start_time=self.header["TimeCreated"])
@@ -67,7 +67,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         )
         return metadata
 
-    def get_metadata_schema(self) -> dict:  # noqa: D102
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         if "Behavior" not in metadata_schema["properties"]:

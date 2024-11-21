@@ -85,7 +85,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         )
         self.timestamps_dict = {}
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
@@ -98,7 +98,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
         return metadata
 
-    def get_metadata_schema(self) -> dict:  # noqa: D102
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         medpc_name_to_info_dict = self.source_data["metadata_medpc_name_to_info_dict"]
         metadata_schema["properties"]["MedPC"] = {
@@ -178,7 +178,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
             aligned_timestamps_dict[name] = original_timestamps + aligned_starting_time
         self.set_aligned_timestamps(aligned_timestamps_dict=aligned_timestamps_dict)
 
-    def add_to_nwbfile(  # noqa: D102
+    def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict,

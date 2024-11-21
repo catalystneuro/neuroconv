@@ -23,7 +23,7 @@ class LightningPoseConverter(NWBConverter):
     info = "Interface for handling multiple streams of lightning pose data."
 
     @classmethod
-    def get_source_schema(cls):  # noqa: D102
+    def get_source_schema(cls):
         return get_schema_from_method_signature(cls)
 
     @validate_call
@@ -70,14 +70,14 @@ class LightningPoseConverter(NWBConverter):
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
             self.data_interface_objects.update(dict(LabeledVideo=VideoInterface(file_paths=[labeled_video_file_path])))
 
-    def get_conversion_options_schema(self) -> dict:  # noqa: D102
+    def get_conversion_options_schema(self) -> dict:
         conversion_options_schema = get_schema_from_method_signature(
             method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
         )
 
         return conversion_options_schema
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()

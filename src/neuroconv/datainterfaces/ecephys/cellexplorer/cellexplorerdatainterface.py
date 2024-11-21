@@ -289,7 +289,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     binary_file_extension = "dat"
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
         return source_schema
@@ -353,7 +353,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, folder_path=folder_path
         )
 
-    def get_original_timestamps(self):  # noqa: D102
+    def get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_frames()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
         timestamps = np.arange(num_frames) / sampling_frequency
@@ -385,7 +385,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
 
-    def add_to_nwbfile(  # noqa: D102
+    def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
@@ -574,8 +574,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         return dummy_recording_extractor
 
-    def get_metadata(self) -> dict:  # noqa: D102
-        metadata = super().get_metadata()  # noqa: D102
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion

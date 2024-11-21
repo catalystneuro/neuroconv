@@ -19,7 +19,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Plexon recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
         return source_schema
@@ -52,7 +52,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         neo_reader = self.recording_extractor.neo_reader
 
@@ -77,7 +77,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Plexon2 recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
@@ -118,7 +118,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         neo_reader = self.recording_extractor.neo_reader
@@ -142,7 +142,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
     info = "Interface for Plexon sorting data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the plexon spiking data (.plx file)."
         return source_schema
@@ -161,7 +161,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         neo_reader = self.sorting_extractor.neo_reader
 

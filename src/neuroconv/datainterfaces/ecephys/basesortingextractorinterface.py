@@ -75,15 +75,15 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
-    def register_recording(self, recording_interface: BaseRecordingExtractorInterface):  # noqa: D102
+    def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
-    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError(
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
 
-    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:  # noqa: D102
+    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -171,7 +171,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 with_warning=False,
             )
 
-    def set_aligned_starting_time(self, aligned_starting_time: float):  # noqa: D102
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         if self.sorting_extractor.has_recording():
             if self._number_of_segments == 1:
                 self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)

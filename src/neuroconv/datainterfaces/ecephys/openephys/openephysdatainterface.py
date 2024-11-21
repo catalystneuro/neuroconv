@@ -18,7 +18,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -26,7 +26,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:  # noqa: D102
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         if any(Path(folder_path).rglob("*.continuous")):
             return OpenEphysLegacyRecordingInterface.get_stream_names(folder_path=folder_path)
         elif any(Path(folder_path).rglob("*.dat")):

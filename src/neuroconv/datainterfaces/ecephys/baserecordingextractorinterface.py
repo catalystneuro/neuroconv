@@ -85,7 +85,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         channel_groups_array = self.recording_extractor.get_channel_groups()
@@ -150,7 +150,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         assert (
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
@@ -182,7 +182,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 with_warning=False,
             )
 
-    def set_aligned_starting_time(self, aligned_starting_time: float):  # noqa: D102
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         if self._number_of_segments == 1:
             self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
         else:
@@ -253,7 +253,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         return self.recording_extractor.has_probe()
 
-    def align_by_interpolation(  # noqa: D102
+    def align_by_interpolation(
         self,
         unaligned_timestamps: np.ndarray,
         aligned_timestamps: np.ndarray,

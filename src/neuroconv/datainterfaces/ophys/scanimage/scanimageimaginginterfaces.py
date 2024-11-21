@@ -34,7 +34,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __new__(  # noqa: D102
+    def __new__(
         cls,
         file_path: FilePath,
         channel_name: Optional[str] = None,
@@ -87,7 +87,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102 , should inherit docstrnig from the base class
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -182,7 +182,7 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __new__(  # noqa: D102
+    def __new__(
         cls,
         folder_path: DirectoryPath,
         file_pattern: str,

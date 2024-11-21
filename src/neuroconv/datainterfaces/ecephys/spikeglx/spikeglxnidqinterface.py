@@ -21,7 +21,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     stream_id = "nidq"
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
@@ -74,7 +74,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         )
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, "nidq")]["meta"]
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         session_start_time = get_session_start_time(self.meta)

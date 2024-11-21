@@ -42,7 +42,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.dataframe = self._read_file(file_path, **read_kwargs)
         self.time_intervals = None
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         metadata["TimeIntervals"] = dict(
             trials=dict(

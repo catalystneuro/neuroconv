@@ -37,7 +37,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
@@ -90,7 +90,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
@@ -130,7 +130,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self) -> np.ndarray:
         new_recording = self.get_extractor()(
             folder_path=self.folder_path,
             stream_id=self.stream_id,

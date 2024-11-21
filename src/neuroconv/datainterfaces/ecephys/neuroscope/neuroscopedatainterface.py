@@ -102,7 +102,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for converting NeuroScope recording data."
 
     @classmethod
-    def get_source_schema(self) -> dict:  # noqa: D102
+    def get_source_schema(self) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .dat file."
         return source_schema
@@ -162,7 +162,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -173,7 +173,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self) -> np.ndarray:
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
         new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
         if self._number_of_segments == 1:
@@ -195,7 +195,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     ExtractorName = "NeuroScopeRecordingExtractor"
 
     @classmethod
-    def get_source_schema(self) -> dict:  # noqa: D102
+    def get_source_schema(self) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .lfp or .eeg file."
         return source_schema
@@ -236,7 +236,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -253,7 +253,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     info = "Interface for converting NeuroScope recording data."
 
     @classmethod
-    def get_source_schema(self) -> dict:  # noqa: D102
+    def get_source_schema(self) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
         source_schema["properties"]["keep_mua_units"][
@@ -300,7 +300,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem

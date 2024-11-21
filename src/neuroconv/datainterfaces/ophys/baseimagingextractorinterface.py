@@ -148,14 +148,14 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
-    def get_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_timestamps(self) -> np.ndarray:
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.imaging_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(

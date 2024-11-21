@@ -47,7 +47,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
 
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
-    def estimate_default_buffer_shape(  # noqa: D102
+    def estimate_default_buffer_shape(
         buffer_gb: float, chunk_shape: tuple[int, ...], maxshape: tuple[int, ...], dtype: np.dtype
     ) -> tuple[int, ...]:
         # TODO: Ad ddocstring to this once someone understands it better

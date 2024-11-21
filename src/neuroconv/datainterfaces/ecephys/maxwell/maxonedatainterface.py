@@ -85,7 +85,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]

@@ -25,7 +25,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".csv", ".mp4")
     info = "Interface for handling a single stream of lightning pose data."
 
-    def get_metadata_schema(self) -> dict:  # noqa: D102
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
 
@@ -123,13 +123,13 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         # image size of the original video is in height x width
         return video_shape[0], video_shape[1]
 
-    def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
         max_frames = 10 if stub_test else None
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             timestamps = video.get_video_timestamps(max_frames=max_frames)
         return timestamps
 
-    def get_timestamps(self, stub_test: bool = False) -> np.ndarray:  # noqa: D102
+    def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         max_frames = 10 if stub_test else None
         if self._times is None:
             return self.get_original_timestamps(stub_test=stub_test)
@@ -137,10 +137,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         timestamps = self._times if not stub_test else self._times[:max_frames]
         return timestamps
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._times = aligned_timestamps
 
-    def get_metadata(self) -> DeepDict:  # noqa: D102
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS

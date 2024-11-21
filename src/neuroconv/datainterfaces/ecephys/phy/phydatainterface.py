@@ -16,7 +16,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     info = "Interface for Phy sorting data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["exclude_cluster_groups"]["items"] = dict(type="string")
         source_schema["properties"]["folder_path"][
@@ -44,7 +44,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
 
-    def get_metadata(self):  # noqa: D102
+    def get_metadata(self):
         metadata = super().get_metadata()
         # See Kilosort save_to_phy() docstring for more info on these fields: https://github.com/MouseLand/Kilosort/blob/main/kilosort/io.py
         # Or see phy documentation: https://github.com/cortex-lab/phy/blob/master/phy/apps/base.py

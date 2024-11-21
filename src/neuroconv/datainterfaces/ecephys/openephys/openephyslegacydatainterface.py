@@ -19,7 +19,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for converting legacy OpenEphys recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:  # noqa: D102
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
@@ -77,7 +77,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
         )
 
-    def get_metadata(self):  # noqa: D102
+    def get_metadata(self):
         metadata = super().get_metadata()
 
         neo_reader = self.recording_extractor.neo_reader

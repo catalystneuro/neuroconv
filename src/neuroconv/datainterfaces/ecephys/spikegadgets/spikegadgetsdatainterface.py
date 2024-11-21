@@ -17,7 +17,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for SpikeGadgets recording data."
 
     @classmethod
-    def get_source_schema(cls) -> dict:  # noqa: D102
+    def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(cls, exclude=["source_data"])
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         return source_schema

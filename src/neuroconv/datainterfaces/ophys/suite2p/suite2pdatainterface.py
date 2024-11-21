@@ -62,13 +62,13 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         return schema
 
     @classmethod
-    def get_available_planes(cls, folder_path: DirectoryPath) -> dict:  # noqa: D102
+    def get_available_planes(cls, folder_path: DirectoryPath) -> dict:
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_planes(folder_path=folder_path)
 
     @classmethod
-    def get_available_channels(cls, folder_path: DirectoryPath) -> dict:  # noqa: D102
+    def get_available_channels(cls, folder_path: DirectoryPath) -> dict:
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)

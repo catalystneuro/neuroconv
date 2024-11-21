@@ -110,23 +110,23 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.source_data)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
-    def get_timestamps(self) -> np.ndarray:  # noqa: D102
+    def get_timestamps(self) -> np.ndarray:
         return self.segmentation_extractor.frame_to_time(
             frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
         )
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):  # noqa: D102
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(

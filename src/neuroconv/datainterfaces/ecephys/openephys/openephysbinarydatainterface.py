@@ -20,7 +20,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:  # noqa: D102
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
@@ -86,7 +86,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if stub_test:
             self.subset_channels = [0, 1]
 
-    def get_metadata(self) -> dict:  # noqa: D102
+    def get_metadata(self) -> dict:
         from ._openephys_utils import _get_session_start_time
 
         metadata = super().get_metadata()
