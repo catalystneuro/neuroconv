@@ -7,6 +7,7 @@ from typing import Any, Literal, Union
 import h5py
 import numcodecs
 import numpy as np
+import pynwb
 import zarr
 from hdmf import Container
 from hdmf.utils import get_data_shape
@@ -258,9 +259,24 @@ class DatasetIOConfiguration(BaseModel, ABC):
             and `timestamps`, each of which can be configured separately.
         """
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
-
         candidate_dataset = getattr(neurodata_object, dataset_name)
-        full_shape = get_data_shape(data=candidate_dataset)
+
+        manager = pynwb.get_manager()
+        namespace_catalog = manager.type_map.namespace_catalog
+        for namespace in namespace_catalog.namespaces:
+            try:
+                spec = namespace_catalog.get_spec(namespace, neurodata_object.parent.neurodata_type)
+                break
+            except ValueError:
+                continue
+        spec = spec.get_dataset(neurodata_object.name)
+        spec = spec if spec is not None else {}
+        dtype = spec.get("dtype", None)
+        if isinstance(dtype, list):  # compound dtype
+            full_shape = (len(candidate_dataset),)
+        else:
+            full_shape = get_data_shape(data=candidate_dataset)
+
         dtype = _infer_dtype(dataset=candidate_dataset)
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
@@ -312,3 +328,10 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape=buffer_shape,
             compression_method=compression_method,
         )
+
+
+def get_spec(namespace_catalog, namespace, neurodata_type, default=None):
+    try:
+        return namespace_catalog.get_spec(namespace, neurodata_type)
+    except ValueError:
+        return default
