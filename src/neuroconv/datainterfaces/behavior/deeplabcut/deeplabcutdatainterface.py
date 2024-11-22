@@ -5,7 +5,6 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
-# import ndx_pose
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 
 
@@ -48,6 +47,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         verbose: bool, default: True
             Controls verbosity.
         """
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        from ndx_pose import PoseEstimation, PoseEstimationSeries  # noqa: F401
+
         from ._dlc_utils import _read_config
 
         file_path = Path(file_path)
