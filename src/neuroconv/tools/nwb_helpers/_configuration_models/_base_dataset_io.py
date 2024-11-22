@@ -328,10 +328,3 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape=buffer_shape,
             compression_method=compression_method,
         )
-
-
-def get_spec(namespace_catalog, namespace, neurodata_type, default=None):
-    try:
-        return namespace_catalog.get_spec(namespace, neurodata_type)
-    except ValueError:
-        return default
