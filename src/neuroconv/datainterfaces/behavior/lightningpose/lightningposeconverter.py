@@ -10,7 +10,7 @@ from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
     dict_deep_update,
-    get_schema_from_method_signature,
+    get_json_schema_from_method_signature,
 )
 
 
@@ -24,7 +24,7 @@ class LightningPoseConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls)
+        return get_json_schema_from_method_signature(cls)
 
     @validate_call
     def __init__(
@@ -71,7 +71,7 @@ class LightningPoseConverter(NWBConverter):
             self.data_interface_objects.update(dict(LabeledVideo=VideoInterface(file_paths=[labeled_video_file_path])))
 
     def get_conversion_options_schema(self) -> dict:
-        conversion_options_schema = get_schema_from_method_signature(
+        conversion_options_schema = get_json_schema_from_method_signature(
             method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
         )
 
