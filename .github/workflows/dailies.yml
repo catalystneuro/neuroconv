@@ -6,6 +6,18 @@ on:
     - cron: "0 4 * * *" # Daily at 8PM PST, 11PM EST, 5AM CET to avoid working hours
 
 jobs:
+  load_python_and_os_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
+
   build-and-upload-docker-image-dev:
     uses: ./.github/workflows/build_and_upload_docker_image_dev.yml
     secrets:
@@ -13,25 +25,36 @@ jobs:
       DOCKER_UPLOADER_PASSWORD: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
 
   run-daily-tests:
+    needs: load_python_and_os_versions
     uses: ./.github/workflows/testing.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
   run-daily-dev-tests:
+    needs: load_python_and_os_versions
     uses: ./.github/workflows/dev-testing.yml
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+    with:
+      python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
 
   run-daily-live-service-testing:
+    needs: load_python_and_os_versions
     uses: ./.github/workflows/live-service-testing.yml
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+    with:
+      python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
   run-daily-neuroconv-docker-testing:
     uses: ./.github/workflows/neuroconv_docker_testing.yml

@@ -7,9 +7,9 @@ from pynwb import NWBFile
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
+    get_json_schema_from_method_signature,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
 )
 
 
@@ -22,7 +22,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=[])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
         return source_schema
 
     @validate_call
