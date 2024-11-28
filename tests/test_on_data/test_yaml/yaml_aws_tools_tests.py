@@ -38,6 +38,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
     region = "us-east-2"
     efs_id = None
 
+
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
 
@@ -70,7 +71,6 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
     def tearDown(self) -> None:
         if self.efs_id is None:
             return None
-
         efs_client = self.efs_client
 
         # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume

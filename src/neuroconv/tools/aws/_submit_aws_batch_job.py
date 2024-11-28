@@ -508,8 +508,7 @@ def _create_or_get_efs_id(
 
     return efs_id
 
-
-def _generate_job_definition_name(
+def generate_job_definition_name(
     *,
     docker_image: str,
     minimum_worker_ram_in_gib: int,
@@ -518,9 +517,7 @@ def _generate_job_definition_name(
 ) -> str:  # pragma: no cover
     """
     Generate a job definition name for the AWS Batch job.
-
     Note that Docker images don't strictly require a tag to be pulled or used - 'latest' is always used by default.
-
     Parameters
     ----------
     docker_image : str
@@ -532,22 +529,23 @@ def _generate_job_definition_name(
     minimum_worker_cpus : int
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
+    efs_id : Optional[str]
+        The ID of the EFS filesystem to mount, if any.
     """
     # AWS Batch does not allow colons, slashes, or periods in job definition names
     parsed_docker_image_name = str(docker_image)
-    for disallowed_character in [":", "/", "."]:
+    for disallowed_character in [":", "/", r"/", "."]:
         parsed_docker_image_name = parsed_docker_image_name.replace(disallowed_character, "-")
-
     job_definition_name = f"neuroconv_batch"
     job_definition_name += f"_{parsed_docker_image_name}-image"
     job_definition_name += f"_{minimum_worker_ram_in_gib}-GiB-RAM"
     job_definition_name += f"_{minimum_worker_cpus}-CPU"
     if efs_id is not None:
         job_definition_name += f"_{efs_id}"
-
+    if docker_tag is None or docker_tag == "latest":
+        date = datetime.now().strftime("%Y-%m-%d")
     return job_definition_name
-
-
+  
 def _ensure_job_definition_exists_and_get_arn(
     *,
     job_definition_name: str,
