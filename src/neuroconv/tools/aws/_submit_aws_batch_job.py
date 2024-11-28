@@ -508,6 +508,7 @@ def _create_or_get_efs_id(
 
     return efs_id
 
+
 def generate_job_definition_name(
     *,
     docker_image: str,
@@ -545,7 +546,8 @@ def generate_job_definition_name(
     if docker_tag is None or docker_tag == "latest":
         date = datetime.now().strftime("%Y-%m-%d")
     return job_definition_name
-  
+
+
 def _ensure_job_definition_exists_and_get_arn(
     *,
     job_definition_name: str,

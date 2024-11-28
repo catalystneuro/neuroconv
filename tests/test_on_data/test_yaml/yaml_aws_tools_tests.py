@@ -38,7 +38,6 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
     region = "us-east-2"
     efs_id = None
 
-
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
 
