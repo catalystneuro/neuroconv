@@ -68,6 +68,7 @@ class TestImportStructure(TestCase):
             "get_package_version",
             "is_package_installed",
             "deploy_process",
+            "data_transfers",
             "LocalPathExpander",
             "get_module",
         ]

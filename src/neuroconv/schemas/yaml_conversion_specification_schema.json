@@ -8,6 +8,7 @@
   "required": ["experiments"],
   "additionalProperties": false,
   "properties": {
+    "upload_to_dandiset": {"type": "string"},
     "metadata": {"$ref": "./metadata_schema.json#"},
     "conversion_options": {"type": "object"},
     "data_interfaces": {
