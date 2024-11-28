@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.6.5"
+version = "0.6.6"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -60,6 +60,9 @@ dependencies = [
 "Changelog" = "https://github.com/catalystneuro/neuroconv/blob/main/CHANGELOG.md"
 
 
+[project.scripts]
+neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
+
 [project.optional-dependencies]
 test = [
     "pytest",
@@ -83,17 +86,265 @@ docs = [
     "spikeinterface>=0.101.0",  # Needed for the API documentation
     "pydata_sphinx_theme==0.12.0"
 ]
+
 dandi = ["dandi>=0.58.1"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
+##########################
+# Modality-specific Extras
+##########################
+
+## Text
+csv = [
+]
+excel = [
+    "openpyxl",
+    "xlrd",
+]
+text = [
+    "neuroconv[csv]",
+    "neuroconv[excel]",
+]
+
+## Behavior
+audio = [
+    "ndx-sound>=0.2.0",
+]
+sleap = [
+    "av>=10.0.0",
+    "sleap-io>=0.0.2,<0.0.12; python_version<'3.9'",
+    "sleap-io>=0.0.2; python_version>='3.9'",
+]
+deeplabcut = [
+    "ndx-pose==0.1.1",
+    "tables; platform_system != 'Darwin'",
+    "tables>=3.10.1; platform_system == 'Darwin' and python_version >= '3.10'",
+]
+fictrac = [
+]
+video = [
+    "opencv-python-headless>=4.8.1.78",
+]
+lightningpose = [
+    "ndx-pose==0.1.1",
+    "neuroconv[video]",
+]
+medpc = [
+    "ndx-events==0.2.0",
+]
+behavior = [
+    "neuroconv[sleap]",
+    "neuroconv[audio]",
+    "neuroconv[deeplabcut]",
+    "neuroconv[fictrac]",
+    "neuroconv[video]",
+    "neuroconv[lightningpose]",
+    "neuroconv[medpc]",
+    "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
+]
+
+
+## Ecephys
+alphaomega = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+axona = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+biocam = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+blackrock = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+cellexplorer = [
+    "hdf5storage>=0.1.18",
+    "neo>=0.13.3",
+    "pymatreader>=0.0.32",
+    "spikeinterface>=0.101.0",
+]
+edf = [
+    "neo>=0.13.3",
+    "pyedflib>=0.1.36",
+    "spikeinterface>=0.101.0",
+]
+intan = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+kilosort = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+
+maxwell = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+mcsraw = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+mearec = [
+    "MEArec>=1.8.0",
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+neuralynx = [
+    "natsort>=7.1.1",
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+neuroscope = [
+    "lxml>=4.6.5",
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+openephys = [
+    "lxml>=4.9.4",
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+phy = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+plexon = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+    "zugbruecke >= 0.2.1; platform_system != 'Windows'",
+]
+spike2 = [
+    "neo>=0.13.3",
+    "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
+    "spikeinterface>=0.101.0",
+]
+spikegadgets = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+spikeglx = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+tdt = [
+    "neo>=0.13.3",
+    "spikeinterface>=0.101.0",
+]
+ecephys = [
+    "neuroconv[alphaomega]",
+    "neuroconv[axona]",
+    "neuroconv[biocam]",
+    "neuroconv[blackrock]",
+    "neuroconv[cellexplorer]",
+    "neuroconv[edf]",
+    "neuroconv[intan]",
+    "neuroconv[kilosort]",
+    "neuroconv[maxwell]",
+    "neuroconv[mcsraw]",
+    "neuroconv[mearec]",
+    "neuroconv[neuralynx]",
+    "neuroconv[neuroscope]",
+    "neuroconv[openephys]",
+    "neuroconv[phy]",
+    "neuroconv[plexon]",
+    "neuroconv[spike2]",
+    "neuroconv[spikegadgets]",
+    "neuroconv[spikeglx]",
+    "neuroconv[tdt]",
+]
+
+## Icephys
+abf = [
+    "ndx-dandi-icephys>=0.4.0",
+    "neo>=0.13.2",
+]
+icephys = [
+    "neuroconv[abf]",
+]
+
+## Ophys
+brukertiff = [
+    "roiextractors>=0.5.10",
+    "tifffile>=2023.3.21",
+]
+caiman = [
+    "roiextractors>=0.5.10",
+]
+cnmfe = [
+    "roiextractors>=0.5.10",
+]
+extract = [
+    "roiextractors>=0.5.10",
+]
+hdf5 = [
+    "roiextractors>=0.5.10",
+]
+micromanagertiff = [
+    "roiextractors>=0.5.10",
+    "tifffile>=2023.3.21",
+]
+miniscope = [
+    "natsort>=8.3.1",
+    "ndx-miniscope>=0.5.1",
+    "roiextractors>=0.5.10",
+]
+sbx = [
+    "roiextractors>=0.5.10",
+]
+scanimage = [
+    "roiextractors>=0.5.10",
+    "scanimage-tiff-reader>=1.4.1",
+]
+sima = [
+    "roiextractors>=0.5.10",
+]
+suite2p = [
+    "roiextractors>=0.5.10",
+]
+tdt_fp = [
+    "ndx-fiber-photometry",
+    "roiextractors>=0.5.10",
+    "tdt",
+]
+tiff = [
+    "roiextractors>=0.5.9",
+    "tiffile>=2018.10.18",
+]
+ophys = [
+    "neuroconv[brukertiff]",
+    "neuroconv[caiman]",
+    "neuroconv[cnmfe]",
+    "neuroconv[extract]",
+    "neuroconv[hdf5]",
+    "neuroconv[micromanagertiff]",
+    "neuroconv[miniscope]",
+    "neuroconv[sbx]",
+    "neuroconv[scanimage]",
+    "neuroconv[sima]",
+    "neuroconv[suite2p]",
+    "neuroconv[tdt_fp]",
+    "neuroconv[tiff]",
+]
+# Note these are references to the package in pipy (not local)
+full = [
+    "neuroconv[aws]",
+    "neuroconv[compressors]",
+    "neuroconv[dandi]",
+    "neuroconv[behavior]",
+    "neuroconv[ecephys]",
+    "neuroconv[icephys]",
+    "neuroconv[ophys]",
+    "neuroconv[text]",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
-
-
-[project.scripts]
-neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"

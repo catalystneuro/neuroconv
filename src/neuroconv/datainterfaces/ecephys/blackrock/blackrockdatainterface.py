@@ -6,7 +6,7 @@ from pydantic import FilePath
 from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -19,7 +19,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
         source_schema["properties"]["file_path"][
             "description"
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
@@ -85,7 +85,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        metadata_schema = get_schema_from_method_signature(method=cls.__init__)
+        metadata_schema = get_json_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema

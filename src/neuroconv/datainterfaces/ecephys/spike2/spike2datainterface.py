@@ -4,7 +4,7 @@ from pydantic import FilePath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 def _test_sonpy_installation() -> None:
@@ -29,7 +29,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["smrx_channel_ids"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["smrx_channel_ids"])
         source_schema.update(additionalProperties=True)
         source_schema["properties"]["file_path"].update(description="Path to .smrx file.")
         return source_schema

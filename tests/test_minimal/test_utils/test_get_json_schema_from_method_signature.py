@@ -110,7 +110,7 @@ def test_get_json_schema_from_method_signature_exclude():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_init():
+def test_get_json_schema_from_method_signature_init():
     """Test that 'self' is automatically skipped."""
 
     class TestClass:
@@ -141,7 +141,7 @@ def test_get_schema_from_method_signature_init():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_class_static():
+def test_get_json_schema_from_method_signature_class_static():
     """Ensuring that signature assembly prior to passing to Pydantic is not affected by bound or static methods."""
 
     class TestClass:
@@ -165,7 +165,7 @@ def test_get_schema_from_method_signature_class_static():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_class_method():
+def test_get_json_schema_from_method_signature_class_method():
     """Test that 'cls' is automatically skipped."""
 
     class TestClass:

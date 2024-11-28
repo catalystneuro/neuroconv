@@ -6,7 +6,7 @@ from pynwb import NWBFile
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class MiniscopeConverter(NWBConverter):
@@ -19,7 +19,7 @@ class MiniscopeConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(cls)
+        source_schema = get_json_schema_from_method_signature(cls)
         source_schema["properties"]["folder_path"]["description"] = "The path to the main Miniscope folder."
         return source_schema
 

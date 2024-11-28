@@ -308,8 +308,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
-        compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
         always_write_timestamps: bool = False,
@@ -388,8 +386,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,

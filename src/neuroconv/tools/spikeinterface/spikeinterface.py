@@ -99,7 +99,8 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] 
         metadata["Ecephys"]["Device"] = [defaults]
     for device_metadata in metadata["Ecephys"]["Device"]:
         if device_metadata.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **device_metadata))
+            device_kwargs = dict(defaults, **device_metadata)
+            nwbfile.create_device(**device_kwargs)
 
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
@@ -748,8 +749,6 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -771,11 +770,31 @@ def add_electrical_series(
         write_as=write_as,
         es_key=es_key,
         write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
+
+
+def _report_variable_offset(channel_offsets, channel_ids):
+    """
+    Helper function to report variable offsets per channel IDs.
+    Groups the different available offsets per channel IDs and raises a ValueError.
+    """
+    # Group the different offsets per channel IDs
+    offset_to_channel_ids = {}
+    for offset, channel_id in zip(channel_offsets, channel_ids):
+        if offset not in offset_to_channel_ids:
+            offset_to_channel_ids[offset] = []
+        offset_to_channel_ids[offset].append(channel_id)
+
+    # Create a user-friendly message
+    message_lines = ["Recording extractors with heterogeneous offsets are not supported."]
+    message_lines.append("Multiple offsets were found per channel IDs:")
+    for offset, ids in offset_to_channel_ids.items():
+        message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message = "\n".join(message_lines)
+
+    raise ValueError(message)
 
 
 def add_electrical_series_to_nwbfile(
@@ -787,8 +806,6 @@ def add_electrical_series_to_nwbfile(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
     always_write_timestamps: bool = False,
@@ -824,7 +841,6 @@ def add_electrical_series_to_nwbfile(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-        Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -845,16 +861,6 @@ def add_electrical_series_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression is not None or compression_opts is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     assert write_as in [
         "raw",
@@ -905,14 +911,16 @@ def add_electrical_series_to_nwbfile(
     # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
     # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
+    channel_offsets = recording.get_channel_offsets()
 
     unique_channel_conversion = np.unique(channel_conversion)
     unique_channel_conversion = unique_channel_conversion[0] if len(unique_channel_conversion) == 1 else None
 
-    unique_offset = np.unique(channel_offset)
+    unique_offset = np.unique(channel_offsets)
     if unique_offset.size > 1:
-        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+        channel_ids = recording.get_channel_ids()
+        # This prints a user friendly error where the user is provided with a map from offset to channels
+        _report_variable_offset(channel_offsets, channel_ids)
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
     micro_to_volts_conversion_factor = 1e-6
@@ -1017,8 +1025,6 @@ def add_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -1040,8 +1046,6 @@ def add_recording(
         es_key=es_key,
         write_electrical_series=write_electrical_series,
         write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
@@ -1056,8 +1060,6 @@ def add_recording_to_nwbfile(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
     always_write_timestamps: bool = False,
@@ -1138,8 +1140,6 @@ def add_recording_to_nwbfile(
                 write_as=write_as,
                 es_key=es_key,
                 write_scaled=write_scaled,
-                compression=compression,
-                compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
                 always_write_timestamps=always_write_timestamps,
@@ -1158,8 +1158,6 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -1184,8 +1182,6 @@ def write_recording(
         es_key=es_key,
         write_electrical_series=write_electrical_series,
         write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
@@ -1203,8 +1199,6 @@ def write_recording_to_nwbfile(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ) -> pynwb.NWBFile:
@@ -1278,11 +1272,6 @@ def write_recording_to_nwbfile(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}, default: 'gzip'
-        Type of compression to use. Set to None to disable all compression.
-        To use the `configure_backend` function, you should set this to None.
-    compression_opts: int, optional, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -1323,8 +1312,6 @@ def write_recording_to_nwbfile(
             es_key=es_key,
             write_electrical_series=write_electrical_series,
             write_scaled=write_scaled,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
         )
@@ -1381,7 +1368,7 @@ def add_units_table_to_nwbfile(
     write_in_processing_module: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices=None,
+    unit_electrode_indices: Optional[list[list[int]]] = None,
     null_values_for_properties: Optional[dict] = None,
 ):
     """
@@ -1418,14 +1405,22 @@ def add_units_table_to_nwbfile(
         Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
     unit_electrode_indices : list of lists of int, optional
         For each unit, a list of electrode indices corresponding to waveform data.
-    null_values_for_properties: dict, optional
-        A dictionary mapping properties to null values to use when the property is not present
+    unit_electrode_indices : list of lists of int, optional
+        A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
+        The length of the list must match the number of units in the sorting extractor.
     """
     unit_table_description = unit_table_description or "Autogenerated by neuroconv."
 
     assert isinstance(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
+
+    if unit_electrode_indices is not None:
+        electrodes_table = nwbfile.electrodes
+        if electrodes_table is None:
+            raise ValueError(
+                "Electrodes table is required to map units to electrodes. Add an electrode table to the NWBFile first."
+            )
 
     null_values_for_properties = dict() if null_values_for_properties is None else null_values_for_properties
 
@@ -1681,7 +1676,7 @@ def add_sorting_to_nwbfile(
     units_description: str = "Autogenerated by neuroconv.",
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices=None,
+    unit_electrode_indices: Optional[list[list[int]]] = None,
 ):
     """Add sorting data (units and their properties) to an NWBFile.
 
@@ -1716,7 +1711,8 @@ def add_sorting_to_nwbfile(
     waveform_sds : np.ndarray, optional
         Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
     unit_electrode_indices : list of lists of int, optional
-        For each unit, a list of electrode indices corresponding to waveform data.
+        A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
+        The length of the list must match the number of units in the sorting extractor.
     """
 
     if skip_features is not None:

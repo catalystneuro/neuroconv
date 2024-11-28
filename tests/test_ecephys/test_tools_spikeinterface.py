@@ -1,3 +1,4 @@
+import re
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -8,9 +9,11 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pynwb.ecephys
+import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBFile
+from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
     generate_recording,
@@ -392,6 +395,36 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
             add_electrical_series_to_nwbfile(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
             )
+
+
+def test_error_with_multiple_offset():
+    # Generate a mock recording with 5 channels and 1 second duration
+    recording = generate_recording(num_channels=5, durations=[1.0])
+    # Rename channels to specific identifiers for clarity in error messages
+    recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+    # Set different offsets for the channels
+    recording.set_channel_offsets(offsets=[0, 0, 1, 1, 2])
+
+    # Create a mock NWBFile object
+    nwbfile = mock_NWBFile()
+
+    # Expected error message
+    expected_message_lines = [
+        "Recording extractors with heterogeneous offsets are not supported.",
+        "Multiple offsets were found per channel IDs:",
+        "  Offset 0: Channel IDs ['a', 'b']",
+        "  Offset 1: Channel IDs ['c', 'd']",
+        "  Offset 2: Channel IDs ['e']",
+    ]
+    expected_message = "\n".join(expected_message_lines)
+
+    # Use re.escape to escape any special regex characters in the expected message
+    expected_message_regex = re.escape(expected_message)
+
+    # Attempt to add electrical series to the NWB file
+    # Expecting a ValueError due to multiple offsets, matching the expected message
+    with pytest.raises(ValueError, match=expected_message_regex):
+        add_electrical_series_to_nwbfile(recording=recording, nwbfile=nwbfile)
 
 
 class TestAddElectricalSeriesChunking(unittest.TestCase):

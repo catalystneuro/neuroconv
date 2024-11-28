@@ -6,6 +6,7 @@ from pynwb import NWBFile
 from pynwb.base import DynamicTable
 
 from .mock_ttl_signals import generate_mock_ttl_signal
+from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -20,7 +21,27 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-from ...utils import ArrayType, get_schema_from_method_signature
+from ...utils import ArrayType, get_json_schema_from_method_signature
+
+
+class MockInterface(BaseDataInterface):
+    """
+    A mock interface for testing basic command passing without side effects.
+    """
+
+    def __init__(self, verbose: bool = False, **source_data):
+
+        super().__init__(verbose=verbose, **source_data)
+
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options):
+
+        return None
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
@@ -30,7 +51,7 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
@@ -74,7 +95,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
@@ -260,14 +281,15 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             sampling_frequency=sampling_frequency,
             dtype=dtype,
             verbose=verbose,
+            seed=seed,
         )
 
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
+    def get_metadata(self) -> dict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata(photon_series_type=photon_series_type)
+        metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
@@ -334,6 +356,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_deconvolved_signal=has_deconvolved_signal,
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
+            seed=seed,
         )
 
     def get_metadata(self) -> dict:

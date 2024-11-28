@@ -1,3 +1,4 @@
+import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,7 +11,6 @@ from hdmf.testing import TestCase
 from natsort import natsorted
 from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
-from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
@@ -29,7 +29,6 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
-    DeepLabCutInterfaceMixin,
     MedPCInterfaceMixin,
     TemporalAlignmentMixin,
     VideoInterfaceMixin,
@@ -106,6 +105,8 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
         assert metadata["Behavior"][self.pose_estimation_name] == self.expected_metadata[self.pose_estimation_name]
 
     def check_read_nwb(self, nwbfile_path: str):
+        from ndx_pose import PoseEstimation, PoseEstimationSeries
+
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
@@ -332,11 +333,16 @@ from sys import platform
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
+class TestDeepLabCutInterface(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
     )
     save_directory = OUTPUT_PATH
@@ -377,6 +383,49 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
             assert all(expected_pose_estimation_series_are_in_nwb_file)
 
 
+@pytest.fixture
+def clean_pose_extension_import():
+    modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
+    for module in modules_to_remove:
+        del sys.modules[module]
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10"),
+    reason="interface not supported on macOS with Python < 3.10",
+)
+def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
+    """
+    Test that the DeepLabCutInterface writes correctly without importing the ndx-pose extension.
+    See issues:
+    https://github.com/catalystneuro/neuroconv/issues/1114
+    https://github.com/rly/ndx-pose/issues/36
+
+    """
+
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+    )
+
+    interface = DeepLabCutInterface(**interface_kwargs)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"]["session_start_time"] = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=timezone.utc)
+
+    nwbfile_path = tmp_path / "test.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        read_nwbfile = io.read()
+        pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimation"]
+
+        assert len(pose_estimation_container.fields) > 0
+
+
 @pytest.mark.skipif(
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
@@ -384,7 +433,12 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin):
 class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
         config_file_path=None,
         subject_name="ind1",
     )
@@ -411,11 +465,16 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     platform == "darwin" and python_version < version.parse("3.10"),
     reason="interface not supported on macOS with Python < 3.10",
 )
-class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
+class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
     )
 
@@ -452,6 +511,41 @@ class TestDeepLabCutInterfaceSetTimestamps(DeepLabCutInterfaceMixin):
     # This was tested in the other test
     def check_read_nwb(self, nwbfile_path: str):
         pass
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10"),
+    reason="interface not supported on macOS with Python < 3.10",
+)
+class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "SL18_csv"
+            / "SL18_D19_S01_F01_BOX_SLP_20230503_112642.1DLC_resnet50_SubLearnSleepBoxRedLightJun26shuffle1_100000_stubbed.csv"
+        ),
+        config_file_path=None,
+        subject_name="SL18",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimation" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
+
+            expected_pose_estimation_series_are_in_nwb_file = [
+                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            ]
+
+            assert all(expected_pose_estimation_series_are_in_nwb_file)
 
 
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):

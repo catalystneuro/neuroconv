@@ -13,6 +13,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  load_python_and_os_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
 
   assess-file-changes:
     uses: ./.github/workflows/assess-file-changes.yml
@@ -31,7 +42,7 @@ jobs:
           0
 
   run-tests:
-    needs: assess-file-changes
+    needs: [assess-file-changes, load_python_and_os_versions]
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
     uses: ./.github/workflows/testing.yml
     secrets:
@@ -40,21 +51,21 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
   # If the conversion gallery is the only thing that changed, run doctests only
   run-doctests-only:
-    needs: assess-file-changes
+    needs: [assess-file-changes, load_python_and_os_versions]
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
   run-live-service-tests:
-    needs: assess-file-changes
+    needs: [assess-file-changes, load_python_and_os_versions]
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
     uses: ./.github/workflows/live-service-testing.yml
     secrets:
@@ -63,8 +74,8 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || '["3.9", "3.10", "3.11", "3.12"]' }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || '["ubuntu-latest", "macos-latest", "macos-13", "windows-latest"]' }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
   check-final-status:
