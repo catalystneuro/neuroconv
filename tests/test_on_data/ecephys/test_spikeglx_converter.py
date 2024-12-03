@@ -33,7 +33,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.session_start_time == expected_session_start_time
+            assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
             assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
             assert "ElectricalSeriesLFImec0" in nwbfile.acquisition
@@ -74,7 +74,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
     def test_in_converter_pipe(self):
@@ -84,7 +84,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_converter_pipe.nwb"
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
-        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
     def test_in_nwbconverter(self):
@@ -101,7 +101,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
-        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
 
@@ -118,7 +118,9 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        assert nwbfile.session_start_time == expected_session_start_time
+        # Do the comparison without timezone information to avoid CI timezone issues
+        # The timezone is set by pynbw automatically
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
         # TODO: improve name of segments using 'Segment{index}' for clarity
         assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
@@ -167,7 +169,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47).astimezone()
+        expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
 

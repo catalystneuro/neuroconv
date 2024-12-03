@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from pydantic import FilePath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 
 from .spikeglx_utils import (
     add_recording_extractor_properties,
@@ -45,7 +45,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
 
         extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("file_path")
         extractor_kwargs["folder_path"] = self.folder_path
         extractor_kwargs["all_annotations"] = True
         extractor_kwargs["stream_id"] = self.stream_id
@@ -54,9 +53,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
-        file_path: FilePath,
-        verbose: bool = True,
+        folder_path: Optional[DirectoryPath] = None,
+        stream_id: Optional[str] = None,
         es_key: Optional[str] = None,
+        verbose: bool = True,
+        file_path: Optional[FilePath] = None,
     ):
         """
         Parameters
@@ -68,7 +69,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         """
 
-        self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
+        if file_path is not None and stream_id is None:
+            self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
+            self.folder_path = Path(file_path).parent
+        else:
+            self.stream_id = stream_id
+            self.folder_path = Path(folder_path)
+
         if es_key is None:
             if "lf" in self.stream_id:
                 es_key = "ElectricalSeriesLF"
@@ -76,15 +83,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 es_key = "ElectricalSeriesAP"
             else:
                 raise ValueError("Cannot automatically determine es_key from path")
-        file_path = Path(file_path)
-        self.folder_path = file_path.parent
 
         super().__init__(
-            file_path=file_path,
+            folder_path=folder_path,
             verbose=verbose,
             es_key=es_key,
         )
-        self.source_data["file_path"] = str(file_path)
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Set electrodes properties
