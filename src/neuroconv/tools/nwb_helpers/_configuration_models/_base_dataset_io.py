@@ -10,6 +10,10 @@ import numpy as np
 import pynwb
 import zarr
 from hdmf import Container
+from hdmf.build.builders import (
+    DatasetBuilder,
+    GroupBuilder,
+)
 from hdmf.utils import get_data_shape
 from pydantic import (
     BaseModel,
@@ -262,16 +266,14 @@ class DatasetIOConfiguration(BaseModel, ABC):
         candidate_dataset = getattr(neurodata_object, dataset_name)
 
         manager = pynwb.get_manager()
-        namespace_catalog = manager.type_map.namespace_catalog
-        for namespace in namespace_catalog.namespaces:
-            try:
-                spec = namespace_catalog.get_spec(namespace, neurodata_object.parent.neurodata_type)
-                break
-            except ValueError:
-                continue
-        spec = spec.get_dataset(neurodata_object.name)
-        spec = spec if spec is not None else {}
-        dtype = spec.get("dtype", None)
+        builder = manager.build(neurodata_object)
+        if isinstance(builder, GroupBuilder):
+            dtype = builder.datasets[dataset_name].dtype
+        elif isinstance(builder, DatasetBuilder):
+            dtype = builder.dtype
+        else:
+            raise NotImplementedError(f"Builder Type {type(builder)} not supported!")
+
         if isinstance(dtype, list):  # compound dtype
             full_shape = (len(candidate_dataset),)
         else:
