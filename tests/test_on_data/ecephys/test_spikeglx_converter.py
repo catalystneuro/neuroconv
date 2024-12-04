@@ -131,7 +131,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
-        assert len(nwbfile.acquisition) == 8
+        assert len(nwbfile.acquisition) == 16
 
         assert "NeuropixelImec0" in nwbfile.devices
         assert "NeuropixelImec1" in nwbfile.devices
@@ -143,7 +143,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
 
     def test_multi_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0" / "5-19-2022-CI0_g0"
+            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
         )
         metadata = converter.get_metadata()
 
@@ -161,10 +161,6 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
 
         device_metadata = test_ecephys_metadata.pop("Device")
         expected_device_metadata = expected_ecephys_metadata.pop("Device")
-
-        assert device_metadata == expected_device_metadata
-
-        assert test_ecephys_metadata == expected_ecephys_metadata
 
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

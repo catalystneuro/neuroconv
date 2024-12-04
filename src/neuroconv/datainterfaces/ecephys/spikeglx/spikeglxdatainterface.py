@@ -62,34 +62,40 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         """
         Parameters
         ----------
+        folder_path: DirectoryPath
+            Folder path containing the binary files of the SpikeGLX recording.
+        stream_id: str, optional
+            Stream ID of the SpikeGLX recording.
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
         verbose : bool, default: True
             Whether to output verbose text.
-        es_key : str, default: "ElectricalSeries"
+        es_key : str, the key to access the metadata of the ElectricalSeries.
         """
 
         if file_path is not None and stream_id is None:
             self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
             self.folder_path = Path(file_path).parent
+
         else:
             self.stream_id = stream_id
             self.folder_path = Path(folder_path)
-
-        if es_key is None:
-            if "lf" in self.stream_id:
-                es_key = "ElectricalSeriesLF"
-            elif "ap" in self.stream_id:
-                es_key = "ElectricalSeriesAP"
-            else:
-                raise ValueError("Cannot automatically determine es_key from path")
 
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
             es_key=es_key,
         )
-        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+
+        signal_info_key = (0, self.stream_id)  # Key format is (segment_index, stream_id)
+        self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
+        self.meta = self._signals_info_dict["meta"]
+
+        if es_key is None:
+            stream_kind = self._signals_info_dict["stream_kind"]  # ap or lf
+            stream_kind_caps = stream_kind.upper()
+            device = self._signals_info_dict["device"].capitalize()  # imec0, imec1, etc.
+            self.es_key = f"ElectricalSeries{stream_kind_caps}{device}"
 
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
@@ -104,7 +110,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         device = get_device_metadata(self.meta)
 
         # Should follow pattern 'Imec0', 'Imec1', etc.
-        probe_name = self.stream_id[:5].capitalize()
+        probe_name = self._signals_info_dict["device"].capitalize()
         device["name"] = f"Neuropixel{probe_name}"
 
         # Add groups metadata
