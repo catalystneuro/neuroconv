@@ -162,6 +162,9 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         device_metadata = test_ecephys_metadata.pop("Device")
         expected_device_metadata = expected_ecephys_metadata.pop("Device")
 
+        assert device_metadata == expected_device_metadata
+        assert test_ecephys_metadata == expected_ecephys_metadata
+
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
