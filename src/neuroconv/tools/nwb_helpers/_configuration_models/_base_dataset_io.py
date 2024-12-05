@@ -261,6 +261,8 @@ class DatasetIOConfiguration(BaseModel, ABC):
             The name of the field that will become a dataset when written to disk.
             Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
             and `timestamps`, each of which can be configured separately.
+        builder : hdmf.build.builders.BaseBuilder
+            The builder object that would be used to construct the NWBFile object.
         """
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         candidate_dataset = getattr(neurodata_object, dataset_name)
@@ -323,7 +325,22 @@ class DatasetIOConfiguration(BaseModel, ABC):
         )
 
 
-def has_compound_dtype(builder, location_in_file):
+def has_compound_dtype(builder: BaseBuilder, location_in_file: str) -> bool:
+    """
+    Determine if the dataset at the given location in the file has a compound dtype.
+
+    Parameters
+    ----------
+    builder : hdmf.build.builders.BaseBuilder
+        The builder object that would be used to construct the NWBFile object.
+    location_in_file : str
+        The location of the dataset within the NWBFile, e.g. 'acquisition/ElectricalSeries/data'.
+
+    Returns
+    -------
+    bool
+        Whether the dataset has a compound dtype.
+    """
     split_location = iter(location_in_file.split("/"))
     location = next(split_location)
     while location in builder.groups:
