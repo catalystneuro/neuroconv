@@ -7,12 +7,10 @@ from typing import Any, Literal, Union
 import h5py
 import numcodecs
 import numpy as np
-import pynwb
 import zarr
 from hdmf import Container
 from hdmf.build.builders import (
-    DatasetBuilder,
-    GroupBuilder,
+    BaseBuilder,
 )
 from hdmf.utils import get_data_shape
 from pydantic import (
@@ -249,7 +247,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
-    def from_neurodata_object(cls, neurodata_object: Container, dataset_name: Literal["data", "timestamps"]) -> Self:
+    def from_neurodata_object(
+        cls, neurodata_object: Container, dataset_name: Literal["data", "timestamps"], builder: BaseBuilder
+    ) -> Self:
         """
         Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
 
@@ -265,16 +265,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         candidate_dataset = getattr(neurodata_object, dataset_name)
 
-        manager = pynwb.get_manager()
-        builder = manager.build(neurodata_object)
-        if isinstance(builder, GroupBuilder):
-            dtype = builder.datasets[dataset_name].dtype
-        elif isinstance(builder, DatasetBuilder):
-            dtype = builder.dtype
-        else:
-            raise NotImplementedError(f"Builder Type {type(builder)} not supported!")
-
-        if isinstance(dtype, list):  # compound dtype
+        if has_compound_dtype(builder, location_in_file):
             full_shape = (len(candidate_dataset),)
         else:
             full_shape = get_data_shape(data=candidate_dataset)
@@ -330,3 +321,17 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape=buffer_shape,
             compression_method=compression_method,
         )
+
+
+def has_compound_dtype(builder, location_in_file):
+    split_location = iter(location_in_file.split("/"))
+    location = next(split_location)
+    while location in builder.groups:
+        builder = builder.groups[location]
+        location = next(split_location)
+
+    if location in builder.datasets:
+        builder = builder.datasets[location]
+    else:
+        raise ValueError(f"Could not find location '{location}' in builder.")
+    return isinstance(builder.dtype, list)
