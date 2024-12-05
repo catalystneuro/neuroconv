@@ -29,9 +29,9 @@
         "device": "NIDQBoard"
       }
     ],
-    "ElectricalSeriesAPImec0": {
-      "name": "ElectricalSeriesAPImec0",
-      "description": "Acquisition traces for the ElectricalSeriesAPImec0."
+    "ElectricalSeriesAP": {
+      "name": "ElectricalSeriesAP",
+      "description": "Acquisition traces for the ElectricalSeriesAP."
     },
     "Electrodes": [
       {
@@ -51,9 +51,9 @@
       "name": "ElectricalSeriesNIDQ",
       "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
     },
-    "ElectricalSeriesLFImec0": {
-      "name": "ElectricalSeriesLFImec0",
-      "description": "Acquisition traces for the ElectricalSeriesLFImec0."
+    "ElectricalSeriesLF": {
+      "name": "ElectricalSeriesLF",
+      "description": "Acquisition traces for the ElectricalSeriesLF."
     }
   }
 }

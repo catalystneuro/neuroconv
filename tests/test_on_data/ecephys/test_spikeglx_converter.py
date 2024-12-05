@@ -35,8 +35,8 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
             assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
-            assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
-            assert "ElectricalSeriesLFImec0" in nwbfile.acquisition
+            assert "ElectricalSeriesAP" in nwbfile.acquisition
+            assert "ElectricalSeriesLF" in nwbfile.acquisition
             assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
             assert len(nwbfile.acquisition) == 3
 
@@ -194,7 +194,7 @@ def test_electrode_table_writing(tmp_path):
     np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
 
     # Test AP
-    electrical_series = nwbfile.acquisition["ElectricalSeriesAPImec0"]
+    electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
     ap_electrodes_table_region = electrical_series.electrodes
     region_indices = ap_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
@@ -204,7 +204,7 @@ def test_electrode_table_writing(tmp_path):
     np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
     # Test LF
-    electrical_series = nwbfile.acquisition["ElectricalSeriesLFImec0"]
+    electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
     lf_electrodes_table_region = electrical_series.electrodes
     region_indices = lf_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
@@ -223,7 +223,7 @@ def test_electrode_table_writing(tmp_path):
     # Test round trip with spikeinterface
     recording_extractor_ap = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesAPImec0",
+        electrical_series_name="ElectricalSeriesAP",
     )
 
     channel_ids = recording_extractor_ap.get_channel_ids()
@@ -231,7 +231,7 @@ def test_electrode_table_writing(tmp_path):
 
     recording_extractor_lf = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesLFImec0",
+        electrical_series_name="ElectricalSeriesLF",
     )
 
     channel_ids = recording_extractor_lf.get_channel_ids()

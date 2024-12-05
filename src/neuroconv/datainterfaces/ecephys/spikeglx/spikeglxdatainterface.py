@@ -95,7 +95,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             stream_kind = self._signals_info_dict["stream_kind"]  # ap or lf
             stream_kind_caps = stream_kind.upper()
             device = self._signals_info_dict["device"].capitalize()  # imec0, imec1, etc.
-            self.es_key = f"ElectricalSeries{stream_kind_caps}{device}"
+
+            electrical_series_name = f"ElectricalSeries{stream_kind_caps}"
+
+            # Add imec{probe_index} to the electrical series name when there are multiple probes
+            # or undefined, `typeImEnabled` is present in the meta of all the production probes
+            self.probes_enabled_in_run = int(self.meta.get("typeImEnabled", 0))
+            if self.probes_enabled_in_run != 1:
+                electrical_series_name += f"{device}"
+
+            self.es_key = electrical_series_name
 
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
