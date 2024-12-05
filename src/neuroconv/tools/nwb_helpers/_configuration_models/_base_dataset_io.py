@@ -342,13 +342,46 @@ def has_compound_dtype(builder: BaseBuilder, location_in_file: str) -> bool:
         Whether the dataset has a compound dtype.
     """
     split_location = iter(location_in_file.split("/"))
-    location = next(split_location)
-    while location in builder.groups:
-        builder = builder.groups[location]
-        location = next(split_location)
+    name = next(split_location)
 
-    if location in builder.datasets:
-        builder = builder.datasets[location]
+    if name not in builder.groups:
+        # Items in defined top-level places like electrodes may not be in the groups of the nwbfile-level builder,
+        # but rather in hidden locations like general/extracellular_ephys/electrodes
+        builder = _find_sub_builder(builder, name)
+        name = next(split_location)
+
+    # To find the appropriate builder for the dataset, we traverse the groups in the location_in_file until we reach
+    # a DatasetBuilder
+    while name in builder.groups:
+        builder = builder.groups[name]
+        name = next(split_location)
+    if name in builder.datasets:
+        builder = builder.datasets[name]
     else:
-        raise ValueError(f"Could not find location '{location}' in builder.")
+        raise ValueError(f"Could not find location '{location_in_file}' in builder.")
+
     return isinstance(builder.dtype, list)
+
+
+def _find_sub_builder(builder: BaseBuilder, name: str) -> BaseBuilder:
+    """Recursively search for a sub-builder by name in a builder object.
+
+    Parameters
+    ----------
+    builder : hdmf.build.builders.BaseBuilder
+        The builder object to search for the sub-builder in.
+    name : str
+        The name of the sub-builder to search for.
+
+    Returns
+    -------
+    hdmf.build.builders.BaseBuilder
+        The sub-builder with the given name, or None if it could not be found.
+    """
+    for sub_builder in builder.groups.values():
+        if sub_builder.name == name:
+            return sub_builder
+        output_builder = _find_sub_builder(builder=sub_builder, name=name)
+        if output_builder is not None:
+            return output_builder
+    return None
