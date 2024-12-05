@@ -34,7 +34,7 @@ class TestYAMLConversionSpecification(TestCase):
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
             assert nwbfile.subject.subject_id == "1"
-            assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
+            assert "ElectricalSeriesAP" in nwbfile.acquisition
 
         nwbfile_path = self.test_folder / "example_converter_spec_2.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
@@ -81,7 +81,7 @@ class TestYAMLConversionSpecification(TestCase):
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
             assert nwbfile.subject.subject_id == "Mouse 1"
-            assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
+            assert "ElectricalSeriesAP" in nwbfile.acquisition
 
         nwbfile_path = self.test_folder / "sub-Mouse-1_ses-20201109T211909.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
@@ -93,7 +93,7 @@ class TestYAMLConversionSpecification(TestCase):
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-11-09T21:19:09+00:00")
             assert nwbfile.subject.subject_id == "Mouse 1"
-            assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
+            assert "ElectricalSeriesAP" in nwbfile.acquisition
 
         nwbfile_path = self.test_folder / "example_defined_name.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
