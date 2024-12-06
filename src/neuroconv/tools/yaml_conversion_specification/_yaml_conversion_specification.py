@@ -1,11 +1,11 @@
-import sys
 from importlib import import_module
 from pathlib import Path
 from typing import Optional
 
 import click
-from jsonschema import RefResolver, validate
+from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
+from referencing import Registry, Resource
 
 from ...nwbconverter import NWBConverter
 from ...utils import dict_deep_update, load_dict_from_file
@@ -85,12 +85,19 @@ def run_conversion_from_yaml(
 
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent.parent / "schemas"
+
+    # Load all required schemas
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
-    sys_uri_base = "file:/" if sys.platform.startswith("win32") else "file://"
+    metadata_schema = load_dict_from_file(file_path=schema_folder / "metadata_schema.json")
+
+    # The yaml specification references the metadata schema, so we need to load it into the registry
+    registry = Registry().with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
+
+    # Validate using the registry
     validate(
         instance=specification,
         schema=specification_schema,
-        resolver=RefResolver(base_uri=sys_uri_base + str(schema_folder) + "/", referrer=specification_schema),
+        registry=registry,
     )
 
     global_metadata = specification.get("metadata", dict())
