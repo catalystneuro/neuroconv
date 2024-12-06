@@ -33,7 +33,7 @@ from neuroconv.tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
 )
-from neuroconv.utils import _NWBMetaDataEncoder
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
 class DataInterfaceTestMixin:

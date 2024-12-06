@@ -8,6 +8,8 @@ Dictionaries
 JSON Schema
 -----------
 .. automodule:: neuroconv.utils.json_schema
+    :members:
+    :exclude-members: NWBMetaDataEncoder
 
 Common Reused Types
 -------------------

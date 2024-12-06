@@ -19,12 +19,11 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
-    _NWBMetaDataEncoder,
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBSourceDataEncoder
+from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
 
 
 class BaseDataInterface(ABC):
