@@ -341,26 +341,55 @@ def has_compound_dtype(builder: BaseBuilder, location_in_file: str) -> bool:
     bool
         Whether the dataset has a compound dtype.
     """
+    dataset_builder = get_dataset_builder(builder, location_in_file)
+    return isinstance(dataset_builder.dtype, list)
+
+
+def get_dataset_builder(builder, location_in_file):
+    """Find the appropriate sub-builder for the dataset at the given location in the file.
+
+    This function will traverse the groups in the location_in_file until it reaches a DatasetBuilder,
+    and then return that builder.
+
+    Parameters
+    ----------
+    builder : hdmf.build.builders.BaseBuilder
+        The builder object that would be used to construct the NWBFile object.
+    location_in_file : str
+        The location of the dataset within the NWBFile, e.g. 'acquisition/ElectricalSeries/data'.
+
+    Returns
+    -------
+    hdmf.build.builders.BaseBuilder
+        The builder object for the dataset at the given location.
+
+    Raises
+    ------
+    ValueError
+        If the location_in_file is not found in the builder.
+
+    Notes
+    -----
+    Items in defined top-level places like electrodes may not be in the groups of the nwbfile-level builder,
+    but rather in hidden locations like general/extracellular_ephys/electrodes.
+    Also, some items in these top-level locations may interrupt the order of the location_in_file.
+    For example, when location_in_file is 'stimulus/AcousticWaveformSeries/data', the builder for that dataset is
+    located at 'stimulus/presentation/AcousticWaveformSeries/data'.
+    For this reason, we recursively search for the appropriate sub-builder for each name in the location_in_file.
+    """
     split_location = iter(location_in_file.split("/"))
     name = next(split_location)
 
-    if name not in builder.groups:
-        # Items in defined top-level places like electrodes may not be in the groups of the nwbfile-level builder,
-        # but rather in hidden locations like general/extracellular_ephys/electrodes
+    while name not in builder.datasets:
         builder = _find_sub_builder(builder, name)
-        name = next(split_location)
-
-    # To find the appropriate builder for the dataset, we traverse the groups in the location_in_file until we reach
-    # a DatasetBuilder
-    while name in builder.groups:
-        builder = builder.groups[name]
-        name = next(split_location)
-    if name in builder.datasets:
-        builder = builder.datasets[name]
-    else:
-        raise ValueError(f"Could not find location '{location_in_file}' in builder.")
-
-    return isinstance(builder.dtype, list)
+        if builder is None:
+            raise ValueError(f"Could not find location '{location_in_file}' in builder.")
+        try:
+            name = next(split_location)
+        except StopIteration:
+            raise ValueError(f"Could not find location '{location_in_file}' in builder.")
+    builder = builder.datasets[name]
+    return builder
 
 
 def _find_sub_builder(builder: BaseBuilder, name: str) -> BaseBuilder:
