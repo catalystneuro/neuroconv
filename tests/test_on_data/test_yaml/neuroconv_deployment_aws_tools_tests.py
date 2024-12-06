@@ -1,18 +1,18 @@
-import datetime
 import os
+import pathlib
 import time
 import unittest
 
 import boto3
 
-from neuroconv.tools.aws import rclone_transfer_batch_job
+from neuroconv.tools.aws import deploy_neuroconv_batch_job
 
 from ..setup_paths import OUTPUT_PATH
 
 _RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
 
-class TestRcloneTransferBatchJob(unittest.TestCase):
+class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
     """
     To allow this test to work, the developer must create a folder on the outer level of their personal Google Drive
     called 'testing_rclone_spikegl_and_phy' with the following structure:
@@ -36,7 +36,6 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
     aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
     region = "us-east-2"
-    efs_id = None
 
     def setUp(self):
         self.test_folder.mkdir(exist_ok=True)
@@ -60,31 +59,10 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         with open(file=self.test_config_file_path, mode="w") as io:
             io.writelines(rclone_config_contents)
 
-        self.efs_client = boto3.client(
-            service_name="efs",
-            region_name=self.region,
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
-        )
-
-    def tearDown(self) -> None:
-        if self.efs_id is None:
-            return None
-        efs_client = self.efs_client
-
-        # Cleanup EFS after testing is complete - must clear mount targets first, then wait before deleting the volume
-        # TODO: cleanup job definitions? (since built daily)
-        mount_targets = efs_client.describe_mount_targets(FileSystemId=self.efs_id)
-        for mount_target in mount_targets["MountTargets"]:
-            efs_client.delete_mount_target(MountTargetId=mount_target["MountTargetId"])
-
-        time.sleep(60)
-        efs_client.delete_file_system(FileSystemId=self.efs_id)
-
-    def test_rclone_transfer_batch_job(self):
-        region = self.region
-        aws_access_key_id = self.aws_access_key_id
-        aws_secret_access_key = self.aws_secret_access_key
+    def test_deploy_neuroconv_batch_job(self):
+        region = "us-east-2"
+        aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID", None)
+        aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
 
         dynamodb_resource = boto3.resource(
             service_name="dynamodb",
@@ -98,28 +76,45 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-        efs_client = self.efs_client
+        efs_client = boto3.client(
+            service_name="efs",
+            region_name=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+        # Assume no other tests of EFS volumes are fluctuating at the same time, otherwise make this more specific
+        efs_volumes_before = efs_client.describe_file_systems()
 
         rclone_command = (
-            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy /mnt/efs "
+            "rclone copy test_google_drive_remote:testing_rclone_spikeglx_and_phy/ci_tests /mnt/efs/source "
             "--verbose --progress --config ./rclone.conf"  # TODO: should just include this in helper function?
         )
+
+        testing_base_folder_path = pathlib.Path(__file__).parent.parent.parent
+        yaml_specification_file_path = (
+            testing_base_folder_path
+            / "test_on_data"
+            / "test_yaml"
+            / "conversion_specifications"
+            / "GIN_conversion_specification.yml"
+        )
+
         rclone_config_file_path = self.test_config_file_path
 
-        today = datetime.datetime.now().date().isoformat()
-        job_name = f"test_rclone_transfer_batch_job_{today}"
-        efs_volume_name = "test_rclone_transfer_batch_efs"
-
-        info = rclone_transfer_batch_job(
+        job_name = "test_deploy_neuroconv_batch_job"
+        efs_volume_name = "test_deploy_neuroconv_batch_job"
+        all_info = deploy_neuroconv_batch_job(
             rclone_command=rclone_command,
+            yaml_specification_file_path=yaml_specification_file_path,
             job_name=job_name,
             efs_volume_name=efs_volume_name,
             rclone_config_file_path=rclone_config_file_path,
         )
 
-        # Wait for AWS to process the job
-        time.sleep(60)
+        # Wait additional time for AWS to clean up resources
+        time.sleep(120)
 
+        info = all_info["neuroconv_job_submission_info"]
         job_id = info["job_submission_info"]["jobId"]
         job = None
         max_retries = 10
@@ -139,20 +134,13 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             else:
                 break
 
-        # Check EFS specific details
-        efs_volumes = efs_client.describe_file_systems()
-        matching_efs_volumes = [
-            file_system
-            for file_system in efs_volumes["FileSystems"]
-            for tag in file_system["Tags"]
-            if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
-        ]
-        assert len(matching_efs_volumes) == 1
-        efs_volume = matching_efs_volumes[0]
-        self.efs_id = efs_volume["FileSystemId"]
+        # Check EFS cleaned up automatically
+        efs_volumes_after = efs_client.describe_file_systems()
+        assert len(efs_volumes_after["FileSystems"]) == len(efs_volumes_before["FileSystems"])
 
         # Check normal job completion
-        assert job["jobName"] == job_name
+        expected_job_name = f"{job_name}_neuroconv_deployment"
+        assert job["jobName"] == expected_job_name
         assert "neuroconv_batch_queue" in job["jobQueue"]
         assert "fs-" in job["jobDefinition"]
         assert job["status"] == "SUCCEEDED"
@@ -165,7 +153,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
         assert table_item_response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
         table_item = table_item_response["Item"]
-        assert table_item["job_name"] == job_name
+        assert table_item["job_name"] == expected_job_name
         assert table_item["job_id"] == job_id
         assert table_item["status"] == "Job submitted..."
 
