@@ -393,7 +393,7 @@ def get_dataset_builder(builder, location_in_file):
 
 
 def _find_sub_builder(builder: BaseBuilder, name: str) -> BaseBuilder:
-    """Recursively search for a sub-builder by name in a builder object.
+    """Search breadth-first for a sub-builder by name in a builder object.
 
     Parameters
     ----------
@@ -407,10 +407,30 @@ def _find_sub_builder(builder: BaseBuilder, name: str) -> BaseBuilder:
     hdmf.build.builders.BaseBuilder
         The sub-builder with the given name, or None if it could not be found.
     """
-    for sub_builder in builder.groups.values():
+    sub_builders = list(builder.groups.values())
+    return _recursively_search_sub_builders(sub_builders=sub_builders, name=name)
+
+
+def _recursively_search_sub_builders(sub_builders: list[BaseBuilder], name: str) -> BaseBuilder:
+    """Recursively search for a sub-builder by name in a list of sub-builders.
+
+    Parameters
+    ----------
+    sub_builders : list[hdmf.build.builders.BaseBuilder]
+        The list of sub-builders to search for the sub-builder in.
+    name : str
+        The name of the sub-builder to search for.
+
+    Returns
+    -------
+    hdmf.build.builders.BaseBuilder
+        The sub-builder with the given name, or None if it could not be found.
+    """
+    sub_sub_builders = []
+    for sub_builder in sub_builders:
         if sub_builder.name == name:
             return sub_builder
-        output_builder = _find_sub_builder(builder=sub_builder, name=name)
-        if output_builder is not None:
-            return output_builder
-    return None
+        sub_sub_builders.extend(list(sub_builder.groups.values()))
+    if len(sub_sub_builders) == 0:
+        return None
+    return _recursively_search_sub_builders(sub_builders=sub_sub_builders, name=name)
