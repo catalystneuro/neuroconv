@@ -11,6 +11,7 @@ import zarr
 from hdmf import Container
 from hdmf.build.builders import (
     BaseBuilder,
+    LinkBuilder,
 )
 from hdmf.utils import get_data_shape
 from pydantic import (
@@ -387,15 +388,17 @@ def get_dataset_builder(builder, location_in_file):
     if _find_sub_builder(builder, name) is None:
         name = next(split_location)
 
-    while name not in builder.datasets:
+    while name not in builder.datasets and name not in builder.links:
         builder = _find_sub_builder(builder, name)
         if builder is None:
-            raise ValueError(f"Could not find location '{location_in_file}' in builder.")
+            raise ValueError(f"Could not find location '{location_in_file}' in builder ({name} is missing).")
         try:
             name = next(split_location)
         except StopIteration:
-            raise ValueError(f"Could not find location '{location_in_file}' in builder.")
-    builder = builder.datasets[name]
+            raise ValueError(f"Could not find location '{location_in_file}' in builder ({name} is not a dataset).")
+    builder = builder[name]
+    if isinstance(builder, LinkBuilder):
+        builder = builder.builder
     return builder
 
 
