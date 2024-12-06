@@ -376,9 +376,16 @@ def get_dataset_builder(builder, location_in_file):
     For example, when location_in_file is 'stimulus/AcousticWaveformSeries/data', the builder for that dataset is
     located at 'stimulus/presentation/AcousticWaveformSeries/data'.
     For this reason, we recursively search for the appropriate sub-builder for each name in the location_in_file.
+    Also, the first name in location_in_file is inherently suspect due to the way that the location is determined
+    in _find_location_in_memory_nwbfile(), and may not be present in the builder. For example, when location_in_file is
+    'lab_meta_data/fiber_photometry/fiber_photometry_table/location/data', the builder for that dataset is located at
+    'general/fiber_photometry/fiber_photometry_table/location/data'.
     """
     split_location = iter(location_in_file.split("/"))
     name = next(split_location)
+
+    if _find_sub_builder(builder, name) is None:
+        name = next(split_location)
 
     while name not in builder.datasets:
         builder = _find_sub_builder(builder, name)
