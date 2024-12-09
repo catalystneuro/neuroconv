@@ -29,8 +29,10 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
     @classmethod
     def get_streams(cls, folder_path: DirectoryPath) -> list[str]:
+        "Return the stream ids available in the folder."
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
+        # The first entry is the stream ids the second is the stream names
         return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
 
     @validate_call
@@ -61,28 +63,17 @@ class SpikeGLXConverterPipe(ConverterPipe):
         """
         folder_path = Path(folder_path)
 
-        streams = streams or self.get_streams(folder_path=folder_path)
+        streams_ids = streams or self.get_streams(folder_path=folder_path)
 
         data_interfaces = dict()
-        for stream in streams:
-            if "ap" in stream:
-                probe_name = stream[:5]
-                file_path = (
-                    folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.ap.bin"
-                )
-                es_key = f"ElectricalSeriesAP{probe_name.capitalize()}"
-                interface = SpikeGLXRecordingInterface(file_path=file_path, es_key=es_key)
-            elif "lf" in stream:
-                probe_name = stream[:5]
-                file_path = (
-                    folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.lf.bin"
-                )
-                es_key = f"ElectricalSeriesLF{probe_name.capitalize()}"
-                interface = SpikeGLXRecordingInterface(file_path=file_path, es_key=es_key)
-            elif "nidq" in stream:
-                file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
-                interface = SpikeGLXNIDQInterface(file_path=file_path)
-            data_interfaces.update({str(stream): interface})  # Without str() casting, is a numpy string
+
+        nidq_streams = [stream_id for stream_id in streams_ids if stream_id == "nidq"]
+        electrical_streams = [stream_id for stream_id in streams_ids if stream_id not in nidq_streams]
+        for stream_id in electrical_streams:
+            data_interfaces[stream_id] = SpikeGLXRecordingInterface(folder_path=folder_path, stream_id=stream_id)
+
+        for stream_id in nidq_streams:
+            data_interfaces[stream_id] = SpikeGLXNIDQInterface(folder_path=folder_path)
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 

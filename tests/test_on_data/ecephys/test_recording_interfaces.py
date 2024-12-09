@@ -641,9 +641,7 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(
-            ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
-        )
+        folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.ap"
     )
     save_directory = OUTPUT_PATH
 
