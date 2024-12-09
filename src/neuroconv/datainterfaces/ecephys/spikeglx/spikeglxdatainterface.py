@@ -53,11 +53,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
+        file_path: Optional[FilePath] = None,
+        verbose: bool = True,
+        es_key: Optional[str] = None,
         folder_path: Optional[DirectoryPath] = None,
         stream_id: Optional[str] = None,
-        es_key: Optional[str] = None,
-        verbose: bool = True,
-        file_path: Optional[FilePath] = None,
     ):
         """
         Parameters

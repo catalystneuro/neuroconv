@@ -37,11 +37,11 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
-        folder_path: Optional[DirectoryPath] = None,
         file_path: Optional[FilePath] = None,
         verbose: bool = True,
         load_sync_channel: bool = False,
         es_key: str = "ElectricalSeriesNIDQ",
+        folder_path: Optional[DirectoryPath] = None,
     ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
