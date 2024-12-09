@@ -8,7 +8,6 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional
-from warnings import warn
 
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
@@ -26,7 +25,7 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """Check if processing module exists. If not, create it. Then return module."""
     if name in nwbfile.processing:
         if description is not None and nwbfile.processing[name].description != description:
-            warn(
+            warnings.warn(
                 "Custom description given to get_module does not match existing module description! "
                 "Ignoring custom description."
             )
@@ -157,7 +156,7 @@ def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
     # Windows in particular can encounter errors at this step
     except PermissionError:  # pragma: no cover
         message = f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
-        warn(message=message, stacklevel=2)
+        warnings.warn(message=message, stacklevel=2)
 
 
 @contextmanager

@@ -8,7 +8,8 @@ from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import DeepDict, _NWBMetaDataEncoder, get_base_schema
+from ....utils import DeepDict, get_base_schema
+from ....utils.json_schema import _NWBMetaDataEncoder
 from ....utils.path import infer_path
 
 
