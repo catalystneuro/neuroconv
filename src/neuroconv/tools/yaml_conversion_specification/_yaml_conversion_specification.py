@@ -1,3 +1,5 @@
+import json
+import os
 from importlib import import_module
 from pathlib import Path
 from typing import Optional
@@ -7,6 +9,7 @@ from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
 from referencing import Registry, Resource
 
+from ..data_transfers import automatic_dandi_upload
 from ...nwbconverter import NWBConverter
 from ...utils import dict_deep_update, load_dict_from_file
 
@@ -50,7 +53,7 @@ def run_conversion_from_yaml(
     data_folder_path: Optional[DirectoryPath] = None,
     output_folder_path: Optional[DirectoryPath] = None,
     overwrite: bool = False,
-):
+) -> None:
     """
     Run conversion to NWB given a yaml specification file.
 
@@ -100,6 +103,14 @@ def run_conversion_from_yaml(
         registry=registry,
     )
 
+    upload_to_dandiset = "upload_to_dandiset" in specification
+    if upload_to_dandiset and "DANDI_API_KEY" not in os.environ:
+        message = (
+            "The 'upload_to_dandiset' prompt was found in the YAML specification, "
+            "but the environment variable 'DANDI_API_KEY' was not set."
+        )
+        raise ValueError(message)
+
     global_metadata = specification.get("metadata", dict())
     global_conversion_options = specification.get("conversion_options", dict())
     data_interfaces_spec = specification.get("data_interfaces")
@@ -115,6 +126,7 @@ def run_conversion_from_yaml(
         experiment_metadata = experiment.get("metadata", dict())
         for session in experiment["sessions"]:
             file_counter += 1
+
             source_data = session["source_data"]
             for interface_name, interface_source_data in session["source_data"].items():
                 for key, value in interface_source_data.items():
@@ -122,21 +134,47 @@ def run_conversion_from_yaml(
                         source_data[interface_name].update({key: [str(Path(data_folder_path) / x) for x in value]})
                     elif key in ("file_path", "folder_path"):
                         source_data[interface_name].update({key: str(Path(data_folder_path) / value)})
+
             converter = CustomNWBConverter(source_data=source_data)
+
             metadata = converter.get_metadata()
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
-            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
+
+            session_id = session.get("metadata", dict()).get("NWBFile", dict()).get("session_id", None)
+            if upload_to_dandiset and session_id is None:
+                message = (
+                    "The 'upload_to_dandiset' prompt was found in the YAML specification, "
+                    "but the 'session_id' was not found for session with info block: "
+                    f"\n\n {json.dumps(obj=session, indent=2)}\n\n"
+                    "File intended for DANDI upload must include a session ID."
+                )
+                raise ValueError(message)
+
             session_conversion_options = session.get("conversion_options", dict())
             conversion_options = dict()
             for key in converter.data_interface_objects:
                 conversion_options[key] = dict(session_conversion_options.get(key, dict()), **global_conversion_options)
+
+            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             converter.run_conversion(
                 nwbfile_path=output_folder_path / f"{nwbfile_name}.nwb",
                 metadata=metadata,
                 overwrite=overwrite,
                 conversion_options=conversion_options,
             )
+
+    if upload_to_dandiset:
+        dandiset_id = specification["upload_to_dandiset"]
+        staging = int(dandiset_id) >= 200_000
+        automatic_dandi_upload(
+            dandiset_id=dandiset_id,
+            nwb_folder_path=output_folder_path,
+            staging=staging,
+        )
+
+        return None  # We can early return since organization below will occur within the upload step
+
     # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
     all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder_path.iterdir() if nwbfile_path.suffix == ".nwb"]
     nwbfile_paths_to_set = [

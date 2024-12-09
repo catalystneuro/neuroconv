@@ -19,6 +19,7 @@ from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     "fname",
     [
         "GIN_conversion_specification.yml",
+        "GIN_conversion_specification_dandi_upload.yml",
         "GIN_conversion_specification_missing_nwbfile_names.yml",
         "GIN_conversion_specification_no_nwbfile_name_or_other_metadata.yml",
         "GIN_conversion_specification_videos.yml",
