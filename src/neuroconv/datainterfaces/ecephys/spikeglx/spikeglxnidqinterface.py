@@ -52,11 +52,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to .nidq.bin file.
         verbose : bool, default: True
             Whether to output verbose text.
-        load_sync_channel : bool, default: False
-            Whether to load the last channel in the stream, which is typically used for synchronization.
-            If True, then the probe is not loaded.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
+
+        if load_sync_channel:
+            import warnings
+
+            warnings.warn(
+                "The load_sync_channel parameter is deprecated and will be removed in June 2025.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         if file_path is None and folder_path is None:
             raise ValueError("Either 'file_path' or 'folder_path' must be provided.")
@@ -82,6 +88,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self.has_analog_channels = len(self.analog_channel_ids) > 0
         self.has_digital_channels = len(self.analog_channel_ids) < len(channel_ids)
         if self.has_digital_channels:
+            import ndx_events  # noqa: F401
             from spikeinterface.extractors import SpikeGLXEventExtractor
 
             self.event_extractor = SpikeGLXEventExtractor(folder_path=self.folder_path)
@@ -279,15 +286,33 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         nwbfile : NWBFile
             The NWB file to add the digital channels to
         """
-        from ndx_events import Events
+        from ndx_events import LabeledEvents
 
         event_channels = self.event_extractor.channel_ids
         for channel_id in event_channels:
-            event_times = self.event_extractor.get_event_times(channel_id=channel_id)
-            if len(event_times) > 0:
-                description = f"Events from channel {channel_id}"
-                events = Events(name=channel_id, timestamps=event_times, description=description)
-                nwbfile.add_acquisition(events)
+            events_structure = self.event_extractor.get_events(channel_id=channel_id)
+            timestamps = events_structure["time"]
+            labels = events_structure["label"]
+
+            # Some channels have no events
+            if timestamps.size > 0:
+
+                # Timestamps are not ordered, the ones for off are first and then the ones for on
+                ordered_indices = np.argsort(timestamps)
+                ordered_timestamps = timestamps[ordered_indices]
+                ordered_labels = labels[ordered_indices]
+
+                unique_labels = np.unique(ordered_labels)
+                label_to_index = {label: index for index, label in enumerate(unique_labels)}
+                data = [label_to_index[label] for label in ordered_labels]
+
+                channel_name = channel_id.split("#")[-1]
+                description = f"On and Off Events from channel {channel_name}"
+                name = f"EventsNIDQDigitalChannel{channel_name}"
+                labeled_events = LabeledEvents(
+                    name=name, description=description, timestamps=ordered_timestamps, data=data, labels=unique_labels
+                )
+                nwbfile.add_acquisition(labeled_events)
 
     def get_event_times_from_ttl(self, channel_name: str) -> np.ndarray:
         """

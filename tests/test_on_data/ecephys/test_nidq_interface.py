@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from pynwb import NWBHDF5IO
 
@@ -23,11 +24,15 @@ def test_nidq_interface_digital_data_only(tmp_path):
     with NWBHDF5IO(nwbfile_path, "r") as io:
         nwbfile = io.read()
         assert len(nwbfile.acquisition) == 1  # Only one channel has data for this set
-        events = nwbfile.acquisition["nidq#XD0"]
-        assert events.name == "nidq#XD0"
+        events = nwbfile.acquisition["EventsNIDQDigitalChannelXD0"]
+        assert events.name == "EventsNIDQDigitalChannelXD0"
         assert events.timestamps.size == 326
-
         assert len(nwbfile.devices) == 1
+
+        data = events.data
+        # Check that there is one followed by 0
+        np.sum(data == 1) == 163
+        np.sum(data == 0) == 163
 
 
 def test_nidq_interface_analog_data_only(tmp_path):
