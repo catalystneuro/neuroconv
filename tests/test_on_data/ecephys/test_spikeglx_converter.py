@@ -37,16 +37,15 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
             assert "ElectricalSeriesAP" in nwbfile.acquisition
             assert "ElectricalSeriesLF" in nwbfile.acquisition
-            assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
+            assert "TimeSeriesNIDQ" in nwbfile.acquisition
             assert len(nwbfile.acquisition) == 3
 
             assert "NeuropixelImec0" in nwbfile.devices
             assert "NIDQBoard" in nwbfile.devices
             assert len(nwbfile.devices) == 2
 
-            assert "NIDQChannelGroup" in nwbfile.electrode_groups
             assert "Imec0" in nwbfile.electrode_groups
-            assert len(nwbfile.electrode_groups) == 2
+            assert len(nwbfile.electrode_groups) == 1
 
     def test_single_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
@@ -63,13 +62,12 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         expected_ecephys_metadata = expected_metadata["Ecephys"]
         test_ecephys_metadata = test_metadata["Ecephys"]
+        assert test_ecephys_metadata == expected_ecephys_metadata
 
         device_metadata = test_ecephys_metadata.pop("Device")
         expected_device_metadata = expected_ecephys_metadata.pop("Device")
 
         assert device_metadata == expected_device_metadata
-
-        assert test_ecephys_metadata == expected_ecephys_metadata
 
         nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -183,16 +181,6 @@ def test_electrode_table_writing(tmp_path):
 
     electrodes_table = nwbfile.electrodes
 
-    # Test NIDQ
-    electrical_series = nwbfile.acquisition["ElectricalSeriesNIDQ"]
-    nidq_electrodes_table_region = electrical_series.electrodes
-    region_indices = nidq_electrodes_table_region.data
-    recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
-
-    saved_channel_names = electrodes_table[region_indices]["channel_name"]
-    expected_channel_names_nidq = recording_extractor.get_property("channel_name")
-    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
-
     # Test AP
     electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
     ap_electrodes_table_region = electrical_series.electrodes
@@ -236,11 +224,3 @@ def test_electrode_table_writing(tmp_path):
 
     channel_ids = recording_extractor_lf.get_channel_ids()
     np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
-
-    recording_extractor_nidq = NwbRecordingExtractor(
-        file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesNIDQ",
-    )
-
-    channel_ids = recording_extractor_nidq.get_channel_ids()
-    np.testing.assert_array_equal(channel_ids, expected_channel_names_nidq)
