@@ -22,7 +22,7 @@ def test_nidq_interface_digital_data_only(tmp_path):
 
     with NWBHDF5IO(nwbfile_path, "r") as io:
         nwbfile = io.read()
-        assert len(nwbfile.acquisition) == 1  # Onlye one channel has data for this set
+        assert len(nwbfile.acquisition) == 1  # Only one channel has data for this set
         events = nwbfile.acquisition["nidq#XD0"]
         assert events.name == "nidq#XD0"
         assert events.timestamps.size == 326
