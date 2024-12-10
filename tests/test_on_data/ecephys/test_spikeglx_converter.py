@@ -38,6 +38,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             assert "ElectricalSeriesAP" in nwbfile.acquisition
             assert "ElectricalSeriesLF" in nwbfile.acquisition
             assert "TimeSeriesNIDQ" in nwbfile.acquisition
+
             assert len(nwbfile.acquisition) == 3
 
             assert "NeuropixelImec0" in nwbfile.devices

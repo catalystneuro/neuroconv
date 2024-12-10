@@ -66,6 +66,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Folder path containing the binary files of the SpikeGLX recording.
         stream_id: str, optional
             Stream ID of the SpikeGLX recording.
+            Examples are 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
         verbose : bool, default: True
@@ -73,10 +74,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, the key to access the metadata of the ElectricalSeries.
         """
 
+        if stream_id == "nidq":
+            raise ValueError(
+                "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
+            )
+
         if file_path is not None and stream_id is None:
             self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
             self.folder_path = Path(file_path).parent
-
         else:
             self.stream_id = stream_id
             self.folder_path = Path(folder_path)
