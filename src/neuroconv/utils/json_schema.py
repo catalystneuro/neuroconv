@@ -16,13 +16,8 @@ from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
 
-class _NWBMetaDataEncoder(json.JSONEncoder):
-    """
-    Custom JSON encoder for NWB metadata.
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in NWB metadata.
-    """
+class _GenericNeuroconvEncoder(json.JSONEncoder):
+    """Generic JSON encoder for NeuroConv data."""
 
     def default(self, obj):
         """
@@ -36,45 +31,38 @@ class _NWBMetaDataEncoder(json.JSONEncoder):
         if isinstance(obj, np.generic):
             return obj.item()
 
+        # Numpy arrays should be converted to lists
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+
+        # Over-write behaviors for Paths
+        if isinstance(obj, Path):
+            return str(obj)
 
         # The base-class handles it
         return super().default(obj)
 
 
-class _NWBSourceDataEncoder(_NWBMetaDataEncoder):
+class _NWBMetaDataEncoder(_GenericNeuroconvEncoder):
+    """
+    Custom JSON encoder for NWB metadata.
+    """
+
+
+class _NWBSourceDataEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for data interface source data (i.e. kwargs).
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in interface source data.
     """
 
-    def default(self, obj):
 
-        # Over-write behaviors for Paths
-        if isinstance(obj, Path):
-            return str(obj)
-
-        return super().default(obj)
-
-
-class _NWBConversionOptionsEncoder(_NWBMetaDataEncoder):
+class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     """
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in interface source data.
     """
 
-    def default(self, obj):
 
-        # Over-write behaviors for Paths
-        if isinstance(obj, Path):
-            return str(obj)
-
-        return super().default(obj)
+# This is used in the Guide so we will keep it public.
+NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
 def get_base_schema(
