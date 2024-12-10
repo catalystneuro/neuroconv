@@ -119,6 +119,9 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         """
         from spikeinterface.extractors import NumpyRecording
 
+        self.has_analog_channels = True
+        self.has_digital_channels = False
+
         if ttl_times is None:
             # Begin in 'off' state
             number_of_periods = int(np.ceil((signal_duration - ttl_duration) / (ttl_duration * 2)))
@@ -127,6 +130,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         number_of_channels = len(ttl_times)
         channel_ids = [f"nidq#XA{channel_index}" for channel_index in range(number_of_channels)]  # NIDQ channel IDs
         channel_groups = ["NIDQChannelGroup"] * number_of_channels
+        self.analog_channel_ids = channel_ids
 
         sampling_frequency = 25_000.0  # NIDQ sampling rate
         number_of_frames = int(signal_duration * sampling_frequency)
