@@ -57,9 +57,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         param(
             data_interface=SpikeGLXRecordingInterface,
             interface_kwargs=dict(
-                file_path=(
-                    DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
-                )
+                folder_path=DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.lf"
             ),
             expected_write_module="raw",
         ),
