@@ -66,6 +66,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Folder path containing the binary files of the SpikeGLX recording.
         stream_id: str, optional
             Stream ID of the SpikeGLX recording.
+            Examples are 'nidq', 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
         verbose : bool, default: True
