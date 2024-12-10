@@ -24,7 +24,7 @@ class MiniscopeConverter(NWBConverter):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
 
@@ -51,7 +51,7 @@ class MiniscopeConverter(NWBConverter):
         ----------
         folder_path : FolderPathType
             The path to the main Miniscope folder.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         self.verbose = verbose

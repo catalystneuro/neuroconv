@@ -35,7 +35,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
         ignore_integrity_checks: bool = False,
     ):
@@ -47,7 +47,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePathType
             Path to either a rhd or a rhs file
 
-        verbose : bool, default: True
+        verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
         ignore_integrity_checks, bool, default: False.

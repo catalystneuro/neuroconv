@@ -36,7 +36,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return extractor_kwargs
 
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
 
         Parameters

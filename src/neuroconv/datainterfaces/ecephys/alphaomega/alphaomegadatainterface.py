@@ -26,7 +26,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         extractor_kwargs["stream_id"] = self.stream_id
         return extractor_kwargs
 
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for AlphaOmega.
 

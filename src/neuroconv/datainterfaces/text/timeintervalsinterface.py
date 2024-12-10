@@ -21,14 +21,14 @@ class TimeIntervalsInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         read_kwargs: Optional[dict] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters
         ----------
         file_path : FilePath
         read_kwargs : dict, optional
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         read_kwargs = read_kwargs or dict()
         super().__init__(file_path=file_path)

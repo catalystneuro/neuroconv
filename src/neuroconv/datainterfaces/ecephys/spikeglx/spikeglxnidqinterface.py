@@ -38,7 +38,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         load_sync_channel: bool = False,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: Optional[DirectoryPath] = None,
@@ -54,7 +54,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
             Path to the folder containing the .nidq.bin file.
         file_path : FilePathType
             Path to .nidq.bin file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Whether to output verbose text.
         load_sync_channel : bool, default: False
             Whether to load the last channel in the stream, which is typically used for synchronization.

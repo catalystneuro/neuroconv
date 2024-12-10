@@ -159,7 +159,7 @@ class TestSortingInterfaceOld(unittest.TestCase):
         class TestSortingInterface(BaseSortingExtractorInterface):
             ExtractorName = "NumpySorting"
 
-            def __init__(self, verbose: bool = True):
+            def __init__(self, verbose: bool = False):
                 self.sorting_extractor = sorting
                 self.source_data = dict()
                 self.verbose = verbose

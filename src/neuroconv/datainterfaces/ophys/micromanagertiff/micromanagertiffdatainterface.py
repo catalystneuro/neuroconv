@@ -19,7 +19,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Data Interface for MicroManagerTiffImagingExtractor.
 
@@ -28,7 +28,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         folder_path : FolderPathType
             The folder path that contains the OME-TIF image files (.ome.tif files) and
            the 'DisplaySettings' JSON file.
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(folder_path=folder_path)
         self.verbose = verbose
