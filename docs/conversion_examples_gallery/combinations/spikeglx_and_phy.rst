@@ -16,8 +16,8 @@ were are combining a SpikeGLX recording with Phy sorting results using the
     >>> from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file. Change the file_path to the location in your system
-    >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
-    >>> interface_spikeglx = SpikeGLXRecordingInterface(file_path=file_path, verbose=False)
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0"
+    >>> interface_spikeglx = SpikeGLXRecordingInterface(folder_path=folder_path, stream_id="imec0.ap", verbose=False)
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"  # Change the folder_path to the location of the data in your system
     >>> interface_phy = PhySortingInterface(folder_path=folder_path, verbose=False)
