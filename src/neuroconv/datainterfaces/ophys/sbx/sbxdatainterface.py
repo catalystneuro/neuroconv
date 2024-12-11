@@ -17,7 +17,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         sampling_frequency: Optional[float] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
@@ -26,7 +26,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePathType
             Path to .sbx file.
         sampling_frequency : float, optional
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
 
         super().__init__(

@@ -79,7 +79,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
         plane_segmentation_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
 

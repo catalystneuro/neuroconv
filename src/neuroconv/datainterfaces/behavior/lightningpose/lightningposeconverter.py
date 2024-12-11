@@ -34,7 +34,7 @@ class LightningPoseConverter(NWBConverter):
         labeled_video_file_path: Optional[FilePath] = None,
         image_series_original_video_name: Optional[str] = None,
         image_series_labeled_video_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         The converter for Lightning Pose format to convert the pose estimation data
@@ -52,7 +52,7 @@ class LightningPoseConverter(NWBConverter):
             The name of the ImageSeries to add for the original video.
         image_series_labeled_video_name: string, optional
             The name of the ImageSeries to add for the labeled video.
-        verbose : bool, default: True
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
         self.verbose = verbose

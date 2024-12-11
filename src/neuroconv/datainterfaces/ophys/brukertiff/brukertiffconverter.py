@@ -50,7 +50,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         plane_separation_type: {'contiguous', 'disjoint'}
             Defines how to write volumetric imaging data. Use 'contiguous' to create the volumetric two photon series,
             and 'disjoint' to create separate imaging plane and two photon series for each plane.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         self.verbose = verbose
@@ -156,7 +156,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         ----------
         folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (

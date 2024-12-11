@@ -26,7 +26,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         extractor_kwargs["stream_id"] = self.stream_id
         return extractor_kwargs
 
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for AlphaOmega.
 
@@ -36,7 +36,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
             Path to the folder of .mpx files.
         verbose: boolean
             Allows verbose.
-            Default is True.
+            Default is False.
         es_key: str, default: "ElectricalSeries"
         """
         super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key)

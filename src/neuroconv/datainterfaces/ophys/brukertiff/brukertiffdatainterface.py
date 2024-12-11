@@ -42,7 +42,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize reading of TIFF files.
@@ -53,7 +53,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         self.folder_path = folder_path
         super().__init__(
@@ -200,7 +200,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize reading of TIFF files.
@@ -211,7 +211,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(
             folder_path=folder_path,
