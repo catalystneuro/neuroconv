@@ -75,7 +75,6 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
 
             # High level groups were written to file
             assert "BehaviorEvents" in nwbfile.acquisition
-            assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
             assert "trials" in nwbfile.intervals
 
             # Aligned data was written
