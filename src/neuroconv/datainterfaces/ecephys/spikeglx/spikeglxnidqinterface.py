@@ -68,7 +68,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         if file_path is not None:
             warnings.warn(
                 "file_path is deprecated and will be removed by the end of 2025. "
-                "The first argument of this interface will be `folder_path` afterwards. ",
+                "The first argument of this interface will be `folder_path` afterwards. "
                 "Use folder_path and stream_id instead.",
                 DeprecationWarning,
                 stacklevel=2,
