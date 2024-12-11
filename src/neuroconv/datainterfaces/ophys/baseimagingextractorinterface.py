@@ -47,6 +47,17 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_metadata_schema(
         self,
     ) -> dict:
+        """
+        Retrieve the metadata schema for the optical physiology (Ophys) data, with optional handling of photon series type.
+
+        Parameters
+        ----------
+        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
+            The type of photon series to include in the schema. If None, the value from the instance is used.
+            This argument is deprecated and will be removed in a future version. Set `photon_series_type` during
+            the initialization of the `BaseImagingExtractorInterface` instance.
+
+        """
 
         metadata_schema = super().get_metadata_schema()
 
@@ -93,6 +104,16 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_metadata(
         self,
     ) -> DeepDict:
+        """
+        Retrieve the metadata for the imaging data, with optional handling of photon series type.
+
+        Parameters
+        ----------
+        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
+            The type of photon series to include in the metadata. If None, the value from the instance is used.
+            This argument is deprecated and will be removed in a future version. Instead, set `photon_series_type`
+            during the initialization of the `BaseImagingExtractorInterface` instance.
+        """
 
         from ...tools.roiextractors import get_nwb_imaging_metadata
 

@@ -50,6 +50,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the Suite2p segmentation interface."""
         schema = super().get_source_schema()
         schema["properties"]["folder_path"][
             "description"
@@ -113,6 +114,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.verbose = verbose
 
     def get_metadata(self) -> DeepDict:
+        """get metadata for the Suite2p segmentation data"""
         metadata = super().get_metadata()
 
         # No need to update the metadata links for the default plane segmentation name
@@ -140,6 +142,40 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
+        """
+        Add segmentation data to the specified NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the segmentation data will be added.
+        metadata : dict, optional
+            Metadata containing information about the segmentation. If None, default metadata is used.
+        stub_test : bool, optional
+            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        include_roi_centroids : bool, optional
+            Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
+        include_roi_acceptance : bool, optional
+            Whether to include acceptance status of ROIs, by default True.
+        mask_type : str, default: 'image'
+            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+            of pixels in each ROI.
+            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+            of voxels in each ROI.
+
+            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
+            plane_segmentation_name : str, optional
+            The name of the plane segmentation object, by default None.
+        iterator_options : dict, optional
+            Additional options for iterating over the data, by default None.
+        """
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,

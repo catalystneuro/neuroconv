@@ -177,7 +177,21 @@ class NWBConverter:
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
         return nwbfile
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None):
+        """
+        Add data from the instantiated data interfaces to the given NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file object to which the data from the data interfaces will be added.
+        metadata : dict
+            The metadata dictionary that contains information used to describe the data.
+        conversion_options : dict, optional
+            A dictionary containing conversion options for each interface, where non-default behavior is requested.
+            Each key corresponds to a data interface name, and the values are dictionaries with options for that interface.
+            By default, None.
+        """
         conversion_options = conversion_options or dict()
         for interface_name, data_interface in self.data_interface_objects.items():
             data_interface.add_to_nwbfile(

@@ -220,6 +220,19 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 sorting_segment._t_start = aligned_segment_starting_time
 
     def subset_sorting(self):
+        """
+        Generate a subset of the sorting extractor based on spike timing data.
+
+        This method identifies the earliest spike time across all units in the sorting extractor and creates a
+        subset of the sorting data up to 110% of the earliest spike time. If the sorting extractor is associated
+        with a recording, the subset is further limited by the total number of samples in the recording.
+
+        Returns
+        -------
+        SortingExtractor
+            A new `SortingExtractor` object representing the subset of the original sorting data,
+            sliced from the start frame to the calculated end frame.
+        """
         max_min_spike_time = max(
             [
                 min(x)
