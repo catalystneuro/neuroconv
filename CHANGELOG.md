@@ -29,14 +29,15 @@
 ## Improvements
 * Use mixing tests for ecephy's mocks [PR #1136](https://github.com/catalystneuro/neuroconv/pull/1136)
 * Use pytest format for dandi tests to avoid window permission error on teardown [PR #1151](https://github.com/catalystneuro/neuroconv/pull/1151)
+* Added many docstrings for public functions [PR #1063](https://github.com/catalystneuro/neuroconv/pull/1063)
 
 # v0.6.5 (November 1, 2024)
-
-## Deprecations
 
 ## Bug Fixes
 * Fixed formatwise installation from pipy [PR #1118](https://github.com/catalystneuro/neuroconv/pull/1118)
 * Fixed dailies [PR #1113](https://github.com/catalystneuro/neuroconv/pull/1113)
+
+## Deprecations
 
 ## Features
 * Using in-house `GenericDataChunkIterator` [PR #1068](https://github.com/catalystneuro/neuroconv/pull/1068)
