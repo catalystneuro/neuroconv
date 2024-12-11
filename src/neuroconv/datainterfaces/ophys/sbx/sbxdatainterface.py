@@ -37,6 +37,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """Get metadata for the Scanbox imaging data."""
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata
