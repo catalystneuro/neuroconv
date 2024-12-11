@@ -19,12 +19,11 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
-    _NWBMetaDataEncoder,
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBSourceDataEncoder
+from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
 
 
 class BaseDataInterface(ABC):
@@ -133,7 +132,7 @@ class BaseDataInterface(ABC):
         return nwbfile
 
     @abstractmethod
-    def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options) -> None:
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options) -> None:
         """
         Define a protocol for mapping the data from this interface to NWB neurodata objects.
 
@@ -143,6 +142,8 @@ class BaseDataInterface(ABC):
         ----------
         nwbfile : pynwb.NWBFile
             The in-memory object to add the data to.
+        metadata : dict
+            Metadata dictionary with information used to create the NWBFile.
         **conversion_options
             Additional keyword arguments to pass to the `.add_to_nwbfile` method.
         """

@@ -7,12 +7,12 @@ from .dict import (
     load_dict_from_file,
 )
 from .json_schema import (
-    _NWBMetaDataEncoder,
+    NWBMetaDataEncoder,
     fill_defaults,
     get_base_schema,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
+    get_json_schema_from_method_signature,
     unroot_schema,
     get_json_schema_from_method_signature,
 )

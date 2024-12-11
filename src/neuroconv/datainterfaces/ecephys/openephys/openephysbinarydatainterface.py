@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
@@ -29,7 +29,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(
+        source_schema = get_json_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
         source_schema["properties"]["folder_path"][
