@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -56,10 +57,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
 
         if load_sync_channel:
-            import warnings
 
             warnings.warn(
-                "The load_sync_channel parameter is deprecated and will be removed in June 2025.",
+                "The 'load_sync_channel' parameter is deprecated and will be removed in June 2025. "
+                "The sync channel data is only available the raw files of spikeglx`.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -165,25 +166,32 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        import warnings
 
         if starting_time is not None:
             warnings.warn(
-                "The 'starting_time' parameter is deprecated and will be removed in June 2025.",
+                "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
+                "Use the time alignment methods for modifying the starting time or timestamps "
+                "of the data if needed: "
+                "https://neuroconv.readthedocs.io/en/main/user_guide/temporal_alignment.html",
                 DeprecationWarning,
                 stacklevel=2,
             )
 
         if write_as != "raw":
             warnings.warn(
-                "The 'write_as' parameter is deprecated and will be removed in June 2025.",
+                "The 'write_as' parameter is deprecated and will be removed in June 2025. "
+                "NIDQ should always be written in the acquisition module of NWB. "
+                "Writing data as LFP or processed data is not supported.",
                 DeprecationWarning,
                 stacklevel=2,
             )
 
         if write_electrical_series is not True:
             warnings.warn(
-                "The 'write_electrical_series' parameter is deprecated and will be removed in June 2025.",
+                "The 'write_electrical_series' parameter is deprecated and will be removed in June 2025. "
+                "The option to skip the addition of the data is no longer supported. "
+                "This option was used in ElectricalSeries to write the electrode and electrode group "
+                "metadata without the raw data.",
                 DeprecationWarning,
                 stacklevel=2,
             )
