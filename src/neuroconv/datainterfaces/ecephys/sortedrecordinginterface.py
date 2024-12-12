@@ -56,8 +56,8 @@ class SortedRecordingConverter(ConverterPipe):
         self.sorting_interface = sorting_interface
         self.unit_ids_to_channel_ids = unit_ids_to_channel_ids
 
-        self.channel_ids = self.recording_interface.recording_extractor.get_channel_ids()
-        self.unit_ids = self.sorting_interface.sorting_extractor.get_unit_ids()
+        self.channel_ids = self.recording_interface.channel_ids
+        self.unit_ids = self.sorting_interface.units_ids
 
         # Convert channel_ids to set for comparison
         available_channels = set(self.channel_ids)
