@@ -140,7 +140,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
             additional_properties = True
             continue
 
-        annotation = parameter.annotation
+        # If no annotation is provided (inspect._empty), use Any instead
+        annotation = Any if parameter.annotation is inspect._empty else parameter.annotation
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default

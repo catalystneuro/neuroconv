@@ -424,3 +424,26 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_class_meth
     }
 
     assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_unannotated():
+    """Test that parameters without type annotations are handled correctly by defaulting to Any."""
+
+    def method_with_unannotated_params(
+        annotated_param: int, unannotated_param, unannotated_with_default="default_value"
+    ):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_unannotated_params)
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {
+            "annotated_param": {"type": "integer"},
+            "unannotated_param": {},  # Any type in JSON Schema is represented by an empty object
+            "unannotated_with_default": {"default": "default_value"},
+        },
+        "required": ["annotated_param", "unannotated_param"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
