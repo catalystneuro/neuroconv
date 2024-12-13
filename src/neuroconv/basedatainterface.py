@@ -19,12 +19,11 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
-    _NWBMetaDataEncoder,
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBSourceDataEncoder
+from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
 
 
 class BaseDataInterface(ABC):
@@ -37,7 +36,14 @@ class BaseDataInterface(ABC):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
+        """
+        Infer the JSON schema for the source_data from the method signature (annotation typing).
+
+        Returns
+        -------
+        dict
+            The JSON schema for the source_data.
+        """
         return get_json_schema_from_method_signature(cls, exclude=["source_data"])
 
     @classmethod

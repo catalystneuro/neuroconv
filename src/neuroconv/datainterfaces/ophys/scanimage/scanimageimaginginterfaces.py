@@ -28,6 +28,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """Get the source schema for the ScanImage imaging interface."""
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -139,6 +140,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
 
     def get_metadata(self) -> dict:
+        """get metadata for the ScanImage imaging data"""
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
         metadata = super().get_metadata()
@@ -174,6 +176,7 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """get the source schema for the ScanImage multi-file imaging interface."""
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing the TIFF files."
         return source_schema
@@ -304,6 +307,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """get metadata for the ScanImage imaging data"""
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -421,6 +425,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         )
 
     def get_metadata(self) -> dict:
+        """get metadata for the ScanImage imaging data"""
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -548,6 +553,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """get metadata for the ScanImage imaging data"""
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -677,6 +683,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         )
 
     def get_metadata(self) -> dict:
+        """get metadata for the ScanImage imaging data"""
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(

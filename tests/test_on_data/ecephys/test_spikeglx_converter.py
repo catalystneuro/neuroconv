@@ -33,20 +33,20 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.session_start_time == expected_session_start_time
+            assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
-            assert "ElectricalSeriesAPImec0" in nwbfile.acquisition
-            assert "ElectricalSeriesLFImec0" in nwbfile.acquisition
-            assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
+            assert "ElectricalSeriesAP" in nwbfile.acquisition
+            assert "ElectricalSeriesLF" in nwbfile.acquisition
+            assert "TimeSeriesNIDQ" in nwbfile.acquisition
+
             assert len(nwbfile.acquisition) == 3
 
             assert "NeuropixelImec0" in nwbfile.devices
             assert "NIDQBoard" in nwbfile.devices
             assert len(nwbfile.devices) == 2
 
-            assert "NIDQChannelGroup" in nwbfile.electrode_groups
             assert "Imec0" in nwbfile.electrode_groups
-            assert len(nwbfile.electrode_groups) == 2
+            assert len(nwbfile.electrode_groups) == 1
 
     def test_single_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
@@ -63,18 +63,17 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         expected_ecephys_metadata = expected_metadata["Ecephys"]
         test_ecephys_metadata = test_metadata["Ecephys"]
+        assert test_ecephys_metadata == expected_ecephys_metadata
 
         device_metadata = test_ecephys_metadata.pop("Device")
         expected_device_metadata = expected_ecephys_metadata.pop("Device")
 
         assert device_metadata == expected_device_metadata
 
-        assert test_ecephys_metadata == expected_ecephys_metadata
-
         nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
     def test_in_converter_pipe(self):
@@ -84,7 +83,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_converter_pipe.nwb"
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
-        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
     def test_in_nwbconverter(self):
@@ -101,7 +100,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
-        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10).astimezone()
+        expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
 
@@ -118,7 +117,9 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        assert nwbfile.session_start_time == expected_session_start_time
+        # Do the comparison without timezone information to avoid CI timezone issues
+        # The timezone is set by pynbw automatically
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
         # TODO: improve name of segments using 'Segment{index}' for clarity
         assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
@@ -129,7 +130,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
-        assert len(nwbfile.acquisition) == 8
+        assert len(nwbfile.acquisition) == 16
 
         assert "NeuropixelImec0" in nwbfile.devices
         assert "NeuropixelImec1" in nwbfile.devices
@@ -141,7 +142,7 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
 
     def test_multi_probe_spikeglx_converter(self):
         converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0" / "5-19-2022-CI0_g0"
+            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
         )
         metadata = converter.get_metadata()
 
@@ -161,13 +162,12 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         expected_device_metadata = expected_ecephys_metadata.pop("Device")
 
         assert device_metadata == expected_device_metadata
-
         assert test_ecephys_metadata == expected_ecephys_metadata
 
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47).astimezone()
+        expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47)
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
 
@@ -182,18 +182,8 @@ def test_electrode_table_writing(tmp_path):
 
     electrodes_table = nwbfile.electrodes
 
-    # Test NIDQ
-    electrical_series = nwbfile.acquisition["ElectricalSeriesNIDQ"]
-    nidq_electrodes_table_region = electrical_series.electrodes
-    region_indices = nidq_electrodes_table_region.data
-    recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
-
-    saved_channel_names = electrodes_table[region_indices]["channel_name"]
-    expected_channel_names_nidq = recording_extractor.get_property("channel_name")
-    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
-
     # Test AP
-    electrical_series = nwbfile.acquisition["ElectricalSeriesAPImec0"]
+    electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
     ap_electrodes_table_region = electrical_series.electrodes
     region_indices = ap_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
@@ -203,7 +193,7 @@ def test_electrode_table_writing(tmp_path):
     np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
     # Test LF
-    electrical_series = nwbfile.acquisition["ElectricalSeriesLFImec0"]
+    electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
     lf_electrodes_table_region = electrical_series.electrodes
     region_indices = lf_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
@@ -222,7 +212,7 @@ def test_electrode_table_writing(tmp_path):
     # Test round trip with spikeinterface
     recording_extractor_ap = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesAPImec0",
+        electrical_series_name="ElectricalSeriesAP",
     )
 
     channel_ids = recording_extractor_ap.get_channel_ids()
@@ -230,16 +220,8 @@ def test_electrode_table_writing(tmp_path):
 
     recording_extractor_lf = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesLFImec0",
+        electrical_series_name="ElectricalSeriesLF",
     )
 
     channel_ids = recording_extractor_lf.get_channel_ids()
     np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
-
-    recording_extractor_nidq = NwbRecordingExtractor(
-        file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesNIDQ",
-    )
-
-    channel_ids = recording_extractor_nidq.get_channel_ids()
-    np.testing.assert_array_equal(channel_ids, expected_channel_names_nidq)
