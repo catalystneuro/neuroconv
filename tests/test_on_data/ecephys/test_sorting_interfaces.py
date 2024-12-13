@@ -154,13 +154,17 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"))
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"), stream_id="0"
+    )
     save_directory = OUTPUT_PATH
 
 
 class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"))
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), stream_id="0"
+    )
 
     save_directory = OUTPUT_PATH
 
