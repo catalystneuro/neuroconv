@@ -66,7 +66,7 @@ def test_simple_time_series(
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_time_series.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_time_series.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -98,7 +98,7 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestDynamicTable/TestColumn/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb")
     NWB_IO = BACKEND_NWB_IO[backend]
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
@@ -164,7 +164,7 @@ def test_time_series_timestamps_linkage(
         assert nwbfile.acquisition["TestTimeSeries1"].timestamps
         assert nwbfile.acquisition["TestTimeSeries2"].timestamps
 
-    nwbfile_path = str(tmpdir / f"test_time_series_timestamps_linkage_{case_name}_data.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_time_series_timestamps_linkage_{case_name}_data.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 

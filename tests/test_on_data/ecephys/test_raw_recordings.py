@@ -106,7 +106,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if nwb_recording.get_channel_ids()[0] != nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
-                if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+                if recording.has_scaleable_traces() and nwb_recording.has_scaleable_traces():
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
 
