@@ -112,7 +112,13 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-    def __init__(self, folder_path: DirectoryPath, sampling_frequency: Optional[float] = None, verbose: bool = True):
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        sampling_frequency: Optional[float] = None,
+        verbose: bool = True,
+        stream_id: Optional[str] = None,
+    ):
         """_summary_
 
         Parameters
@@ -123,9 +129,14 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             If a specific sampling_frequency is desired it can be set with this argument.
         verbose : bool, default: True
             Enables verbosity
+        stream_id: str, optional
+            Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique
+            it will be chosen automatically
         """
 
-        super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
+        )
 
 
 def extract_neo_header_metadata(neo_reader) -> dict:
