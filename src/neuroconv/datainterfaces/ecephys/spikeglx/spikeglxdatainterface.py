@@ -1,5 +1,6 @@
 """DataInterfaces for SpikeGLX."""
 
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -77,6 +78,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if stream_id == "nidq":
             raise ValueError(
                 "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
+            )
+
+        if file_path is not None:
+            warnings.warn(
+                "file_path is deprecated and will be removed by the end of 2025. "
+                "The first argument of this interface will be `folder_path` afterwards. "
+                "Use folder_path and stream_id instead.",
+                DeprecationWarning,
+                stacklevel=2,
             )
 
         if file_path is not None and stream_id is None:
