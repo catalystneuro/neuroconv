@@ -50,9 +50,10 @@ Defining a 'stream' as a single band on a single NeuroPixels probe, we can conve
     >>> from neuroconv.datainterfaces import SpikeGLXRecordingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file
-    >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
-    >>> # Change the file_path to the location in your system
-    >>> interface = SpikeGLXRecordingInterface(file_path=file_path, verbose=False)
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0"
+    >>> # Options for the streams are "imec0.ap", "imec0.lf", "imec1.ap", "imec1.lf", etc.
+    >>> # Depending on the device and the band of interest, choose the appropriate stream
+    >>> interface = SpikeGLXRecordingInterface(folder_path=folder_path, stream_id="imec0.ap", verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
