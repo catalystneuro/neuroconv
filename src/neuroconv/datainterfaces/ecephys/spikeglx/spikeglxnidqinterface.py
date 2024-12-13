@@ -36,7 +36,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self,
         file_path: Optional[FilePath] = None,
         verbose: bool = True,
-        load_sync_channel: Optional[bool] = False,
+        load_sync_channel: Optional[bool] = None,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: Optional[DirectoryPath] = None,
     ):
