@@ -27,14 +27,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
     info = "Interface for SpikeGLX recording data."
 
-    # TODO: Add probe_index to probeinterface and propagate it from there
-    # Note to developer.
-    # In a conversion with Jennifer Colonell she refers to the number after imec as the probe index
-    # Quoting here:
-    # imec0 is the probe in the lowest slot and port number, imec1 in the next highest, and so on.
-    # If you have probes in {slot 2, port 3}, {slot 3, port1} and {slot3, port2},
-    # the probe indices in the SGLX output will be 0, 1, and 2, respectively.
-
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
