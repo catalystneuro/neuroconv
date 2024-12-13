@@ -27,7 +27,7 @@ except ImportError:
 
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockSortingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
+    interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"), sampling_frequency=30_000.0)
 
     associated_recording_cls = BlackrockRecordingInterface
     associated_recording_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
