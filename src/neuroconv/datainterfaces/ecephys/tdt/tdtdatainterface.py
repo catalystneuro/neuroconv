@@ -23,7 +23,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         gain: float,
         stream_id: str = "0",
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -37,7 +37,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             Select from multiple streams.
         gain : float
             The conversion factor from int16 to microvolts.
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             Allows verbose.
         es_key : str, optional
 

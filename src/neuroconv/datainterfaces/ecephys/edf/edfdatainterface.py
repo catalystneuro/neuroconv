@@ -37,7 +37,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
         channels_to_skip: Optional[list] = None,
     ):
@@ -50,7 +50,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the edf file
-        verbose : bool, default: True
+        verbose : bool, default: Falseeeeee
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
             Key for the ElectricalSeries metadata

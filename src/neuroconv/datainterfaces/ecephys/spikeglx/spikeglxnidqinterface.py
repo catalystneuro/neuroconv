@@ -35,7 +35,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         load_sync_channel: Optional[bool] = None,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: Optional[DirectoryPath] = None,
@@ -51,7 +51,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         file_path : FilePathType
             Path to .nidq.bin file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """

@@ -20,11 +20,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "spikeinterface.extractors"
 
-    def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
+    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
         Parameters
         ----------
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
             The key of this ElectricalSeries in the metadata dictionary.

@@ -24,7 +24,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         sampling_frequency: float,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
@@ -34,7 +34,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : FilePathType
         sampling_frequency : float
-        verbose : bool, default: True
+        verbose : bool, default: False
         photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, default: "TwoPhotonSeries"
         """
         super().__init__(

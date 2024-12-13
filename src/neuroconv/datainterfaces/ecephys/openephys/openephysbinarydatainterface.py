@@ -43,7 +43,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
         stub_test: bool = False,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -59,7 +59,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         block_index : int, optional, default: None
             The index of the block to extract from the data.
         stub_test : bool, default: False
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
         es_key : str, default: "ElectricalSeries"
         """
         from ._openephys_utils import _read_settings_xml

@@ -35,7 +35,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def __init__(
         self,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
         **source_data,
     ):

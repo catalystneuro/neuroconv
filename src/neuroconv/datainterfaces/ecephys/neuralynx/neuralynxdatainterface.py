@@ -112,7 +112,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-    def __init__(self, folder_path: DirectoryPath, sampling_frequency: Optional[float] = None, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, sampling_frequency: Optional[float] = None, verbose: bool = False):
         """_summary_
 
         Parameters
@@ -121,7 +121,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
         sampling_frequency : float, optional
             If a specific sampling_frequency is desired it can be set with this argument.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Enables verbosity
         """
 

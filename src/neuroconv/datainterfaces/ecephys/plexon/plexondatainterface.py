@@ -28,7 +28,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
         stream_name: str = "WB-Wideband",
     ):
@@ -39,7 +39,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         stream_name: str, optional
@@ -90,7 +90,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         return extractor_kwargs
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Plexon.
 
@@ -98,7 +98,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
@@ -148,7 +148,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True):
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Load and prepare data for Plexon.
 
