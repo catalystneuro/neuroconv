@@ -17,7 +17,10 @@ from .tools.nwb_helpers import (
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
-from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
+from .tools.nwb_helpers._metadata_and_file_helpers import (
+    _resolve_backend,
+    configure_and_write_nwbfile,
+)
 from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
@@ -195,21 +198,36 @@ class BaseDataInterface(ABC):
 
         self.validate_metadata(metadata=metadata, append_mode=append_mode)
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            backend=backend,
-            verbose=getattr(self, "verbose", False),
-        ) as nwbfile_out:
+        if not append_mode:
+
             if no_nwbfile_provided:
-                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
+                nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
+            else:
+                self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
-            if backend_configuration is None:
-                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+            configure_and_write_nwbfile(
+                nwbfile=nwbfile,
+                output_filepath=nwbfile_path,
+                backend=backend,
+                backend_configuration=backend_configuration,
+            )
 
-            configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
+        else:  # We are only using the context in append mode, see #1143
+            with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                overwrite=overwrite,
+                backend=backend,
+                verbose=getattr(self, "verbose", False),
+            ) as nwbfile_out:
+                if no_nwbfile_provided:
+                    self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
+
+                if backend_configuration is None:
+                    backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+
+                configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
     @staticmethod
     def get_default_backend_configuration(
