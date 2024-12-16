@@ -97,9 +97,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 renamed_channel_ids = recording.get_property("channel_name")
             else:
                 renamed_channel_ids = recording.get_channel_ids().astype("str")
-            recording = recording.channel_slice(
-                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
-            )
+            recording = recording.rename_channels(new_channel_ids=renamed_channel_ids)
 
             # Edge case that only occurs in testing, but should eventually be fixed nonetheless
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids

@@ -639,7 +639,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 else:
                     renamed_unit_ids = np.arange(len(sorting.unit_ids))
 
-                sorting_renamed = sorting.rename_units(new_unit_ids=sorting.unit_ids)
+                sorting_renamed = sorting.rename_units(new_unit_ids=renamed_unit_ids)
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
     def check_interface_set_aligned_segment_timestamps(self):
