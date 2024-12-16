@@ -7,7 +7,6 @@ from warnings import warn
 
 import pytest
 from hdmf.testing import TestCase
-from ndx_pose import PoseEstimation
 from packaging import version
 from packaging import version as version_parse
 from pynwb import NWBHDF5IO
@@ -143,6 +142,8 @@ class TestLightningPoseConverter(TestCase):
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
 
     def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False):
+        from ndx_pose import PoseEstimation
+
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 

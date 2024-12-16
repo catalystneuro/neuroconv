@@ -50,7 +50,8 @@ dependencies = [
     "parse>=1.20.0",
     "click",
     "docstring-parser",
-    "packaging"  # Issue 903
+    "packaging",  # Issue 903
+    "referencing",
 ]
 
 
@@ -270,50 +271,50 @@ icephys = [
 
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 cnmfe = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 extract = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 hdf5 = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 sbx = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 scanimage = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 suite2p = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.10",
     "tdt",
 ]
 tiff = [
-    "roiextractors>=0.5.7",
+    "roiextractors>=0.5.9",
     "tiffile>=2018.10.18",
 ]
 ophys = [
@@ -355,7 +356,7 @@ doctest_optionflags = "ELLIPSIS"
 
 [tool.black]
 line-length = 120
-target-version = ['py38', 'py39', 'py310']
+target-version = ['py39', 'py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(

@@ -317,13 +317,14 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
+        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
         pes = PoseEstimationSeries(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
-            timestamps=timestamps_cleaned,
+            timestamps=timestamps,
             confidence=data[:, 2],
             confidence_definition="Softmax output of the deep neural network.",
         )
@@ -340,6 +341,7 @@ def _write_pes_to_nwbfile(
 
     # Create PoseEstimation container with updated arguments
     dimensions = [list(map(int, image_shape.split(",")))[1::2]]
+    dimensions = np.array(dimensions, dtype="uint32")
     pose_estimation_default_kwargs = dict(
         pose_estimation_series=pose_estimation_series,
         description="2D keypoint coordinates estimated using DeepLabCut.",
@@ -358,23 +360,23 @@ def _write_pes_to_nwbfile(
     return nwbfile
 
 
-def add_subject_to_nwbfile(
+def _add_subject_to_nwbfile(
     nwbfile: NWBFile,
-    h5file: FilePath,
+    file_path: FilePath,
     individual_name: str,
     config_file: Optional[FilePath] = None,
     timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """
-    Given the subject name, add the DLC .h5 file to an in-memory NWBFile object.
+    Given the subject name, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.
 
     Parameters
     ----------
     nwbfile : pynwb.NWBFile
         The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    h5file : str or path
-        Path to the DeepLabCut .h5 output file.
+    file_path : str or path
+        Path to the DeepLabCut .h5 or .csv output file.
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
@@ -390,18 +392,18 @@ def add_subject_to_nwbfile(
     nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
-    h5file = Path(h5file)
+    file_path = Path(file_path)
 
-    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
-        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
-
-    video_name, scorer = h5file.stem.split("DLC")
+    video_name, scorer = file_path.stem.split("DLC")
     scorer = "DLC" + scorer
 
     # TODO probably could be read directly with h5py
     # This requires pytables
-    data_frame_from_hdf5 = pd.read_hdf(h5file)
-    df = _ensure_individuals_in_header(data_frame_from_hdf5, individual_name)
+    if ".h5" in file_path.suffixes:
+        df = pd.read_hdf(file_path)
+    elif ".csv" in file_path.suffixes:
+        df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
+    df = _ensure_individuals_in_header(df, individual_name)
 
     # Note the video here is a tuple of the video path and the image shape
     if config_file is not None:
@@ -423,7 +425,7 @@ def add_subject_to_nwbfile(
 
     # Fetch the corresponding metadata pickle file, we extract the edges graph from here
     # TODO: This is the original implementation way to extract the file name but looks very brittle. Improve it
-    filename = str(h5file.parent / h5file.stem)
+    filename = str(file_path.parent / file_path.stem)
     for i, c in enumerate(filename[::-1]):
         if c.isnumeric():
             break

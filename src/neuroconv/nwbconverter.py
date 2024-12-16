@@ -29,7 +29,11 @@ from .utils import (
     unroot_schema,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
+from .utils.json_schema import (
+    _NWBConversionOptionsEncoder,
+    _NWBMetaDataEncoder,
+    _NWBSourceDataEncoder,
+)
 
 
 class NWBConverter:
@@ -63,11 +67,10 @@ class NWBConverter:
 
     def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = True):
 
+        # We do this to ensure that python objects are in string format for the JSON schema
         encoder = _NWBSourceDataEncoder()
-        # The encoder produces a serialized object, so we deserialized it for comparison
-
-        serialized_source_data = encoder.encode(source_data)
-        decoded_source_data = json.loads(serialized_source_data)
+        encoded_source_data = encoder.encode(source_data)
+        decoded_source_data = json.loads(encoded_source_data)
 
         validate(instance=decoded_source_data, schema=self.get_source_schema())
         if verbose:
@@ -106,9 +109,10 @@ class NWBConverter:
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
         encoder = _NWBMetaDataEncoder()
-        # The encoder produces a serialized object, so we deserialized it for comparison
-        serialized_metadata = encoder.encode(metadata)
-        decoded_metadata = json.loads(serialized_metadata)
+
+        # We do this to ensure that python objects are in string format for the JSON schema
+        encoded_metadta = encoder.encode(metadata)
+        decoded_metadata = json.loads(encoded_metadta)
 
         metadata_schema = self.get_metadata_schema()
         if append_mode:
@@ -138,7 +142,14 @@ class NWBConverter:
 
     def validate_conversion_options(self, conversion_options: dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""
-        validate(instance=conversion_options or {}, schema=self.get_conversion_options_schema())
+
+        conversion_options = conversion_options or dict()
+
+        # We do this to ensure that python objects are in string format for the JSON schema
+        encoded_conversion_options = _NWBConversionOptionsEncoder().encode(conversion_options)
+        decoded_conversion_options = json.loads(encoded_conversion_options)
+
+        validate(instance=decoded_conversion_options, schema=self.get_conversion_options_schema())
         if self.verbose:
             print("conversion_options is valid!")
 
@@ -166,7 +177,21 @@ class NWBConverter:
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
         return nwbfile
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None) -> None:
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None):
+        """
+        Add data from the instantiated data interfaces to the given NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file object to which the data from the data interfaces will be added.
+        metadata : dict
+            The metadata dictionary that contains information used to describe the data.
+        conversion_options : dict, optional
+            A dictionary containing conversion options for each interface, where non-default behavior is requested.
+            Each key corresponds to a data interface name, and the values are dictionaries with options for that interface.
+            By default, None.
+        """
         conversion_options = conversion_options or dict()
         for interface_name, data_interface in self.data_interface_objects.items():
             data_interface.add_to_nwbfile(

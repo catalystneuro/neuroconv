@@ -13,7 +13,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
     display_name = "DeepLabCut"
     keywords = ("DLC", "DeepLabCut", "pose estimation", "behavior")
-    associated_suffixes = (".h5",)
+    associated_suffixes = (".h5", ".csv")
     info = "Interface for handling data from DeepLabCut."
 
     _timestamps = None
@@ -21,8 +21,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = "Path to the .h5 file output by dlc."
-        source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file"
+        source_schema["properties"]["file_path"]["description"] = "Path to the file output by dlc (.h5 or .csv)."
+        source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file."
         return source_schema
 
     @validate_call
@@ -34,27 +34,28 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         verbose: bool = True,
     ):
         """
-        Interface for writing DLC's h5 files to nwb using dlc2nwb.
+        Interface for writing DLC's output files to nwb using dlc2nwb.
 
         Parameters
         ----------
         file_path : FilePath
-            path to the h5 file output by dlc.
+            Path to the file output by dlc (.h5 or .csv).
         config_file_path : FilePath, optional
-            path to .yml config file
+            Path to .yml config file
         subject_name : str, default: "ind1"
-            the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
+            The name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
         verbose: bool, default: True
-            controls verbosity.
+            Controls verbosity.
         """
-        # Fail quick if the user doesn't have the required dependencies
-        from ndx_pose import PoseEstimation, PoseEstimationSeries  # noqa F401
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        from ndx_pose import PoseEstimation, PoseEstimationSeries  # noqa: F401
 
         from ._dlc_utils import _read_config
 
         file_path = Path(file_path)
-        if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
-            raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+        suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
+        if not "DLC" in file_path.stem or not suffix_is_valid:
+            raise IOError("The file passed in is not a valid DeepLabCut output data file.")
 
         self.config_dict = dict()
         if config_file_path is not None:
@@ -115,13 +116,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             metadata info for constructing the nwb file (optional).
         container_name: str, default: "PoseEstimationDeepLabCut"
             name of the PoseEstimation container in the nwb
-        """
-        from ._dlc_utils import add_subject_to_nwbfile
 
-        self.pose_estimation_container_kwargs["name"] = container_name
-        add_subject_to_nwbfile(
+        """
+        from ._dlc_utils import _add_subject_to_nwbfile
+
+        _add_subject_to_nwbfile(
             nwbfile=nwbfile,
-            h5file=str(self.source_data["file_path"]),
+            file_path=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
             config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,

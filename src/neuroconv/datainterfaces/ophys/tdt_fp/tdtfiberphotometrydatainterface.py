@@ -43,9 +43,11 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             folder_path=folder_path,
             verbose=verbose,
         )
+        # This module should be here so ndx_fiber_photometry is in the global namespace when an pynwb.io object is created
         import ndx_fiber_photometry  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
+        """Get metadata for the TDTFiberPhotometryInterface."""
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
@@ -54,6 +56,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
+        """Get the metadata schema for the TDTFiberPhotometryInterface."""
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
