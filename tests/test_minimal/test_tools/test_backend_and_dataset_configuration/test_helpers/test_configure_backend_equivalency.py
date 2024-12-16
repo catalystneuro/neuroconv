@@ -69,7 +69,7 @@ def test_configure_backend_equivalency(
     dataset_configuration.compression_options = {"level": 2}
     configure_backend(nwbfile=nwbfile_1, backend_configuration=backend_configuration_2)
 
-    nwbfile_path = str(tmpdir / f"test_configure_backend_equivalency.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_backend_equivalency.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile_1)
 
