@@ -245,11 +245,19 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
         An array containing the group names. If the `group_name` property is not
         available, the channel groups will be returned. If the group names are
         empty, a default value 'ElectrodeGroup' will be used.
+
+    Raises
+    ------
+    ValueError
+        If the number of unique group names doesn't match the number of unique groups,
+        or if the mapping between group names and group numbers is inconsistent.
     """
     default_value = "ElectrodeGroup"
     group_names = recording.get_property("group_name")
+    groups = recording.get_channel_groups()
+
     if group_names is None:
-        group_names = recording.get_channel_groups()
+        group_names = groups
     if group_names is None:
         group_names = np.full(recording.get_num_channels(), fill_value=default_value)
 
@@ -258,6 +266,23 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
 
     # If for any reason the group names are empty, fill them with the default
     group_names[group_names == ""] = default_value
+
+    # Validate group names against groups
+    if groups is not None:
+        unique_groups = np.unique(groups)
+        unique_names = np.unique(group_names)
+
+        if len(unique_names) != len(unique_groups):
+            raise ValueError("The number of group names must match the number of groups")
+
+        # Check consistency of group name to group number mapping
+        group_to_name_map = {}
+        for group, name in zip(groups, group_names):
+            if group in group_to_name_map:
+                if group_to_name_map[group] != name:
+                    raise ValueError("Inconsistent mapping between group numbers and group names")
+            else:
+                group_to_name_map[group] = name
 
     return group_names
 
