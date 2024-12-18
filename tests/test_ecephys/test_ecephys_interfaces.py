@@ -119,7 +119,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
-    interface_kwargs = dict(durations=[0.100])
+    interface_kwargs = dict(num_channels=4, durations=[0.100])
 
     def test_stub(self, setup_interface):
         interface = self.interface
@@ -145,6 +145,18 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         electrical_series = nwbfile.acquisition["ElectricalSeries"]
         expected_timestamps = self.interface.recording_extractor.get_times()
         np.testing.assert_array_equal(electrical_series.timestamps[:], expected_timestamps)
+
+    def test_group_naming_not_adding_extra_devices(self, setup_interface):
+
+        interface = self.interface
+        recording_extractor = interface.recording_extractor
+        recording_extractor.set_channel_groups(groups=[0, 1, 2, 3])
+        recording_extractor.set_property(key="group_name", values=["group1", "group2", "group3", "group4"])
+
+        nwbfile = interface.create_nwbfile()
+
+        assert len(nwbfile.devices) == 1
+        assert len(nwbfile.electrode_groups) == 4
 
 
 class TestAssertions(TestCase):
