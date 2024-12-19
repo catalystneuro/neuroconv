@@ -426,24 +426,18 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_class_meth
     assert test_json_schema == expected_json_schema
 
 
-def test_get_json_schema_from_method_signature_unannotated():
-    """Test that parameters without type annotations are handled correctly by defaulting to Any."""
+def test_json_schema_raises_error_for_missing_type_annotations():
+    """Test that attempting to generate a JSON schema for a method with missing type annotations raises a TypeError."""
+    # https://github.com/catalystneuro/neuroconv/pull/1157
 
-    def method_with_unannotated_params(
-        annotated_param: int, unannotated_param, unannotated_with_default="default_value"
-    ):
+    def test_method(param_with_type: int, param_without_type, param_with_default="default_value"):
         pass
 
-    test_json_schema = get_json_schema_from_method_signature(method=method_with_unannotated_params)
-    expected_json_schema = {
-        "additionalProperties": False,
-        "properties": {
-            "annotated_param": {"type": "integer"},
-            "unannotated_param": {},  # Any type in JSON Schema is represented by an empty object
-            "unannotated_with_default": {"default": "default_value"},
-        },
-        "required": ["annotated_param", "unannotated_param"],
-        "type": "object",
-    }
-
-    assert test_json_schema == expected_json_schema
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Parameter 'param_without_type' in method 'test_method' is missing a type annotation. "
+            "Either add a type annotation for 'param_without_type' or add it to the exclude list."
+        ),
+    ):
+        get_json_schema_from_method_signature(method=test_method)
