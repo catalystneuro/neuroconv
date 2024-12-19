@@ -278,7 +278,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         channel_groups[::2] = 1
         recording.set_channel_groups(groups=channel_groups)
 
-        assert nwbfile.devices["Intan"].name == "Intan"
+        assert len(nwbfile.devices) == 1
 
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
