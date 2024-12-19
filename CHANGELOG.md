@@ -31,6 +31,7 @@
 * Use pytest format for dandi tests to avoid window permission error on teardown [PR #1151](https://github.com/catalystneuro/neuroconv/pull/1151)
 * Added many docstrings for public functions [PR #1063](https://github.com/catalystneuro/neuroconv/pull/1063)
 * Clean up with warnings and deprecations in the testing framework [PR #1158](https://github.com/catalystneuro/neuroconv/pull/1158)
+* Detect mismatch errors between group and group names when writing ElectrodeGroups [PR #1165](https://github.com/catalystneuro/neuroconv/pull/1165)
 
 
 # v0.6.5 (November 1, 2024)
