@@ -98,8 +98,8 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             The file path to the ``.nev`` data
         sampling_frequency: float, optional
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
-        used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
-        this extractor to be initialized.
+            used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
+            this extractor to be initialized.
         verbose : bool, default: True
             Enables verbosity
         """
