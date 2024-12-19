@@ -269,8 +269,8 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
 
     # Validate group names against groups
     if groups is not None:
-        unique_groups = np.unique(groups)
-        unique_names = np.unique(group_names)
+        unique_groups = set(groups)
+        unique_names = set(group_names)
 
         if len(unique_names) != len(unique_groups):
             raise ValueError("The number of group names must match the number of groups")
