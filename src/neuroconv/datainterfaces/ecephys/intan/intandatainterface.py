@@ -92,7 +92,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         electrode_group_metadata = ecephys_metadata["ElectrodeGroup"]
         electrode_group_metadata[0]["device"] = intan_device["name"]
-
+        # for electrode_group in electrode_group_metadata:
+        #     electrode_group["device"] = intan_device["name"]
         # Add electrodes and electrode groups
         ecephys_metadata.update(
             ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces."),
