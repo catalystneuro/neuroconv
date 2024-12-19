@@ -8,6 +8,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from packaging import version
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
@@ -258,8 +259,6 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 
     def test_devices_written_correctly(self, setup_interface):
 
-        from pynwb.testing.mock.file import mock_NWBFile
-
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -267,6 +266,29 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         len(nwbfile.devices) == 1
 
         nwbfile.devices["Intan"].description == "RHD Recording System"
+
+    def test_not_adding_extra_devices_when_recording_has_groups(self, setup_interface):
+        # Test that no extra-devices are added when the recording has groups
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        recording = self.interface.recording_extractor
+        num_channels = recording.get_num_channels()
+        channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
+        channel_groups[::2] = 1
+        recording.set_channel_groups(groups=channel_groups)
+
+        assert nwbfile.devices["Intan"].name == "Intan"
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        recording = self.interface.recording_extractor
+        num_channels = recording.get_num_channels()
+        group_names = np.full(shape=num_channels, fill_value="A", dtype="str")
+        group_names[::2] = "B"
+        recording.set_property("group_name", group_names)
+
+        assert len(nwbfile.devices) == 1
 
 
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
