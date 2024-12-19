@@ -1,10 +1,14 @@
 import shutil
 import tempfile
 from datetime import datetime
+from importlib.metadata import version
 from pathlib import Path
 from warnings import warn
 
+import pytest
 from hdmf.testing import TestCase
+from packaging import version
+from packaging import version as version_parse
 from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
 
@@ -15,7 +19,12 @@ from neuroconv.utils import DeepDict
 
 from ..setup_paths import BEHAVIOR_DATA_PATH
 
+ndx_pose_version = version("ndx-pose")
 
+
+@pytest.mark.skipif(
+    version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2"), reason="ndx_pose version is smaller than 0.2"
+)
 class TestLightningPoseConverter(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
