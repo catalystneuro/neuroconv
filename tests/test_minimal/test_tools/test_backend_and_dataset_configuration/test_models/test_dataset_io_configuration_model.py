@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from pynwb import get_manager
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
@@ -89,8 +90,12 @@ def test_from_neurodata_object_dtype_object_all_strings():
     data = np.array(["test", "string", "abc"], dtype=object)
     nwbfile.add_trial_column(name="test", description="test column with object dtype but all strings", data=data)
     neurodata_object = nwbfile.trials.columns[2]
+    manager = get_manager()
+    builder = manager.build(nwbfile)
 
-    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(neurodata_object, dataset_name="data")
+    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(
+        neurodata_object, dataset_name="data", builder=builder
+    )
 
     assert dataset_io_configuration.chunk_shape == (3,)
     assert dataset_io_configuration.buffer_shape == (3,)
