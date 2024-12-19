@@ -140,12 +140,16 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
             additional_properties = True
             continue
 
-        annotation = parameter.annotation
+        # Raise error if the type annotation is missing as a json schema cannot be generated in that case
+        if parameter.annotation is inspect._empty:
+            raise TypeError(
+                f"Parameter '{argument_name}' in method '{method_display}' is missing a type annotation. "
+                f"Either add a type annotation for '{argument_name}' or add it to the exclude list."
+            )
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default
-
-        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
+        arguments_to_annotations.update({argument_name: (parameter.annotation, pydantic_default)})
 
     # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
