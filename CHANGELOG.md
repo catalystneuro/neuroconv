@@ -16,6 +16,7 @@
 * Fix a bug on ecephys interfaces where extra electrode group and devices were written if the property of the "group_name" was set in the recording extractor [#1164](https://github.com/catalystneuro/neuroconv/pull/1164)
 * Fix metadata bug in `IntanRecordingInterface` where incorrected devices were added if the recording contained multiple electrode groups or names [#1166](https://github.com/catalystneuro/neuroconv/pull/1166)
 
+
 ## Features
 * Propagate the `unit_electrode_indices` argument from the spikeinterface tools to `BaseSortingExtractorInterface`. This allows users to map units to the electrode table when adding sorting data [PR #1124](https://github.com/catalystneuro/neuroconv/pull/1124)
 * Imaging interfaces have a new conversion option `always_write_timestamps` that can be used to force writing timestamps even if neuroconv's heuristics indicates regular sampling rate [PR #1125](https://github.com/catalystneuro/neuroconv/pull/1125)
