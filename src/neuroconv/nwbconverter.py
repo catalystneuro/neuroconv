@@ -231,7 +231,7 @@ class NWBConverter:
             The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
-            Otherwise, all datasets will use default configuration settings..
+            Otherwise, all datasets will use default configuration settings.
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
