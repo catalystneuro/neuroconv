@@ -5,8 +5,10 @@
 ## Bug Fixes
 
 ## Features
+* Use the latest version of ndx-pose for `DeepLabCutInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
 
 ## Improvements
+
 
 # v0.6.9 (Upcoming)
 Small fixes should be here.
