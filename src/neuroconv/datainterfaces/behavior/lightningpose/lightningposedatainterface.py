@@ -201,7 +201,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             The description of how the confidence was computed, e.g., 'Softmax output of the deep neural network'.
         stub_test : bool, default: False
         """
-        from ndx_pose import PoseEstimation, PoseEstimationSeries
+        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
         metadata_copy = deepcopy(metadata)
 
@@ -257,6 +257,18 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
             pose_estimation_series.append(PoseEstimationSeries(**pose_estimation_series_kwargs))
 
+        # Add Skeleton(s)
+        nodes = [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names]
+        subject = nwbfile.subject if nwbfile.subject is not None else None
+        name = f"Skeleton{pose_estimation_name}"
+        skeleton = Skeleton(name=name, nodes=nodes, subject=subject)
+        if "Skeletons" in behavior.data_interfaces:
+            skeletons = behavior.data_interfaces["Skeletons"]
+            skeletons.add_skeletons(skeleton)
+        else:
+            skeletons = Skeletons(skeletons=[skeleton])
+            behavior.add(skeletons)
+
         pose_estimation_kwargs = dict(
             name=pose_estimation_metadata["name"],
             description=pose_estimation_metadata["description"],
@@ -266,6 +278,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             dimensions=[self.dimension],
             pose_estimation_series=pose_estimation_series,
             devices=[camera],
+            skeleton=skeleton,
         )
 
         if self.source_data["labeled_video_file_path"]:
