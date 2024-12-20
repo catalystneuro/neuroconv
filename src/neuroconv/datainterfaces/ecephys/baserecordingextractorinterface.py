@@ -24,7 +24,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         Parameters
         ----------
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
             The key of this ElectricalSeries in the metadata dictionary.
