@@ -68,8 +68,6 @@ class BaseDataInterface(ABC):
         self.verbose = verbose
         self.source_data = source_data
 
-        self._validate_source_data(source_data=source_data, verbose=verbose)
-
     def get_metadata_schema(self) -> dict:
         """Retrieve JSON schema for metadata."""
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
