@@ -224,15 +224,6 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         else:
             original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
 
-        pose_estimation_kwargs = dict(
-            name=pose_estimation_metadata["name"],
-            description=pose_estimation_metadata["description"],
-            source_software=pose_estimation_metadata["source_software"],
-            scorer=pose_estimation_metadata["scorer"],
-            original_videos=[original_video_name],
-            dimensions=[self.dimension],
-        )
-
         pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
         timestamps = self.get_timestamps(stub_test=stub_test)
         rate = calculate_regular_series_rate(series=timestamps)
@@ -263,7 +254,13 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
             pose_estimation_series.append(PoseEstimationSeries(**pose_estimation_series_kwargs))
 
-        pose_estimation_kwargs.update(
+        pose_estimation_kwargs = dict(
+            name=pose_estimation_metadata["name"],
+            description=pose_estimation_metadata["description"],
+            source_software=pose_estimation_metadata["source_software"],
+            scorer=pose_estimation_metadata["scorer"],
+            original_videos=[original_video_name],
+            dimensions=[self.dimension],
             pose_estimation_series=pose_estimation_series,
         )
 
