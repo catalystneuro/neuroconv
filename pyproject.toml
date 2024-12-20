@@ -128,7 +128,7 @@ video = [
     "opencv-python-headless>=4.8.1.78",
 ]
 lightningpose = [
-    "ndx-pose>=0.1.1",
+    "ndx-pose>=0.2",
     "neuroconv[video]",
 ]
 medpc = [
