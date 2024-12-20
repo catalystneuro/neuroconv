@@ -1,8 +1,23 @@
 # v0.7.0 (Upcoming)
-Breaking changes should be here
+
+## Deprecations
+
+## Bug Fixes
+
+## Features
+
+## Improvements
 
 # v0.6.9 (Upcoming)
 Small fixes should be here.
+
+## Deprecations
+
+## Bug Fixes
+
+## Features
+
+## Improvements
 
 
 # v0.6.6 (December 20, 2024)
