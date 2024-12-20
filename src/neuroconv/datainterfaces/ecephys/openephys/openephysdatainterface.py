@@ -39,7 +39,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -58,7 +58,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
             When channel stream is not available the name of the stream must be specified.
         block_index : int, optional, default: None
             The index of the block to extract from the data.
-        verbose : bool, default: True
+        verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
         super().__new__(cls)

@@ -21,7 +21,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         read_kwargs: Optional[dict] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize the TimeIntervalsInterface.
@@ -32,8 +32,7 @@ class TimeIntervalsInterface(BaseDataInterface):
             The path to the file containing time intervals data.
         read_kwargs : dict, optional
             Additional arguments for reading the file, by default None.
-        verbose : bool, optional
-            If True, provides verbose output, by default True.
+        verbose : bool, default: False
         """
         read_kwargs = read_kwargs or dict()
         super().__init__(file_path=file_path)

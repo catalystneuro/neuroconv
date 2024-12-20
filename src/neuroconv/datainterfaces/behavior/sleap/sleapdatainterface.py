@@ -32,7 +32,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         video_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         frames_per_second: Optional[float] = None,
     ):
         """
@@ -42,7 +42,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .slp file (the output of sleap)
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             controls verbosity. ``True`` by default.
         video_file_path : FilePath, optional
             The file path of the video for extracting timestamps.

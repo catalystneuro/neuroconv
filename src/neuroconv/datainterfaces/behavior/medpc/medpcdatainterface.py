@@ -49,7 +49,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         start_variable: str,
         metadata_medpc_name_to_info_dict: dict,
         aligned_timestamp_names: Optional[list[str]] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize MedpcInterface.

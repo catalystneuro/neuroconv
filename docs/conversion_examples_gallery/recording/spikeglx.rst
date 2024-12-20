@@ -24,7 +24,6 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
     >>> converter = SpikeGLXConverterPipe(folder_path=folder_path)
-    Source data is valid!
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
