@@ -40,9 +40,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
                         description=dict(type="string"),
                         scorer=dict(type="string"),
                         source_software=dict(type="string", default="LightningPose"),
+                        camera_name=dict(type="string", default="CameraPoseEstimation"),
                     ),
                     patternProperties={
-                        "^(?!(name|description|scorer|source_software)$)[a-zA-Z0-9_]+$": dict(
+                        "^(?!(name|description|scorer|source_software|camera_name)$)[a-zA-Z0-9_]+$": dict(
                             title="PoseEstimationSeries",
                             type="object",
                             properties=dict(name=dict(type="string"), description=dict(type="string")),
@@ -80,21 +81,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
-        from importlib.metadata import version
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_pose  # noqa: F401
-        from packaging import version as version_parse
 
         from neuroconv.datainterfaces.behavior.video.video_utils import (
             VideoCaptureContext,
         )
-
-        ndx_pose_version = version("ndx-pose")
-
-        if version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2.0"):
-            raise ImportError("The ndx-pose version must be less than 0.2.0.")
 
         self._vc = VideoCaptureContext
 
@@ -170,6 +164,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             description="Contains the pose estimation series for each keypoint.",
             scorer=self.scorer_name,
             source_software="LightningPose",
+            camera_name="CameraPoseEstimation",
         )
         for keypoint_name in self.keypoint_names:
             keypoint_name_without_spaces = keypoint_name.replace(" ", "")
@@ -223,6 +218,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             original_video_name = str(self.original_video_file_path)
         else:
             original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
+        camera_name = pose_estimation_metadata["camera_name"]
+        if camera_name in nwbfile.devices:
+            camera = nwbfile.devices[camera_name]
+        else:
+            camera = nwbfile.create_device(
+                name=camera_name,
+                description="Camera used for behavioral recording and pose estimation.",
+            )
 
         pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
         timestamps = self.get_timestamps(stub_test=stub_test)
@@ -262,6 +265,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             original_videos=[original_video_name],
             dimensions=[self.dimension],
             pose_estimation_series=pose_estimation_series,
+            devices=[camera],
         )
 
         if self.source_data["labeled_video_file_path"]:
