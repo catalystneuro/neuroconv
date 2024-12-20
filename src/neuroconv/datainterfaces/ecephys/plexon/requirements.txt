@@ -1,1 +1,0 @@
-zugbruecke >= 0.2.1; platform_system != "Windows"
