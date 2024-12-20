@@ -862,6 +862,16 @@ def add_electrical_series_to_nwbfile(
     whenever possible.
     """
 
+    if starting_time is not None:
+        warnings.warn(
+            "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
+            "Use the time alignment methods or set the recording times directlyfor modifying the starting time or timestamps "
+            "of the data if needed: "
+            "https://neuroconv.readthedocs.io/en/main/user_guide/temporal_alignment.html",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     assert write_as in [
         "raw",
         "processed",

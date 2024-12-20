@@ -271,6 +271,10 @@ class MockSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
+        # Sorting extractor to have string unit ids until is changed in SpikeInterface
+        string_unit_ids = [str(id) for id in self.sorting_extractor.unit_ids]
+        self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
+
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()

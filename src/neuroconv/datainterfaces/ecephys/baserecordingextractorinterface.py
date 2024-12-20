@@ -88,7 +88,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        channel_groups_array = self.recording_extractor.get_channel_groups()
+        from ...tools.spikeinterface.spikeinterface import _get_group_name
+
+        channel_groups_array = _get_group_name(recording=self.recording_extractor)
         unique_channel_groups = set(channel_groups_array) if channel_groups_array is not None else ["ElectrodeGroup"]
         electrode_metadata = [
             dict(name=str(group_id), description="no description", location="unknown", device="DeviceEcephys")
