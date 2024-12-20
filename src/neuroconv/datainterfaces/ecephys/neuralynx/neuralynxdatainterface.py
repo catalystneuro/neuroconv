@@ -112,7 +112,6 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-
     def __init__(
         self,
         folder_path: DirectoryPath,
