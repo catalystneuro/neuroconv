@@ -171,7 +171,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
         overwrite: bool = False,
-        verbose: bool = False,
     ):
         """
         Parameters
