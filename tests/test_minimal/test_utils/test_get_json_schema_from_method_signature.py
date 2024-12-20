@@ -424,3 +424,20 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_class_meth
     }
 
     assert test_json_schema == expected_json_schema
+
+
+def test_json_schema_raises_error_for_missing_type_annotations():
+    """Test that attempting to generate a JSON schema for a method with missing type annotations raises a TypeError."""
+    # https://github.com/catalystneuro/neuroconv/pull/1157
+
+    def test_method(param_with_type: int, param_without_type, param_with_default="default_value"):
+        pass
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Parameter 'param_without_type' in method 'test_method' is missing a type annotation. "
+            "Either add a type annotation for 'param_without_type' or add it to the exclude list."
+        ),
+    ):
+        get_json_schema_from_method_signature(method=test_method)
