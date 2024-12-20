@@ -212,7 +212,7 @@ def test_electrode_table_writing(tmp_path):
     # Test round trip with spikeinterface
     recording_extractor_ap = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesAP",
+        electrical_series_path="acquisition/ElectricalSeriesAP",
     )
 
     channel_ids = recording_extractor_ap.get_channel_ids()
@@ -220,7 +220,7 @@ def test_electrode_table_writing(tmp_path):
 
     recording_extractor_lf = NwbRecordingExtractor(
         file_path=nwbfile_path,
-        electrical_series_name="ElectricalSeriesLF",
+        electrical_series_path="acquisition/ElectricalSeriesLF",
     )
 
     channel_ids = recording_extractor_lf.get_channel_ids()

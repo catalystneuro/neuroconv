@@ -19,7 +19,7 @@ Convert Blackrock sorting data to NWB using
     >>>
     >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.nev"
     >>> # Change the file_path to the location of the file in your system
-    >>> interface = BlackrockSortingInterface(file_path=file_path, verbose=False)
+    >>> interface = BlackrockSortingInterface(file_path=file_path, sampling_frequency=30000.0, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
