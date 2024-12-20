@@ -170,7 +170,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
-        overwrite: bool = False,
     ):
         """
         Parameters
@@ -185,8 +184,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
-        overwrite : bool, default: False
-        verbose : bool, default: False
 
         Returns
         -------
