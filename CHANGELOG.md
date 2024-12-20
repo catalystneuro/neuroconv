@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Added `metadata` and `conversion_options` as arguments to `NWBConverter.temporally_align_data_interfaces` [PR #1162](https://github.com/catalystneuro/neuroconv/pull/1162)
 
 ## Improvements
 
