@@ -66,7 +66,7 @@ def get_base_schema(
     id_: Optional[str] = None,
     required: Optional[list[str]] = None,
     properties: Optional[dict[str, Any]] = None,
-    **kwargs: Any
+    **kwargs,
 ) -> dict[str, Any]:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
