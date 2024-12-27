@@ -1,10 +1,11 @@
 from numbers import Real
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 
-def calculate_regular_series_rate(series: np.ndarray, tolerance_decimals: int = 6) -> Optional[Real]:
+def calculate_regular_series_rate(series: Union[ArrayLike, NDArray], tolerance_decimals: int = 6) -> Optional[float]:
     """Calculates the rate of a series as the difference between all consecutive points.
     If the difference between all time points are all the same value, then the value of
     rate is a scalar otherwise it is None."""
