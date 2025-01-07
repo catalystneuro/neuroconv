@@ -1,2 +1,0 @@
-ndx-pose==0.1.1
-neuroconv[video]
