@@ -10,7 +10,7 @@ OUTPUT_PATH = Path(tempfile.mkdtemp())
 
 
 # Load the configuration for the data tests
-
+project_root_path = Path(__file__).parent.parent.parent
 
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
@@ -18,7 +18,6 @@ if os.getenv("CI"):
 else:
     # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    project_root_path = Path(__file__).parent.parent.parent
     test_config_path = project_root_path / "tests" / "test_on_data" / "gin_test_config.json"
     config_file_exists = test_config_path.exists()
     if not config_file_exists:
