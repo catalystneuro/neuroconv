@@ -42,14 +42,9 @@ except ImportError:
 
 from importlib.metadata import version
 
-from packaging import version as version_parse
-
 ndx_pose_version = version("ndx-pose")
 
 
-@pytest.mark.skipif(
-    version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2"), reason="ndx_pose version is smaller than 0.2"
-)
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -94,6 +89,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 description="Contains the pose estimation series for each keypoint.",
                 scorer="heatmap_tracker",
                 source_software="LightningPose",
+                camera_name="CameraPoseEstimation",
             )
         )
         cls.expected_metadata[cls.pose_estimation_name].update(
@@ -165,9 +161,6 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
 
 
-@pytest.mark.skipif(
-    version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2"), reason="ndx_pose version is smaller than 0.2"
-)
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
