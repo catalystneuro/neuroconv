@@ -271,23 +271,23 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         # Test that no extra-devices are added when the recording has groups
 
         nwbfile = mock_NWBFile()
-        self.interface.add_to_nwbfile(nwbfile=nwbfile)
         recording = self.interface.recording_extractor
         num_channels = recording.get_num_channels()
         channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
-        channel_groups[::2] = 1
+        channel_groups[::2] = 1  # Every other channel is in group 1, the rest are in group 0
         recording.set_channel_groups(groups=channel_groups)
 
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.devices) == 1
 
         nwbfile = mock_NWBFile()
-        self.interface.add_to_nwbfile(nwbfile=nwbfile)
         recording = self.interface.recording_extractor
         num_channels = recording.get_num_channels()
         group_names = np.full(shape=num_channels, fill_value="A", dtype="str")
-        group_names[::2] = "B"
+        group_names[::2] = "B"  # Every other channel group is named B, the rest are named A
         recording.set_property("group_name", group_names)
 
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.devices) == 1
 
 
