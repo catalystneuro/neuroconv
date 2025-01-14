@@ -40,6 +40,10 @@ try:
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
+from importlib.metadata import version
+
+ndx_pose_version = version("ndx-pose")
+
 
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
@@ -85,6 +89,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 description="Contains the pose estimation series for each keypoint.",
                 scorer="heatmap_tracker",
                 source_software="LightningPose",
+                camera_name="CameraPoseEstimation",
             )
         )
         cls.expected_metadata[cls.pose_estimation_name].update(
@@ -363,7 +368,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
-            assert "PoseEstimation" not in nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimationDeepLabCut" not in nwbfile.processing["behavior"].data_interfaces
             assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -371,9 +376,11 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
             expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
 
             expected_pose_estimation_series_are_in_nwb_file = [
@@ -449,9 +456,11 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
             expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
 
             expected_pose_estimation_series_are_in_nwb_file = [
@@ -500,9 +509,11 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
 
             for pose_estimation in pose_estimation_series_in_nwb.values():
                 pose_timestamps = pose_estimation.timestamps

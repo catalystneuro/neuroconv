@@ -5,9 +5,10 @@
 ## Bug Fixes
 
 ## Features
-* Source validation is no longer performed when initializing interfaces or converters [PR #1168](https://github.com/catalystneuro/neuroconv/pull/1168)
+* Use the latest version of ndx-pose for `DeepLabCutInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
 
 ## Improvements
+
 
 # v0.6.9 (Upcoming)
 Small fixes should be here.
@@ -20,6 +21,7 @@ Small fixes should be here.
 ## Features
 
 ## Improvements
+* Source validation is no longer performed when initializing interfaces or converters [PR #1168](https://github.com/catalystneuro/neuroconv/pull/1168)
 
 
 # v0.6.6 (December 20, 2024)

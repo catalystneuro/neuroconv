@@ -118,7 +118,7 @@ sleap = [
     "sleap-io>=0.0.2; python_version>='3.9'",
 ]
 deeplabcut = [
-    "ndx-pose==0.1.1",
+    "ndx-pose>=0.2",
     "tables; platform_system != 'Darwin'",
     "tables>=3.10.1; platform_system == 'Darwin' and python_version >= '3.10'",
 ]
@@ -128,7 +128,7 @@ video = [
     "opencv-python-headless>=4.8.1.78",
 ]
 lightningpose = [
-    "ndx-pose==0.1.1",
+    "ndx-pose>=0.2",
     "neuroconv[video]",
 ]
 medpc = [

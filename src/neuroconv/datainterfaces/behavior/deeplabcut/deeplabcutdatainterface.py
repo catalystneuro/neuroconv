@@ -12,7 +12,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
     display_name = "DeepLabCut"
-    keywords = ("DLC",)
+    keywords = ("DLC", "DeepLabCut", "pose estimation", "behavior")
     associated_suffixes = (".h5", ".csv")
     info = "Interface for handling data from DeepLabCut."
 
@@ -62,6 +62,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
+        self.pose_estimation_container_kwargs = dict()
+
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
@@ -101,7 +103,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        container_name: str = "PoseEstimation",
+        container_name: str = "PoseEstimationDeepLabCut",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -112,8 +114,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-        container_name: str, default: "PoseEstimation"
-            Name of the container to store the pose estimation.
+        container_name: str, default: "PoseEstimationDeepLabCut"
+            name of the PoseEstimation container in the nwb
+
         """
         from ._dlc_utils import _add_subject_to_nwbfile
 
@@ -123,5 +126,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             individual_name=self.subject_name,
             config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,
-            pose_estimation_container_kwargs=dict(name=container_name),
+            pose_estimation_container_kwargs=self.pose_estimation_container_kwargs,
         )
