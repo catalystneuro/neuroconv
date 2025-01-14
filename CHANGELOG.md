@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Source validation is no longer performed when initializing interfaces or converters [PR #1168](https://github.com/catalystneuro/neuroconv/pull/1168)
 
 ## Improvements
 
