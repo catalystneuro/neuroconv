@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Source validation is no longer performed when initializing interfaces or converters [PR #1168](https://github.com/catalystneuro/neuroconv/pull/1168)
 
 ## Improvements
 
@@ -14,6 +15,7 @@ Small fixes should be here.
 ## Deprecations
 
 ## Bug Fixes
+* Temporary set a ceiling for hdmf to avoid a chunking bug  [PR #1175](https://github.com/catalystneuro/neuroconv/pull/1175)
 
 ## Features
 
