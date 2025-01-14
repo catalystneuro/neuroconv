@@ -5,17 +5,17 @@
   "Ecephys": {
     "Device": [
       {
-        "name": "NeuropixelImec0",
+        "name": "NeuropixelsImec0",
         "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
         "manufacturer": "Imec"
       }
     ],
     "ElectrodeGroup": [
       {
-        "name": "NeuropixelImec0",
-        "description": "A group representing probe/shank 'NeuropixelImec0'.",
+        "name": "NeuropixelsImec0",
+        "description": "A group representing probe/shank 'NeuropixelsImec0'.",
         "location": "unknown",
-        "device": "NeuropixelImec0"
+        "device": "NeuropixelsImec0"
       }
 
     ],

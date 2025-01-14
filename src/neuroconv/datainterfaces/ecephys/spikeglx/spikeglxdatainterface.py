@@ -127,7 +127,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Should follow pattern 'Imec0', 'Imec1', etc.
         probe_name = self._signals_info_dict["device"].capitalize()
-        device["name"] = f"Neuropixel{probe_name}"
+        device["name"] = f"Neuropixels{probe_name}"
 
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]

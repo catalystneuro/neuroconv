@@ -41,11 +41,11 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
             assert len(nwbfile.acquisition) == 3
 
-            assert "NeuropixelImec0" in nwbfile.devices
+            assert "NeuropixelsImec0" in nwbfile.devices
             assert "NIDQBoard" in nwbfile.devices
             assert len(nwbfile.devices) == 2
 
-            assert "NeuropixelImec0" in nwbfile.electrode_groups
+            assert "NeuropixelsImec0" in nwbfile.electrode_groups
             assert len(nwbfile.electrode_groups) == 1
 
     def test_single_probe_spikeglx_converter(self):
@@ -132,12 +132,12 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
         assert len(nwbfile.acquisition) == 16
 
-        assert "NeuropixelImec0" in nwbfile.devices
-        assert "NeuropixelImec1" in nwbfile.devices
+        assert "NeuropixelsImec0" in nwbfile.devices
+        assert "NeuropixelsImec1" in nwbfile.devices
         assert len(nwbfile.devices) == 2
 
-        assert "NeuropixelImec0" in nwbfile.electrode_groups
-        assert "NeuropixelImec1" in nwbfile.electrode_groups
+        assert "NeuropixelsImec0" in nwbfile.electrode_groups
+        assert "NeuropixelsImec1" in nwbfile.electrode_groups
         assert len(nwbfile.electrode_groups) == 2
 
     def test_multi_probe_spikeglx_converter(self):
