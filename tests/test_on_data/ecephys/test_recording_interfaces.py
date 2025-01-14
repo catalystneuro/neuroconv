@@ -648,7 +648,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "0", '
             '"probe_type_description": "NP1.0", '
@@ -676,7 +676,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "1030", '
             '"probe_type_description": "NP1.0 NHP", '
