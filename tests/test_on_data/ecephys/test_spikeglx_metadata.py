@@ -32,7 +32,8 @@ def test_spikelgx_recording_property_addition():
     probe_name = "Imec0"
 
     expected_shank_ids = probe.shank_ids
-    expected_group_name = [f"{probe_name}{shank_id}" for shank_id in expected_shank_ids]
+    expected_group_name = [f"Neuropixel{probe_name}Shank{shank_id}" for shank_id in expected_shank_ids]
+
     expected_contact_shapes = ["square"] * n_channels
     expected_contact_ids = probe.contact_ids
 

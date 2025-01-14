@@ -147,6 +147,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
             dict(name="contact_shapes", description="The shape of the electrode"),
             dict(name="contact_ids", description="The id of the contact on the electrode"),
+            dict(name="inter_sample_shift", description="The inter-sample shift of the electrode"),
         ]
 
         if self.recording_extractor.get_probe().get_shank_count() > 1:

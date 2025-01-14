@@ -45,6 +45,10 @@
       {
         "name": "contact_ids",
         "description": "The id of the contact on the electrode"
+      },
+      {
+        "name": "inter_sample_shift",
+        "description": "The inter-sample shift of the electrode"
       }
     ],
     "ElectricalSeriesAPImec1": {
