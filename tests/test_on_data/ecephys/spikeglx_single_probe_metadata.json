@@ -12,8 +12,8 @@
     ],
     "ElectrodeGroup": [
       {
-        "name": "Imec0",
-        "description": "A group representing probe/shank 'Imec0'.",
+        "name": "NeuropixelImec0",
+        "description": "A group representing probe/shank 'NeuropixelImec0'.",
         "location": "unknown",
         "device": "NeuropixelImec0"
       }

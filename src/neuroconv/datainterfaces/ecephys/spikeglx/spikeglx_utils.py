@@ -20,7 +20,7 @@ def add_recording_extractor_properties(recording_extractor) -> None:
         recording_extractor.set_property(key="shank_ids", values=shank_ids)
         group_name = [f"Neuropixel{probe_name}Shank{shank_id}" for shank_id in shank_ids]
     else:
-        group_name = [f"{probe_name}"] * len(channel_ids)
+        group_name = [f"Neuropixel{probe_name}"] * len(channel_ids)
 
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 

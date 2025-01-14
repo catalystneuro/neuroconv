@@ -45,7 +45,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             assert "NIDQBoard" in nwbfile.devices
             assert len(nwbfile.devices) == 2
 
-            assert "Imec0" in nwbfile.electrode_groups
+            assert "NeuropixelImec0" in nwbfile.electrode_groups
             assert len(nwbfile.electrode_groups) == 1
 
     def test_single_probe_spikeglx_converter(self):
@@ -136,8 +136,8 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         assert "NeuropixelImec1" in nwbfile.devices
         assert len(nwbfile.devices) == 2
 
-        assert "Imec0" in nwbfile.electrode_groups
-        assert "Imec1" in nwbfile.electrode_groups
+        assert "NeuropixelImec0" in nwbfile.electrode_groups
+        assert "NeuropixelImec1" in nwbfile.electrode_groups
         assert len(nwbfile.electrode_groups) == 2
 
     def test_multi_probe_spikeglx_converter(self):
@@ -160,8 +160,16 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
 
         device_metadata = test_ecephys_metadata.pop("Device")
         expected_device_metadata = expected_ecephys_metadata.pop("Device")
-
         assert device_metadata == expected_device_metadata
+
+        assert test_ecephys_metadata["ElectrodeGroup"] == expected_ecephys_metadata["ElectrodeGroup"]
+        assert test_ecephys_metadata["Electrodes"] == expected_ecephys_metadata["Electrodes"]
+        assert test_ecephys_metadata["ElectricalSeriesAPImec0"] == expected_ecephys_metadata["ElectricalSeriesAPImec0"]
+        assert test_ecephys_metadata["ElectricalSeriesAPImec1"] == expected_ecephys_metadata["ElectricalSeriesAPImec1"]
+        assert test_ecephys_metadata["ElectricalSeriesLFImec0"] == expected_ecephys_metadata["ElectricalSeriesLFImec0"]
+        assert test_ecephys_metadata["ElectricalSeriesLFImec1"] == expected_ecephys_metadata["ElectricalSeriesLFImec1"]
+
+        # Test all the dictionary
         assert test_ecephys_metadata == expected_ecephys_metadata
 
         nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
