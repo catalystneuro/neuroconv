@@ -17,8 +17,10 @@ Small fixes should be here.
 * Temporary set a ceiling for hdmf to avoid a chunking bug  [PR #1175](https://github.com/catalystneuro/neuroconv/pull/1175)
 
 ## Features
+* Add description to inter-sample-shift for `SpikeGLX` [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
 
 ## Improvements
+* Improve the naming of ElectrodeGroups in `SpikeGLX` when multi probes are present [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
 
 
 # v0.6.6 (December 20, 2024)
