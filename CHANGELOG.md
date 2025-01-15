@@ -21,6 +21,7 @@ Small fixes should be here.
 
 ## Improvements
 * Detect mismatch errors between group and group names when writing ElectrodeGroups [PR #1165](https://github.com/catalystneuro/neuroconv/pull/1165)
+* Fix metadata bug in `IntanRecordingInterface` where extra devices were added incorrectly if the recording contained multiple electrode groups or names [#1166](https://github.com/catalystneuro/neuroconv/pull/1166)
 
 
 # v0.6.6 (December 20, 2024)
