@@ -18,10 +18,11 @@ Small fixes should be here.
 * Temporary set a ceiling for hdmf to avoid a chunking bug  [PR #1175](https://github.com/catalystneuro/neuroconv/pull/1175)
 
 ## Features
-* Add description to inter-sample-shift for `SpikeGLX` [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
+* Add description to inter-sample-shift for `SpikeGLXRecordingInterface` [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
 
 ## Improvements
-* Improve the naming of ElectrodeGroups in `SpikeGLX` when multi probes are present [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
+* Improve the naming of ElectrodeGroups in the `SpikeGLXRecordingInterface` when multi probes are present [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
+* Detect mismatch errors between group and group names when writing ElectrodeGroups [PR #1165](https://github.com/catalystneuro/neuroconv/pull/1165)
 * Fix metadata bug in `IntanRecordingInterface` where extra devices were added incorrectly if the recording contained multiple electrode groups or names [#1166](https://github.com/catalystneuro/neuroconv/pull/1166)
 
 
