@@ -75,6 +75,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
+    @property
+    def units_ids(self):
+        "Gets the units ids of the data."
+        return self.sorting_extractor.get_unit_ids()
+
     def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
