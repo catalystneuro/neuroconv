@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 from hdmf.testing import TestCase
@@ -186,7 +186,9 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
                 NIDQ=MockSpikeGLXNIDQInterface, Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface
             )
 
-            def temporally_align_data_interfaces(self):
+            def temporally_align_data_interfaces(
+                self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
+            ):
                 unaligned_trial_start_times = self.data_interface_objects["Trials"].get_original_timestamps(
                     column="start_time"
                 )
