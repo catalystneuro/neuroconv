@@ -22,7 +22,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         start_time: Optional[float] = None,
         metadata: Optional[dict] = None,
         channel_names: Optional[ArrayType] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
@@ -36,7 +36,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         start_time : float, optional
         metadata : dict, optional
         channel_names : list of str, optional
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(
             file_path=file_path,

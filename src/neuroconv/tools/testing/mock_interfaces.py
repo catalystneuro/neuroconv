@@ -208,7 +208,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         super().__init__(
@@ -251,7 +251,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters

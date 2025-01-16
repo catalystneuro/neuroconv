@@ -47,7 +47,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: Optional[str] = None,
         folder_path: Optional[DirectoryPath] = None,
         stream_id: Optional[str] = None,
@@ -62,7 +62,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Examples are 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, the key to access the metadata of the ElectricalSeries.
         """
