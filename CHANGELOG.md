@@ -18,8 +18,10 @@ Small fixes should be here.
 * Temporary set a ceiling for hdmf to avoid a chunking bug  [PR #1175](https://github.com/catalystneuro/neuroconv/pull/1175)
 
 ## Features
+* Add description to inter-sample-shift for `SpikeGLXRecordingInterface` [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
 
 ## Improvements
+* Improve the naming of ElectrodeGroups in the `SpikeGLXRecordingInterface` when multi probes are present [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
 * Detect mismatch errors between group and group names when writing ElectrodeGroups [PR #1165](https://github.com/catalystneuro/neuroconv/pull/1165)
 * Fix metadata bug in `IntanRecordingInterface` where extra devices were added incorrectly if the recording contained multiple electrode groups or names [#1166](https://github.com/catalystneuro/neuroconv/pull/1166)
 
@@ -54,7 +56,7 @@ Small fixes should be here.
 * Use mixing tests for ecephy's mocks [PR #1136](https://github.com/catalystneuro/neuroconv/pull/1136)
 * Use pytest format for dandi tests to avoid window permission error on teardown [PR #1151](https://github.com/catalystneuro/neuroconv/pull/1151)
 * Added many docstrings for public functions [PR #1063](https://github.com/catalystneuro/neuroconv/pull/1063)
-* Clean up with warnings and deprecations in the testing framework [PR #1158](https://github.com/catalystneuro/neuroconv/pull/1158)
+* Clean up warnings and deprecations in the testing framework [PR #1158](https://github.com/catalystneuro/neuroconv/pull/1158)
 * Enhance the typing of the signature on the `NWBConverter` by adding zarr as a literal option on the backend and backend configuration [PR #1160](https://github.com/catalystneuro/neuroconv/pull/1160)
 
 
