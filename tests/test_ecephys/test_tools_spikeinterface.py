@@ -24,6 +24,7 @@ from spikeinterface.extractors import NumpyRecording
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     add_electrical_series_to_nwbfile,
+    add_electrode_groups_to_nwbfile,
     add_electrodes_to_nwbfile,
     add_recording_to_nwbfile,
     add_sorting_to_nwbfile,
@@ -1069,6 +1070,29 @@ class TestAddElectrodes(TestCase):
 
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
+
+class TestAddElectrodeGroups:
+    def test_group_naming_not_matching_group_number(self):
+        recording = generate_recording(num_channels=4)
+        recording.set_channel_groups(groups=[0, 1, 2, 3])
+        recording.set_property(key="group_name", values=["A", "A", "A", "A"])
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="The number of group names must match the number of groups"):
+            add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+
+    def test_inconsistent_group_name_mapping(self):
+        recording = generate_recording(num_channels=3)
+        # Set up groups where the same group name is used for different group numbers
+        recording.set_channel_groups(groups=[0, 1, 0])
+        recording.set_property(
+            key="group_name", values=["A", "B", "B"]  # Inconsistent: group 0 maps to names "A" and "B"
+        )
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="Inconsistent mapping between group numbers and group names"):
+            add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
 
 class TestAddUnitsTable(TestCase):

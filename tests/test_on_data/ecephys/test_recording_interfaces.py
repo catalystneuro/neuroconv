@@ -8,6 +8,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from packaging import version
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
@@ -258,8 +259,6 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 
     def test_devices_written_correctly(self, setup_interface):
 
-        from pynwb.testing.mock.file import mock_NWBFile
-
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -267,6 +266,29 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         len(nwbfile.devices) == 1
 
         nwbfile.devices["Intan"].description == "RHD Recording System"
+
+    def test_not_adding_extra_devices_when_recording_has_groups(self, setup_interface):
+        # Test that no extra-devices are added when the recording has groups
+
+        nwbfile = mock_NWBFile()
+        recording = self.interface.recording_extractor
+        num_channels = recording.get_num_channels()
+        channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
+        channel_groups[::2] = 1  # Every other channel is in group 1, the rest are in group 0
+        recording.set_channel_groups(groups=channel_groups)
+
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        assert len(nwbfile.devices) == 1
+
+        nwbfile = mock_NWBFile()
+        recording = self.interface.recording_extractor
+        num_channels = recording.get_num_channels()
+        group_names = np.full(shape=num_channels, fill_value="A", dtype="str")
+        group_names[::2] = "B"  # Every other channel group is named B, the rest are named A
+        recording.set_property("group_name", group_names)
+
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        assert len(nwbfile.devices) == 1
 
 
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
@@ -648,7 +670,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "0", '
             '"probe_type_description": "NP1.0", '
@@ -676,7 +698,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "1030", '
             '"probe_type_description": "NP1.0 NHP", '
