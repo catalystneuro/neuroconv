@@ -80,7 +80,6 @@ class NWBConverter:
     def __init__(self, source_data: dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
-        self._validate_source_data(source_data=source_data, verbose=self.verbose)
         self.data_interface_objects = {
             name: data_interface(**source_data[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -256,7 +255,7 @@ class NWBConverter:
         self.validate_metadata(metadata=metadata, append_mode=append_mode)
         self.validate_conversion_options(conversion_options=conversion_options)
 
-        self.temporally_align_data_interfaces()
+        self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
@@ -274,7 +273,9 @@ class NWBConverter:
 
             configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
-    def temporally_align_data_interfaces(self):
+    def temporally_align_data_interfaces(
+        self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
+    ):
         """Override this method to implement custom alignment."""
         pass
 
