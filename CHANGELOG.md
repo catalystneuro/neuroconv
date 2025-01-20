@@ -6,11 +6,12 @@
 
 ## Features
 * Added `metadata` and `conversion_options` as arguments to `NWBConverter.temporally_align_data_interfaces` [PR #1162](https://github.com/catalystneuro/neuroconv/pull/1162)
+* Use the latest version of ndx-pose for `DeepLabCutInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
 
 ## Improvements
 
 
-# v0.6.7 (January 20, 2024)
+# v0.6.7 (January 20, 2025)
 
 ## Deprecations
 
