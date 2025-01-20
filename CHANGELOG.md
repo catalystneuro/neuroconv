@@ -8,8 +8,9 @@
 * Added `metadata` and `conversion_options` as arguments to `NWBConverter.temporally_align_data_interfaces` [PR #1162](https://github.com/catalystneuro/neuroconv/pull/1162)
 
 ## Improvements
+* Simple writing no longer uses a context manager [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
 
-# v0.6.7 (January 20, 2024)
+# v0.6.7 (January 20, 2025)
 
 ## Deprecations
 
