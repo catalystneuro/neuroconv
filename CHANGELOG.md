@@ -8,8 +8,7 @@
 
 ## Improvements
 
-# v0.6.9 (Upcoming)
-Small fixes should be here.
+# v0.6.9 (January 20, 2024)
 
 ## Deprecations
 
