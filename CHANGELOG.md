@@ -5,13 +5,12 @@
 ## Bug Fixes
 
 ## Features
-* Use the latest version of ndx-pose for `DeepLabCutInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
+* Added `metadata` and `conversion_options` as arguments to `NWBConverter.temporally_align_data_interfaces` [PR #1162](https://github.com/catalystneuro/neuroconv/pull/1162)
 
 ## Improvements
 
 
-# v0.6.9 (Upcoming)
-Small fixes should be here.
+# v0.6.7 (January 20, 2024)
 
 ## Deprecations
 
@@ -19,8 +18,13 @@ Small fixes should be here.
 * Temporary set a ceiling for hdmf to avoid a chunking bug  [PR #1175](https://github.com/catalystneuro/neuroconv/pull/1175)
 
 ## Features
+* Add description to inter-sample-shift for `SpikeGLXRecordingInterface` [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
 
 ## Improvements
+* `get_json_schema_from_method_signature` now throws a more informative error when an untyped parameter is passed [#1157](https://github.com/catalystneuro/neuroconv/pull/1157)
+* Improve the naming of ElectrodeGroups in the `SpikeGLXRecordingInterface` when multi probes are present [PR #1177](https://github.com/catalystneuro/neuroconv/pull/1177)
+* Detect mismatch errors between group and group names when writing ElectrodeGroups [PR #1165](https://github.com/catalystneuro/neuroconv/pull/1165)
+* Fix metadata bug in `IntanRecordingInterface` where extra devices were added incorrectly if the recording contained multiple electrode groups or names [#1166](https://github.com/catalystneuro/neuroconv/pull/1166)
 * Source validation is no longer performed when initializing interfaces or converters [PR #1168](https://github.com/catalystneuro/neuroconv/pull/1168)
 
 
@@ -40,6 +44,7 @@ Small fixes should be here.
 * `SpikeGLXNIDQInterface` is no longer written as an ElectricalSeries [#1152](https://github.com/catalystneuro/neuroconv/pull/1152)
 * Fix a bug on ecephys interfaces where extra electrode group and devices were written if the property of the "group_name" was set in the recording extractor [#1164](https://github.com/catalystneuro/neuroconv/pull/1164)
 
+
 ## Features
 * Propagate the `unit_electrode_indices` argument from the spikeinterface tools to `BaseSortingExtractorInterface`. This allows users to map units to the electrode table when adding sorting data [PR #1124](https://github.com/catalystneuro/neuroconv/pull/1124)
 * Imaging interfaces have a new conversion option `always_write_timestamps` that can be used to force writing timestamps even if neuroconv's heuristics indicates regular sampling rate [PR #1125](https://github.com/catalystneuro/neuroconv/pull/1125)
@@ -54,7 +59,7 @@ Small fixes should be here.
 * Use mixing tests for ecephy's mocks [PR #1136](https://github.com/catalystneuro/neuroconv/pull/1136)
 * Use pytest format for dandi tests to avoid window permission error on teardown [PR #1151](https://github.com/catalystneuro/neuroconv/pull/1151)
 * Added many docstrings for public functions [PR #1063](https://github.com/catalystneuro/neuroconv/pull/1063)
-* Clean up with warnings and deprecations in the testing framework [PR #1158](https://github.com/catalystneuro/neuroconv/pull/1158)
+* Clean up warnings and deprecations in the testing framework for the ecephys pipeline [PR #1158](https://github.com/catalystneuro/neuroconv/pull/1158)
 * Enhance the typing of the signature on the `NWBConverter` by adding zarr as a literal option on the backend and backend configuration [PR #1160](https://github.com/catalystneuro/neuroconv/pull/1160)
 
 
