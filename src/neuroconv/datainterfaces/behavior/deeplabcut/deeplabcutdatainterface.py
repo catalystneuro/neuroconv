@@ -120,6 +120,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         """
         from ._dlc_utils import _add_subject_to_nwbfile
 
+        self.pose_estimation_container_kwargs["name"] = container_name
+
         _add_subject_to_nwbfile(
             nwbfile=nwbfile,
             file_path=str(self.source_data["file_path"]),

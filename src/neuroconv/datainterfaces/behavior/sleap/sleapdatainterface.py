@@ -49,6 +49,19 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         frames_per_second : float, optional
             The frames per second (fps) or sampling rate of the video.
         """
+
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        from importlib.metadata import version
+
+        import ndx_pose  # noqa: F401
+        from packaging import version as version_parse
+
+        ndx_pose_version = version("ndx-pose")
+
+        if version_parse.parse(ndx_pose_version) >= version_parse.parse("0.2.0"):
+            raise ImportError("The ndx-pose version must be less than 0.2.0.")
+
         self.file_path = Path(file_path)
         self.sleap_io = get_package(package_name="sleap_io")
         self.video_file_path = video_file_path
