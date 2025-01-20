@@ -8,7 +8,7 @@
 
 ## Improvements
 
-# v0.6.9 (January 20, 2024)
+# v0.6.7 (January 20, 2024)
 
 ## Deprecations
 
