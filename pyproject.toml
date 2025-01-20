@@ -160,7 +160,7 @@ biocam = [
     "spikeinterface>=0.101.0",
 ]
 blackrock = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 cellexplorer = [
@@ -175,7 +175,7 @@ edf = [
     "spikeinterface>=0.101.0",
 ]
 intan = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 kilosort = [
@@ -208,7 +208,7 @@ neuroscope = [
 ]
 openephys = [
     "lxml>=4.9.4",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 phy = [
@@ -230,7 +230,7 @@ spikegadgets = [
     "spikeinterface>=0.101.0",
 ]
 spikeglx = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 tdt = [
