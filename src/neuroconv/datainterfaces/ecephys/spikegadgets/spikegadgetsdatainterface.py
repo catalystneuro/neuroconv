@@ -28,7 +28,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         stream_id: str = "trodes",
         gains: Optional[ArrayType] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """

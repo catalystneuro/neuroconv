@@ -22,7 +22,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         keep_good_only: bool = False,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Load and prepare sorting data for kilosort

@@ -31,7 +31,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         file_path: FilePath,
         config_file_path: Optional[FilePath] = None,
         subject_name: str = "ind1",
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Interface for writing DLC's output files to nwb using dlc2nwb.

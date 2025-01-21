@@ -128,7 +128,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         gain: Optional[float] = None,
         xml_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -271,7 +271,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list[int]] = None,
         xml_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).

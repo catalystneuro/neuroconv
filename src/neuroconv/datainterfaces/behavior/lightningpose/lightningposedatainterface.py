@@ -64,7 +64,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         file_path: FilePath,
         original_video_file_path: FilePath,
         labeled_video_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Interface for writing pose estimation data from the Lightning Pose algorithm.
@@ -77,7 +77,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             Path to the original video file (.mp4).
         labeled_video_file_path : a string or a path, optional
             Path to the labeled video file (.mp4).
-        verbose : bool, default: True
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
