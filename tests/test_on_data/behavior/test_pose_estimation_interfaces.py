@@ -29,18 +29,14 @@ except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 from importlib.metadata import version as importlib_version
-
-from packaging import version
-
-ndx_pose_version = version.parse(importlib_version("ndx-pose"))
-
-
 from platform import python_version
+from sys import platform
 
 from packaging import version
 
 python_version = version.parse(python_version())
-from sys import platform
+# TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143
+ndx_pose_version = version.parse(importlib_version("ndx-pose"))
 
 
 @pytest.mark.skipif(ndx_pose_version < version.parse("2.0.0"), reason="Interface requires ndx-pose version >= 2.0.0")

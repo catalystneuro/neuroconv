@@ -37,6 +37,7 @@ def pytest_runtest_setup(item):
             if version.parse(python_version) < version.parse("3.10") and os == "Darwin":
                 pytest.skip("Skipping doctests for deeplabcut.rst on Python 3.9 and macOS")
         # Check if we are running the doctest from sleap.rst
+        # TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143
         elif test_file.name == "sleap.rst":
             ndx_pose_version = version.parse(importlib_version("ndx-pose"))
             if ndx_pose_version >= version.parse("2.0.0"):

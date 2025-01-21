@@ -84,7 +84,18 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        from importlib.metadata import version
+
         import ndx_pose  # noqa: F401
+        from packaging import version as version_parse
+
+        ndx_pose_version = version("ndx-pose")
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("2.0.0"):
+            raise ImportError(
+                "LightningPose interface requires ndx-pose version 2.0.0 or later. "
+                f"Found version {ndx_pose_version}. Please upgrade: "
+                "pip install 'ndx-pose>=2.0.0'"
+            )
 
         from neuroconv.datainterfaces.behavior.video.video_utils import (
             VideoCaptureContext,
