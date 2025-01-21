@@ -245,15 +245,14 @@ class NWBConverter:
             )
 
         appending_to_in_memory_nwbfile = nwbfile is not None
+        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        appending_to_disk_nwbfile = file_initially_exists and not overwrite
 
         if metadata is None:
             metadata = self.get_metadata()
 
-        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        appending_to_disk_nwbfile = file_initially_exists and not overwrite
         self.validate_metadata(metadata=metadata, append_mode=appending_to_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)
-
         self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
         if not appending_to_disk_nwbfile:
@@ -271,7 +270,6 @@ class NWBConverter:
             )
 
         else:  # We are only using the context in append mode, see issue #1143
-
             backend = _resolve_backend(backend, backend_configuration)
 
             with make_or_load_nwbfile(

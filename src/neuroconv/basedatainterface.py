@@ -166,12 +166,11 @@ class BaseDataInterface(ABC):
         Parameters
         ----------
         nwbfile_path : FilePathType
-            Path where the data will be written or appended.
+            Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
         metadata : dict, optional
-            Metadata dictionary with information used to create the NWBFile
-            when one does not exist or overwrite=True.
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
@@ -181,24 +180,19 @@ class BaseDataInterface(ABC):
             If a `backend_configuration` is specified, then the type will be auto-detected.
         backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
             The configuration model to use when configuring the datasets for this backend.
-            To customize, call the `.get_default_backend_configuration(...)` method,
-            modify the returned BackendConfiguration object, and pass that instead.
+            To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
+            BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
         """
 
-        # Check if we're appending to an in-memory NWBFile
         appending_to_in_memory_nwbfile = nwbfile is not None
-
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        # Determine whether we're appending to a file on disk
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
         appending_to_disk_nwbfile = file_initially_exists and not overwrite
 
+        if metadata is None:
+            metadata = self.get_metadata()
         self.validate_metadata(metadata=metadata, append_mode=appending_to_disk_nwbfile)
 
-        # If we're NOT appending to an existing file on disk (i.e., new file or overwrite=True)
         if not appending_to_disk_nwbfile:
             if appending_to_in_memory_nwbfile:
                 self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
@@ -212,7 +206,7 @@ class BaseDataInterface(ABC):
                 backend_configuration=backend_configuration,
             )
 
-        else:  # We are only using the context in append mode, see #1143
+        else:  # We are only using the context in append mode, see issue #1143
             backend = _resolve_backend(backend, backend_configuration)
 
             with make_or_load_nwbfile(
