@@ -273,7 +273,7 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         read_nwbfile = io.read()
-        pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimation"]
+        pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
 
         assert len(pose_estimation_container.fields) > 0
 
