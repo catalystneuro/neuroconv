@@ -270,8 +270,14 @@ class NWBConverter:
             )
 
         else:  # We are only using the context in append mode, see issue #1143
-            backend = _resolve_backend(backend, backend_configuration)
 
+            if appending_to_disk_nwbfile:
+                raise ValueError(
+                    "Cannot append to an existing file while also providing an in-memory NWBFile. "
+                    "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+                )
+
+            backend = _resolve_backend(backend, backend_configuration)
             with make_or_load_nwbfile(
                 nwbfile_path=nwbfile_path,
                 nwbfile=nwbfile,
@@ -280,8 +286,7 @@ class NWBConverter:
                 backend=backend,
                 verbose=getattr(self, "verbose", False),
             ) as nwbfile_out:
-                if not appending_to_in_memory_nwbfile:
-                    self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
                 if backend_configuration is None:
                     backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
