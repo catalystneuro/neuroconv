@@ -392,9 +392,11 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
             expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
 
             expected_pose_estimation_series_are_in_nwb_file = [
