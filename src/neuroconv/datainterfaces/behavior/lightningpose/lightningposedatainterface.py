@@ -90,11 +90,11 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         from packaging import version as version_parse
 
         ndx_pose_version = version("ndx-pose")
-        if version_parse.parse(ndx_pose_version) < version_parse.parse("2.0.0"):
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.0"):
             raise ImportError(
-                "LightningPose interface requires ndx-pose version 2.0.0 or later. "
+                "LightningPose interface requires ndx-pose version 0.2.0 or later. "
                 f"Found version {ndx_pose_version}. Please upgrade: "
-                "pip install 'ndx-pose>=2.0.0'"
+                "pip install 'ndx-pose>=0.2.0'"
             )
 
         from neuroconv.datainterfaces.behavior.video.video_utils import (

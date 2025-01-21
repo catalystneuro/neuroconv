@@ -39,7 +39,7 @@ python_version = version.parse(python_version())
 ndx_pose_version = version.parse(importlib_version("ndx-pose"))
 
 
-@pytest.mark.skipif(ndx_pose_version < version.parse("2.0.0"), reason="Interface requires ndx-pose version >= 2.0.0")
+@pytest.mark.skipif(ndx_pose_version < version.parse("0.2.0"), reason="Interface requires ndx-pose version >= 0.2.0")
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -156,7 +156,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
 
 
-@pytest.mark.skipif(ndx_pose_version < version.parse("2.0.0"), reason="Interface requires ndx-pose version >= 2.0.0")
+@pytest.mark.skipif(ndx_pose_version < version.parse("0.2.0"), reason="Interface requires ndx-pose version >= 0.2.0")
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -179,8 +179,8 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("2.0.0"),
-    reason="Interface requires ndx-pose version >= 2.0.0 and not supported on macOS with Python < 3.10",
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
 )
 class TestDeepLabCutInterface(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -241,8 +241,8 @@ def clean_pose_extension_import():
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("2.0.0"),
-    reason="Interface requires ndx-pose version >= 2.0.0 and not supported on macOS with Python < 3.10",
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
 )
 def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
     """
@@ -277,8 +277,8 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("2.0.0"),
-    reason="Interface requires ndx-pose version >= 2.0.0 and not supported on macOS with Python < 3.10",
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
 )
 class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -314,8 +314,8 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("2.0.0"),
-    reason="Interface requires ndx-pose version >= 2.0.0 and not supported on macOS with Python < 3.10",
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
 )
 class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -368,8 +368,8 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("2.0.0"),
-    reason="Interface requires ndx-pose version >= 2.0.0 and not supported on macOS with Python < 3.10",
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
 )
 class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -405,7 +405,7 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    ndx_pose_version >= version.parse("2.0.0"), reason="SLEAPInterface requires ndx-pose version < 2.0.0"
+    ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
 )
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
@@ -444,7 +444,7 @@ class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 
 @pytest.mark.skipif(
-    ndx_pose_version >= version.parse("2.0.0"), reason="SLEAPInterface requires ndx-pose version < 2.0.0"
+    ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
 )
 class CustomTestSLEAPInterface(TestCase):
     savedir = OUTPUT_PATH
