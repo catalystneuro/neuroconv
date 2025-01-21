@@ -244,26 +244,24 @@ class NWBConverter:
                 " use Converter.add_to_nwbfile."
             )
 
-        backend = _resolve_backend(backend, backend_configuration)
-        no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
-
-        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        append_mode = file_initially_exists and not overwrite
+        appending_to_in_memory_nwbfile = nwbfile is not None
 
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata, append_mode=append_mode)
+        file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        appending_to_disk_nwbfile = file_initially_exists and not overwrite
+        self.validate_metadata(metadata=metadata, append_mode=appending_to_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)
 
         self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
-        if not append_mode:
+        if not appending_to_disk_nwbfile:
 
-            if no_nwbfile_provided:
-                nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
-            else:
+            if appending_to_in_memory_nwbfile:
                 self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+            else:
+                nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
 
             configure_and_write_nwbfile(
                 nwbfile=nwbfile,
@@ -272,7 +270,10 @@ class NWBConverter:
                 backend_configuration=backend_configuration,
             )
 
-        else:  # We are only using the context in append mode, see #1143
+        else:  # We are only using the context in append mode, see issue #1143
+
+            backend = _resolve_backend(backend, backend_configuration)
+
             with make_or_load_nwbfile(
                 nwbfile_path=nwbfile_path,
                 nwbfile=nwbfile,
@@ -281,7 +282,7 @@ class NWBConverter:
                 backend=backend,
                 verbose=getattr(self, "verbose", False),
             ) as nwbfile_out:
-                if no_nwbfile_provided:
+                if not appending_to_in_memory_nwbfile:
                     self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
                 if backend_configuration is None:
