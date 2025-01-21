@@ -59,7 +59,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
 
         ndx_pose_version = version("ndx-pose")
 
-        # TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143
+        # TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143 and released
         if version_parse.parse(ndx_pose_version) != version_parse.parse("0.1.1"):
             raise ImportError(
                 "SLEAP interface requires ndx-pose version 0.1.1. "

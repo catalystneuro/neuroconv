@@ -35,7 +35,7 @@ from sys import platform
 from packaging import version
 
 python_version = version.parse(python_version())
-# TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143
+# TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143 and released
 ndx_pose_version = version.parse(importlib_version("ndx-pose"))
 
 
