@@ -208,7 +208,7 @@ class BaseDataInterface(ABC):
 
         else:  # We are only using the context in append mode, see issue #1143
 
-            if appending_to_disk_nwbfile:
+            if appending_to_in_memory_nwbfile:
                 raise ValueError(
                     "Cannot append to an existing file while also providing an in-memory NWBFile. "
                     "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
