@@ -18,7 +18,7 @@ class ExcelTimeIntervalsInterface(TimeIntervalsInterface):
         self,
         file_path: FilePath,
         read_kwargs: Optional[dict] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters
@@ -26,7 +26,7 @@ class ExcelTimeIntervalsInterface(TimeIntervalsInterface):
         file_path : FilePath
         read_kwargs : dict, optional
             Passed to pandas.read_excel()
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(file_path=file_path, read_kwargs=read_kwargs, verbose=verbose)
 
