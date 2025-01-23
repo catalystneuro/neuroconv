@@ -189,6 +189,12 @@ class BaseDataInterface(ABC):
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
         appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
 
+        if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot append to an existing file while also providing an in-memory NWBFile. "
+                "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
         self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
@@ -207,12 +213,6 @@ class BaseDataInterface(ABC):
             )
 
         else:  # We are only using the context in append mode, see issue #1143
-
-            if appending_to_in_memory_nwbfile:
-                raise ValueError(
-                    "Cannot append to an existing file while also providing an in-memory NWBFile. "
-                    "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
-                )
 
             backend = _resolve_backend(backend, backend_configuration)
             with make_or_load_nwbfile(
