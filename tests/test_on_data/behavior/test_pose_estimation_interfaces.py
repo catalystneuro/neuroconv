@@ -112,6 +112,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             # Replacing assertIn with pytest-style assert
             assert "behavior" in nwbfile.processing
             assert self.pose_estimation_name in nwbfile.processing["behavior"].data_interfaces
+            assert "Skeletons" in nwbfile.processing["behavior"].data_interfaces
 
             pose_estimation_container = nwbfile.processing["behavior"].data_interfaces[self.pose_estimation_name]
 
@@ -132,6 +133,8 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
 
             # Replacing assertEqual with pytest-style assert
             assert len(pose_estimation_container.pose_estimation_series) == len(self.expected_keypoint_names)
+
+            assert pose_estimation_container.skeleton.nodes[:].tolist() == self.expected_keypoint_names
 
             for keypoint_name in self.expected_keypoint_names:
                 series_metadata = pose_estimation_metadata[keypoint_name]
