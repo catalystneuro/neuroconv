@@ -41,7 +41,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -57,7 +57,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The name of the recording stream.
         block_index : int, optional, default: None
             The index of the block to extract from the data.
-        verbose : bool, default: True
+        verbose : bool, default: Falseee
         es_key : str, default: "ElectricalSeries"
         """
         available_streams = self.get_stream_names(folder_path=folder_path)

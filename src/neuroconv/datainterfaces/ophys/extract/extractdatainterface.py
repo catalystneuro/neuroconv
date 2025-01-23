@@ -17,7 +17,7 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
         file_path: FilePath,
         sampling_frequency: float,
         output_struct_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
 

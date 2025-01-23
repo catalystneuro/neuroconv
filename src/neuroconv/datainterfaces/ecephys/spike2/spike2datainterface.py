@@ -41,7 +41,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         return cls.get_extractor().get_all_channels_info(file_path=file_path)
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Initialize reading of Spike2 file.
 
@@ -49,7 +49,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .smr or .smrx file.
-        verbose : bool, default: True
+        verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
         _test_sonpy_installation()

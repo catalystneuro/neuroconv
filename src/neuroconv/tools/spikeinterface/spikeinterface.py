@@ -1187,7 +1187,7 @@ def write_recording(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     starting_time: Optional[float] = None,
     write_as: Optional[str] = "raw",
     es_key: Optional[str] = None,
@@ -1228,7 +1228,7 @@ def write_recording_to_nwbfile(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     starting_time: Optional[float] = None,
     write_as: Optional[str] = "raw",
     es_key: Optional[str] = None,
@@ -1291,7 +1291,7 @@ def write_recording_to_nwbfile(
         properties in the RecordingExtractor object.
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-    verbose : bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
@@ -1784,7 +1784,7 @@ def write_sorting(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[list[str]] = None,
@@ -1831,7 +1831,7 @@ def write_sorting_to_nwbfile(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[list[str]] = None,
@@ -1866,7 +1866,7 @@ def write_sorting_to_nwbfile(
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
-    verbose : bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
@@ -2066,7 +2066,7 @@ def write_sorting_analyzer(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     recording: Optional[BaseRecording] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[Union[list[str], list[int]]] = None,
     write_electrical_series: bool = False,
     add_electrical_series_kwargs: Optional[dict] = None,
@@ -2111,7 +2111,7 @@ def write_sorting_analyzer_to_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     recording: Optional[BaseRecording] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[Union[list[str], list[int]]] = None,
     write_electrical_series: bool = False,
     add_electrical_series_kwargs: Optional[dict] = None,
@@ -2153,7 +2153,7 @@ def write_sorting_analyzer_to_nwbfile(
     recording : BaseRecording, optional
         If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
         Otherwise, electrodes info is not added to the nwb file.
-    verbose : bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
@@ -2218,7 +2218,7 @@ def write_waveforms(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     recording: Optional[BaseRecording] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,
     write_electrical_series: bool = False,
     add_electrical_series_kwargs: Optional[dict] = None,

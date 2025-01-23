@@ -357,7 +357,7 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         class TestAlignmentConverter(NWBConverter):
             data_interface_classes = dict(Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface)
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+            def __init__(self, source_data: Dict[str, dict], verbose: bool = False):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 unaligned_trial_start_timestamps = self.data_interface_objects["Trials"].get_timestamps(
@@ -505,7 +505,7 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
                 NIDQ=MockSpikeGLXNIDQInterface, Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface
             )
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+            def __init__(self, source_data: Dict[str, dict], verbose: bool = False):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 inferred_aligned_trial_start_time = self.data_interface_objects["NIDQ"].get_event_times_from_ttl(

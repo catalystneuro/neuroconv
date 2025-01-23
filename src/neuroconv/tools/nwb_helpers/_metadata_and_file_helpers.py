@@ -166,7 +166,7 @@ def make_or_load_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     backend: Literal["hdf5", "zarr"] = "hdf5",
-    verbose: bool = True,
+    verbose: bool = False,
 ):
     """
     Context for automatically handling decision of write vs. append for writing an NWBFile.
