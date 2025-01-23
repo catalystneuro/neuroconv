@@ -10,6 +10,8 @@ from pydantic import FilePath
 from pynwb import NWBFile
 from ruamel.yaml import YAML
 
+from ....tools import get_module
+
 
 def _read_config(config_file_path: FilePath) -> dict:
     """
@@ -290,21 +292,13 @@ def _write_pes_to_nwbfile(
         subject=subject,
     )
 
-    # Create Skeletons container
-    if "behavior" not in nwbfile.processing:
-        behavior_processing_module = nwbfile.create_processing_module(
-            name="behavior", description="processed behavioral data"
-        )
+    behavior_processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
+    if "Skeletons" not in behavior_processing_module.data_interfaces:
         skeletons = Skeletons(skeletons=[skeleton])
         behavior_processing_module.add(skeletons)
     else:
-        behavior_processing_module = nwbfile.processing["behavior"]
-        if "Skeletons" not in behavior_processing_module.data_interfaces:
-            skeletons = Skeletons(skeletons=[skeleton])
-            behavior_processing_module.add(skeletons)
-        else:
-            skeletons = behavior_processing_module["Skeletons"]
-            skeletons.add_skeletons(skeleton)
+        skeletons = behavior_processing_module["Skeletons"]
+        skeletons.add_skeletons(skeleton)
 
     pose_estimation_series = []
     for keypoint in keypoints:
