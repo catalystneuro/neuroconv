@@ -212,7 +212,7 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_run_conversion_with_backend(self):
         pass
 
-    def test_create_backend_configuration(self):
+    def test_run_conversion_with_backend_configuration(self):
         pass
 
     def test_interface_alignment(self):
