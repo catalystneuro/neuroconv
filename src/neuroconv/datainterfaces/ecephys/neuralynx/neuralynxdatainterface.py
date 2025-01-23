@@ -116,7 +116,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         sampling_frequency: Optional[float] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         stream_id: Optional[str] = None,
     ):
         """_summary_
@@ -127,7 +127,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
         sampling_frequency : float, optional
             If a specific sampling_frequency is desired it can be set with this argument.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Enables verbosity
         stream_id: str, optional
             Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique

@@ -62,11 +62,11 @@ class NWBConverter:
         return source_schema
 
     @classmethod
-    def validate_source(cls, source_data: dict[str, dict], verbose: bool = True):
+    def validate_source(cls, source_data: dict[str, dict], verbose: bool = False):
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = True):
+    def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = False):
 
         # We do this to ensure that python objects are in string format for the JSON schema
         encoder = _NWBSourceDataEncoder()
@@ -78,7 +78,7 @@ class NWBConverter:
             print("Source data is valid!")
 
     @validate_call
-    def __init__(self, source_data: dict[str, dict], verbose: bool = True):
+    def __init__(self, source_data: dict[str, dict], verbose: bool = False):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
         self.data_interface_objects = {
@@ -333,7 +333,7 @@ class ConverterPipe(NWBConverter):
     def validate_source(cls):
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
-    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=True):
+    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=False):
         self.verbose = verbose
         if isinstance(data_interfaces, list):
             # Create unique names for each interface
