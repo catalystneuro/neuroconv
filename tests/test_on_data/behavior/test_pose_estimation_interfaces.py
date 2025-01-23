@@ -1,5 +1,4 @@
 import sys
-import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -179,232 +178,6 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
-)
-class TestDeepLabCutInterface(DataInterfaceTestMixin):
-    data_interface_cls = DeepLabCutInterface
-    interface_kwargs = dict(
-        file_path=str(
-            BEHAVIOR_DATA_PATH
-            / "DLC"
-            / "open_field_without_video"
-            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
-        ),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
-        subject_name="ind1",
-    )
-    save_directory = OUTPUT_PATH
-
-    def run_custom_checks(self):
-        self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
-
-    def check_renaming_instance(self, nwbfile_path: str):
-        custom_container_name = "TestPoseEstimation"
-
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, container_name=custom_container_name
-        )
-
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-
-            pose_estimation_series_in_nwb = processing_module_interfaces[
-                "PoseEstimationDeepLabCut"
-            ].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
-
-            expected_pose_estimation_series_are_in_nwb_file = [
-                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-            ]
-
-            assert all(expected_pose_estimation_series_are_in_nwb_file)
-
-
-@pytest.fixture
-def clean_pose_extension_import():
-    modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
-    for module in modules_to_remove:
-        del sys.modules[module]
-
-
-@pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
-)
-def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
-    """
-    Test that the DeepLabCutInterface writes correctly without importing the ndx-pose extension.
-    See issues:
-    https://github.com/catalystneuro/neuroconv/issues/1114
-    https://github.com/rly/ndx-pose/issues/36
-
-    """
-
-    interface_kwargs = dict(
-        file_path=str(
-            BEHAVIOR_DATA_PATH
-            / "DLC"
-            / "open_field_without_video"
-            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
-        ),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
-    )
-
-    interface = DeepLabCutInterface(**interface_kwargs)
-    metadata = interface.get_metadata()
-    metadata["NWBFile"]["session_start_time"] = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=timezone.utc)
-
-    nwbfile_path = tmp_path / "test.nwb"
-    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        read_nwbfile = io.read()
-        pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
-
-        assert len(pose_estimation_container.fields) > 0
-
-
-@pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
-)
-class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
-    data_interface_cls = DeepLabCutInterface
-    interface_kwargs = dict(
-        file_path=str(
-            BEHAVIOR_DATA_PATH
-            / "DLC"
-            / "open_field_without_video"
-            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
-        ),
-        config_file_path=None,
-        subject_name="ind1",
-    )
-    save_directory = OUTPUT_PATH
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-
-            pose_estimation_series_in_nwb = processing_module_interfaces[
-                "PoseEstimationDeepLabCut"
-            ].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
-
-            expected_pose_estimation_series_are_in_nwb_file = [
-                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-            ]
-
-            assert all(expected_pose_estimation_series_are_in_nwb_file)
-
-
-@pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
-)
-class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
-    data_interface_cls = DeepLabCutInterface
-    interface_kwargs = dict(
-        file_path=str(
-            BEHAVIOR_DATA_PATH
-            / "DLC"
-            / "open_field_without_video"
-            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
-        ),
-        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
-        subject_name="ind1",
-    )
-
-    save_directory = OUTPUT_PATH
-
-    def run_custom_checks(self):
-        self.check_custom_timestamps(nwbfile_path=self.nwbfile_path)
-
-    def check_custom_timestamps(self, nwbfile_path: str):
-        custom_timestamps = np.concatenate(
-            (np.linspace(10, 110, 1000), np.linspace(150, 250, 1000), np.linspace(300, 400, 330))
-        )
-
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.set_aligned_timestamps(custom_timestamps)
-        assert len(self.interface._timestamps) == 2330
-
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-
-            pose_estimation_series_in_nwb = processing_module_interfaces[
-                "PoseEstimationDeepLabCut"
-            ].pose_estimation_series
-
-            for pose_estimation in pose_estimation_series_in_nwb.values():
-                pose_timestamps = pose_estimation.timestamps
-                np.testing.assert_array_equal(pose_timestamps, custom_timestamps)
-
-    # This was tested in the other test
-    def check_read_nwb(self, nwbfile_path: str):
-        pass
-
-
-@pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
-)
-class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
-    data_interface_cls = DeepLabCutInterface
-    interface_kwargs = dict(
-        file_path=str(
-            BEHAVIOR_DATA_PATH
-            / "DLC"
-            / "SL18_csv"
-            / "SL18_D19_S01_F01_BOX_SLP_20230503_112642.1DLC_resnet50_SubLearnSleepBoxRedLightJun26shuffle1_100000_stubbed.csv"
-        ),
-        config_file_path=None,
-        subject_name="SL18",
-    )
-    save_directory = OUTPUT_PATH
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-
-            pose_estimation_series_in_nwb = processing_module_interfaces[
-                "PoseEstimationDeepLabCut"
-            ].pose_estimation_series
-            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
-
-            expected_pose_estimation_series_are_in_nwb_file = [
-                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-            ]
-
-            assert all(expected_pose_estimation_series_are_in_nwb_file)
-
-
-@pytest.mark.skipif(
     ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
 )
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -561,5 +334,230 @@ class CustomTestSLEAPInterface(TestCase):
                     assert set(extracted_timestamps).issubset(expected_timestamps)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+)
+class TestDeepLabCutInterface(DataInterfaceTestMixin):
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+        subject_name="ind1",
+    )
+    save_directory = OUTPUT_PATH
+
+    def run_custom_checks(self):
+        self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
+
+    def check_renaming_instance(self, nwbfile_path: str):
+        custom_container_name = "TestPoseEstimation"
+
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, container_name=custom_container_name
+        )
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
+            assert "Skeletons" in processing_module_interfaces
+
+            pose_estimation_container = processing_module_interfaces["PoseEstimationDeepLabCut"]
+            pose_estimation_series_in_nwb = pose_estimation_container.pose_estimation_series
+            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+
+            expected_pose_estimation_series_are_in_nwb_file = [
+                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            ]
+
+            assert all(expected_pose_estimation_series_are_in_nwb_file)
+
+            skeleton = pose_estimation_container.skeleton
+            assert skeleton.nodes[:].tolist() == ["snout", "leftear", "rightear", "tailbase"]
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+)
+class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=None,
+        subject_name="ind1",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
+            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+
+            expected_pose_estimation_series_are_in_nwb_file = [
+                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            ]
+
+            assert all(expected_pose_estimation_series_are_in_nwb_file)
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+)
+class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+        subject_name="ind1",
+    )
+
+    save_directory = OUTPUT_PATH
+
+    def run_custom_checks(self):
+        self.check_custom_timestamps(nwbfile_path=self.nwbfile_path)
+
+    def check_custom_timestamps(self, nwbfile_path: str):
+        custom_timestamps = np.concatenate(
+            (np.linspace(10, 110, 1000), np.linspace(150, 250, 1000), np.linspace(300, 400, 330))
+        )
+
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        self.interface.set_aligned_timestamps(custom_timestamps)
+        assert len(self.interface._timestamps) == 2330
+
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
+
+            for pose_estimation in pose_estimation_series_in_nwb.values():
+                pose_timestamps = pose_estimation.timestamps
+                np.testing.assert_array_equal(pose_timestamps, custom_timestamps)
+
+    # This was tested in the other test
+    def check_read_nwb(self, nwbfile_path: str):
+        pass
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+)
+class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "SL18_csv"
+            / "SL18_D19_S01_F01_BOX_SLP_20230503_112642.1DLC_resnet50_SubLearnSleepBoxRedLightJun26shuffle1_100000_stubbed.csv"
+        ),
+        config_file_path=None,
+        subject_name="SL18",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimationDeepLabCut" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces[
+                "PoseEstimationDeepLabCut"
+            ].pose_estimation_series
+            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
+
+            expected_pose_estimation_series_are_in_nwb_file = [
+                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            ]
+
+            assert all(expected_pose_estimation_series_are_in_nwb_file)
+
+
+@pytest.fixture
+def clean_pose_extension_import():
+    modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
+    for module in modules_to_remove:
+        del sys.modules[module]
+
+
+@pytest.mark.skipif(
+    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+)
+def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
+    """
+    Test that the DeepLabCutInterface writes correctly without importing the ndx-pose extension.
+    See issues:
+    https://github.com/catalystneuro/neuroconv/issues/1114
+    https://github.com/rly/ndx-pose/issues/36
+
+    """
+
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+    )
+
+    interface = DeepLabCutInterface(**interface_kwargs)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"]["session_start_time"] = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=timezone.utc)
+
+    nwbfile_path = tmp_path / "test.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        read_nwbfile = io.read()
+        pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
+
+        assert len(pose_estimation_container.fields) > 0
