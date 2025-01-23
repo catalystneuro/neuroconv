@@ -187,13 +187,13 @@ class BaseDataInterface(ABC):
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        appending_to_disk_nwbfile = file_initially_exists and not overwrite
+        appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
 
         if metadata is None:
             metadata = self.get_metadata()
-        self.validate_metadata(metadata=metadata, append_mode=appending_to_disk_nwbfile)
+        self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
 
-        if not appending_to_disk_nwbfile:
+        if not appending_to_in_disk_nwbfile:
             if appending_to_in_memory_nwbfile:
                 self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
             else:
