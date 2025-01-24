@@ -20,7 +20,8 @@ Convert Neuralynx data to NWB using
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.5.1/original_data"
     >>> # Change the folder_path to the location of the data in your system
-    >>> interface = NeuralynxSortingInterface(folder_path=folder_path, verbose=False)
+    >>> # The stream is optional but is used to specify the sampling frequency of the data
+    >>> interface = NeuralynxSortingInterface(folder_path=folder_path, verbose=False, stream_id="0")
     >>>
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific")).isoformat()

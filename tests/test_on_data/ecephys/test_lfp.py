@@ -99,7 +99,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
 
             npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
             # This can only be tested if both gain and offset are present
-            if recording.has_scaled_traces():
+            if recording.has_scaleable_traces():
                 channel_conversion = nwb_lfp_electrical_series.channel_conversion
                 nwb_lfp_conversion_vector = (
                     channel_conversion[:]

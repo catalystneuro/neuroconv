@@ -245,11 +245,19 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
         An array containing the group names. If the `group_name` property is not
         available, the channel groups will be returned. If the group names are
         empty, a default value 'ElectrodeGroup' will be used.
+
+    Raises
+    ------
+    ValueError
+        If the number of unique group names doesn't match the number of unique groups,
+        or if the mapping between group names and group numbers is inconsistent.
     """
     default_value = "ElectrodeGroup"
     group_names = recording.get_property("group_name")
+    groups = recording.get_channel_groups()
+
     if group_names is None:
-        group_names = recording.get_channel_groups()
+        group_names = groups
     if group_names is None:
         group_names = np.full(recording.get_num_channels(), fill_value=default_value)
 
@@ -258,6 +266,23 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
 
     # If for any reason the group names are empty, fill them with the default
     group_names[group_names == ""] = default_value
+
+    # Validate group names against groups
+    if groups is not None:
+        unique_groups = set(groups)
+        unique_names = set(group_names)
+
+        if len(unique_names) != len(unique_groups):
+            raise ValueError("The number of group names must match the number of groups")
+
+        # Check consistency of group name to group number mapping
+        group_to_name_map = {}
+        for group, name in zip(groups, group_names):
+            if group in group_to_name_map:
+                if group_to_name_map[group] != name:
+                    raise ValueError("Inconsistent mapping between group numbers and group names")
+            else:
+                group_to_name_map[group] = name
 
     return group_names
 
@@ -862,6 +887,16 @@ def add_electrical_series_to_nwbfile(
     whenever possible.
     """
 
+    if starting_time is not None:
+        warnings.warn(
+            "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
+            "Use the time alignment methods or set the recording times directlyfor modifying the starting time or timestamps "
+            "of the data if needed: "
+            "https://neuroconv.readthedocs.io/en/main/user_guide/temporal_alignment.html",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     assert write_as in [
         "raw",
         "processed",
@@ -1152,7 +1187,7 @@ def write_recording(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     starting_time: Optional[float] = None,
     write_as: Optional[str] = "raw",
     es_key: Optional[str] = None,
@@ -1193,7 +1228,7 @@ def write_recording_to_nwbfile(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     starting_time: Optional[float] = None,
     write_as: Optional[str] = "raw",
     es_key: Optional[str] = None,
@@ -1256,7 +1291,7 @@ def write_recording_to_nwbfile(
         properties in the RecordingExtractor object.
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-    verbose : bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
@@ -1749,7 +1784,7 @@ def write_sorting(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[list[str]] = None,
@@ -1796,7 +1831,7 @@ def write_sorting_to_nwbfile(
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[list[str]] = None,
@@ -1831,7 +1866,7 @@ def write_sorting_to_nwbfile(
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
-    verbose : bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
@@ -2031,7 +2066,7 @@ def write_sorting_analyzer(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     recording: Optional[BaseRecording] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[Union[list[str], list[int]]] = None,
     write_electrical_series: bool = False,
     add_electrical_series_kwargs: Optional[dict] = None,
@@ -2076,7 +2111,7 @@ def write_sorting_analyzer_to_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     recording: Optional[BaseRecording] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[Union[list[str], list[int]]] = None,
     write_electrical_series: bool = False,
     add_electrical_series_kwargs: Optional[dict] = None,
@@ -2118,7 +2153,7 @@ def write_sorting_analyzer_to_nwbfile(
     recording : BaseRecording, optional
         If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
         Otherwise, electrodes info is not added to the nwb file.
-    verbose : bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
@@ -2183,7 +2218,7 @@ def write_waveforms(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     recording: Optional[BaseRecording] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,
     write_electrical_series: bool = False,
     add_electrical_series_kwargs: Optional[dict] = None,

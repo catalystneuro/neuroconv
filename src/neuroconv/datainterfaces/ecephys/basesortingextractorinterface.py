@@ -18,7 +18,8 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "spikeinterface.extractors"
 
-    def __init__(self, verbose=True, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
+
         super().__init__(**source_data)
         self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.6.6"
+version = "0.7.0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -39,7 +39,7 @@ dependencies = [
     "PyYAML>=5.4",
     "scipy>=1.4.1",
     "h5py>=3.9.0",
-    "hdmf>=3.13.0",
+    "hdmf>=3.13.0,<=3.14.5",  # Chunking bug
     "hdmf_zarr>=0.7.0",
     "pynwb>=2.7.0",
     "pydantic>=2.0.0",
@@ -68,7 +68,7 @@ neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_spec
 test = [
     "pytest",
     "pytest-cov",
-    "ndx-events>=0.2.0",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
+    "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
     "ndx-miniscope",
     "spikeinterface[qualitymetrics]>=0.101.0",
@@ -118,7 +118,7 @@ sleap = [
     "sleap-io>=0.0.2; python_version>='3.9'",
 ]
 deeplabcut = [
-    "ndx-pose==0.1.1",
+    "ndx-pose>=0.2",
     "tables; platform_system != 'Darwin'",
     "tables>=3.10.1; platform_system == 'Darwin' and python_version >= '3.10'",
 ]
@@ -128,11 +128,11 @@ video = [
     "opencv-python-headless>=4.8.1.78",
 ]
 lightningpose = [
-    "ndx-pose==0.1.1",
+    "ndx-pose>=0.2",
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.0",
+    "ndx-events==0.2.1",
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -160,7 +160,7 @@ biocam = [
     "spikeinterface>=0.101.0",
 ]
 blackrock = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 cellexplorer = [
@@ -168,6 +168,7 @@ cellexplorer = [
     "neo>=0.13.3",
     "pymatreader>=0.0.32",
     "spikeinterface>=0.101.0",
+    "setuptools; python_version >= '3.12'"
 ]
 edf = [
     "neo>=0.13.3",
@@ -175,7 +176,7 @@ edf = [
     "spikeinterface>=0.101.0",
 ]
 intan = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 kilosort = [
@@ -195,6 +196,7 @@ mearec = [
     "MEArec>=1.8.0",
     "neo>=0.13.3",
     "spikeinterface>=0.101.0",
+    "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
@@ -208,7 +210,7 @@ neuroscope = [
 ]
 openephys = [
     "lxml>=4.9.4",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 phy = [
@@ -230,7 +232,7 @@ spikegadgets = [
     "spikeinterface>=0.101.0",
 ]
 spikeglx = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.101.0",
 ]
 tdt = [

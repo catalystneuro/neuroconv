@@ -35,8 +35,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        verbose: bool = True,
-        load_sync_channel: bool = False,
+        verbose: bool = False,
+        load_sync_channel: Optional[bool] = None,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: Optional[DirectoryPath] = None,
     ):
@@ -51,16 +51,25 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         file_path : FilePathType
             Path to .nidq.bin file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
 
-        if load_sync_channel:
+        if load_sync_channel is not None:
 
             warnings.warn(
                 "The 'load_sync_channel' parameter is deprecated and will be removed in June 2025. "
                 "The sync channel data is only available the raw files of spikeglx`.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if file_path is not None:
+            warnings.warn(
+                "file_path is deprecated and will be removed by the end of 2025. "
+                "The first argument of this interface will be `folder_path` afterwards. "
+                "Use folder_path and stream_id instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
