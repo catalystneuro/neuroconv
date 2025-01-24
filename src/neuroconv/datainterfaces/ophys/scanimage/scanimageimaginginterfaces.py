@@ -457,7 +457,15 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -585,7 +593,15 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -715,7 +731,15 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(

@@ -20,7 +20,7 @@ def get_eeg_sampling_frequency(file_path: FilePath) -> float:
     Returns
     -------
     float
-        Sampling frequency
+        The sampling frequency in Hz extracted from the file header's sample_rate field.
     """
     Fs_entry = parse_generic_header(file_path, ["sample_rate"])
     Fs = float(Fs_entry.get("sample_rate").split(" ")[0])
@@ -76,8 +76,9 @@ def get_all_file_paths(file_path: FilePath) -> list:
 
     Returns
     -------
-    path_list : list
-        List of file_paths
+    list
+        List of file paths for all .eeg or .egf files found in the same directory
+        as the input file path.
     """
 
     suffix = Path(file_path).suffix[0:4]
@@ -183,8 +184,9 @@ def get_header_bstring(file: FilePath) -> bytes:
 
     Returns
     -------
-    str
-        header byte content
+    bytes
+        The header content as bytes, including everything from the start of the file
+        up to and including the 'data_start' marker.
     """
     header = b""
     with open(file, "rb") as f:
