@@ -64,6 +64,7 @@ class TestLightningPoseConverter(TestCase):
             description="Contains the pose estimation series for each keypoint.",
             scorer="heatmap_tracker",
             source_software="LightningPose",
+            camera_name="CameraPoseEstimation",
         )
 
         cls.pose_estimation_metadata.update(
