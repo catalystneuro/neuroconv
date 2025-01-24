@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
-from pynwb.base import DynamicTable
+from pynwb.base import DynamicTable, TimeSeries
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
@@ -42,6 +42,124 @@ class MockInterface(BaseDataInterface):
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options):
 
         return None
+
+
+class MockTimeSeriesInterface(BaseDataInterface):
+    """A mock interface for testing TimeSeries functionality."""
+
+    def __init__(
+        self,
+        data=None,
+        unit: str = "volts",
+        resolution: float = -1.0,
+        conversion: float = 1.0,
+        timestamps=None,
+        starting_time: Optional[float] = None,
+        rate: Optional[float] = None,
+        comments: str = "no comments",
+        description: str = "no description",
+        control=None,
+        control_description=None,
+        continuity=None,
+        nwbfile: Optional[NWBFile] = None,
+        offset: float = 0.0,
+        verbose: bool = False,
+    ):
+        """
+        Initialize the mock time series interface.
+
+        Parameters
+        ----------
+        data : np.ndarray, optional
+            The time series data array
+        unit : str, optional
+            The base unit of measurement, by default "volts"
+        resolution : float, optional
+            The smallest meaningful difference between values, by default -1.0
+        conversion : float, optional
+            Scalar to multiply each element by to convert to base unit, by default 1.0
+        timestamps : np.ndarray, optional
+            Timestamps for each sample in seconds
+        starting_time : float, optional
+            The starting time in seconds
+        rate : float, optional
+            Sampling rate in Hz
+        comments : str, optional
+            Human-readable comments about the TimeSeries, by default "no comments"
+        description : str, optional
+            Description of the time series data, by default "no description"
+        control : np.ndarray, optional
+            Control values for the time series
+        control_description : str, optional
+            Description of the control values
+        continuity : str, optional
+            Describes the continuity of the data
+        nwbfile : NWBFile, optional
+            The NWB file to add the time series to
+        offset : float, optional
+            Offset to add to timestamps, by default 0.0
+        verbose : bool, optional
+            Controls verbosity, by default False
+        """
+        super().__init__(verbose=verbose)
+        self.data = data if data is not None else np.random.rand(1000)
+        self.unit = unit
+        self.resolution = resolution
+        self.conversion = conversion
+        self.timestamps = timestamps
+        self.starting_time = starting_time
+        self.rate = rate
+        self.comments = comments
+        self.description = description
+        self.control = control
+        self.control_description = control_description
+        self.continuity = continuity
+        self.nwbfile = nwbfile
+        self.offset = offset
+
+    def get_metadata(self) -> dict:
+        """
+        Get metadata for the time series.
+
+        Returns
+        -------
+        dict
+            Metadata dictionary including session start time
+        """
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict] = None, **conversion_options):
+        """
+        Add the mock time series to the NWB file.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to add the time series to
+        metadata : dict, optional
+            Metadata dictionary
+        conversion_options : dict
+            Additional options for conversion
+        """
+        time_series = TimeSeries(
+            name="MockTimeSeries",
+            data=self.data,
+            unit=self.unit,
+            resolution=self.resolution,
+            conversion=self.conversion,
+            timestamps=self.timestamps,
+            starting_time=self.starting_time,
+            rate=self.rate,
+            comments=self.comments,
+            description=self.description,
+            control=self.control,
+            control_description=self.control_description,
+            continuity=self.continuity,
+        )
+        nwbfile.add_acquisition(time_series)
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
