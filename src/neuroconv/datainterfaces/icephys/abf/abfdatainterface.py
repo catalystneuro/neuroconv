@@ -89,15 +89,6 @@ class AbfInterface(BaseIcephysInterface):
         )
 
     def get_metadata(self) -> dict:
-        """
-        Get metadata for the ABF recording.
-        
-        Returns
-        -------
-        dict
-            Dictionary containing metadata including session start time, device information,
-            and recording session details.
-        """
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
         metadata = super().get_metadata()
