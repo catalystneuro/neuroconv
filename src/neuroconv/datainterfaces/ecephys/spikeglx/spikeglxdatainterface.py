@@ -31,6 +31,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the SpikeGLX recording interface.
+        
+        Returns
+        -------
+        dict
+            The JSON schema for the SpikeGLX recording data source.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
@@ -117,6 +125,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the SpikeGLX recording.
+        
+        Returns
+        -------
+        dict
+            The metadata dictionary containing recording metadata from the SpikeGLX files.
+        """
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
@@ -164,6 +180,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original timestamps for the SpikeGLX recording.
+        
+        Returns
+        -------
+        numpy.ndarray or list of numpy.ndarray
+            The timestamps for each sample in the recording. If there are multiple segments,
+            returns a list of timestamps arrays, one for each segment.
+        """
         new_recording = self.get_extractor()(
             folder_path=self.folder_path,
             stream_id=self.stream_id,

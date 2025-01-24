@@ -129,7 +129,15 @@ def get_package(
 
 
 def get_format_summaries() -> dict[str, dict[str, Union[str, tuple[str, ...], None]]]:
-    """Simple helper function for compiling high level summaries of all format interfaces and converters."""
+    """
+    Simple helper function for compiling high level summaries of all format interfaces and converters.
+    
+    Returns
+    -------
+    dict
+        A dictionary mapping interface/converter names to their summary information.
+        Each summary contains display_name, keywords, associated_suffixes, and info.
+    """
     # Local scope import to avoid circularity
     from ..converters import converter_list
     from ..datainterfaces import interface_list

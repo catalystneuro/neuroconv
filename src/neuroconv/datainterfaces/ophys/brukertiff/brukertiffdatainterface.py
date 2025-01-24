@@ -16,7 +16,14 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Bruker TIFF imaging data."""
+        """
+        Get the source schema for the Bruker TIFF imaging data.
+        
+        Returns
+        -------
+        dict
+            The JSON schema for the Bruker TIFF imaging data source.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -135,7 +142,14 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
-        """get metadata for the Bruker TIFF imaging data."""
+        """
+        Get metadata for the Bruker TIFF imaging data.
+        
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing imaging metadata from the Bruker TIFF files.
+        """
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
@@ -202,7 +216,14 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Bruker TIFF imaging data."""
+        """
+        Get the source schema for the Bruker TIFF imaging data.
+        
+        Returns
+        -------
+        dict
+            The JSON schema for the Bruker TIFF imaging data source.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -296,7 +317,14 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
-        """get metadata for the Bruker TIFF imaging data."""
+        """
+        Get metadata for the Bruker TIFF imaging data.
+        
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing imaging metadata from the Bruker TIFF files.
+        """
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
