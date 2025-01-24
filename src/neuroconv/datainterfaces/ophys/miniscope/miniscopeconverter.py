@@ -61,7 +61,14 @@ class MiniscopeConverter(NWBConverter):
         )
 
     def get_conversion_options_schema(self) -> dict:
-        """get the conversion options schema."""
+        """
+        Get the schema for the conversion options.
+        
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Miniscope interface.
+        """
         return self.data_interface_objects["MiniscopeImaging"].get_conversion_options_schema()
 
     def add_to_nwbfile(

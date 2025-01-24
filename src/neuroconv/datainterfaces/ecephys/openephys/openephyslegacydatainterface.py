@@ -20,6 +20,19 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys legacy folder.
+        
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys legacy files.
+        
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+        """
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)

@@ -109,7 +109,20 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
-        """Auto-populates ecephys metadata from the xml_file_path."""
+        """
+        Auto-populates ecephys metadata from the xml_file_path.
+        
+        Parameters
+        ----------
+        xml_file_path : str
+            Path to the XML file containing device and electrode configuration.
+        
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for ElectrodeGroup and Electrodes.
+            Includes group names, descriptions, and electrode properties.
+        """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
@@ -163,6 +176,14 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the NeuroScope recording.
+        
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including Ecephys information and session start time.
+        """
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -174,6 +195,15 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original timestamps for the recording.
+        
+        Returns
+        -------
+        numpy.ndarray or list of numpy.ndarray
+            The timestamps for each sample in the recording. If there are multiple segments,
+            returns a list of timestamp arrays, one for each segment.
+        """
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
         new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
         if self._number_of_segments == 1:

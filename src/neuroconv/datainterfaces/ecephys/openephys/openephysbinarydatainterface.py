@@ -21,6 +21,19 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys binary folder.
+        
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys binary files.
+        
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+        """
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
