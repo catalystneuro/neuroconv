@@ -11,12 +11,12 @@ def get_xml_file_path(data_file_path: str) -> str:
     Infer the xml_file_path from the data_file_path (.dat or .eeg).
 
     Assumes the two are in the same folder and follow the session_id naming convention.
-    
+
     Parameters
     ----------
     data_file_path : str
         Path to the data file (.dat or .eeg)
-    
+
     Returns
     -------
     str
@@ -29,12 +29,12 @@ def get_xml_file_path(data_file_path: str) -> str:
 def get_xml(xml_file_path: str):
     """
     Auxiliary function for retrieving root of xml.
-    
+
     Parameters
     ----------
     xml_file_path : str
         Path to the XML file.
-    
+
     Returns
     -------
     lxml.etree._Element
@@ -131,7 +131,7 @@ def get_channel_groups(xml_file_path: str) -> list:
 def get_session_start_time(xml_file_path: str) -> datetime:
     """
     Auxiliary function for retrieving the session start time from the xml file.
-    
+
     Parameters
     ----------
     xml_file_path : str

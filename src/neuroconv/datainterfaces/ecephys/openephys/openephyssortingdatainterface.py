@@ -15,7 +15,7 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Compile input schema for the SortingExtractor.
-        
+
         Returns
         -------
         dict

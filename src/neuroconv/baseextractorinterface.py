@@ -22,7 +22,7 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     def get_extractor(cls):
         """
         Get the extractor class for this interface.
-        
+
         Returns
         -------
         type

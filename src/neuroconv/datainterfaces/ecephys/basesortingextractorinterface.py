@@ -28,7 +28,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
     def get_metadata_schema(self) -> dict:
         """
         Compile metadata schema for the RecordingExtractor.
-        
+
         Returns
         -------
         dict
@@ -95,13 +95,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
     def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
         Get the timestamps for the sorting data.
-        
+
         Returns
         -------
         numpy.ndarray or list of numpy.ndarray
             The timestamps for each spike in the sorting data. If there are multiple segments,
             returns a list of timestamp arrays.
-            
+
         Raises
         ------
         NotImplementedError

@@ -29,17 +29,17 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         """
         Get the names of available recording streams in the OpenEphys folder.
-        
+
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to OpenEphys directory (.continuous or .dat files).
-        
+
         Returns
         -------
         list of str
             The names of the available recording streams.
-            
+
         Raises
         ------
         AssertionError

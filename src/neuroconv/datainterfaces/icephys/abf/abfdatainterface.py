@@ -12,12 +12,12 @@ from ..baseicephysinterface import BaseIcephysInterface
 def get_start_datetime(neo_reader):
     """
     Get start datetime for Abf file.
-    
+
     Parameters
     ----------
     neo_reader : neo.io.AxonIO
         The Neo reader object for the ABF file.
-    
+
     Returns
     -------
     datetime

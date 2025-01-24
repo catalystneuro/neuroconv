@@ -25,7 +25,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
     def get_source_schema(cls) -> dict:
         """
         Get the schema for the source arguments.
-        
+
         Returns
         -------
         dict
@@ -40,12 +40,12 @@ class SpikeGLXConverterPipe(ConverterPipe):
     def get_streams(cls, folder_path: DirectoryPath) -> list[str]:
         """
         Get the stream IDs available in the folder.
-        
+
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to the folder containing SpikeGLX streams.
-        
+
         Returns
         -------
         list of str
@@ -101,7 +101,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
     def get_conversion_options_schema(self) -> dict:
         """
         Get the schema for the conversion options.
-        
+
         Returns
         -------
         dict

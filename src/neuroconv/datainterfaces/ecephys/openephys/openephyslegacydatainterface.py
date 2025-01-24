@@ -22,12 +22,12 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         """
         Get the names of available recording streams in the OpenEphys legacy folder.
-        
+
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to directory containing OpenEphys legacy files.
-        
+
         Returns
         -------
         list of str

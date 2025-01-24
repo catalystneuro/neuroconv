@@ -138,7 +138,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def get_channel_names(self) -> list[str]:
         """
         Get a list of channel names from the recording extractor.
-        
+
         Returns
         -------
         list of str

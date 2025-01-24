@@ -57,7 +57,7 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
 def get_number_of_electrodes(neo_reader) -> int:
     """
     Get number of electrodes from Neo reader.
-    
+
     Returns
     -------
     int
@@ -70,14 +70,14 @@ def get_number_of_electrodes(neo_reader) -> int:
 def get_number_of_segments(neo_reader, block: int = 0) -> int:
     """
     Get number of segments from Neo reader.
-    
+
     Parameters
     ----------
     neo_reader : neo.io.baseio
         The Neo reader object.
     block : int, default: 0
         Block index.
-    
+
     Returns
     -------
     int
@@ -106,7 +106,7 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
         - list: The command trace data
         - str: The title of the command trace
         - str: The units of the command trace
-        
+
     Notes
     -----
     This function only works for AxonIO interface.

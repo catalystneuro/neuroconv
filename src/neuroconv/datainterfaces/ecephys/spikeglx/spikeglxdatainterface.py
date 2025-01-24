@@ -33,7 +33,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the SpikeGLX recording interface.
-        
+
         Returns
         -------
         dict
@@ -127,7 +127,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> dict:
         """
         Get metadata for the SpikeGLX recording.
-        
+
         Returns
         -------
         dict
@@ -182,7 +182,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_original_timestamps(self) -> np.ndarray:
         """
         Get the original timestamps for the SpikeGLX recording.
-        
+
         Returns
         -------
         numpy.ndarray or list of numpy.ndarray

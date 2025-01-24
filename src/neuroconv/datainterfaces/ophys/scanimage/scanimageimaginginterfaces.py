@@ -30,7 +30,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the ScanImage imaging interface.
-        
+
         Returns
         -------
         dict
@@ -150,7 +150,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self) -> dict:
         """
         Get metadata for the ScanImage imaging data.
-        
+
         Returns
         -------
         dict
@@ -194,7 +194,7 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the ScanImage multi-file imaging interface.
-        
+
         Returns
         -------
         dict
@@ -333,7 +333,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self) -> dict:
         """
         Get metadata for the ScanImage imaging data.
-        
+
         Returns
         -------
         dict
@@ -788,7 +788,7 @@ def get_scanimage_major_version(scanimage_metadata: dict) -> str:
     -------
     str
         The version of ScanImage that produced the TIFF file.
-        
+
     Raises
     ------
     ValueError

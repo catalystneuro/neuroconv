@@ -52,7 +52,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the Suite2p segmentation interface.
-        
+
         Returns
         -------
         dict
@@ -73,12 +73,12 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_available_planes(cls, folder_path: DirectoryPath) -> dict:
         """
         Get the available planes in the Suite2p segmentation folder.
-        
+
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to the folder containing Suite2p segmentation data.
-        
+
         Returns
         -------
         dict
@@ -92,12 +92,12 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_available_channels(cls, folder_path: DirectoryPath) -> dict:
         """
         Get the available channels in the Suite2p segmentation folder.
-        
+
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to the folder containing Suite2p segmentation data.
-        
+
         Returns
         -------
         dict
@@ -150,7 +150,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Suite2p segmentation data.
-        
+
         Returns
         -------
         DeepDict

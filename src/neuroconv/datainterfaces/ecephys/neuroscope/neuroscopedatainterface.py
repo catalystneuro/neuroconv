@@ -111,12 +111,12 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def get_ecephys_metadata(xml_file_path: str) -> dict:
         """
         Auto-populates ecephys metadata from the xml_file_path.
-        
+
         Parameters
         ----------
         xml_file_path : str
             Path to the XML file containing device and electrode configuration.
-        
+
         Returns
         -------
         dict
@@ -178,7 +178,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> dict:
         """
         Get metadata for the NeuroScope recording.
-        
+
         Returns
         -------
         dict
@@ -197,7 +197,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def get_original_timestamps(self) -> np.ndarray:
         """
         Get the original timestamps for the recording.
-        
+
         Returns
         -------
         numpy.ndarray or list of numpy.ndarray

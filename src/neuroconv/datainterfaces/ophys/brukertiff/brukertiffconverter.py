@@ -33,7 +33,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
     def get_conversion_options_schema(self) -> dict:
         """
         Get the schema for the conversion options.
-        
+
         Returns
         -------
         dict
@@ -183,7 +183,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
     def get_conversion_options_schema(self) -> dict:
         """
         Get the schema for the conversion options.
-        
+
         Returns
         -------
         dict

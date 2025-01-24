@@ -86,7 +86,7 @@ class VideoCaptureContext:
     def get_video_fps(self):
         """
         Return the internal frames per second (fps) for a video file.
-        
+
         Returns
         -------
         float
@@ -99,7 +99,7 @@ class VideoCaptureContext:
     def get_frame_shape(self) -> Tuple:
         """
         Return the shape of frames from a video file.
-        
+
         Returns
         -------
         Tuple
@@ -126,7 +126,7 @@ class VideoCaptureContext:
     def get_video_frame_count(self):
         """
         Get the total number of frames in the video.
-        
+
         Returns
         -------
         int
@@ -144,12 +144,12 @@ class VideoCaptureContext:
     def get_cv_attribute(attribute_name: str):
         """
         Get an OpenCV attribute by name.
-        
+
         Parameters
         ----------
         attribute_name : str
             The name of the OpenCV attribute to get.
-            
+
         Returns
         -------
         Any
@@ -178,12 +178,12 @@ class VideoCaptureContext:
     def get_video_frame(self, frame_number: int):
         """
         Return the specific frame from a video as an RGB colorspace.
-        
+
         Parameters
         ----------
         frame_number : int
             The index of the frame to retrieve.
-            
+
         Returns
         -------
         numpy.ndarray
@@ -200,7 +200,7 @@ class VideoCaptureContext:
     def get_video_frame_dtype(self):
         """
         Return the dtype for frame in a video file.
-        
+
         Returns
         -------
         numpy.dtype

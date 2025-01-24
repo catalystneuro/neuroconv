@@ -74,7 +74,7 @@ class BaseDataInterface(ABC):
     def get_metadata_schema(self) -> dict:
         """
         Retrieve JSON schema for metadata.
-        
+
         Returns
         -------
         dict
@@ -86,7 +86,7 @@ class BaseDataInterface(ABC):
     def get_metadata(self) -> DeepDict:
         """
         Child DataInterface classes should override this to match their metadata.
-        
+
         Returns
         -------
         DeepDict
@@ -121,7 +121,7 @@ class BaseDataInterface(ABC):
     def get_conversion_options_schema(self) -> dict:
         """
         Infer the JSON schema for the conversion options from the method signature (annotation typing).
-        
+
         Returns
         -------
         dict

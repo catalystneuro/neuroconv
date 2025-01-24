@@ -139,7 +139,7 @@ def get_package(
 def get_format_summaries() -> dict[str, dict[str, Union[str, tuple[str, ...], None]]]:
     """
     Simple helper function for compiling high level summaries of all format interfaces and converters.
-    
+
     Returns
     -------
     dict

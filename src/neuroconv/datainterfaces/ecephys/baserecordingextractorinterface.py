@@ -50,7 +50,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def get_metadata_schema(self) -> dict:
         """
         Compile metadata schema for the RecordingExtractor.
-        
+
         Returns
         -------
         dict
@@ -96,7 +96,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the recording extractor.
-        
+
         Returns
         -------
         DeepDict
@@ -264,7 +264,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def has_probe(self) -> bool:
         """
         Check if the recording extractor has probe information.
-        
+
         Returns
         -------
         bool
@@ -287,12 +287,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def subset_recording(self, stub_test: bool = False):
         """
         Subset a recording extractor according to stub and channel subset options.
-        
+
         Parameters
         ----------
         stub_test : bool, default: False
             If True, only a subset of frames will be included.
-        
+
         Returns
         -------
         spikeinterface.core.BaseRecording

@@ -44,7 +44,7 @@ class TimeIntervalsInterface(BaseDataInterface):
     def get_metadata(self) -> dict:
         """
         Get metadata for the time intervals.
-        
+
         Returns
         -------
         dict

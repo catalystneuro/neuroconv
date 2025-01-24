@@ -24,7 +24,7 @@ BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """
     Check if processing module exists. If not, create it. Then return module.
-    
+
     Parameters
     ----------
     nwbfile : NWBFile
@@ -33,7 +33,7 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         The name of the processing module.
     description : str, optional
         Description of the module. Only used if creating a new module.
-    
+
     Returns
     -------
     ProcessingModule
@@ -86,13 +86,13 @@ def get_default_nwbfile_metadata() -> DeepDict:
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """
     Make NWBFile from available metadata.
-    
+
     Parameters
     ----------
     metadata : dict
         Dictionary containing metadata for creating the NWBFile.
         Must contain an 'NWBFile' key with required fields.
-    
+
     Returns
     -------
     NWBFile

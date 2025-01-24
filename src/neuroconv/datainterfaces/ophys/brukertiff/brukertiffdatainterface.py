@@ -18,7 +18,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the Bruker TIFF imaging data.
-        
+
         Returns
         -------
         dict
@@ -144,7 +144,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Bruker TIFF imaging data.
-        
+
         Returns
         -------
         DeepDict
@@ -218,7 +218,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the Bruker TIFF imaging data.
-        
+
         Returns
         -------
         dict
@@ -319,7 +319,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Bruker TIFF imaging data.
-        
+
         Returns
         -------
         DeepDict

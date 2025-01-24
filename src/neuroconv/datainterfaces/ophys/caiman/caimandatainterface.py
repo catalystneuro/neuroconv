@@ -14,7 +14,7 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the Caiman segmentation interface.
-        
+
         Returns
         -------
         dict

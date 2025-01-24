@@ -21,7 +21,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the Miniscope imaging interface.
-        
+
         Returns
         -------
         dict
@@ -60,7 +60,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Miniscope imaging data.
-        
+
         Returns
         -------
         DeepDict
@@ -94,7 +94,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     def get_metadata_schema(self) -> dict:
         """
         Get the metadata schema for the Miniscope imaging data.
-        
+
         Returns
         -------
         dict

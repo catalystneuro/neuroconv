@@ -15,7 +15,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the source schema for the Micro-Manager TIFF imaging interface.
-        
+
         Returns
         -------
         dict
@@ -48,7 +48,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
     def get_metadata(self) -> dict:
         """
         Get metadata for the Micro-Manager TIFF imaging data.
-        
+
         Returns
         -------
         dict

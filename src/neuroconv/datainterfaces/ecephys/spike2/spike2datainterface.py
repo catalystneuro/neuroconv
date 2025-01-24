@@ -31,7 +31,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """
         Get the schema for the source arguments.
-        
+
         Returns
         -------
         dict
@@ -47,12 +47,12 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     def get_all_channels_info(cls, file_path: FilePath):
         """
         Retrieve and inspect necessary channel information prior to initialization.
-        
+
         Parameters
         ----------
         file_path : FilePath
             Path to .smr or .smrx file.
-        
+
         Returns
         -------
         dict

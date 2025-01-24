@@ -49,7 +49,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     ) -> dict:
         """
         Retrieve the metadata schema for the optical physiology (Ophys) data.
-        
+
         Returns
         -------
         dict
@@ -104,7 +104,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     ) -> DeepDict:
         """
         Retrieve the metadata for the imaging data.
-        
+
         Returns
         -------
         DeepDict

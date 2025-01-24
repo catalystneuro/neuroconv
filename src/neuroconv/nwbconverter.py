@@ -51,7 +51,7 @@ class NWBConverter:
     def get_source_schema(cls) -> dict:
         """
         Compile input schemas from each of the data interface classes.
-        
+
         Returns
         -------
         dict
@@ -97,7 +97,7 @@ class NWBConverter:
     def get_metadata_schema(self) -> dict:
         """
         Compile metadata schemas from each of the data interface objects.
-        
+
         Returns
         -------
         dict
@@ -115,7 +115,7 @@ class NWBConverter:
     def get_metadata(self) -> DeepDict:
         """
         Auto-fill as much of the metadata as possible. Must comply with metadata schema.
-        
+
         Returns
         -------
         DeepDict
@@ -148,7 +148,7 @@ class NWBConverter:
     def get_conversion_options_schema(self) -> dict:
         """
         Compile conversion option schemas from each of the data interface classes.
-        
+
         Returns
         -------
         dict
