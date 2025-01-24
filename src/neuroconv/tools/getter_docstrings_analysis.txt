@@ -162,6 +162,17 @@ No docstring
 Function: ConverterPipe.get_conversion_options_schema
 Docstring:
 Compile conversion option schemas from each of the data interface classes.
+
+Returns
+-------
+dict
+    The compiled conversion options schema containing:
+    - root: True
+    - id: "conversion_options.schema.json"
+    - title: "Conversion options schema"
+    - description: "Schema for the conversion options"
+    - version: "0.1.0"
+    - properties: Dictionary mapping interface names to their unrooted schemas
 --------------------------------------------------------------------------------
 
 Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/neuroconv/tools/path_expansion.py...
@@ -329,6 +340,36 @@ Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/ne
 Function: get_base_schema
 Docstring:
 Return the base schema used for all other schemas.
+
+Parameters
+----------
+tag : str, optional
+    Tag to identify the schema.
+root : bool, default: False
+    Whether this schema is a root schema.
+id_ : str, optional
+    Schema identifier.
+required : list of str, optional
+    List of required property names.
+properties : dict, optional
+    Dictionary of property definitions.
+**kwargs
+    Additional schema properties.
+
+Returns
+-------
+dict
+    Base JSON schema with the following structure:
+    {
+        "required": List of required properties (empty if not provided)
+        "properties": Dictionary of property definitions (empty if not provided)
+        "type": "object"
+        "additionalProperties": False
+        "tag": Optional tag if provided
+        "$schema": Schema version if root is True
+        "$id": Schema ID if provided
+        **kwargs: Any additional properties
+    }
 --------------------------------------------------------------------------------
 
 Function: get_schema_from_method_signature
@@ -359,6 +400,20 @@ json_schema : dict
 Function: get_schema_from_hdmf_class
 Docstring:
 Get metadata schema from hdmf class.
+
+Parameters
+----------
+hdmf_class : type
+    The HDMF class to generate a schema from.
+
+Returns
+-------
+dict
+    JSON schema derived from the HDMF class, containing:
+    - tag: Full class path (module.name)
+    - required: List of required fields
+    - properties: Dictionary of field definitions including types and descriptions
+    - additionalProperties: Whether extra fields are allowed
 --------------------------------------------------------------------------------
 
 Function: get_metadata_schema_for_icephys
@@ -382,7 +437,15 @@ Convert metadata from the ImagingExtractor into nwb specific metadata.
 Parameters
 ----------
 imgextractor : ImagingExtractor
+    The imaging extractor to get metadata from.
 photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+    The type of photon series to create metadata for.
+
+Returns
+-------
+dict
+    Dictionary containing metadata for devices, imaging planes, and photon series
+    specific to the imaging data.
 --------------------------------------------------------------------------------
 
 Function: get_nwb_segmentation_metadata
@@ -391,7 +454,14 @@ Convert metadata from the segmentation into nwb specific metadata.
 
 Parameters
 ----------
-sgmextractor: SegmentationExtractor
+sgmextractor : SegmentationExtractor
+    The segmentation extractor to get metadata from.
+
+Returns
+-------
+dict
+    Dictionary containing metadata for devices, imaging planes, image segmentation,
+    and fluorescence data specific to the segmentation.
 --------------------------------------------------------------------------------
 
 Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/neuroconv/tools/roiextractors/imagingextractordatachunkiterator.py...
@@ -1267,11 +1337,21 @@ Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/ne
 Function: TDTFiberPhotometryInterface.get_metadata
 Docstring:
 Get metadata for the TDTFiberPhotometryInterface.
+
+Returns
+-------
+DeepDict
+    The metadata dictionary for this interface.
 --------------------------------------------------------------------------------
 
 Function: TDTFiberPhotometryInterface.get_metadata_schema
 Docstring:
 Get the metadata schema for the TDTFiberPhotometryInterface.
+
+Returns
+-------
+dict
+    The metadata schema for this interface.
 --------------------------------------------------------------------------------
 
 Function: TDTFiberPhotometryInterface.get_original_timestamps
@@ -1428,17 +1508,35 @@ dict
 
 Function: ScanImageMultiPlaneMultiFileImagingInterface.get_metadata
 Docstring:
-get metadata for the ScanImage imaging data
+Get metadata for the ScanImage imaging data.
+
+Returns
+-------
+dict
+    Dictionary containing metadata including session start time, device information,
+    and imaging plane configuration specific to the ScanImage system.
 --------------------------------------------------------------------------------
 
 Function: ScanImageSinglePlaneImagingInterface.get_metadata
 Docstring:
-get metadata for the ScanImage imaging data
+Get metadata for the ScanImage imaging data.
+
+Returns
+-------
+dict
+    Dictionary containing metadata including session start time, device information,
+    and imaging plane configuration specific to the ScanImage system.
 --------------------------------------------------------------------------------
 
 Function: ScanImageSinglePlaneMultiFileImagingInterface.get_metadata
 Docstring:
-get metadata for the ScanImage imaging data
+Get metadata for the ScanImage imaging data.
+
+Returns
+-------
+dict
+    Dictionary containing metadata including session start time, device information,
+    and imaging plane configuration specific to the ScanImage system.
 --------------------------------------------------------------------------------
 
 Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/neuroconv/datainterfaces/ophys/miniscope/miniscopeconverter.py...
@@ -1558,7 +1656,13 @@ Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/ne
 
 Function: TiffImagingInterface.get_source_schema
 Docstring:
-"Get the source schema for the TIFF imaging interface.
+Get the source schema for the TIFF imaging interface.
+
+Returns
+-------
+dict
+    The JSON schema for the TIFF imaging interface source data,
+    containing file path and other configuration parameters.
 --------------------------------------------------------------------------------
 
 Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/neuroconv/datainterfaces/ophys/brukertiff/brukertiffconverter.py...
@@ -1692,6 +1796,11 @@ Function: get_device_metadata
 Docstring:
 Returns a device with description including the metadata as described here
 # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
+Parameters
+----------
+meta : dict
+    The metadata dictionary containing SpikeGLX probe information.
 
 Returns
 -------
@@ -1868,6 +1977,13 @@ list of str
 Function: OpenEphysBinaryRecordingInterface.get_source_schema
 Docstring:
 Compile input schema for the RecordingExtractor.
+
+Returns
+-------
+dict
+    The JSON schema for the OpenEphys binary recording interface source data,
+    containing folder path and other configuration parameters. The schema
+    excludes recording_id, experiment_id, and stub_test parameters.
 --------------------------------------------------------------------------------
 
 Function: OpenEphysBinaryRecordingInterface.get_metadata
@@ -1895,6 +2011,13 @@ list of str
 Function: OpenEphysLegacyRecordingInterface.get_source_schema
 Docstring:
 Compile input schema for the RecordingExtractor.
+
+Returns
+-------
+dict
+    The JSON schema for the OpenEphys legacy recording interface source data,
+    containing folder path and other configuration parameters. The schema
+    inherits from the base recording extractor interface schema.
 --------------------------------------------------------------------------------
 
 Function: OpenEphysLegacyRecordingInterface.get_metadata
@@ -1993,7 +2116,7 @@ file_path : Path or str
 Returns
 -------
 float
-    Sampling frequency
+    The sampling frequency in Hz extracted from the file header's sample_rate field.
 --------------------------------------------------------------------------------
 
 Function: get_all_file_paths
@@ -2009,8 +2132,9 @@ file_path : FilePathType
 
 Returns
 -------
-path_list : list
-    List of file_paths
+list
+    List of file paths for all .eeg or .egf files found in the same directory
+    as the input file path.
 --------------------------------------------------------------------------------
 
 Function: get_header_bstring
@@ -2024,8 +2148,9 @@ file (str or path) : file to be loaded
 
 Returns
 -------
-str
-    header byte content
+bytes
+    The header content as bytes, including everything from the start of the file
+    up to and including the 'data_start' marker.
 --------------------------------------------------------------------------------
 
 Function: get_position_object

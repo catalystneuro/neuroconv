@@ -40,7 +40,16 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
+        """
+        Compile input schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the OpenEphys legacy recording interface source data,
+            containing folder path and other configuration parameters. The schema
+            inherits from the base recording extractor interface schema.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"

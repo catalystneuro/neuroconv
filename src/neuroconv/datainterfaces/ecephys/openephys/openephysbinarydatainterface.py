@@ -41,7 +41,16 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schema for the RecordingExtractor."""
+        """
+        Compile input schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the OpenEphys binary recording interface source data,
+            containing folder path and other configuration parameters. The schema
+            excludes recording_id, experiment_id, and stub_test parameters.
+        """
         source_schema = get_json_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
