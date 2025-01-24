@@ -14,6 +14,7 @@ from .basedatainterface import BaseDataInterface
 from .tools.nwb_helpers import (
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
+    configure_and_write_nwbfile,
     configure_backend,
     get_default_backend_configuration,
     get_default_nwbfile_metadata,
@@ -243,35 +244,54 @@ class NWBConverter:
                 " use Converter.add_to_nwbfile."
             )
 
-        backend = _resolve_backend(backend, backend_configuration)
-        no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
-
+        appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        append_mode = file_initially_exists and not overwrite
+        appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
+
+        if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot append to an existing file while also providing an in-memory NWBFile. "
+                "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
 
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata, append_mode=append_mode)
+        self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)
-
         self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            backend=backend,
-            verbose=getattr(self, "verbose", False),
-        ) as nwbfile_out:
-            if no_nwbfile_provided:
+        if not appending_to_in_disk_nwbfile:
+
+            if appending_to_in_memory_nwbfile:
+                self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+            else:
+                nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+
+            configure_and_write_nwbfile(
+                nwbfile=nwbfile,
+                output_filepath=nwbfile_path,
+                backend=backend,
+                backend_configuration=backend_configuration,
+            )
+
+        else:  # We are only using the context in append mode, see issue #1143
+
+            backend = _resolve_backend(backend, backend_configuration)
+            with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                overwrite=overwrite,
+                backend=backend,
+                verbose=getattr(self, "verbose", False),
+            ) as nwbfile_out:
                 self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
-            if backend_configuration is None:
-                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+                if backend_configuration is None:
+                    backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
-            configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
+                configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
     def temporally_align_data_interfaces(
         self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None

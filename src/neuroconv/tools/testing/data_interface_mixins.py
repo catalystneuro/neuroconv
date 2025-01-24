@@ -142,7 +142,6 @@ class DataInterfaceTestMixin:
         backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
             overwrite=True,
             metadata=metadata,
             backend_configuration=backend_configuration,
@@ -227,7 +226,6 @@ class DataInterfaceTestMixin:
         backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
             overwrite=True,
             metadata=metadata,
             backend_configuration=backend_configuration,
@@ -889,7 +887,6 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
             overwrite=True,
             metadata=metadata,
             backend_configuration=backend_configuration,
@@ -931,7 +928,6 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
             overwrite=True,
             metadata=metadata,
             backend_configuration=backend_configuration,
@@ -1262,7 +1258,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
+            metadata=metadata,
             overwrite=True,
             backend_configuration=backend_configuration,
             **self.conversion_options,
@@ -1303,7 +1299,6 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
             overwrite=True,
             metadata=metadata,
             backend_configuration=backend_configuration,
