@@ -117,6 +117,9 @@ class MockTimeSeriesInterface(BaseDataInterface):
         self.nwbfile = nwbfile
         self.offset = offset
 
+        if self.timestamps is None and self.rate is None:
+            self.rate = 1.0
+
     def get_metadata(self) -> dict:
         """
         Get metadata for the time series.
