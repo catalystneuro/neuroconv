@@ -367,14 +367,18 @@ def get_position_object(file_path: FilePath) -> Position:
     be preferred to read position data from the `.bin` file to ensure
     samples are locked to ecephys time courses.
 
-    Parameters:
+    Parameters
     ----------
-    file_path (Path or Str):
+    file_path : Path or str
         Full file_path of Axona file with any extension.
 
-    Returns:
+    Returns
     -------
-    position: pynwb.behavior.Position
+    pynwb.behavior.Position
+        Position object containing multiple SpatialSeries, one for each position
+        channel (time, X, Y, x, y, PX, px, px_total, unused). Each series contains
+        timestamps and corresponding position data. The timestamps are in milliseconds
+        and are aligned to the start of raw acquisition if reading from a .bin file.
     """
     position = Position()
 

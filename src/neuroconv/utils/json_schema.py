@@ -359,9 +359,11 @@ def get_metadata_schema_for_icephys() -> dict:
     """
     Returns the metadata schema for icephys data.
 
-    Returns:
-        dict: The metadata schema for icephys data.
-
+    Returns
+    -------
+    dict
+        The metadata schema for icephys data, containing definitions for Device,
+        Electrode, and Session configurations.
     """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]
