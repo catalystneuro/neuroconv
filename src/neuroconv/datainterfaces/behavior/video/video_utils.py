@@ -19,6 +19,8 @@ def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, 
         The path to a multimedia video file
     max_frames : Optional[int], optional
         If provided, extract the timestamps of the video only up to max_frames.
+    display_progress : bool, default: True
+        Whether to display a progress bar during timestamp extraction.
 
     Returns
     -------
@@ -45,7 +47,24 @@ class VideoCaptureContext:
         self._video_open_msg = "The video file is not open!"
 
     def get_video_timestamps(self, max_frames: Optional[int] = None, display_progress: bool = True):
-        """Return numpy array of the timestamps(s) for a video file."""
+        """
+        Return numpy array of the timestamps(s) for a video file.
+
+        Parameters
+        ----------
+        max_frames : Optional[int], optional
+            If provided, extract the timestamps of the video only up to max_frames.
+        display_progress : bool, default: True
+            Whether to display a progress bar during timestamp extraction.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of timestamps in seconds, representing the time from the start
+            of the video for each frame. Timestamps are extracted from the video's
+            metadata using cv2.CAP_PROP_POS_MSEC and converted from milliseconds
+            to seconds.
+        """
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         timestamps = []

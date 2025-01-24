@@ -93,10 +93,23 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
     Parameters
     ----------
     neo_reader : neo.io.baseio
+        The Neo reader object.
     segment : int, optional
-        Defaults to 0.
+        Segment index. Defaults to 0.
     cmd_channel : int, optional
         ABF command channel (0 to 7). Defaults to 0.
+
+    Returns
+    -------
+    tuple[list, str, str]
+        A tuple containing:
+        - list: The command trace data
+        - str: The title of the command trace
+        - str: The units of the command trace
+        
+    Notes
+    -----
+    This function only works for AxonIO interface.
     """
     try:
         traces, titles, units = neo_reader.read_raw_protocol()

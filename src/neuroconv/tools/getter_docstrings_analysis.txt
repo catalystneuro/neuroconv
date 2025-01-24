@@ -231,9 +231,17 @@ excluded_platforms_and_python_versions : dict, optional
 
     Allows all platforms and Python versions by default.
 
+Returns
+-------
+ModuleType
+    The imported module object. If the package is already imported, returns the
+    existing module from sys.modules. Otherwise, imports and returns the module.
+
 Raises
 ------
 ModuleNotFoundError
+    If the package is not installed, or if it's not available for the current
+    Python version or platform combination.
 --------------------------------------------------------------------------------
 
 Function: get_format_summaries
@@ -529,10 +537,23 @@ Get command traces (e.g. voltage clamp command traces).
 Parameters
 ----------
 neo_reader : neo.io.baseio
+    The Neo reader object.
 segment : int, optional
-    Defaults to 0.
+    Segment index. Defaults to 0.
 cmd_channel : int, optional
     ABF command channel (0 to 7). Defaults to 0.
+
+Returns
+-------
+tuple[list, str, str]
+    A tuple containing:
+    - list: The command trace data
+    - str: The title of the command trace
+    - str: The units of the command trace
+    
+Notes
+-----
+This function only works for AxonIO interface.
 --------------------------------------------------------------------------------
 
 Function: get_conversion_from_unit
@@ -954,6 +975,21 @@ Analyzing /Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/src/ne
 Function: VideoCaptureContext.get_video_timestamps
 Docstring:
 Return numpy array of the timestamps(s) for a video file.
+
+Parameters
+----------
+max_frames : Optional[int], optional
+    If provided, extract the timestamps of the video only up to max_frames.
+display_progress : bool, default: True
+    Whether to display a progress bar during timestamp extraction.
+
+Returns
+-------
+numpy.ndarray
+    Array of timestamps in seconds, representing the time from the start
+    of the video for each frame. Timestamps are extracted from the video's
+    metadata using cv2.CAP_PROP_POS_MSEC and converted from milliseconds
+    to seconds.
 --------------------------------------------------------------------------------
 
 Function: VideoCaptureContext.get_video_fps

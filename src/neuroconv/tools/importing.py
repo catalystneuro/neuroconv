@@ -80,9 +80,17 @@ def get_package(
 
         Allows all platforms and Python versions by default.
 
+    Returns
+    -------
+    ModuleType
+        The imported module object. If the package is already imported, returns the
+        existing module from sys.modules. Otherwise, imports and returns the module.
+
     Raises
     ------
     ModuleNotFoundError
+        If the package is not installed, or if it's not available for the current
+        Python version or platform combination.
     """
     installation_instructions = installation_instructions or f"pip install {package_name}"
     excluded_python_versions = excluded_python_versions or list()
