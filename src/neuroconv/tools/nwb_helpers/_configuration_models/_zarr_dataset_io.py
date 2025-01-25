@@ -1,13 +1,13 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
 from typing import Any, Literal, Union
-from typing_extensions import Self
 
 import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
 from pydantic import Field, InstanceOf, model_validator
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration, _find_location_in_memory_nwbfile
 from ...hdmf import SliceableDataChunkIterator
