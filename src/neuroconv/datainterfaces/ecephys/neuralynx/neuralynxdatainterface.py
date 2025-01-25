@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 from pydantic import DirectoryPath
@@ -18,7 +18,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Neuralynx recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
@@ -31,6 +31,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             "description"
         ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
+
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+
+        return extractor_kwargs
 
     def __init__(
         self,
@@ -53,7 +59,10 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         """
         super().__init__(
-            folder_path=folder_path, stream_name=stream_name, verbose=verbose, all_annotations=True, es_key=es_key
+            folder_path=folder_path,
+            stream_name=stream_name,
+            verbose=verbose,
+            es_key=es_key,
         )
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
@@ -94,11 +103,22 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    """
+    Primary data interface for converting Neuralynx sorting data. Uses
+    :py:class:`~spikeinterface.extractors.NeuralynxSortingExtractor`.
+    """
+
     display_name = "Neuralynx Sorting"
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-    def __init__(self, folder_path: DirectoryPath, sampling_frequency: float = None, verbose: bool = True):
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        sampling_frequency: Optional[float] = None,
+        verbose: bool = False,
+        stream_id: Optional[str] = None,
+    ):
         """_summary_
 
         Parameters
@@ -107,11 +127,16 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
         sampling_frequency : float, optional
             If a specific sampling_frequency is desired it can be set with this argument.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Enables verbosity
+        stream_id: str, optional
+            Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique
+            it will be chosen automatically
         """
 
-        super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
+        )
 
 
 def extract_neo_header_metadata(neo_reader) -> dict:
@@ -158,16 +183,16 @@ def extract_neo_header_metadata(neo_reader) -> dict:
     return common_header
 
 
-def _dict_intersection(dict_list: List) -> dict:
+def _dict_intersection(dict_list: list[dict]) -> dict:
     """
     Intersect dict_list and return only common keys and values
     Parameters
     ----------
-    dict_list: list of dicitionaries each representing a header
+    dict_list: list of dictionaries each representing a header
     Returns
     -------
     dict:
-        Dictionary containing key-value pairs common to all input dicitionary_list
+        Dictionary containing key-value pairs common to all input dictionary_list
     """
 
     # Collect keys appearing in all dictionaries

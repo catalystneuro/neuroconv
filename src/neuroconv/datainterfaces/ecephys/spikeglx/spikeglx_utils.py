@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from ....utils import FilePathType
+from pydantic import FilePath
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -18,9 +18,9 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     if probe.get_shank_count() > 1:
         shank_ids = probe.shank_ids
         recording_extractor.set_property(key="shank_ids", values=shank_ids)
-        group_name = [f"{probe_name}{shank_id}" for shank_id in shank_ids]
+        group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in shank_ids]
     else:
-        group_name = [f"{probe_name}"] * len(channel_ids)
+        group_name = [f"Neuropixels{probe_name}"] * len(channel_ids)
 
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 
@@ -55,7 +55,7 @@ def get_session_start_time(recording_metadata: dict) -> datetime:
     return session_start_time
 
 
-def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
+def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
     """
     Returns the stream_id for a spikelgx file.
 

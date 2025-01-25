@@ -6,12 +6,13 @@ from typing import Literal
 
 import numpy as np
 import pytz
+from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package
 from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
-from neuroconv.utils import DeepDict, FilePathType
+from neuroconv.utils import DeepDict
 
 
 class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
@@ -27,12 +28,13 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     info = "Data Interface for converting fiber photometry data from TDT files."
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
-    def __init__(self, folder_path: FilePathType, verbose: bool = True):
+    @validate_call
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
         ----------
-        folder_path : FilePathType
+        folder_path : FilePath
             The path to the folder containing the TDT data.
         verbose : bool, optional
             Whether to print status messages, default = True.
@@ -41,9 +43,11 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             folder_path=folder_path,
             verbose=verbose,
         )
+        # This module should be here so ndx_fiber_photometry is in the global namespace when an pynwb.io object is created
         import ndx_fiber_photometry  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
+        """Get metadata for the TDTFiberPhotometryInterface."""
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
@@ -52,6 +56,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
+        """Get the metadata schema for the TDTFiberPhotometryInterface."""
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 

@@ -4,12 +4,11 @@ from typing import Union
 
 import dateutil
 import numpy as np
+from pydantic import FilePath
 from pynwb.behavior import Position, SpatialSeries
 
-from ....utils import FilePathType
 
-
-def get_eeg_sampling_frequency(file_path: FilePathType) -> float:
+def get_eeg_sampling_frequency(file_path: FilePath) -> float:
     """
     Read sampling frequency from .eegX or .egfX file header.
 
@@ -30,7 +29,7 @@ def get_eeg_sampling_frequency(file_path: FilePathType) -> float:
 
 
 # Helper functions for AxonaLFPDataInterface
-def read_eeg_file_lfp_data(file_path: FilePathType) -> np.memmap:
+def read_eeg_file_lfp_data(file_path: FilePath) -> np.memmap:
     """
     Read LFP data from Axona `.eegX` or `.egfX` file.
 
@@ -64,7 +63,7 @@ def read_eeg_file_lfp_data(file_path: FilePathType) -> np.memmap:
     return eeg_data
 
 
-def get_all_file_paths(file_path: FilePathType) -> list:
+def get_all_file_paths(file_path: FilePath) -> list:
     """
     Read LFP file_paths of `.eeg` or `.egf` files in file_path's directory.
     E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be
@@ -89,7 +88,7 @@ def get_all_file_paths(file_path: FilePathType) -> list:
     return path_list
 
 
-def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
+def read_all_eeg_file_lfp_data(file_path: FilePath) -> np.ndarray:
     """
     Read LFP data from all Axona `.eeg` or `.egf` files in file_path's directory.
     E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be conactenated
@@ -122,7 +121,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
 
 
 # Helper functions for AxonaPositionDataInterface
-def parse_generic_header(file_path: FilePathType, params: Union[list, set]) -> dict:
+def parse_generic_header(file_path: FilePath, params: Union[list, set]) -> dict:
     """
     Given a binary file with phrases and line breaks, enters the
     first word of a phrase as dictionary key and the following
@@ -159,7 +158,7 @@ def parse_generic_header(file_path: FilePathType, params: Union[list, set]) -> d
     return header
 
 
-def read_axona_iso_datetime(set_file: FilePathType) -> str:
+def read_axona_iso_datetime(set_file: FilePath) -> str:
     """
     Creates datetime object (y, m, d, h, m, s) from .set file header
     and converts it to ISO 8601 format
@@ -173,7 +172,7 @@ def read_axona_iso_datetime(set_file: FilePathType) -> str:
     return dateutil.parser.parse(date_string + " " + time_string).isoformat()
 
 
-def get_header_bstring(file: FilePathType) -> bytes:
+def get_header_bstring(file: FilePath) -> bytes:
     """
     Scan file for the occurrence of 'data_start' and return the header
     as byte string
@@ -198,7 +197,7 @@ def get_header_bstring(file: FilePathType) -> bytes:
     return header
 
 
-def read_bin_file_position_data(bin_file_path: FilePathType) -> np.ndarray:
+def read_bin_file_position_data(bin_file_path: FilePath) -> np.ndarray:
     """
     Read position data from Axona `.bin` file (if present).
 
@@ -289,7 +288,7 @@ def read_bin_file_position_data(bin_file_path: FilePathType) -> np.ndarray:
     return pos_data
 
 
-def read_pos_file_position_data(pos_file_path: FilePathType) -> np.ndarray:
+def read_pos_file_position_data(pos_file_path: FilePath) -> np.ndarray:
     """
     Read position data from Axona `.pos` file.
 
@@ -359,7 +358,7 @@ def read_pos_file_position_data(pos_file_path: FilePathType) -> np.ndarray:
     return pos_data
 
 
-def get_position_object(file_path: FilePathType) -> Position:
+def get_position_object(file_path: FilePath) -> Position:
     """
     Read position data from .bin or .pos file and convert to
     pynwb.behavior.SpatialSeries objects. If possible it should always

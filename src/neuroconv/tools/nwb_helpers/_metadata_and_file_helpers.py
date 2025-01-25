@@ -8,7 +8,6 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional
-from warnings import warn
 
 from pydantic import FilePath
 from pynwb import NWBFile
@@ -29,7 +28,7 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """Check if processing module exists. If not, create it. Then return module."""
     if name in nwbfile.processing:
         if description is not None and nwbfile.processing[name].description != description:
-            warn(
+            warnings.warn(
                 "Custom description given to get_module does not match existing module description! "
                 "Ignoring custom description."
             )
@@ -160,7 +159,7 @@ def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
     # Windows in particular can encounter errors at this step
     except PermissionError:  # pragma: no cover
         message = f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
-        warn(message=message, stacklevel=2)
+        warnings.warn(message=message, stacklevel=2)
 
 
 @contextmanager
@@ -170,7 +169,7 @@ def make_or_load_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     backend: Literal["hdf5", "zarr"] = "hdf5",
-    verbose: bool = True,
+    verbose: bool = False,
 ):
     """
     Context for automatically handling decision of write vs. append for writing an NWBFile.

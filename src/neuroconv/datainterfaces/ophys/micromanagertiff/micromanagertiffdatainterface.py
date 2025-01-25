@@ -1,7 +1,7 @@
 from dateutil.parser import parse
+from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FolderPathType
 
 
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
@@ -13,12 +13,14 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """get the source schema for the Micro-Manager TIFF imaging interface."""
         source_schema = super().get_source_schema()
 
         source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    @validate_call
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Data Interface for MicroManagerTiffImagingExtractor.
 
@@ -27,7 +29,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         folder_path : FolderPathType
             The folder path that contains the OME-TIF image files (.ome.tif files) and
            the 'DisplaySettings' JSON file.
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(folder_path=folder_path)
         self.verbose = verbose
@@ -36,6 +38,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
     def get_metadata(self) -> dict:
+        """Get metadata for the Micro-Manager TIFF imaging data."""
         metadata = super().get_metadata()
 
         micromanager_metadata = self.imaging_extractor.micromanager_metadata

@@ -3,14 +3,14 @@ import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import neo.io.baseio
 import numpy as np
 import pynwb
+from pydantic import FilePath
 
 from ..nwb_helpers import add_device_from_metadata
-from ...utils import OptionalFilePathType
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -65,7 +65,7 @@ def get_number_of_segments(neo_reader, block: int = 0) -> int:
     return neo_reader.header["nb_segment"][block]
 
 
-def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
+def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tuple[list, str, str]:
     """
     Get command traces (e.g. voltage clamp command traces).
 
@@ -213,8 +213,7 @@ def add_icephys_recordings(
     metadata: dict = None,
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: str = "not described",
-    skip_electrodes: Tuple[int] = (),
-    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
+    skip_electrodes: tuple[int] = (),
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -230,16 +229,6 @@ def add_icephys_recordings(
     skip_electrodes : tuple, default: ()
         Electrode IDs to skip.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression is not None:
-        warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     n_segments = get_number_of_segments(neo_reader, block=0)
 
@@ -380,10 +369,9 @@ def add_neo_to_nwb(
     neo_reader,
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
-    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
-    skip_electrodes: Tuple[int] = (),
+    skip_electrodes: tuple[int] = (),
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -409,15 +397,6 @@ def add_neo_to_nwb(
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     # TODO: remove completely after 10/1/2024
-    if compression is not None:
-        warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
@@ -439,11 +418,10 @@ def add_neo_to_nwb(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: OptionalFilePathType = None,  # pragma: no cover
+    save_path: Optional[FilePath] = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,
-    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
     skip_electrodes: Optional[tuple] = (),
@@ -499,9 +477,6 @@ def write_neo_to_nwb(
 
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
@@ -517,17 +492,6 @@ def write_neo_to_nwb(
     ), "'write_neo_to_nwb' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
-
-    # TODO: remove completely after 10/1/2024
-    if compression is not None:
-        warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     if metadata is None:
         metadata = get_nwb_metadata(neo_reader=neo_reader)

@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from pydantic import FilePath, validate_call
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import DeepDict
-from ....utils.types import FilePathType
 
 
 class PlexonRecordingInterface(BaseRecordingExtractorInterface):
@@ -23,7 +24,14 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    @validate_call
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        stream_name: str = "WB-Wideband",
+    ):
         """
         Load and prepare data for Plexon.
 
@@ -31,11 +39,18 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        stream_name: str, optional
+            Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
+            the wideband data.
         """
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+
+        invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
+        assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -67,7 +82,15 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["stream_id"] = self.stream_id
+
+        return extractor_kwargs
+
+    @validate_call
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Plexon.
 
@@ -75,18 +98,24 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
-        stream_id = "3"
+        # TODO: when neo version 0.14.4 is out or higher change this to stream_name for clarify
+        import neo
+        from packaging.version import Version
+
+        neo_version = Version(neo.__version__)
+        if neo_version <= Version("0.13.3"):
+            self.stream_id = "3"
+        else:
+            self.stream_id = "WB"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
         super().__init__(
             file_path=file_path,
             verbose=verbose,
             es_key=es_key,
-            stream_id=stream_id,
-            all_annotations=True,
         )
 
     def get_metadata(self) -> DeepDict:
@@ -118,7 +147,8 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the plexon spiking data (.plx file)."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    @validate_call
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Load and prepare data for Plexon.
 

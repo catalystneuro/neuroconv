@@ -6,12 +6,12 @@ import numpy as np
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
-    NWBMetaDataEncoder,
     dict_deep_update,
     fill_defaults,
     get_schema_from_hdmf_class,
     load_dict_from_file,
 )
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
 def compare_dicts(a: dict, b: dict):
@@ -204,5 +204,5 @@ def test_get_schema_from_TwoPhotonSeries_array_type():
 
 def test_np_array_encoding():
     np_array = np.array([1, 2, 3])
-    encoded = json.dumps(np_array, cls=NWBMetaDataEncoder)
+    encoded = json.dumps(np_array, cls=_NWBMetaDataEncoder)
     assert encoded == "[1, 2, 3]"

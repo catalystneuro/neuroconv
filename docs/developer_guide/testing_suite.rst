@@ -39,12 +39,9 @@ Minimal
 
 These test internal functionality using only minimal dependencies or pre-downloaded data.
 
-Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`_ and
-`tests/test_internals <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_internals>`_
+Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`
 
-These can be run using only ``pip install -e neuroconv[test]`` and calling ``pytest tests/test_minimal`` and
-``pytest tests/test_internal``.
-
+These can be run using only ``pip install -e neuroconv[test]`` and calling ``pytest tests/test_minimal``
 
 
 Modality

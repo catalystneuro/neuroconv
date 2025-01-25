@@ -58,7 +58,7 @@ def test_simple_time_series_override(
     if case_name != "unwrapped":  # TODO: eventually, even this case will be buffered automatically
         assert nwbfile.acquisition["TestTimeSeries"].data
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_data.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_data.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -99,7 +99,7 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb")
     NWB_IO = BACKEND_NWB_IO[backend]
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)

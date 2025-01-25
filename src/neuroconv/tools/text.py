@@ -1,5 +1,3 @@
-from typing import Dict
-
 import numpy as np
 import pandas as pd
 from pynwb.epoch import TimeIntervals
@@ -9,8 +7,8 @@ def convert_df_to_time_intervals(
     df: pd.DataFrame,
     table_name: str = "trials",
     table_description: str = "experimental trials",
-    column_name_mapping: Dict[str, str] = None,
-    column_descriptions: Dict[str, str] = None,
+    column_name_mapping: dict[str, str] = None,
+    column_descriptions: dict[str, str] = None,
 ) -> TimeIntervals:
     """
     Convert a dataframe to a TimeIntervals object.

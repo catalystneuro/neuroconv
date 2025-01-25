@@ -2,16 +2,15 @@ import math
 from typing import Optional, Tuple
 
 import numpy as np
-from hdmf.data_utils import GenericDataChunkIterator
+from pydantic import FilePath
 from tqdm import tqdm
 
+from neuroconv.tools.hdmf import GenericDataChunkIterator
+
 from ....tools import get_package
-from ....utils import FilePathType
 
 
-def get_video_timestamps(
-    file_path: FilePathType, max_frames: Optional[int] = None, display_progress: bool = True
-) -> list:
+def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, display_progress: bool = True) -> list:
     """Extract the timestamps of the video located in file_path
 
     Parameters
@@ -36,7 +35,7 @@ def get_video_timestamps(
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager."""
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePath):
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         self.vc = cv2.VideoCapture(filename=file_path)
@@ -178,7 +177,7 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
     def __init__(
         self,
-        video_file: FilePathType,
+        video_file: FilePath,
         buffer_gb: float = None,
         chunk_shape: tuple = None,
         stub_test: bool = False,
@@ -224,7 +223,7 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         min_frame_size_mb = (math.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
         return min_frame_size_mb, frame_shape
 
-    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+    def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         start_frame = selection[0].start
         end_frame = selection[0].stop
         frames = np.empty(shape=[end_frame - start_frame, *self._maxshape[1:]])

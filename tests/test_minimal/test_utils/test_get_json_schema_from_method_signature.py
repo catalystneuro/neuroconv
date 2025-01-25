@@ -4,9 +4,10 @@ from typing import Dict, List, Literal, Optional, Union
 import pytest
 from jsonschema import validate
 from pydantic import DirectoryPath, FilePath
+from pynwb import NWBFile
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
-from neuroconv.utils import ArrayType, get_json_schema_from_method_signature
+from neuroconv.utils import ArrayType, DeepDict, get_json_schema_from_method_signature
 
 
 def test_get_json_schema_from_method_signature_basic():
@@ -109,7 +110,7 @@ def test_get_json_schema_from_method_signature_exclude():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_init():
+def test_get_json_schema_from_method_signature_init():
     """Test that 'self' is automatically skipped."""
 
     class TestClass:
@@ -140,7 +141,7 @@ def test_get_schema_from_method_signature_init():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_class_static():
+def test_get_json_schema_from_method_signature_class_static():
     """Ensuring that signature assembly prior to passing to Pydantic is not affected by bound or static methods."""
 
     class TestClass:
@@ -164,7 +165,7 @@ def test_get_schema_from_method_signature_class_static():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_class_method():
+def test_get_json_schema_from_method_signature_class_method():
     """Test that 'cls' is automatically skipped."""
 
     class TestClass:
@@ -212,7 +213,7 @@ def test_get_json_schema_from_example_data_interface():
                 "type": "string",
                 "description": "Path to the folder of .mpx files.",
             },
-            "verbose": {"default": True, "type": "boolean", "description": "Allows verbose.\nDefault is True."},
+            "verbose": {"default": False, "type": "boolean", "description": "Allows verbose.\nDefault is False."},
             "es_key": {"default": "ElectricalSeries", "type": "string"},
         },
         "required": ["folder_path"],
@@ -299,8 +300,11 @@ def test_get_json_schema_from_method_signature_docstring_warning():
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=method_with_typo_in_docstring)
 
+    assert len(warning_info) == 1
+
     expected_warning_message = (
-        "The argument_name 'integ' from the docstring not occur in the method signature, possibly due to a typo."
+        "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring' does not occur in "
+        "the signature, possibly due to a typo."
     )
     assert warning_info[0].message.args[0] == expected_warning_message
 
@@ -312,3 +316,128 @@ def test_get_json_schema_from_method_signature_docstring_warning():
     }
 
     assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_docstring_warning_with_exclusions():
+    def method_with_typo_in_docstring_and_exclusions(integer: int, nwbfile: NWBFile, metadata: DeepDict):
+        """
+        This is a docstring with a typo in the argument name.
+
+        Parameters
+        ----------
+        integ : int
+            This is an integer.
+        nwbfile : pynwb.NWBFile
+            An in-memory NWBFile object.
+        metadata : neuroconv.utils.DeepDict
+            A dictionary-like object that allows for deep access and modification.
+        """
+        pass
+
+    with pytest.warns(expected_warning=UserWarning) as warning_info:
+        test_json_schema = get_json_schema_from_method_signature(
+            method=method_with_typo_in_docstring_and_exclusions, exclude=["nwbfile", "metadata"]
+        )
+
+    assert len(warning_info) == 1
+
+    expected_warning_message = (
+        "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring_and_exclusions' "
+        "does not occur in the signature, possibly due to a typo."
+    )
+    assert warning_info[0].message.args[0] == expected_warning_message
+
+    expected_json_schema = {
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_docstring_warning_from_bound_method():
+    class TestClass:
+        def test_bound_method(self, integer: int):
+            """
+            This is a docstring with a typo in the argument name.
+
+            Parameters
+            ----------
+            integ : int
+                This is an integer.
+            """
+            pass
+
+    with pytest.warns(expected_warning=UserWarning) as warning_info:
+        test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_bound_method)
+
+    assert len(warning_info) == 1
+
+    expected_warning_message = (
+        "The argument_name 'integ' from the docstring of method 'TestClass.test_bound_method' does not occur in the "
+        "signature, possibly due to a typo."
+    )
+    assert warning_info[0].message.args[0] == expected_warning_message
+
+    expected_json_schema = {
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_docstring_warning_from_class_method():
+    class TestClass:
+        @classmethod
+        def test_class_method(self, integer: int):
+            """
+            This is a docstring with a typo in the argument name.
+
+            Parameters
+            ----------
+            integ : int
+                This is an integer.
+            """
+            pass
+
+    with pytest.warns(expected_warning=UserWarning) as warning_info:
+        test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_class_method)
+
+    assert len(warning_info) == 1
+
+    expected_warning_message = (
+        "The argument_name 'integ' from the docstring of method 'TestClass.test_class_method' does not occur in the "
+        "signature, possibly due to a typo."
+    )
+    assert warning_info[0].message.args[0] == expected_warning_message
+
+    expected_json_schema = {
+        "properties": {"integer": {"type": "integer"}},
+        "required": ["integer"],
+        "type": "object",
+        "additionalProperties": False,
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_json_schema_raises_error_for_missing_type_annotations():
+    """Test that attempting to generate a JSON schema for a method with missing type annotations raises a TypeError."""
+    # https://github.com/catalystneuro/neuroconv/pull/1157
+
+    def test_method(param_with_type: int, param_without_type, param_with_default="default_value"):
+        pass
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Parameter 'param_without_type' in method 'test_method' is missing a type annotation. "
+            "Either add a type annotation for 'param_without_type' or add it to the exclude list."
+        ),
+    ):
+        get_json_schema_from_method_signature(method=test_method)

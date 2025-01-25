@@ -1,10 +1,11 @@
 from pathlib import Path
 
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from .... import BaseDataInterface
 from ....tools import get_package
-from ....utils import DeepDict, FolderPathType
+from ....utils import DeepDict
 
 
 class MiniscopeBehaviorInterface(BaseDataInterface):
@@ -23,13 +24,14 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         ] = "The main Miniscope folder. The movie files are expected to be in sub folders within the main folder."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType):
+    @validate_call
+    def __init__(self, folder_path: DirectoryPath):
         """
         Initialize reading recordings from the Miniscope behavioral camera.
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The path that points to the main Miniscope folder.
             The movie files are expected to be in sub folders within the main folder.
         """

@@ -1,6 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
-from typing import Any, ClassVar, Dict, Literal, Type
+from typing import Any, ClassVar, Literal, Type
 
 from hdmf.container import DataIO
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,7 +24,7 @@ class BackendConfiguration(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
-    dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
+    dataset_configurations: dict[str, DatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations (e.g. `acquisition/TestElectricalSeriesAP/data`) "
             "to their DatasetConfiguration specification that contains all information "
@@ -45,15 +45,15 @@ class BackendConfiguration(BaseModel):
 
     # Pydantic models have several API calls for retrieving the schema - override all of them to work
     @classmethod
-    def schema(cls, **kwargs) -> Dict[str, Any]:
+    def schema(cls, **kwargs) -> dict[str, Any]:
         return cls.model_json_schema(**kwargs)
 
     @classmethod
-    def schema_json(cls, **kwargs) -> Dict[str, Any]:
+    def schema_json(cls, **kwargs) -> dict[str, Any]:
         return cls.model_json_schema(**kwargs)
 
     @classmethod
-    def model_json_schema(cls, **kwargs) -> Dict[str, Any]:
+    def model_json_schema(cls, **kwargs) -> dict[str, Any]:
         assert "mode" not in kwargs, "The 'mode' of this method is fixed to be 'validation' and cannot be changed."
         assert "schema_generator" not in kwargs, "The 'schema_generator' of this method cannot be changed."
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
@@ -88,7 +88,7 @@ class BackendConfiguration(BaseModel):
 
         return cls(dataset_configurations=dataset_configurations)
 
-    def find_locations_requiring_remapping(self, nwbfile: NWBFile) -> Dict[str, DatasetIOConfiguration]:
+    def find_locations_requiring_remapping(self, nwbfile: NWBFile) -> dict[str, DatasetIOConfiguration]:
         """
         Find locations of objects with mismatched IDs in the file.
 
@@ -103,7 +103,7 @@ class BackendConfiguration(BaseModel):
 
         Returns
         -------
-        Dict[str, DatasetIOConfiguration]
+        dict[str, DatasetIOConfiguration]
             A dictionary where:
             * Keys: Locations in the NWB of objects with mismatched IDs.
             * Values: New `DatasetIOConfiguration` objects corresponding to the updated object IDs.
@@ -150,7 +150,7 @@ class BackendConfiguration(BaseModel):
 
     def build_remapped_backend(
         self,
-        locations_to_remap: Dict[str, DatasetIOConfiguration],
+        locations_to_remap: dict[str, DatasetIOConfiguration],
     ) -> Self:
         """
         Build a remapped backend configuration by updating mismatched object IDs.

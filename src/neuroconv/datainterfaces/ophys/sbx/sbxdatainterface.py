@@ -1,7 +1,8 @@
-from typing import Literal
+from typing import Literal, Optional
+
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):
@@ -11,11 +12,12 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".sbx",)
     info = "Interface for Scanbox imaging data."
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        sampling_frequency: float = None,
-        verbose: bool = True,
+        file_path: FilePath,
+        sampling_frequency: Optional[float] = None,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
@@ -24,7 +26,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePathType
             Path to .sbx file.
         sampling_frequency : float, optional
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
 
         super().__init__(
@@ -35,6 +37,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """Get metadata for the Scanbox imaging data."""
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

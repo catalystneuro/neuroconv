@@ -1,4 +1,0 @@
-tables<3.9.2;sys_platform=="darwin"
-tables;sys_platform=="linux" or sys_platform=="win32"
-ndx-pose==0.1.1
-neuroconv[video]

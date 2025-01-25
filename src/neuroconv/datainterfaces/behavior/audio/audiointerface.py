@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 import scipy
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -27,7 +28,8 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".wav",)
     info = "Interface for writing audio recordings to an NWB file."
 
-    def __init__(self, file_paths: list, verbose: bool = False):
+    @validate_call
+    def __init__(self, file_paths: list[FilePath], verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -44,6 +46,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         verbose : bool, default: False
         """
+        # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        import ndx_sound  # noqa: F401
+
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
             suffix for suffix in suffixes if suffix not in [".wav"]
@@ -104,7 +110,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> Optional[np.ndarray]:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -131,7 +137,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 "Please set them using 'set_aligned_segment_starting_times'."
             )
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
         """
         Align the individual starting time for each audio file in this interface relative to the common session start time.
 
@@ -164,9 +170,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-        overwrite: bool = False,
-        verbose: bool = True,
     ):
         """
         Parameters
@@ -181,8 +184,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
-        overwrite : bool, default: False
-        verbose : bool, default: True
 
         Returns
         -------
@@ -222,7 +223,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 write_as=write_as,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
-                compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
             )
 
         return nwbfile

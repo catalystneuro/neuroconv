@@ -1,4 +1,3 @@
-import pathlib
 from datetime import datetime
 
 from numpy.testing import assert_array_almost_equal
@@ -46,47 +45,26 @@ def test_mock_metadata():
 
     metadata = interface.get_metadata()
 
-    expected_ecephys_metadata = {
-        "Ecephys": {
-            "Device": [
-                {
-                    "name": "NIDQBoard",
-                    "description": "A NIDQ board used in conjunction with SpikeGLX.",
-                    "manufacturer": "National Instruments",
-                },
-            ],
-            "ElectrodeGroup": [
-                {
-                    "name": "NIDQChannelGroup",
-                    "description": "A group representing the NIDQ channels.",
-                    "device": "NIDQBoard",
-                    "location": "unknown",
-                },
-            ],
-            "Electrodes": [
-                {"name": "group_name", "description": "Name of the ElectrodeGroup this electrode is a part of."}
-            ],
-            "ElectricalSeriesNIDQ": {
-                "name": "ElectricalSeriesNIDQ",
-                "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
-            },
-        }
-    }
+    expected_devices_metadata = [
+        {
+            "name": "NIDQBoard",
+            "description": "A NIDQ board used in conjunction with SpikeGLX.",
+            "manufacturer": "National Instruments",
+        },
+    ]
 
-    assert metadata["Ecephys"] == expected_ecephys_metadata["Ecephys"]
+    assert metadata["Devices"] == expected_devices_metadata
 
     expected_start_time = datetime(2020, 11, 3, 10, 35, 10)
     assert metadata["NWBFile"]["session_start_time"] == expected_start_time
 
 
-def test_mock_run_conversion(tmpdir: pathlib.Path):
+def test_mock_run_conversion(tmp_path):
     interface = MockSpikeGLXNIDQInterface()
 
     metadata = interface.get_metadata()
 
-    test_directory = pathlib.Path(tmpdir) / "TestMockSpikeGLXNIDQInterface"
-    test_directory.mkdir(exist_ok=True)
-    nwbfile_path = test_directory / "test_mock_run_conversion.nwb"
+    nwbfile_path = tmp_path / "test_mock_run_conversion.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
@@ -94,11 +72,3 @@ def test_mock_run_conversion(tmpdir: pathlib.Path):
 
         assert "NIDQBoard" in nwbfile.devices
         assert len(nwbfile.devices) == 1
-
-        assert "NIDQChannelGroup" in nwbfile.electrode_groups
-        assert len(nwbfile.electrode_groups) == 1
-
-        assert list(nwbfile.electrodes.id[:]) == [0, 1, 2, 3, 4, 5, 6, 7]
-
-        assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
-        assert len(nwbfile.acquisition) == 1

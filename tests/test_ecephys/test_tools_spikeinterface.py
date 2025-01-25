@@ -1,3 +1,4 @@
+import re
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -8,9 +9,11 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pynwb.ecephys
+import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBFile
+from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
     generate_recording,
@@ -21,7 +24,10 @@ from spikeinterface.extractors import NumpyRecording
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     add_electrical_series_to_nwbfile,
+    add_electrode_groups_to_nwbfile,
     add_electrodes_to_nwbfile,
+    add_recording_to_nwbfile,
+    add_sorting_to_nwbfile,
     add_units_table_to_nwbfile,
     check_if_recording_traces_fit_into_memory,
     write_recording_to_nwbfile,
@@ -390,6 +396,36 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
             add_electrical_series_to_nwbfile(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
             )
+
+
+def test_error_with_multiple_offset():
+    # Generate a mock recording with 5 channels and 1 second duration
+    recording = generate_recording(num_channels=5, durations=[1.0])
+    # Rename channels to specific identifiers for clarity in error messages
+    recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+    # Set different offsets for the channels
+    recording.set_channel_offsets(offsets=[0, 0, 1, 1, 2])
+
+    # Create a mock NWBFile object
+    nwbfile = mock_NWBFile()
+
+    # Expected error message
+    expected_message_lines = [
+        "Recording extractors with heterogeneous offsets are not supported.",
+        "Multiple offsets were found per channel IDs:",
+        "  Offset 0: Channel IDs ['a', 'b']",
+        "  Offset 1: Channel IDs ['c', 'd']",
+        "  Offset 2: Channel IDs ['e']",
+    ]
+    expected_message = "\n".join(expected_message_lines)
+
+    # Use re.escape to escape any special regex characters in the expected message
+    expected_message_regex = re.escape(expected_message)
+
+    # Attempt to add electrical series to the NWB file
+    # Expecting a ValueError due to multiple offsets, matching the expected message
+    with pytest.raises(ValueError, match=expected_message_regex):
+        add_electrical_series_to_nwbfile(recording=recording, nwbfile=nwbfile)
 
 
 class TestAddElectricalSeriesChunking(unittest.TestCase):
@@ -921,7 +957,7 @@ class TestAddElectrodes(TestCase):
             [["s", "t", "u"], ["v", "w", "x"]],
         ]
 
-        # We add another properyt to recording 2 tat is not in recording 1
+        # We add another property to recording 2 which is not in recording 1
         self.recording_2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
         add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
@@ -1034,6 +1070,29 @@ class TestAddElectrodes(TestCase):
 
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
+
+class TestAddElectrodeGroups:
+    def test_group_naming_not_matching_group_number(self):
+        recording = generate_recording(num_channels=4)
+        recording.set_channel_groups(groups=[0, 1, 2, 3])
+        recording.set_property(key="group_name", values=["A", "A", "A", "A"])
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="The number of group names must match the number of groups"):
+            add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+
+    def test_inconsistent_group_name_mapping(self):
+        recording = generate_recording(num_channels=3)
+        # Set up groups where the same group name is used for different group numbers
+        recording.set_channel_groups(groups=[0, 1, 0])
+        recording.set_property(
+            key="group_name", values=["A", "B", "B"]  # Inconsistent: group 0 maps to names "A" and "B"
+        )
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="Inconsistent mapping between group numbers and group names"):
+            add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
 
 class TestAddUnitsTable(TestCase):
@@ -1424,6 +1483,38 @@ class TestAddUnitsTable(TestCase):
 
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
+
+    def test_add_electrodes(self):
+
+        sorting = generate_sorting(num_units=4)
+        sorting = sorting.rename_units(new_unit_ids=["a", "b", "c", "d"])
+
+        unit_electrode_indices = [[0], [1], [2], [0, 1, 2]]
+
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        assert self.nwbfile.electrodes is not None
+
+        # add units table
+        add_sorting_to_nwbfile(
+            sorting=sorting,
+            nwbfile=self.nwbfile,
+            unit_electrode_indices=unit_electrode_indices,
+        )
+
+        units_table = self.nwbfile.units
+        assert "electrodes" in units_table.colnames
+
+        electrode_table = self.nwbfile.electrodes
+        assert units_table["electrodes"].target.table == electrode_table
+
+        assert units_table["electrodes"][0]["channel_name"].item() == "A"
+        assert units_table["electrodes"][1]["channel_name"].item() == "B"
+        assert units_table["electrodes"][2]["channel_name"].item() == "C"
+        assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
 from neuroconv.tools import get_package_version
