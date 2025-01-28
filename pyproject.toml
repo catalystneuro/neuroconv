@@ -172,7 +172,7 @@ cellexplorer = [
 ]
 edf = [
     "neo>=0.13.3",
-    "pyedflib>=0.1.36,<0.1.39",  #
+    "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
     "spikeinterface>=0.101.2",
 ]
 intan = [
