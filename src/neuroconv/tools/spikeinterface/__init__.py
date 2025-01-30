@@ -25,3 +25,5 @@ from .spikeinterface import (
     write_sorting_analyzer_to_nwbfile,
     check_if_recording_traces_fit_into_memory,
 )
+
+from .spikeinterfacerecordingdatachunkiterator import get_electrical_series_chunk_shape
