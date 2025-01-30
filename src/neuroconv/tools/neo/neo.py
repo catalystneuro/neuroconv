@@ -55,13 +55,34 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
 
 
 def get_number_of_electrodes(neo_reader) -> int:
-    """Get number of electrodes from Neo reader."""
+    """
+    Get number of electrodes from Neo reader.
+
+    Returns
+    -------
+    int
+        The total number of electrodes in the recording.
+    """
     # TODO - take in account the case with multiple streams.
     return len(neo_reader.header["signal_channels"])
 
 
 def get_number_of_segments(neo_reader, block: int = 0) -> int:
-    """Get number of segments from Neo reader."""
+    """
+    Get number of segments from Neo reader.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+        The Neo reader object.
+    block : int, default: 0
+        Block index.
+
+    Returns
+    -------
+    int
+        The number of segments in the specified block.
+    """
     return neo_reader.header["nb_segment"][block]
 
 
@@ -72,10 +93,23 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
     Parameters
     ----------
     neo_reader : neo.io.baseio
+        The Neo reader object.
     segment : int, optional
-        Defaults to 0.
+        Segment index. Defaults to 0.
     cmd_channel : int, optional
         ABF command channel (0 to 7). Defaults to 0.
+
+    Returns
+    -------
+    tuple[list, str, str]
+        A tuple containing:
+        - list: The command trace data
+        - str: The title of the command trace
+        - str: The units of the command trace
+
+    Notes
+    -----
+    This function only works for AxonIO interface.
     """
     try:
         traces, titles, units = neo_reader.read_raw_protocol()
@@ -92,11 +126,14 @@ def get_conversion_from_unit(unit: str) -> float:
 
     Parameters
     ----------
-    unit (str): Unit as string. E.g. pA, mV, uV, etc...
+    unit : str
+        Unit as string. E.g. pA, mV, uV, etc...
 
     Returns
     -------
-    float: conversion to Ampere or Volt
+    float
+        The conversion factor to convert to Ampere or Volt.
+        For example, for 'pA' returns 1e-12 to convert to Ampere.
     """
     if unit in ["pA", "pV"]:
         conversion = 1e-12
@@ -120,9 +157,15 @@ def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
 
     Parameters
     ----------
-    neo_reader: Neo reader object
-    metadata: dict, optional
+    neo_reader : neo.io.baseio
+        Neo reader object
+    metadata : dict, optional
         Metadata info for constructing the nwb file.
+
+    Returns
+    -------
+    dict
+        Default metadata dictionary containing NWBFile and Icephys device information.
     """
     metadata = dict(
         NWBFile=dict(

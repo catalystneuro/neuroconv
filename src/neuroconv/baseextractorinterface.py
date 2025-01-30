@@ -20,6 +20,14 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
 
     @classmethod
     def get_extractor(cls):
+        """
+        Get the extractor class for this interface.
+
+        Returns
+        -------
+        type
+            The extractor class that will be used to read the data.
+        """
         if cls.Extractor is not None:
             return cls.Extractor
         extractor_module = get_package(package_name=cls.ExtractorModuleName)

@@ -135,7 +135,7 @@ class VideoInterface(BaseDataInterface):
 
         Returns
         -------
-        timing_type : 'starting_time and rate' or 'timestamps'
+        Literal["starting_time and rate", "timestamps"]
             The type of timing that has been set explicitly according to alignment.
 
             If only timestamps have been set, then only those will be used.

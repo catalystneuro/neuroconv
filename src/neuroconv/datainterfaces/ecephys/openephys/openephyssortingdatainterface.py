@@ -13,7 +13,15 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schema for the SortingExtractor."""
+        """
+        Compile input schema for the SortingExtractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the SortingExtractor.
+        """
         metadata_schema = get_json_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id"]
         )

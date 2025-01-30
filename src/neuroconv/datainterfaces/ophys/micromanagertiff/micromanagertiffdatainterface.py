@@ -13,7 +13,15 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """get the source schema for the Micro-Manager TIFF imaging interface."""
+        """
+        Get the source schema for the Micro-Manager TIFF imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the Micro-Manager TIFF interface.
+        """
         source_schema = super().get_source_schema()
 
         source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
@@ -38,7 +46,15 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
     def get_metadata(self) -> dict:
-        """Get metadata for the Micro-Manager TIFF imaging data."""
+        """
+        Get metadata for the Micro-Manager TIFF imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, imaging plane details,
+            and two-photon series configuration.
+        """
         metadata = super().get_metadata()
 
         micromanager_metadata = self.imaging_extractor.micromanager_metadata

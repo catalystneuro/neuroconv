@@ -19,7 +19,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Miniscope imaging interface."""
+        """
+        Get the source schema for the Miniscope imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the Miniscope imaging interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -50,7 +58,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self.photon_series_type = "OnePhotonSeries"
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the Miniscope imaging data."""
+        """
+        Get metadata for the Miniscope imaging data.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata including device information, imaging plane details,
+            and one-photon series configuration.
+        """
         from ....tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
@@ -76,7 +92,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        """Get the metadata schema for the Miniscope imaging data."""
+        """
+        Get the metadata schema for the Miniscope imaging data.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing metadata definitions and requirements
+            for the Miniscope imaging interface.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema

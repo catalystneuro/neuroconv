@@ -14,7 +14,15 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """ "Get the source schema for the TIFF imaging interface."""
+        """
+        Get the source schema for the TIFF imaging interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the TIFF imaging interface source data,
+            containing file path and other configuration parameters.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema

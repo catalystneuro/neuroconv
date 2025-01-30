@@ -21,6 +21,19 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys binary folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys binary files.
+
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+        """
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
@@ -28,7 +41,16 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schema for the RecordingExtractor."""
+        """
+        Compile input schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the OpenEphys binary recording interface source data,
+            containing folder path and other configuration parameters. The schema
+            excludes recording_id, experiment_id, and stub_test parameters.
+        """
         source_schema = get_json_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )

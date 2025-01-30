@@ -151,7 +151,15 @@ def get_nwb_imaging_metadata(
     Parameters
     ----------
     imgextractor : ImagingExtractor
+        The imaging extractor to get metadata from.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to create metadata for.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, and photon series
+        specific to the imaging data.
     """
     metadata = _get_default_ophys_metadata()
 
@@ -869,7 +877,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 
     Parameters
     ----------
-    sgmextractor: SegmentationExtractor
+    sgmextractor : SegmentationExtractor
+        The segmentation extractor to get metadata from.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, image segmentation,
+        and fluorescence data specific to the segmentation.
     """
     metadata = _get_default_segmentation_metadata()
     # Optical Channel name:

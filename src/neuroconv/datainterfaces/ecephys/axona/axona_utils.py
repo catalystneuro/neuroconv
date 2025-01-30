@@ -20,7 +20,7 @@ def get_eeg_sampling_frequency(file_path: FilePath) -> float:
     Returns
     -------
     float
-        Sampling frequency
+        The sampling frequency in Hz extracted from the file header's sample_rate field.
     """
     Fs_entry = parse_generic_header(file_path, ["sample_rate"])
     Fs = float(Fs_entry.get("sample_rate").split(" ")[0])
@@ -76,8 +76,9 @@ def get_all_file_paths(file_path: FilePath) -> list:
 
     Returns
     -------
-    path_list : list
-        List of file_paths
+    list
+        List of file paths for all .eeg or .egf files found in the same directory
+        as the input file path.
     """
 
     suffix = Path(file_path).suffix[0:4]
@@ -183,8 +184,9 @@ def get_header_bstring(file: FilePath) -> bytes:
 
     Returns
     -------
-    str
-        header byte content
+    bytes
+        The header content as bytes, including everything from the start of the file
+        up to and including the 'data_start' marker.
     """
     header = b""
     with open(file, "rb") as f:
@@ -365,14 +367,18 @@ def get_position_object(file_path: FilePath) -> Position:
     be preferred to read position data from the `.bin` file to ensure
     samples are locked to ecephys time courses.
 
-    Parameters:
+    Parameters
     ----------
-    file_path (Path or Str):
+    file_path : Path or str
         Full file_path of Axona file with any extension.
 
-    Returns:
+    Returns
     -------
-    position: pynwb.behavior.Position
+    pynwb.behavior.Position
+        Position object containing multiple SpatialSeries, one for each position
+        channel (time, X, Y, x, y, PX, px, px_total, unused). Each series contains
+        timestamps and corresponding position data. The timestamps are in milliseconds
+        and are aligned to the start of raw acquisition if reading from a .bin file.
     """
     position = Position()
 

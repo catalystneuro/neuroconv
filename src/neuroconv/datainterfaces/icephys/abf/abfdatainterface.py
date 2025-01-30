@@ -10,7 +10,19 @@ from ..baseicephysinterface import BaseIcephysInterface
 
 
 def get_start_datetime(neo_reader):
-    """Get start datetime for Abf file."""
+    """
+    Get start datetime for Abf file.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.AxonIO
+        The Neo reader object for the ABF file.
+
+    Returns
+    -------
+    datetime
+        The start date and time of the recording.
+    """
     if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
         startDate = str(neo_reader._axon_info["uFileStartDate"])
         startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)

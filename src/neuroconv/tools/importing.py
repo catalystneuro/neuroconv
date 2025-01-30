@@ -80,9 +80,17 @@ def get_package(
 
         Allows all platforms and Python versions by default.
 
+    Returns
+    -------
+    ModuleType
+        The imported module object. If the package is already imported, returns the
+        existing module from sys.modules. Otherwise, imports and returns the module.
+
     Raises
     ------
     ModuleNotFoundError
+        If the package is not installed, or if it's not available for the current
+        Python version or platform combination.
     """
     installation_instructions = installation_instructions or f"pip install {package_name}"
     excluded_python_versions = excluded_python_versions or list()
@@ -129,7 +137,15 @@ def get_package(
 
 
 def get_format_summaries() -> dict[str, dict[str, Union[str, tuple[str, ...], None]]]:
-    """Simple helper function for compiling high level summaries of all format interfaces and converters."""
+    """
+    Simple helper function for compiling high level summaries of all format interfaces and converters.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping interface/converter names to their summary information.
+        Each summary contains display_name, keywords, associated_suffixes, and info.
+    """
     # Local scope import to avoid circularity
     from ..converters import converter_list
     from ..datainterfaces import interface_list
