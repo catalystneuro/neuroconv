@@ -125,7 +125,7 @@ def has_returns_section(docstring: str | None):
 def main():
     folder_path = "/Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv"
     gt_path = "/Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/getter_benchmark_gt.yaml"
-    save_gt = True
+    save_gt = False
 
     docstrings = get_all_docstrings(folder_path=folder_path)
     getter_has_docstring, getter_has_docstring_with_returns_section = [], []
