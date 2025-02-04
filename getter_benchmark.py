@@ -151,10 +151,12 @@ def main():
         else:
             num_tn += 1
     num_existing = 44 # 44 getters already have docstrings with returns sections
-    
-    print(f"Number of getters with Returns section CORRECTLY added: {num_tp - num_existing}")
-    print(f"Number of getters with docstring INCORRECTLY added: {num_fp}")
-    print(f"Number of getters MISSED : {num_fn}")
+    num_tp -= num_existing
+
+    print(f"Number of getters with Returns section CORRECTLY added (TP): {num_tp}")
+    print(f"Number of getters with docstring INCORRECTLY added (FP): {num_fp}")
+    print(f"Number of getters MISSED (FN): {num_fn}")
+    print()
     print(f"Total Number of getters: {len(docstrings)}")
     print(f"Total Number of getters with a docstring: {sum(getter_has_docstring)}")
     print(f"Total Number of getters that need a returns section: {sum(gt['gt']) - num_existing}")
