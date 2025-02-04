@@ -140,16 +140,24 @@ def main():
     with open(gt_path, "r") as f:
         gt = yaml.safe_load(f)
 
-    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-    off_target_confusion = confusion_matrix(gt["gt"], getter_has_docstring)
-    on_target_confusion = confusion_matrix(gt["gt"], getter_has_docstring_with_returns_section)
-    import matplotlib.pyplot as plt
-    disp = ConfusionMatrixDisplay(confusion_matrix=off_target_confusion)
-    disp.plot()
-    plt.show()
-    disp = ConfusionMatrixDisplay(confusion_matrix=on_target_confusion)
-    disp.plot()
-    plt.show()
+    num_tp, num_fp, num_fn, num_tn = 0, 0, 0, 0
+    for gt_value, value in zip(gt["gt"], getter_has_docstring_with_returns_section):
+        if gt_value and value:
+            num_tp += 1
+        elif gt_value and not value:
+            num_fn += 1
+        elif not gt_value and value:
+            num_fp += 1
+        else:
+            num_tn += 1
+    num_existing = 44 # 44 getters already have docstrings with returns sections
+    
+    print(f"Number of getters with Returns section CORRECTLY added: {num_tp - num_existing}")
+    print(f"Number of getters with docstring INCORRECTLY added: {num_fp}")
+    print(f"Number of getters MISSED : {num_fn}")
+    print(f"Total Number of getters: {len(docstrings)}")
+    print(f"Total Number of getters with a docstring: {sum(getter_has_docstring)}")
+    print(f"Total Number of getters that need a returns section: {sum(gt['gt']) - num_existing}")
     
 
 if __name__ == "__main__":
