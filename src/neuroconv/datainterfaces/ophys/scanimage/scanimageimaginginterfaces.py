@@ -786,7 +786,7 @@ def get_scanimage_major_version(scanimage_metadata: dict) -> str:
 
     Returns
     -------
-    str
+    vesion: str
         The version of ScanImage that produced the TIFF file.
 
     Raises
