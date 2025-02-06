@@ -877,7 +877,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 
     Parameters
     ----------
-    sgmextractor : SegmentationExtractor
+    segmentation_extractor : SegmentationExtractor
         The segmentation extractor to get metadata from.
 
     Returns
