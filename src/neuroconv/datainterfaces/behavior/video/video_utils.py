@@ -83,7 +83,7 @@ class VideoCaptureContext:
             timestamps.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
         return np.array(timestamps) / 1000
 
-    def get_video_fps(self):
+    def get_video_fps(self) -> int:
         """
         Return the internal frames per second (fps) for a video file.
 
