@@ -123,7 +123,7 @@ class VideoCaptureContext:
         ), "Cannot set manual frame_count beyond length of video (received {val})."
         self._frame_count = val
 
-    def get_video_frame_count(self):
+    def get_video_frame_count(self) -> int:
         """
         Get the total number of frames in the video.
 
