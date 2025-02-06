@@ -19,6 +19,7 @@ from pydantic import (
     model_validator,
 )
 from pynwb import NWBFile
+from pynwb.ecephys import ElectricalSeries
 from typing_extensions import Self
 
 from neuroconv.utils.str_utils import human_readable_size
@@ -266,6 +267,25 @@ class DatasetIOConfiguration(BaseModel, ABC):
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
+            compression_method = "gzip"
+
+        elif isinstance(neurodata_object, ElectricalSeries) and dataset_name == "data":
+            from ....tools.spikeinterface import get_electrical_series_chunk_shape
+
+            number_of_frames = candidate_dataset.shape[0]
+            number_of_channels = candidate_dataset.shape[1]
+            dtype = candidate_dataset.dtype
+
+            chunk_shape = get_electrical_series_chunk_shape(
+                number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
+            )
+
+            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                buffer_gb=1.0,
+                chunk_shape=chunk_shape,
+                maxshape=full_shape,
+                dtype=dtype,
+            )
             compression_method = "gzip"
         elif dtype != np.dtype("object"):
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
