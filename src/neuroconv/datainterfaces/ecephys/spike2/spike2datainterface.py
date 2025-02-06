@@ -29,15 +29,6 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """
-        Get the schema for the source arguments.
-
-        Returns
-        -------
-        dict
-            The schema dictionary containing input parameters and descriptions
-            for initializing the Spike2 recording interface.
-        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["smrx_channel_ids"])
         source_schema.update(additionalProperties=True)
         source_schema["properties"]["file_path"].update(description="Path to .smrx file.")

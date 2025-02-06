@@ -99,15 +99,6 @@ class SpikeGLXConverterPipe(ConverterPipe):
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
     def get_conversion_options_schema(self) -> dict:
-        """
-        Get the schema for the conversion options.
-
-        Returns
-        -------
-        dict
-            The schema dictionary containing conversion options for each data interface
-            in this converter.
-        """
         conversion_options_schema = super().get_conversion_options_schema()
         conversion_options_schema["properties"].update(
             {name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()}

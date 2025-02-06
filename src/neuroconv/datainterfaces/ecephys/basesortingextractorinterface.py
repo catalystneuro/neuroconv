@@ -93,20 +93,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
 
     def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
-        """
-        Get the timestamps for the sorting data.
-
-        Returns
-        -------
-        numpy.ndarray or list of numpy.ndarray
-            The timestamps for each spike in the sorting data. If there are multiple segments,
-            returns a list of timestamp arrays.
-
-        Raises
-        ------
-        NotImplementedError
-            If no recording is attached to the sorting extractor.
-        """
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "

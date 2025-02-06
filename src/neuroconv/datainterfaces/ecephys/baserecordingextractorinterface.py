@@ -94,15 +94,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """
-        Get metadata for the recording extractor.
-
-        Returns
-        -------
-        DeepDict
-            Dictionary containing metadata including device information, electrode groups,
-            and electrical series configuration.
-        """
         metadata = super().get_metadata()
 
         from ...tools.spikeinterface.spikeinterface import _get_group_name
