@@ -239,7 +239,7 @@ tdt = [
     "neo>=0.13.3",
     "spikeinterface>=0.102",
 ]
-ecephys = [
+ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
