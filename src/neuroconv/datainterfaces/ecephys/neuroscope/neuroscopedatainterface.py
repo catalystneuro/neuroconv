@@ -109,7 +109,20 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
-        """Auto-populates ecephys metadata from the xml_file_path."""
+        """
+        Auto-populates ecephys metadata from the xml_file_path.
+
+        Parameters
+        ----------
+        xml_file_path : str
+            Path to the XML file containing device and electrode configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for ElectrodeGroup and Electrodes.
+            Includes group names, descriptions, and electrode properties.
+        """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[

@@ -19,6 +19,8 @@ def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, 
         The path to a multimedia video file
     max_frames : Optional[int], optional
         If provided, extract the timestamps of the video only up to max_frames.
+    display_progress : bool, default: True
+        Whether to display a progress bar during timestamp extraction.
 
     Returns
     -------
@@ -45,7 +47,24 @@ class VideoCaptureContext:
         self._video_open_msg = "The video file is not open!"
 
     def get_video_timestamps(self, max_frames: Optional[int] = None, display_progress: bool = True):
-        """Return numpy array of the timestamps(s) for a video file."""
+        """
+        Return numpy array of the timestamps(s) for a video file.
+
+        Parameters
+        ----------
+        max_frames : Optional[int], optional
+            If provided, extract the timestamps of the video only up to max_frames.
+        display_progress : bool, default: True
+            Whether to display a progress bar during timestamp extraction.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of timestamps in seconds, representing the time from the start
+            of the video for each frame. Timestamps are extracted from the video's
+            metadata using cv2.CAP_PROP_POS_MSEC and converted from milliseconds
+            to seconds.
+        """
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         timestamps = []
@@ -64,14 +83,28 @@ class VideoCaptureContext:
             timestamps.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
         return np.array(timestamps) / 1000
 
-    def get_video_fps(self):
-        """Return the internal frames per second (fps) for a video file."""
+    def get_video_fps(self) -> int:
+        """
+        Return the internal frames per second (fps) for a video file.
+
+        Returns
+        -------
+        float
+            The frames per second of the video.
+        """
         assert self.isOpened(), self._video_open_msg
         prop = self.get_cv_attribute("CAP_PROP_FPS")
         return self.vc.get(prop)
 
     def get_frame_shape(self) -> Tuple:
-        """Return the shape of frames from a video file."""
+        """
+        Return the shape of frames from a video file.
+
+        Returns
+        -------
+        Tuple
+            The shape of the video frames (height, width, channels).
+        """
         frame = self.get_video_frame(0)
         if frame is not None:
             return frame.shape
@@ -90,7 +123,15 @@ class VideoCaptureContext:
         ), "Cannot set manual frame_count beyond length of video (received {val})."
         self._frame_count = val
 
-    def get_video_frame_count(self):
+    def get_video_frame_count(self) -> int:
+        """
+        Get the total number of frames in the video.
+
+        Returns
+        -------
+        int
+            The total number of frames in the video.
+        """
         return self.frame_count
 
     def _video_frame_count(self):
@@ -101,6 +142,19 @@ class VideoCaptureContext:
 
     @staticmethod
     def get_cv_attribute(attribute_name: str):
+        """
+        Get an OpenCV attribute by name.
+
+        Parameters
+        ----------
+        attribute_name : str
+            The name of the OpenCV attribute to get.
+
+        Returns
+        -------
+        Any
+            The OpenCV attribute value.
+        """
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
@@ -122,7 +176,19 @@ class VideoCaptureContext:
             raise ValueError(f"Could not set frame number (received {frame_number}).")
 
     def get_video_frame(self, frame_number: int):
-        """Return the specific frame from a video as an RGB colorspace."""
+        """
+        Return the specific frame from a video as an RGB colorspace.
+
+        Parameters
+        ----------
+        frame_number : int
+            The index of the frame to retrieve.
+
+        Returns
+        -------
+        numpy.ndarray
+            The video frame in RGB colorspace with shape (height, width, 3).
+        """
         assert self.isOpened(), self._video_open_msg
         assert frame_number < self.get_video_frame_count(), "frame number is greater than length of video"
         initial_frame_number = self.current_frame
@@ -132,7 +198,14 @@ class VideoCaptureContext:
         return np.flip(frame, 2)  # np.flip to re-order color channels to RGB
 
     def get_video_frame_dtype(self):
-        """Return the dtype for frame in a video file."""
+        """
+        Return the dtype for frame in a video file.
+
+        Returns
+        -------
+        numpy.dtype
+            The data type of the video frames.
+        """
         frame = self.get_video_frame(0)
         if frame is not None:
             return frame.dtype

@@ -28,7 +28,15 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the ScanImage imaging interface."""
+        """
+        Get the source schema for the ScanImage imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the ScanImage interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -140,7 +148,15 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time and device information
+            specific to the ScanImage system.
+        """
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
         metadata = super().get_metadata()
@@ -176,7 +192,15 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """get the source schema for the ScanImage multi-file imaging interface."""
+        """
+        Get the source schema for the ScanImage multi-file imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the ScanImage multi-file interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing the TIFF files."
         return source_schema
@@ -307,7 +331,15 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time and device information
+            specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -425,7 +457,15 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -553,7 +593,15 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -683,7 +731,15 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -730,8 +786,13 @@ def get_scanimage_major_version(scanimage_metadata: dict) -> str:
 
     Returns
     -------
-    version : str
+    version: str
         The version of ScanImage that produced the TIFF file.
+
+    Raises
+    ------
+    ValueError
+        If the ScanImage version could not be determined from metadata.
     """
     if "SI.VERSION_MAJOR" in scanimage_metadata:
         return scanimage_metadata["SI.VERSION_MAJOR"]
