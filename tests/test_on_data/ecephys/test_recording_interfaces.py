@@ -26,6 +26,7 @@ from neuroconv.datainterfaces import (
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysRecordingInterface,
+    Plexon2RecordingInterface,
     PlexonRecordingInterface,
     Spike2RecordingInterface,
     SpikeGadgetsRecordingInterface,
@@ -690,7 +691,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "0", '
             '"probe_type_description": "NP1.0", '
@@ -718,7 +719,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "1030", '
             '"probe_type_description": "NP1.0 NHP", '
@@ -763,3 +764,24 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
+
+
+def is_macos():
+    import platform
+
+    return platform.system() == "Darwin"
+
+
+@pytest.mark.skipif(
+    is_macos(),
+    reason="Test skipped on macOS.",
+)
+class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = Plexon2RecordingInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)

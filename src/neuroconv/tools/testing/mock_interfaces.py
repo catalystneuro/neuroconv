@@ -208,7 +208,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         super().__init__(
@@ -228,7 +228,12 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self) -> dict:
         """
-        Returns the metadata dictionary for the current object.
+        Get metadata for the recording interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile metadata with session start time.
         """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
@@ -251,7 +256,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters

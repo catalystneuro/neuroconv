@@ -35,7 +35,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         load_sync_channel: Optional[bool] = None,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: Optional[DirectoryPath] = None,
@@ -51,7 +51,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         file_path : FilePathType
             Path to .nidq.bin file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
@@ -136,7 +136,14 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         return metadata
 
     def get_channel_names(self) -> list[str]:
-        """Return a list of channel names as set in the recording extractor."""
+        """
+        Get a list of channel names from the recording extractor.
+
+        Returns
+        -------
+        list of str
+            The names of all channels in the NIDQ recording.
+        """
         return list(self.recording_extractor.get_channel_ids())
 
     def add_to_nwbfile(

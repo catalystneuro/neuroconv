@@ -151,7 +151,15 @@ def get_nwb_imaging_metadata(
     Parameters
     ----------
     imgextractor : ImagingExtractor
+        The imaging extractor to get metadata from.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to create metadata for.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, and photon series
+        specific to the imaging data.
     """
     metadata = _get_default_ophys_metadata()
 
@@ -753,7 +761,7 @@ def write_imaging(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
@@ -792,7 +800,7 @@ def write_imaging_to_nwbfile(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
@@ -869,7 +877,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 
     Parameters
     ----------
-    sgmextractor: SegmentationExtractor
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get metadata from.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, image segmentation,
+        and fluorescence data specific to the segmentation.
     """
     metadata = _get_default_segmentation_metadata()
     # Optical Channel name:
@@ -1904,7 +1919,7 @@ def write_segmentation(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
@@ -1949,7 +1964,7 @@ def write_segmentation_to_nwbfile(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,

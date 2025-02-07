@@ -30,8 +30,15 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         ] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
         return source_schema
 
-    def get_conversion_options_schema(self):
-        """get the conversion options schema."""
+    def get_conversion_options_schema(self) -> dict:
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Bruker TIFF interface.
+        """
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -51,7 +58,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         plane_separation_type: {'contiguous', 'disjoint'}
             Defines how to write volumetric imaging data. Use 'contiguous' to create the volumetric two photon series,
             and 'disjoint' to create separate imaging plane and two photon series for each plane.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         self.verbose = verbose
@@ -173,8 +180,15 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
     def get_source_schema(cls):
         return get_json_schema_from_method_signature(cls)
 
-    def get_conversion_options_schema(self):
-        """Get the conversion options schema."""
+    def get_conversion_options_schema(self) -> dict:
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Bruker TIFF interface.
+        """
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -190,7 +204,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         ----------
         folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (

@@ -22,7 +22,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing Neuralynx position tracking .nvt files to NWB."
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True):
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Interface for writing Neuralynx .nvt files to nwb.
 
@@ -30,7 +30,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .nvt file
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             controls verbosity.
         """
 

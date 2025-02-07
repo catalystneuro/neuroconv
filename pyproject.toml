@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.6.7"
+version = "0.7.0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -68,7 +68,7 @@ neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_spec
 test = [
     "pytest",
     "pytest-cov",
-    "ndx-events>=0.2.0",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
+    "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
     "ndx-miniscope",
     "spikeinterface[qualitymetrics]>=0.101.0",
@@ -118,7 +118,7 @@ sleap = [
     "sleap-io>=0.0.2; python_version>='3.9'",
 ]
 deeplabcut = [
-    "ndx-pose==0.1.1",
+    "ndx-pose>=0.2",
     "tables; platform_system != 'Darwin'",
     "tables>=3.10.1; platform_system == 'Darwin' and python_version >= '3.10'",
 ]
@@ -128,11 +128,11 @@ video = [
     "opencv-python-headless>=4.8.1.78",
 ]
 lightningpose = [
-    "ndx-pose==0.1.1",
+    "ndx-pose>=0.2",
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.0",
+    "ndx-events==0.2.1",
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -149,93 +149,95 @@ behavior = [
 ## Ecephys
 alphaomega = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 axona = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 biocam = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 blackrock = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "neo>=0.14",
+    "spikeinterface>=0.101.2",
 ]
 cellexplorer = [
     "hdf5storage>=0.1.18",
     "neo>=0.13.3",
     "pymatreader>=0.0.32",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
+    "setuptools; python_version >= '3.12'"
 ]
 edf = [
     "neo>=0.13.3",
-    "pyedflib>=0.1.36",
-    "spikeinterface>=0.101.0",
+    "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
+    "spikeinterface>=0.101.2",
 ]
 intan = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "neo>=0.14",
+    "spikeinterface>=0.101.2",
 ]
 kilosort = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 
 maxwell = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 mcsraw = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 mearec = [
     "MEArec>=1.8.0",
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
+    "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 neuroscope = [
     "lxml>=4.6.5",
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 openephys = [
     "lxml>=4.9.4",
-    "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "neo>=0.14",
+    "spikeinterface>=0.101.2",
 ]
 phy = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 plexon = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
     "neo>=0.13.3",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 spikegadgets = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 spikeglx = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "neo>=0.14",
+    "spikeinterface>=0.101.2",
 ]
 tdt = [
     "neo>=0.13.3",
-    "spikeinterface>=0.101.0",
+    "spikeinterface>=0.101.2",
 ]
 ecephys = [
     "neuroconv[alphaomega]",

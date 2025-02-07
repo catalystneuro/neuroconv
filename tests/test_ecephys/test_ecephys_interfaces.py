@@ -6,6 +6,7 @@ import pytest
 from hdmf.testing import TestCase
 from packaging.version import Version
 
+from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import (
@@ -157,6 +158,24 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert len(nwbfile.devices) == 1
         assert len(nwbfile.electrode_groups) == 4
+
+    def test_error_for_append_with_in_memory_file(self, setup_interface, tmp_path):
+
+        nwbfile_path = tmp_path / "test.nwb"
+        self.interface.run_conversion(nwbfile_path=nwbfile_path)
+
+        nwbfile = self.interface.create_nwbfile()
+
+        expected_error_message = (
+            "Cannot append to an existing file while also providing an in-memory NWBFile. "
+            "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+        )
+        with pytest.raises(ValueError, match=expected_error_message):
+            self.interface.run_conversion(nwbfile=nwbfile, nwbfile_path=nwbfile_path, overwrite=False)
+
+        converter = ConverterPipe(data_interfaces=[self.interface])
+        with pytest.raises(ValueError, match=expected_error_message):
+            converter.run_conversion(nwbfile=nwbfile, nwbfile_path=nwbfile_path, overwrite=False)
 
 
 class TestAssertions(TestCase):

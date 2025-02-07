@@ -27,14 +27,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
     info = "Interface for SpikeGLX recording data."
 
-    # TODO: Add probe_index to probeinterface and propagate it from there
-    # Note to developer.
-    # In a conversion with Jennifer Colonell she refers to the number after imec as the probe index
-    # Quoting here:
-    # imec0 is the probe in the lowest slot and port number, imec1 in the next highest, and so on.
-    # If you have probes in {slot 2, port 3}, {slot 3, port1} and {slot3, port2},
-    # the probe indices in the SGLX output will be 0, 1, and 2, respectively.
-
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
@@ -55,7 +47,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: Optional[str] = None,
         folder_path: Optional[DirectoryPath] = None,
         stream_id: Optional[str] = None,
@@ -70,7 +62,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Examples are 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, the key to access the metadata of the ElectricalSeries.
         """
@@ -135,7 +127,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Should follow pattern 'Imec0', 'Imec1', etc.
         probe_name = self._signals_info_dict["device"].capitalize()
-        device["name"] = f"Neuropixel{probe_name}"
+        device["name"] = f"Neuropixels{probe_name}"
 
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
@@ -155,6 +147,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
             dict(name="contact_shapes", description="The shape of the electrode"),
             dict(name="contact_ids", description="The id of the contact on the electrode"),
+            dict(
+                name="inter_sample_shift",
+                description=(
+                    "Array of relative phase shifts for each channel, with values ranging from 0 to 1, "
+                    "representing the fractional delay within the sampling period due to sequential ADC."
+                ),
+            ),
         ]
 
         if self.recording_extractor.get_probe().get_shank_count() > 1:

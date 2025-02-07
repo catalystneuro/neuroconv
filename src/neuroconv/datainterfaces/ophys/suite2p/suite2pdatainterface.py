@@ -50,7 +50,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Suite2p segmentation interface."""
+        """
+        Get the source schema for the Suite2p segmentation interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the Suite2p segmentation interface.
+        """
         schema = super().get_source_schema()
         schema["properties"]["folder_path"][
             "description"
@@ -63,12 +71,38 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_available_planes(cls, folder_path: DirectoryPath) -> dict:
+        """
+        Get the available planes in the Suite2p segmentation folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing Suite2p segmentation data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing information about available planes in the dataset.
+        """
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_planes(folder_path=folder_path)
 
     @classmethod
     def get_available_channels(cls, folder_path: DirectoryPath) -> dict:
+        """
+        Get the available channels in the Suite2p segmentation folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing Suite2p segmentation data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing information about available channels in the dataset.
+        """
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
@@ -80,7 +114,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         channel_name: Optional[str] = None,
         plane_name: Optional[str] = None,
         plane_segmentation_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
 
@@ -114,7 +148,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.verbose = verbose
 
     def get_metadata(self) -> DeepDict:
-        """get metadata for the Suite2p segmentation data"""
+        """
+        Get metadata for the Suite2p segmentation data.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata including plane segmentation details,
+            fluorescence data, and segmentation images.
+        """
         metadata = super().get_metadata()
 
         # No need to update the metadata links for the default plane segmentation name

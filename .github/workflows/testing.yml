@@ -98,6 +98,12 @@ jobs:
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
           os: ${{ matrix.os }}
 
+      # TODO: remove this setp after this is merged https://github.com/talmolab/sleap-io/pull/143
+      - name: Run Sleap Tests until sleap.io adds support for ndx-pose > 2.0
+        run : |
+          pip install ndx-pose==0.1.1
+          pytest tests/test_on_data/behavior/test_pose_estimation_interfaces.py
+
       - name: Install full requirements
         run: pip install .[full]
 
