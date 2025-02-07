@@ -94,6 +94,11 @@ def get_device_metadata(meta) -> dict:
     """Returns a device with description including the metadata as described here
     # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
 
+    Parameters
+    ----------
+    meta : dict
+        The metadata dictionary containing SpikeGLX probe information.
+
     Returns
     -------
     dict
