@@ -74,7 +74,7 @@ class TestImportStructure(TestCase):
         ]
         assert sorted(current_structure) == sorted(expected_structure)
 
-    def test_datainterfaces(self):
+    def test_data_interfaces(self):
         from neuroconv import datainterfaces
 
         current_structure = _strip_magic_module_attributes(ls=datainterfaces.__dict__)
@@ -89,6 +89,7 @@ class TestImportStructure(TestCase):
             "icephys",
             "ophys",
             "text",
+            "image",
             # Exposed attributes
             "interface_list",
             "interfaces_by_category",
