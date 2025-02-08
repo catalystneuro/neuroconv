@@ -650,10 +650,8 @@ class TestAddElectrodes(TestCase):
     def test_integer_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are integers."""
         channel_ids = self.base_recording.get_channel_ids()
-        offest_channels_ids = channel_ids + 2
-        recorder_with_offset_channels = self.base_recording.channel_slice(
-            channel_ids=channel_ids, renamed_channel_ids=offest_channels_ids
-        )
+        channel_ids_with_offset = [int(channel_id) + 2 for channel_id in channel_ids]
+        recorder_with_offset_channels = self.base_recording.rename_channels(new_channel_ids=channel_ids_with_offset)
 
         add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
         add_electrodes_to_nwbfile(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
@@ -1145,10 +1143,8 @@ class TestAddUnitsTable(TestCase):
     def test_integer_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when unit names are integers."""
         unit_ids = self.base_sorting.get_unit_ids()
-        offest_units_ids = unit_ids + 2
-        sorting_with_offset_unit_ids = self.base_sorting.select_units(
-            unit_ids=unit_ids, renamed_unit_ids=offest_units_ids
-        )
+        offset_unit_ids = [int(unit_id) + 2 for unit_id in unit_ids]
+        sorting_with_offset_unit_ids = self.base_sorting.rename_units(new_unit_ids=offset_unit_ids)
 
         add_units_table_to_nwbfile(sorting=self.base_sorting, nwbfile=self.nwbfile)
         add_units_table_to_nwbfile(sorting=sorting_with_offset_unit_ids, nwbfile=self.nwbfile)
