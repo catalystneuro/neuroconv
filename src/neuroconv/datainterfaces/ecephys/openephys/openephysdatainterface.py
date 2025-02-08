@@ -27,6 +27,24 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to OpenEphys directory (.continuous or .dat files).
+
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+
+        Raises
+        ------
+        AssertionError
+            If the data is neither in 'legacy' (.continuous) nor 'binary' (.dat) format.
+        """
         if any(Path(folder_path).rglob("*.continuous")):
             return OpenEphysLegacyRecordingInterface.get_stream_names(folder_path=folder_path)
         elif any(Path(folder_path).rglob("*.dat")):
