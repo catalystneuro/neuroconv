@@ -19,6 +19,7 @@ and synchronize data across multiple sources.
   :maxdepth: 2
 
   datainterfaces
+  image
   nwbconverter
   adding_trials
   temporal_alignment

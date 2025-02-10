@@ -1,7 +1,7 @@
 """Interface for converting single or multiple images to NWB format."""
 
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
@@ -18,11 +18,11 @@ class SingleImageIterator(AbstractDataChunkIterator):
     """Simple iterator to return a single image. This avoids loading the entire image into memory at initializing
     and instead loads it at writing time one by one"""
 
-    def __init__(self, filename):
-        self._filename = Path(filename)
+    def __init__(self, file_path: Union[str, Path]):
+        self._file_path = Path(file_path)
 
         # Get image information without loading the full image
-        with Image.open(self._filename) as img:
+        with Image.open(self._file_path) as img:
             self.image_mode = img.mode
             self._image_shape = img.size[::-1]  # PIL uses (width, height) instead of (height, width)
             self._max_shape = (None, None)
@@ -32,12 +32,37 @@ class SingleImageIterator(AbstractDataChunkIterator):
                 self._image_shape += (self.number_of_bands,)
                 self._max_shape += (self.number_of_bands,)
 
+            # For LA mode, adjust shape to RGBA
+            if self.image_mode == "LA":
+                self._image_shape = self._image_shape[:-1] + (4,)
+                self._max_shape = self._max_shape[:-1] + (4,)
+
             # Calculate file size in bytes
-            self._size_bytes = self._filename.stat().st_size
+            self._size_bytes = self._file_path.stat().st_size
             # Calculate approximate memory size when loaded as numpy array
             self._memory_size = np.prod(self._image_shape) * np.dtype(float).itemsize
 
         self._images_returned = 0  # Number of images returned in __next__
+
+    def _la_to_rgba(self, la_image: np.ndarray) -> np.ndarray:
+        """Convert a Luminance-Alpha (LA) image to RGBA format without losing information."""
+        if len(la_image.shape) != 3 or la_image.shape[2] != 2:
+            raise ValueError("Input must be an LA image with shape (height, width, 2)")
+
+        height, width, _ = la_image.shape
+        rgba_image = np.zeros((height, width, 4), dtype=la_image.dtype)
+
+        # Extract L and A channels
+        l_channel = la_image[..., 0]
+        a_channel = la_image[..., 1]
+
+        # Copy L channel to R, G, and B channels
+        rgba_image[..., 0] = l_channel  # Red
+        rgba_image[..., 1] = l_channel  # Green
+        rgba_image[..., 2] = l_channel  # Blue
+        rgba_image[..., 3] = a_channel  # Alpha
+
+        return rgba_image
 
     def __iter__(self):
         """Return the iterator object"""
@@ -46,7 +71,12 @@ class SingleImageIterator(AbstractDataChunkIterator):
     def __next__(self):
         """Return the DataChunk with the single full image"""
         if self._images_returned == 0:
-            data = np.asarray(Image.open(self._filename))
+            data = np.asarray(Image.open(self._file_path))
+
+            # Transform LA to RGBA if needed
+            if self.image_mode == "LA":
+                data = self._la_to_rgba(data)
+
             selection = (slice(None),) * data.ndim
             self._images_returned += 1
             return DataChunk(data=data, selection=selection)
@@ -94,6 +124,14 @@ class ImageInterface(BaseDataInterface):
     associated_suffixes = (".png", ".jpg", ".jpeg", ".tiff", ".tif")
     info = "Interface for converting single or multiple images to NWB format."
 
+    # Mapping from PIL mode to NWB image class
+    MODE_MAPPING = {
+        "L": GrayscaleImage,
+        "RGB": RGBImage,
+        "RGBA": RGBAImage,
+        "LA": RGBAImage,  # LA will be converted to RGBA
+    }
+
     @classmethod
     def get_source_schema(cls) -> dict:
         """Return the schema for the source_data."""
@@ -101,9 +139,9 @@ class ImageInterface(BaseDataInterface):
             required=["file_paths"],
             properties=dict(
                 file_paths=dict(
-                    type=["array", "string"],
+                    type="array",
                     items=dict(type="string"),
-                    description="Path(s) to image file(s) to be converted",
+                    description="List of paths to image files to be converted",
                 ),
                 folder_path=dict(
                     type="string",
@@ -114,8 +152,8 @@ class ImageInterface(BaseDataInterface):
 
     def __init__(
         self,
-        file_paths: Optional[List[str]] = None,
-        folder_path: Optional[str] = None,
+        file_paths: Optional[List[Union[str, Path]]] = None,
+        folder_path: Optional[Union[str, Path]] = None,
         images_location: Literal["acquisition", "stimulus"] = "acquisition",
         verbose: bool = True,
     ):
@@ -124,10 +162,12 @@ class ImageInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths : str or list of str, optional
-            Path(s) to image file(s) to be converted
-        folder_path : str, optional
+        file_paths : list of Union[str, Path], optional
+            List of paths to image files to be converted
+        folder_path : Union[str, Path], optional
             Path to folder containing images to be converted. Used if file_paths not provided.
+        images_location : Literal["acquisition", "stimulus"], default: "acquisition"
+            Location to store images in the NWB file
         verbose : bool, default: True
             Whether to print status messages
         """
@@ -136,9 +176,6 @@ class ImageInterface(BaseDataInterface):
 
         if file_paths is not None and folder_path is not None:
             raise ValueError("Only one of file_paths or folder_path should be provided")
-
-        if isinstance(file_paths, str):
-            file_paths = [file_paths]
 
         self.file_paths = file_paths
         self.folder_path = folder_path
@@ -162,7 +199,7 @@ class ImageInterface(BaseDataInterface):
             if not file_paths:
                 raise ValueError(f"No image files found in {folder}")
 
-            self.file_paths = [str(p) for p in file_paths]
+            self.file_paths = [str(Path(p).absolute()) for p in file_paths]
         else:
             self.file_paths = [str(Path(p).absolute()) for p in file_paths]
 
@@ -179,20 +216,6 @@ class ImageInterface(BaseDataInterface):
         metadata["Images"] = dict(description="Images loaded through ImageInterface", num_images=len(self.file_paths))
 
         return metadata
-
-    def _get_image_container_type(self, image_path: str) -> Literal["GrayscaleImage", "RGBImage", "RGBAImage"]:
-        """Determine the appropriate image container type based on the image mode."""
-        with Image.open(image_path) as img:
-            mode = img.mode
-
-        if mode == "L":
-            return "GrayscaleImage"
-        elif mode == "RGB":
-            return "RGBImage"
-        elif mode == "RGBA":
-            return "RGBAImage"
-        else:
-            raise ValueError(f"Unsupported image mode: {mode}")
 
     def add_to_nwbfile(
         self,
@@ -229,13 +252,11 @@ class ImageInterface(BaseDataInterface):
             # Get image name from file name
             image_name = Path(file_path).stem
 
-            # Determine image type and create appropriate container
-            container_type = self._get_image_container_type(file_path)
-            image_class = {"GrayscaleImage": GrayscaleImage, "RGBImage": RGBImage, "RGBAImage": RGBAImage}[
-                container_type
-            ]
+            # Validate mode and get image class
+            if iterator.image_mode not in self.MODE_MAPPING:
+                raise ValueError(f"Unsupported image mode: {iterator.image_mode}")
 
-            # Create image container with iterator
+            image_class = self.MODE_MAPPING[iterator.image_mode]
             image_container = image_class(name=image_name, data=iterator)
 
             # Add to images container
