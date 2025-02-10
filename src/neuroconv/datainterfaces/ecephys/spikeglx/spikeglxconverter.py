@@ -22,14 +22,35 @@ class SpikeGLXConverterPipe(ConverterPipe):
     info = "Converter for multi-stream SpikeGLX recording data."
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source arguments.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the SpikeGLX converter.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing SpikeGLX streams."
         return source_schema
 
     @classmethod
     def get_streams(cls, folder_path: DirectoryPath) -> list[str]:
-        "Return the stream ids available in the folder."
+        """
+        Get the stream IDs available in the folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing SpikeGLX streams.
+
+        Returns
+        -------
+        list of str
+            The IDs of all available streams in the folder.
+        """
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
         # The first entry is the stream ids the second is the stream names
