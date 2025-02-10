@@ -23,7 +23,7 @@ _excluded_zarr_codecs = set(
         "msgpack2",  # think more on if we want to include this for variable length string datasets
         "adler32",  # checksum
         "crc32",  # checksum
-        "fixedscaleoffset",  # enforced indrectly by HDMF/PyNWB data types
+        "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
         "base64",  # unsure what this would ever be used for
         "n5_wrapper",  # different data format
     )
