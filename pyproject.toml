@@ -88,7 +88,7 @@ docs = [
     "pydata_sphinx_theme==0.12.0"
 ]
 
-dandi = ["dandi>=0.58.1"]
+dandi = ["dandi>=0.6.8"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
