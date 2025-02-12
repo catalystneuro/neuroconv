@@ -117,6 +117,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
+    @property
+    def channel_ids(self):
+        "Gets the channel ids of the data."
+        return self.recording_extractor.get_channel_ids()
+
     def get_original_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
