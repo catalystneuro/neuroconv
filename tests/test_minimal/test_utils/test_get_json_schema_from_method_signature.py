@@ -110,7 +110,7 @@ def test_get_json_schema_from_method_signature_exclude():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_init():
+def test_get_json_schema_from_method_signature_init():
     """Test that 'self' is automatically skipped."""
 
     class TestClass:
@@ -141,7 +141,7 @@ def test_get_schema_from_method_signature_init():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_class_static():
+def test_get_json_schema_from_method_signature_class_static():
     """Ensuring that signature assembly prior to passing to Pydantic is not affected by bound or static methods."""
 
     class TestClass:
@@ -165,7 +165,7 @@ def test_get_schema_from_method_signature_class_static():
     assert test_json_schema == expected_json_schema
 
 
-def test_get_schema_from_method_signature_class_method():
+def test_get_json_schema_from_method_signature_class_method():
     """Test that 'cls' is automatically skipped."""
 
     class TestClass:
@@ -213,7 +213,7 @@ def test_get_json_schema_from_example_data_interface():
                 "type": "string",
                 "description": "Path to the folder of .mpx files.",
             },
-            "verbose": {"default": True, "type": "boolean", "description": "Allows verbose.\nDefault is True."},
+            "verbose": {"default": False, "type": "boolean", "description": "Allows verbose.\nDefault is False."},
             "es_key": {"default": "ElectricalSeries", "type": "string"},
         },
         "required": ["folder_path"],
@@ -424,3 +424,20 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_class_meth
     }
 
     assert test_json_schema == expected_json_schema
+
+
+def test_json_schema_raises_error_for_missing_type_annotations():
+    """Test that attempting to generate a JSON schema for a method with missing type annotations raises a TypeError."""
+    # https://github.com/catalystneuro/neuroconv/pull/1157
+
+    def test_method(param_with_type: int, param_without_type, param_with_default="default_value"):
+        pass
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Parameter 'param_without_type' in method 'test_method' is missing a type annotation. "
+            "Either add a type annotation for 'param_without_type' or add it to the exclude list."
+        ),
+    ):
+        get_json_schema_from_method_signature(method=test_method)

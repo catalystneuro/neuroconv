@@ -151,7 +151,15 @@ def get_nwb_imaging_metadata(
     Parameters
     ----------
     imgextractor : ImagingExtractor
+        The imaging extractor to get metadata from.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to create metadata for.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, and photon series
+        specific to the imaging data.
     """
     metadata = _get_default_ophys_metadata()
 
@@ -445,6 +453,7 @@ def add_photon_series_to_nwbfile(
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
     Auxiliary static method for nwbextractor.
@@ -472,6 +481,11 @@ def add_photon_series_to_nwbfile(
     iterator_type: str, default: 'v2'
         The type of iterator to use when adding the photon series to the NWB file.
     iterator_options: dict, optional
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Returns
     -------
@@ -530,16 +544,23 @@ def add_photon_series_to_nwbfile(
     photon_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
-    if imaging.has_time_vector():
+    if always_write_timestamps:
         timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-        estimated_rate = calculate_regular_series_rate(series=timestamps)
-        if estimated_rate:
-            photon_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
-        else:
-            photon_series_kwargs.update(timestamps=timestamps, rate=None)
+        photon_series_kwargs.update(timestamps=timestamps)
     else:
-        rate = float(imaging.get_sampling_frequency())
-        photon_series_kwargs.update(rate=rate)
+        imaging_has_timestamps = imaging.has_time_vector()
+        if imaging_has_timestamps:
+            timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+            estimated_rate = calculate_regular_series_rate(series=timestamps)
+            starting_time = timestamps[0]
+        else:
+            estimated_rate = float(imaging.get_sampling_frequency())
+            starting_time = 0.0
+
+        if estimated_rate:
+            photon_series_kwargs.update(rate=estimated_rate, starting_time=starting_time)
+        else:
+            photon_series_kwargs.update(timestamps=timestamps)
 
     # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
     photon_series = dict(
@@ -682,6 +703,7 @@ def add_imaging_to_nwbfile(
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
     Add imaging data from an ImagingExtractor object to an NWBFile.
@@ -705,6 +727,11 @@ def add_imaging_to_nwbfile(
     parent_container : {"acquisition", "processing/ophys"}, optional
         Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
         under the "processing/ophys" module, by default "acquisition".
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Returns
     -------
@@ -722,6 +749,7 @@ def add_imaging_to_nwbfile(
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
+        always_write_timestamps=always_write_timestamps,
     )
 
     return nwbfile
@@ -733,7 +761,7 @@ def write_imaging(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
@@ -772,7 +800,7 @@ def write_imaging_to_nwbfile(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
@@ -849,7 +877,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 
     Parameters
     ----------
-    sgmextractor: SegmentationExtractor
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get metadata from.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, image segmentation,
+        and fluorescence data specific to the segmentation.
     """
     metadata = _get_default_segmentation_metadata()
     # Optical Channel name:
@@ -1884,7 +1919,7 @@ def write_segmentation(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
@@ -1929,7 +1964,7 @@ def write_segmentation_to_nwbfile(
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,

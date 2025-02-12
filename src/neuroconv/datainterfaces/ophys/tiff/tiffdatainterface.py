@@ -14,6 +14,15 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the TIFF imaging interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the TIFF imaging interface source data,
+            containing file path and other configuration parameters.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -23,7 +32,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         sampling_frequency: float,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
@@ -33,7 +42,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : FilePathType
         sampling_frequency : float
-        verbose : bool, default: True
+        verbose : bool, default: False
         photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, default: "TwoPhotonSeries"
         """
         super().__init__(

@@ -17,7 +17,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         sampling_frequency: Optional[float] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
         """
@@ -26,7 +26,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePathType
             Path to .sbx file.
         sampling_frequency : float, optional
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
 
         super().__init__(
@@ -37,6 +37,15 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Scanbox imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including device information and imaging details
+            specific to the Scanbox system.
+        """
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

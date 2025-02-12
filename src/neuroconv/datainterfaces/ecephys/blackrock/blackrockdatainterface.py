@@ -6,7 +6,7 @@ from pydantic import FilePath
 from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -19,7 +19,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
         source_schema["properties"]["file_path"][
             "description"
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
@@ -35,7 +35,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePath,
         nsx_override: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -85,12 +85,12 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        metadata_schema = get_schema_from_method_signature(method=cls.__init__)
+        metadata_schema = get_json_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = True):
+    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = False):
         """
         Parameters
         ----------
@@ -98,9 +98,9 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             The file path to the ``.nev`` data
         sampling_frequency: float, optional
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
-        used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
-        this extractor to be initialized.
-        verbose : bool, default: True
+            used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
+            this extractor to be initialized.
+        verbose : bool, default: False
             Enables verbosity
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)

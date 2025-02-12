@@ -46,6 +46,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         verbose : bool, default: False
         """
+        # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        import ndx_sound  # noqa: F401
+
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
             suffix for suffix in suffixes if suffix not in [".wav"]
@@ -166,9 +170,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-        overwrite: bool = False,
-        verbose: bool = True,
     ):
         """
         Parameters
@@ -183,8 +184,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
-        overwrite : bool, default: False
-        verbose : bool, default: True
 
         Returns
         -------
@@ -224,7 +223,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 write_as=write_as,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
-                compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
             )
 
         return nwbfile

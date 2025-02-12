@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 from hdmf.testing import TestCase
@@ -75,7 +75,6 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
 
             # High level groups were written to file
             assert "BehaviorEvents" in nwbfile.acquisition
-            assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
             assert "trials" in nwbfile.intervals
 
             # Aligned data was written
@@ -187,7 +186,9 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
                 NIDQ=MockSpikeGLXNIDQInterface, Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface
             )
 
-            def temporally_align_data_interfaces(self):
+            def temporally_align_data_interfaces(
+                self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
+            ):
                 unaligned_trial_start_times = self.data_interface_objects["Trials"].get_original_timestamps(
                     column="start_time"
                 )
@@ -356,7 +357,7 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         class TestAlignmentConverter(NWBConverter):
             data_interface_classes = dict(Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface)
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+            def __init__(self, source_data: Dict[str, dict], verbose: bool = False):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 unaligned_trial_start_timestamps = self.data_interface_objects["Trials"].get_timestamps(
@@ -504,7 +505,7 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
                 NIDQ=MockSpikeGLXNIDQInterface, Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface
             )
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+            def __init__(self, source_data: Dict[str, dict], verbose: bool = False):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 inferred_aligned_trial_start_time = self.data_interface_objects["NIDQ"].get_event_times_from_ttl(

@@ -1,6 +1,5 @@
 """Author: Ben Dichter."""
 
-import warnings
 from typing import Literal, Optional
 
 import numpy as np
@@ -36,7 +35,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def __init__(
         self,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
         **source_data,
     ):
@@ -46,17 +45,18 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.photon_series_type = photon_series_type
 
     def get_metadata_schema(
-        self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None
+        self,
     ) -> dict:
+        """
+        Retrieve the metadata schema for the optical physiology (Ophys) data.
 
-        if photon_series_type is not None:
-            warnings.warn(
-                "The 'photon_series_type' argument is deprecated and will be removed in a future version. "
-                "Please set 'photon_series_type' during the initialization of the BaseImagingExtractorInterface instance.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.photon_series_type = photon_series_type
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ImagingPlane,
+            and either OnePhotonSeries or TwoPhotonSeries based on the photon_series_type.
+        """
+
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
@@ -100,17 +100,17 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(
-        self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None
+        self,
     ) -> DeepDict:
+        """
+        Retrieve the metadata for the imaging data.
 
-        if photon_series_type is not None:
-            warnings.warn(
-                "The 'photon_series_type' argument is deprecated and will be removed in a future version. "
-                "Please set 'photon_series_type' during the initialization of the BaseImagingExtractorInterface instance.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.photon_series_type = photon_series_type
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata including device information, imaging plane details,
+            and photon series configuration.
+        """
 
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
@@ -146,7 +146,31 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int = 100,
+        always_write_timestamps: bool = False,
     ):
+        """
+        Add imaging data to the NWB file
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file where the imaging data will be added.
+        metadata : dict, optional
+            Metadata for the NWBFile, by default None.
+        photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+            The type of photon series to be added, by default "TwoPhotonSeries".
+        photon_series_index : int, optional
+            The index of the photon series in the provided imaging data, by default 0.
+        parent_container : {"acquisition", "processing/ophys"}, optional
+            Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
+            under the "processing/ophys" module, by default "acquisition".
+        stub_test : bool, optional
+            If True, only writes a small subset of frames for testing purposes, by default False.
+        stub_frames : int, optional
+            The number of frames to write when stub_test is True. Will use min(stub_frames, total_frames) to avoid
+            exceeding available frames, by default 100.
+        """
+
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
         if stub_test:
@@ -155,6 +179,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         else:
             imaging_extractor = self.imaging_extractor
 
+        metadata = metadata or self.get_metadata()
+
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
@@ -162,4 +188,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
             parent_container=parent_container,
+            always_write_timestamps=always_write_timestamps,
         )

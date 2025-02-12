@@ -6,6 +6,7 @@ from pynwb import NWBFile
 from pynwb.base import DynamicTable
 
 from .mock_ttl_signals import generate_mock_ttl_signal
+from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -20,7 +21,27 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-from ...utils import ArrayType, get_schema_from_method_signature
+from ...utils import ArrayType, get_json_schema_from_method_signature
+
+
+class MockInterface(BaseDataInterface):
+    """
+    A mock interface for testing basic command passing without side effects.
+    """
+
+    def __init__(self, verbose: bool = False, **source_data):
+
+        super().__init__(verbose=verbose, **source_data)
+
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options):
+
+        return None
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
@@ -30,37 +51,76 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
     def __init__(self, event_times: Optional[ArrayType] = None):
         """
-        Define event times for some behavior.
+        Initialize the interface with event times for behavior.
 
         Parameters
         ----------
         event_times : list of floats, optional
             The event times to set as timestamps for this interface.
-            The default is the array [1.2, 2.3, 3.4] for similarity to the timescale of the MockSpikeGLXNIDQInterface.
+            The default is the array [1.2, 2.3, 3.4] to simulate a time series similar to the
+            MockSpikeGLXNIDQInterface.
         """
         event_times = event_times or [1.2, 2.3, 3.4]
         self.event_times = np.array(event_times)
         self.original_event_times = np.array(event_times)  # Make a copy of the initial loaded timestamps
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original event times before any alignment or transformation.
+
+        Returns
+        -------
+        np.ndarray
+            The original event times as a NumPy array.
+        """
         return self.original_event_times
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Get the current (possibly aligned) event times.
+
+        Returns
+        -------
+        np.ndarray
+            The current event times as a NumPy array, possibly modified after alignment.
+        """
         return self.event_times
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Set the event times after alignment.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The aligned event timestamps to update the internal event times.
+        """
         self.event_times = aligned_timestamps
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
+        """
+        Add the event times to an NWBFile as a DynamicTable.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to which the event times will be added.
+        metadata : dict
+            Metadata to describe the event times in the NWB file.
+
+        Notes
+        -----
+        This method creates a DynamicTable to store event times and adds it to the NWBFile's acquisition.
+        """
         table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
         table.add_column(name="event_time", description="Time of each event.")
-        for timestamp in self.get_timestamps():  # adding data by column gives error
+        for timestamp in self.get_timestamps():
             table.add_row(event_time=timestamp)
         nwbfile.add_acquisition(table)
 
@@ -74,7 +134,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
@@ -98,6 +158,9 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         """
         from spikeinterface.extractors import NumpyRecording
 
+        self.has_analog_channels = True
+        self.has_digital_channels = False
+
         if ttl_times is None:
             # Begin in 'off' state
             number_of_periods = int(np.ceil((signal_duration - ttl_duration) / (ttl_duration * 2)))
@@ -106,6 +169,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         number_of_channels = len(ttl_times)
         channel_ids = [f"nidq#XA{channel_index}" for channel_index in range(number_of_channels)]  # NIDQ channel IDs
         channel_groups = ["NIDQChannelGroup"] * number_of_channels
+        self.analog_channel_ids = channel_ids
 
         sampling_frequency = 25_000.0  # NIDQ sampling rate
         number_of_frames = int(signal_duration * sampling_frequency)
@@ -144,7 +208,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         super().__init__(
@@ -156,7 +220,21 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
 
+        # Adding this as a safeguard before the spikeinterface changes are merged:
+        # https://github.com/SpikeInterface/spikeinterface/pull/3588
+        channel_ids = self.recording_extractor.get_channel_ids()
+        channel_ids_as_strings = [str(id) for id in channel_ids]
+        self.recording_extractor = self.recording_extractor.rename_channels(new_channel_ids=channel_ids_as_strings)
+
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the recording interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile metadata with session start time.
+        """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -178,7 +256,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters
@@ -204,7 +282,12 @@ class MockSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:  # noqa D102
+        # Sorting extractor to have string unit ids until is changed in SpikeInterface
+        # https://github.com/SpikeInterface/spikeinterface/pull/3588
+        string_unit_ids = [str(id) for id in self.sorting_extractor.unit_ids]
+        self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
+
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -260,14 +343,15 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             sampling_frequency=sampling_frequency,
             dtype=dtype,
             verbose=verbose,
+            seed=seed,
         )
 
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self, photon_series_type: Optional[Literal["OnePhotonSeries", "TwoPhotonSeries"]] = None) -> dict:
+    def get_metadata(self) -> dict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata(photon_series_type=photon_series_type)
+        metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
@@ -334,6 +418,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_deconvolved_signal=has_deconvolved_signal,
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
+            seed=seed,
         )
 
     def get_metadata(self) -> dict:

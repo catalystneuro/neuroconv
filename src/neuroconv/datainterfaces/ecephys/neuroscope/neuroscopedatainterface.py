@@ -109,7 +109,20 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
-        """Auto-populates ecephys metadata from the xml_file_path."""
+        """
+        Auto-populates ecephys metadata from the xml_file_path.
+
+        Parameters
+        ----------
+        xml_file_path : str
+            Path to the XML file containing device and electrode configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for ElectrodeGroup and Electrodes.
+            Includes group names, descriptions, and electrode properties.
+        """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
@@ -128,7 +141,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         gain: Optional[float] = None,
         xml_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -271,7 +284,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list[int]] = None,
         xml_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).

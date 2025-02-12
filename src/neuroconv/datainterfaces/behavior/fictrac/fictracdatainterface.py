@@ -1,6 +1,5 @@
 import json
 import re
-import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Union
@@ -160,7 +159,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         file_path: FilePath,
         radius: Optional[float] = None,
         configuration_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Interface for writing FicTrac files to nwb.
@@ -174,7 +173,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             and the units are set to meters. If not provided the units are set to radians.
         configuration_file_path : FilePath, optional
             Path to the .txt file with the configuration metadata. Usually called config.txt
-        verbose : bool, default: True
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
         self.file_path = Path(file_path)
@@ -210,8 +209,6 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
-        compression_opts: Optional[int] = None,  # TODO: remove completely after 10/1/2024
     ):
         """
         Parameters
@@ -222,17 +219,6 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             metadata info for constructing the nwb file.
         """
         import pandas as pd
-
-        # TODO: remove completely after 10/1/2024
-        if compression is not None or compression_opts is not None:
-            warnings.warn(
-                message=(
-                    "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                    "Please use the `configure_backend` tool function for this purpose."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
 
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
 
