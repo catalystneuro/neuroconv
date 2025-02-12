@@ -746,15 +746,15 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
 
-def is_macos_intel():
+def is_macos():
     import platform
 
-    return platform.system() == "Darwin" and platform.machine() != "arm64"
+    return platform.system() == "Darwin"
 
 
 @pytest.mark.skipif(
-    is_macos_intel(),
-    reason="Test skipped on macOS with Intel processors.",
+    is_macos(),
+    reason="Test skipped on macOS.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
