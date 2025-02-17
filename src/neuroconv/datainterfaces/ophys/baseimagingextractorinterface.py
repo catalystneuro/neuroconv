@@ -179,6 +179,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         else:
             imaging_extractor = self.imaging_extractor
 
+        metadata = metadata or self.get_metadata()
+
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
