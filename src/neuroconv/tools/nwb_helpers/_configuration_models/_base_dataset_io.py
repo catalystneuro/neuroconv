@@ -252,7 +252,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-        builder: BaseBuilder | None = None,
+        builder: Union[BaseBuilder, None] = None,
     ) -> Self:
         """
         Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
