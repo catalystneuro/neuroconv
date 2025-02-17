@@ -1,10 +1,10 @@
 Image Interface
-==============
+===============
 
 The ImageInterface allows you to convert various image formats (PNG, JPG, TIFF) to NWB. It supports different color modes and efficiently handles image loading to minimize memory usage.
 
 Supported Image Modes
--------------------
+---------------------
 
 The interface supports the following PIL image modes:
 
@@ -14,7 +14,7 @@ The interface supports the following PIL image modes:
 - LA (luminance + alpha) → RGBAImage (automatically converted)
 
 Example Usage
-------------
+-------------
 
 Here's an example demonstrating how to use the ImageInterface with different image modes:
 
@@ -89,7 +89,7 @@ Here's an example demonstrating how to use the ImageInterface with different ima
             print(f"Image shape: {image.data.shape}")
 
 Key Features
------------
+------------
 
 1. **Memory Efficiency**: Uses an iterator pattern to load images only when needed, making it suitable for large images or multiple images.
 
@@ -109,7 +109,7 @@ Key Features
        interface = ImageInterface(file_paths=["image.png"], images_location="stimulus")
 
 Installation
------------
+------------
 
 To use the ImageInterface, install neuroconv with the image extra:
 
