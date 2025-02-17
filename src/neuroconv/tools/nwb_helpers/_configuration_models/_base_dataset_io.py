@@ -2,7 +2,7 @@
 
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Literal, Union
+from typing import Any, Literal, Optional, Union
 
 import h5py
 import numcodecs
@@ -250,7 +250,10 @@ class DatasetIOConfiguration(BaseModel, ABC):
 
     @classmethod
     def from_neurodata_object(
-        cls, neurodata_object: Container, dataset_name: Literal["data", "timestamps"], builder: BaseBuilder
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+        builder: Optional[BaseBuilder] = None,
     ) -> Self:
         """
         Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
@@ -263,13 +266,14 @@ class DatasetIOConfiguration(BaseModel, ABC):
             The name of the field that will become a dataset when written to disk.
             Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
             and `timestamps`, each of which can be configured separately.
-        builder : hdmf.build.builders.BaseBuilder
-            The builder object that would be used to construct the NWBFile object.
+        builder : hdmf.build.builders.BaseBuilder, optional
+            The builder object that would be used to construct the NWBFile object. If None, the dataset is assumed to
+            NOT have a compound dtype.
         """
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         candidate_dataset = getattr(neurodata_object, dataset_name)
 
-        if has_compound_dtype(builder, location_in_file):
+        if builder is not None and has_compound_dtype(builder, location_in_file):
             full_shape = (len(candidate_dataset),)
         else:
             full_shape = get_data_shape(data=candidate_dataset)
