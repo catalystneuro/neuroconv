@@ -2,7 +2,7 @@
 
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 import h5py
 import numcodecs
@@ -11,9 +11,7 @@ import zarr
 from hdmf import Container
 from hdmf.build.builders import (
     BaseBuilder,
-    LinkBuilder,
 )
-from hdmf.utils import get_data_shape
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -26,6 +24,7 @@ from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 from typing_extensions import Self
 
+from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
@@ -253,7 +252,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-        builder: Optional[BaseBuilder] = None,
+        builder: BaseBuilder | None = None,
     ) -> Self:
         """
         Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
@@ -272,12 +271,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         """
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         candidate_dataset = getattr(neurodata_object, dataset_name)
-
-        if builder is not None and has_compound_dtype(builder, location_in_file):
-            full_shape = (len(candidate_dataset),)
-        else:
-            full_shape = get_data_shape(data=candidate_dataset)
-
+        full_shape = get_full_data_shape(dataset=candidate_dataset, location_in_file=location_in_file, builder=builder)
         dtype = _infer_dtype(dataset=candidate_dataset)
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
@@ -348,123 +342,3 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape=buffer_shape,
             compression_method=compression_method,
         )
-
-
-def has_compound_dtype(builder: BaseBuilder, location_in_file: str) -> bool:
-    """
-    Determine if the dataset at the given location in the file has a compound dtype.
-
-    Parameters
-    ----------
-    builder : hdmf.build.builders.BaseBuilder
-        The builder object that would be used to construct the NWBFile object.
-    location_in_file : str
-        The location of the dataset within the NWBFile, e.g. 'acquisition/ElectricalSeries/data'.
-
-    Returns
-    -------
-    bool
-        Whether the dataset has a compound dtype.
-    """
-    dataset_builder = get_dataset_builder(builder, location_in_file)
-    return isinstance(dataset_builder.dtype, list)
-
-
-def get_dataset_builder(builder, location_in_file):
-    """Find the appropriate sub-builder for the dataset at the given location in the file.
-
-    This function will traverse the groups in the location_in_file until it reaches a DatasetBuilder,
-    and then return that builder.
-
-    Parameters
-    ----------
-    builder : hdmf.build.builders.BaseBuilder
-        The builder object that would be used to construct the NWBFile object.
-    location_in_file : str
-        The location of the dataset within the NWBFile, e.g. 'acquisition/ElectricalSeries/data'.
-
-    Returns
-    -------
-    hdmf.build.builders.BaseBuilder
-        The builder object for the dataset at the given location.
-
-    Raises
-    ------
-    ValueError
-        If the location_in_file is not found in the builder.
-
-    Notes
-    -----
-    Items in defined top-level places like electrodes may not be in the groups of the nwbfile-level builder,
-    but rather in hidden locations like general/extracellular_ephys/electrodes.
-    Also, some items in these top-level locations may interrupt the order of the location_in_file.
-    For example, when location_in_file is 'stimulus/AcousticWaveformSeries/data', the builder for that dataset is
-    located at 'stimulus/presentation/AcousticWaveformSeries/data'.
-    For this reason, we recursively search for the appropriate sub-builder for each name in the location_in_file.
-    Also, the first name in location_in_file is inherently suspect due to the way that the location is determined
-    in _find_location_in_memory_nwbfile(), and may not be present in the builder. For example, when location_in_file is
-    'lab_meta_data/fiber_photometry/fiber_photometry_table/location/data', the builder for that dataset is located at
-    'general/fiber_photometry/fiber_photometry_table/location/data'.
-    """
-    split_location = iter(location_in_file.split("/"))
-    name = next(split_location)
-
-    if _find_sub_builder(builder, name) is None:
-        name = next(split_location)
-
-    while name not in builder.datasets and name not in builder.links:
-        builder = _find_sub_builder(builder, name)
-        if builder is None:
-            raise ValueError(f"Could not find location '{location_in_file}' in builder ({name} is missing).")
-        try:
-            name = next(split_location)
-        except StopIteration:
-            raise ValueError(f"Could not find location '{location_in_file}' in builder ({name} is not a dataset).")
-    builder = builder[name]
-    if isinstance(builder, LinkBuilder):
-        builder = builder.builder
-    return builder
-
-
-def _find_sub_builder(builder: BaseBuilder, name: str) -> BaseBuilder:
-    """Search breadth-first for a sub-builder by name in a builder object.
-
-    Parameters
-    ----------
-    builder : hdmf.build.builders.BaseBuilder
-        The builder object to search for the sub-builder in.
-    name : str
-        The name of the sub-builder to search for.
-
-    Returns
-    -------
-    hdmf.build.builders.BaseBuilder
-        The sub-builder with the given name, or None if it could not be found.
-    """
-    sub_builders = list(builder.groups.values())
-    return _recursively_search_sub_builders(sub_builders=sub_builders, name=name)
-
-
-def _recursively_search_sub_builders(sub_builders: list[BaseBuilder], name: str) -> BaseBuilder:
-    """Recursively search for a sub-builder by name in a list of sub-builders.
-
-    Parameters
-    ----------
-    sub_builders : list[hdmf.build.builders.BaseBuilder]
-        The list of sub-builders to search for the sub-builder in.
-    name : str
-        The name of the sub-builder to search for.
-
-    Returns
-    -------
-    hdmf.build.builders.BaseBuilder
-        The sub-builder with the given name, or None if it could not be found.
-    """
-    sub_sub_builders = []
-    for sub_builder in sub_builders:
-        if sub_builder.name == name:
-            return sub_builder
-        sub_sub_builders.extend(list(sub_builder.groups.values()))
-    if len(sub_sub_builders) == 0:
-        return None
-    return _recursively_search_sub_builders(sub_builders=sub_sub_builders, name=name)
