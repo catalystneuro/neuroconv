@@ -213,7 +213,7 @@ class ImageInterface(BaseDataInterface):
         metadata = super().get_metadata()
 
         # Add basic metadata about the images
-        metadata["Images"] = dict(description="Images loaded through ImageInterface", num_images=len(self.file_paths))
+        metadata["Images"] = dict(description="Images loaded through ImageInterface")
 
         return metadata
 
