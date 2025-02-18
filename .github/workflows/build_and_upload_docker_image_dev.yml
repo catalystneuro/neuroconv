@@ -9,10 +9,6 @@ on:
       DOCKER_UPLOADER_PASSWORD:
         required: true
 
-concurrency:  # Cancel previous workflows on the same pull request
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   release-image:
     name: Build and Upload Docker Image of Current Dev Branch to GHCR
