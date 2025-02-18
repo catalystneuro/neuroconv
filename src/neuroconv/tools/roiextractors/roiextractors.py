@@ -963,7 +963,6 @@ def add_plane_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -1008,16 +1007,6 @@ def add_plane_segmentation_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression_options is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
