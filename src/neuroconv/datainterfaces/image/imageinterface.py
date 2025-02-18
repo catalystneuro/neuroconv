@@ -251,7 +251,7 @@ class ImageInterface(BaseDataInterface):
             image_name = Path(file_path).stem
 
             # Validate mode and get image class
-            if iterator.image_mode not in self.MODE_MAPPING:
+            if iterator.image_mode not in self.IMAGE_MODE_TO_NWB_TYPE_MAP:
                 raise ValueError(f"Unsupported image mode: {iterator.image_mode} for image {file_path.name}")
 
             nwb_image_class = self.IMAGE_MODE_TO_NWB_TYPE_MAP[iterator.image_mode]
