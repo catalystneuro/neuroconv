@@ -5,7 +5,6 @@ from typing import List, Literal, Optional, Union
 
 import numpy as np
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
-from PIL import Image
 from pynwb import NWBFile
 from pynwb.base import Images
 from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
@@ -20,6 +19,7 @@ class SingleImageIterator(AbstractDataChunkIterator):
 
     def __init__(self, file_path: Union[str, Path]):
         self._file_path = Path(file_path)
+        from PIL import Image
 
         # Get image information without loading the full image
         with Image.open(self._file_path) as img:
@@ -70,6 +70,8 @@ class SingleImageIterator(AbstractDataChunkIterator):
 
     def __next__(self):
         """Return the DataChunk with the single full image"""
+        from PIL import Image
+
         if self._images_returned == 0:
             data = np.asarray(Image.open(self._file_path))
 
@@ -105,8 +107,8 @@ class SingleImageIterator(AbstractDataChunkIterator):
         return self._image_shape[0]
 
     @property
-    def size_info(self):
-        """Return dictionary with size information"""
+    def image_info(self):
+        """Return dictionary with image information"""
         return {
             "file_size_bytes": self._size_bytes,
             "memory_size_bytes": self._memory_size,
@@ -121,11 +123,11 @@ class ImageInterface(BaseDataInterface):
 
     display_name = "Image Interface"
     keywords = ("image",)
-    associated_suffixes = (".png", ".jpg", ".jpeg", ".tiff", ".tif")
+    associated_suffixes = (".png", ".jpg", ".jpeg", ".tiff", ".tif", "webp")
     info = "Interface for converting single or multiple images to NWB format."
 
     # Mapping from PIL mode to NWB image class
-    MODE_MAPPING = {
+    IMAGE_MODE_TO_NWB_TYPE_MAP = {
         "L": GrayscaleImage,
         "RGB": RGBImage,
         "RGBA": RGBAImage,
@@ -182,14 +184,17 @@ class ImageInterface(BaseDataInterface):
         self.images_location = images_location
 
         super().__init__(
-            verbose=verbose, file_paths=file_paths, folder_path=folder_path, images_location=images_location
+            verbose=verbose,
+            file_paths=file_paths,
+            folder_path=folder_path,
+            images_location=images_location,
         )
 
         # Process paths
         if folder_path is not None:
             folder = Path(folder_path)
             if not folder.exists():
-                raise ValueError(f"Folder {folder} does not exist")
+                raise ValueError(f"Folder path {folder} does not exist")
 
             # Get all image files in folder
             file_paths = []
@@ -199,14 +204,7 @@ class ImageInterface(BaseDataInterface):
             if not file_paths:
                 raise ValueError(f"No image files found in {folder}")
 
-            self.file_paths = [str(Path(p).absolute()) for p in file_paths]
-        else:
-            self.file_paths = [str(Path(p).absolute()) for p in file_paths]
-
-            # Validate paths
-            for path in self.file_paths:
-                if not Path(path).exists():
-                    raise ValueError(f"File {path} does not exist")
+        self.file_paths = [Path(p).resolve() for p in file_paths]
 
     def get_metadata(self) -> DeepDict:
         """Get metadata for the images."""
@@ -220,7 +218,7 @@ class ImageInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: Optional[DeepDict] = None,
         container_name: str = "images",
     ) -> None:
         """
@@ -254,10 +252,10 @@ class ImageInterface(BaseDataInterface):
 
             # Validate mode and get image class
             if iterator.image_mode not in self.MODE_MAPPING:
-                raise ValueError(f"Unsupported image mode: {iterator.image_mode}")
+                raise ValueError(f"Unsupported image mode: {iterator.image_mode} for image {file_path.name}")
 
-            image_class = self.MODE_MAPPING[iterator.image_mode]
-            image_container = image_class(name=image_name, data=iterator)
+            nwb_image_class = self.IMAGE_MODE_TO_NWB_TYPE_MAP[iterator.image_mode]
+            image_container = nwb_image_class(name=image_name, data=iterator)
 
             # Add to images container
             images_container.add_image(image_container)

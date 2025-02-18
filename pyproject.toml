@@ -273,7 +273,7 @@ icephys = [
 
 ## Image
 image = [
-    "pillow>=10.0.0",  # PIL
+    "pillow>=10.0.0",
 ]
 
 ## Ophys

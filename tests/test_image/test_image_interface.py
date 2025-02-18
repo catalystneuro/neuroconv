@@ -97,12 +97,13 @@ class TestRGBImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with RGB images."""
 
     data_interface_cls = ImageInterface
+    mode = "RGB"
 
     @pytest.fixture(autouse=True)
     def make_interface(self, tmp_path, format):
         """Create interface with RGB test images."""
         # Generate test RGB images
-        generate_random_images(num_images=5, mode="RGB", output_dir_path=tmp_path, format=format)
+        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
         self.interface_kwargs = dict(folder_path=tmp_path)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
@@ -125,12 +126,13 @@ class TestGrayscaleImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with grayscale (mode L) images."""
 
     data_interface_cls = ImageInterface
+    mode = "L"
 
     @pytest.fixture(autouse=True)
     def make_interface(self, tmp_path, format):
         """Create interface with grayscale test images."""
         # Generate test grayscale images
-        generate_random_images(num_images=5, mode="L", output_dir_path=tmp_path, format=format)
+        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
         self.interface_kwargs = dict(folder_path=tmp_path)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
@@ -153,12 +155,13 @@ class TestRGBAImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with RGBA images."""
 
     data_interface_cls = ImageInterface
+    mode = "RGBA"
 
     @pytest.fixture(autouse=True)
     def make_interface(self, tmp_path, format):
         """Create interface with RGBA test images."""
         # Generate test RGBA images
-        generate_random_images(num_images=5, mode="RGBA", output_dir_path=tmp_path, format=format)
+        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
         self.interface_kwargs = dict(folder_path=tmp_path)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
@@ -181,12 +184,13 @@ class TestLAtoRGBAImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with LA images being converted to RGBA."""
 
     data_interface_cls = ImageInterface
+    mode = "LA"
 
     @pytest.fixture(autouse=True)
     def make_interface(self, tmp_path, format):
         """Create interface with LA test images."""
         # Generate test LA images
-        generate_random_images(num_images=5, mode="LA", output_dir_path=tmp_path, format=format)
+        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
         self.interface_kwargs = dict(folder_path=tmp_path)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
@@ -209,7 +213,7 @@ class TestLAtoRGBAImageInterface(DataInterfaceTestMixin):
                 assert np.all(image.data[..., 1] == image.data[..., 2])
 
 
-class TestMixedImagesInterface(DataInterfaceTestMixin):
+class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with mixed image modes and formats."""
 
     data_interface_cls = ImageInterface
@@ -250,16 +254,16 @@ class TestMixedImagesInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 8
 
             # Count instances of each image type
-            image_types = {
+            num_image_types = {
                 RGBImage: 0,
                 GrayscaleImage: 0,
                 RGBAImage: 0,  # This will include both RGBA and converted LA images
             }
 
             for image in images_container.images.values():
-                image_types[type(image)] += 1
+                num_image_types[type(image)] += 1
 
             # Verify we have the expected number of each type
-            assert image_types[RGBImage] == 2  # RGB images
-            assert image_types[GrayscaleImage] == 2  # L images
-            assert image_types[RGBAImage] == 4  # 2 RGBA + 2 LA converted to RGBA
+            assert num_image_types[RGBImage] == 2  # RGB images
+            assert num_image_types[GrayscaleImage] == 2  # L images
+            assert num_image_types[RGBAImage] == 4  # 2 RGBA + 2 LA converted to RGBA
