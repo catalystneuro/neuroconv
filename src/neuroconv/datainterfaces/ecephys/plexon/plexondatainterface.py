@@ -65,6 +65,63 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
+class PlexonLFPInterface(BaseRecordingExtractorInterface):
+    """
+    Primary data interface class for converting Plexon data.
+
+    Uses the :py:class:`~spikeinterface.extractors.PlexonRecordingExtractor`.
+    """
+
+    display_name = "Plexon Recording"
+    associated_suffixes = (".plx",)
+    info = "Interface for Plexon recording data."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
+        return source_schema
+
+    @validate_call
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        stream_name: str = "FPl-Low Pass Filtered",
+    ):
+        """
+        Load and prepare data for Plexon.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the .plx file.
+        verbose : bool, default: Falsee
+            Allows verbosity.
+        es_key : str, default: "ElectricalSeries"
+        stream_name: str, optional
+            Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
+            the wideband data.
+        """
+
+        invalid_stream_names = ["WB-Wideband", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
+        assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        neo_reader = self.recording_extractor.neo_reader
+
+        if hasattr(neo_reader, "raw_annotations"):
+            block_ind = self.recording_extractor.block_index
+            neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
+            if "rec_datetime" in neo_metadata:
+                metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
+
+        return metadata
+
 class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Plexon2 data.
