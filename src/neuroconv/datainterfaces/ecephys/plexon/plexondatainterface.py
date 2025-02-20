@@ -122,6 +122,7 @@ class PlexonLFPInterface(BaseRecordingExtractorInterface):
 
         return metadata
 
+
 class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Plexon2 data.
