@@ -108,6 +108,13 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if stub_test:
             self.subset_channels = [0, 1]
 
+        # Check if the recording has ADC channels
+        recording = self.recording_extractor
+        channel_ids = recording.get_channel_ids()
+        neural_channels = [id for id in channel_ids if "ADC" not in id]
+        if len(neural_channels) < len(channel_ids):
+            self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
+
     def get_metadata(self) -> dict:
         from ._openephys_utils import _get_session_start_time
 
