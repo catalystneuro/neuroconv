@@ -75,6 +75,7 @@ class PlexonLFPInterface(BaseRecordingExtractorInterface):
     display_name = "Plexon Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon recording data."
+    ExtractorName = "PlexonRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
