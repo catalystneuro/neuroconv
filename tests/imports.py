@@ -89,6 +89,7 @@ class TestImportStructure(TestCase):
             "icephys",
             "ophys",
             "text",
+            "image",
             # Exposed attributes
             "interface_list",
             "interfaces_by_category",

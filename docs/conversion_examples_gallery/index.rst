@@ -108,6 +108,14 @@ Behavior
     MedPC <behavior/medpc>
 
 
+Image
+-----
+
+.. toctree::
+    :maxdepth: 1
+
+    Image (png, jpeg, tiff, etc) <imaging/image>
+
 Text
 ----
 
