@@ -21,6 +21,7 @@ as used by hdmf >= 3.14.6.
 * Ophys interfaces now call `get_metadata` by default when no metadata is passed [PR #1200](https://github.com/catalystneuro/neuroconv/pull/1200)
 * Support for hdmf 4.0 [PR #1204](https://github.com/catalystneuro/neuroconv/pull/1204)
 * Support for numpy 2.0 [PR #1206](https://github.com/catalystneuro/neuroconv/pull/1206)
+* Support python 3.12 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
 
 
 # v0.6.7 (January 20, 2025)
