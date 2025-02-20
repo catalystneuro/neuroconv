@@ -1,7 +1,6 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
 import json
-import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -228,7 +227,7 @@ class NWBConverter:
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[FilePath] = None,
+        nwbfile_path: FilePath,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -264,13 +263,6 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
-
-        if nwbfile_path is None:
-            warnings.warn(  # TODO: remove on or after 2024/12/26
-                "Using Converter.run_conversion without specifying nwbfile_path is deprecated. To create an "
-                "NWBFile object in memory, use Converter.create_nwbfile. To append to an existing NWBFile object,"
-                " use Converter.add_to_nwbfile."
-            )
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
