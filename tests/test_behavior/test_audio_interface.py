@@ -2,11 +2,11 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from dateutil.tz import gettz
 
 import jsonschema
 import numpy as np
 import pytest
-from dateutil.tz import gettz
 from numpy.testing import assert_array_equal
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
@@ -37,7 +37,6 @@ def create_audio_files(
 
 
 class TestAudioInterface(AudioInterfaceTestMixin):
-
     data_interface_cls = AudioInterface
 
     @pytest.fixture(scope="class", autouse=True)
@@ -178,6 +177,47 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             relative_starting_time + aligned_starting_time for relative_starting_time in relative_starting_times
         ]
         assert_array_equal(x=fresh_interface._segment_starting_times, y=expecting_starting_times)
+
+    def test_mp3_support(self):
+        """Test that the interface properly handles MP3 files."""
+        # Generate test MP3 file
+        mp3_file_path = self.test_dir / "test_audio.mp3"
+        test_data = np.sin(2 * np.pi * 440 * np.linspace(0, 0.1, 44100))  # 0.1 second 440Hz sine wave
+        
+        import soundfile as sf
+        import subprocess
+        
+        # First write as WAV
+        wav_path = self.test_dir / "temp.wav"
+        sf.write(wav_path, test_data, 44100)
+        
+        # Convert to MP3 using ffmpeg
+        subprocess.run(['ffmpeg', '-i', str(wav_path), str(mp3_file_path)], check=True)
+        wav_path.unlink()  # Clean up temporary WAV file
+
+        # Create interface with MP3 file
+        audio_interface = AudioInterface(file_paths=[mp3_file_path])
+        
+        # Run conversion
+        nwbfile_path = str(self.test_dir / "mp3_test.nwb")
+        metadata = audio_interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=self.session_start_time)
+        
+        class MP3TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Audio=AudioInterface)
+        
+        converter = MP3TestNWBConverter(dict(Audio=dict(file_paths=[mp3_file_path])))
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        
+        # Verify data was properly written
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            container = nwbfile.stimulus
+            audio_name = metadata["Behavior"]["Audio"][0]["name"]
+            assert audio_name in container
+            assert container[audio_name].rate == 44100
+            # Data should be present and match original length
+            assert len(container[audio_name].data) == len(test_data)
 
     def test_run_conversion(self):
         file_paths = self.nwb_converter.data_interface_objects["Audio"].source_data["file_paths"]

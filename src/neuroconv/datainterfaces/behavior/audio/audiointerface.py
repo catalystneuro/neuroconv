@@ -23,9 +23,9 @@ def _check_audio_names_are_unique(metadata: dict):
 class AudioInterface(BaseTemporalAlignmentInterface):
     """Data interface for writing .wav audio recordings to an NWB file."""
 
-    display_name = "Wav Audio"
+    display_name = "Audio"
     keywords = ("sound", "microphone")
-    associated_suffixes = (".wav",)
+    associated_suffixes = (".wav", ".mp3")
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
@@ -52,11 +52,11 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
-            suffix for suffix in suffixes if suffix not in [".wav"]
-        ]  # TODO: add support for more formats
+            suffix for suffix in suffixes if suffix not in [".wav", ".mp3"]
+        ]
         if format_is_not_supported:
             raise ValueError(
-                "The currently supported file format for audio is WAV file. "
+                "The currently supported file formats for audio are WAV and mp3. "
                 f"Some of the provided files does not match this format: {format_is_not_supported}."
             )
 
@@ -210,7 +210,17 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         starting_times = self._segment_starting_times or [0.0]
 
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
-            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            if Path(file_path).suffix == ".wav":
+                sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            else:  # mp3
+                try:
+                    import librosa
+                except ImportError:
+                    raise ImportError(
+                        "The librosa package is required to read MP3 files. "
+                        "Please install it with 'pip install librosa'."
+                    )
+                acoustic_series, sampling_rate = librosa.load(file_path, sr=None)
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
