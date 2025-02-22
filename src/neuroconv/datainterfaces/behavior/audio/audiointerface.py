@@ -51,9 +51,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         import ndx_sound  # noqa: F401
 
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
-        format_is_not_supported = [
-            suffix for suffix in suffixes if suffix not in [".wav", ".mp3"]
-        ]
+        format_is_not_supported = [suffix for suffix in suffixes if suffix not in [".wav", ".mp3"]]
         if format_is_not_supported:
             raise ValueError(
                 "The currently supported file formats for audio are WAV and mp3. "
