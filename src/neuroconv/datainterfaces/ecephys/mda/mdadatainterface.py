@@ -50,6 +50,7 @@ class MdaSortingInterface(BaseSortingExtractorInterface):
                     "1-indexed primary channel for the unit. The channel identification number "
                     "is relative and may not correspond to the ElectricalSeries also in the file. "
                     "In other words, if you only sort channels 61-64, the max_channel will be 1-4."
+                ),
             ),
         ]
         return metadata
