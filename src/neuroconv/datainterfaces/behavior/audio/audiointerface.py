@@ -8,7 +8,7 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools.audio import add_acoustic_waveform_series
+from ....tools.audio import add_acoustic_waveform_series, read_mp3
 from ....utils import (
     get_base_schema,
 )
@@ -21,11 +21,11 @@ def _check_audio_names_are_unique(metadata: dict):
 
 
 class AudioInterface(BaseTemporalAlignmentInterface):
-    """Data interface for writing .wav audio recordings to an NWB file."""
+    """Data interface for writing audio recordings (WAV, MP3) to an NWB file."""
 
-    display_name = "Wav Audio"
+    display_name = "Audio"
     keywords = ("sound", "microphone")
-    associated_suffixes = (".wav",)
+    associated_suffixes = (".wav", ".mp3")
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
@@ -34,6 +34,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         Data interface for writing acoustic recordings to an NWB file.
 
         Writes acoustic recordings as an ``AcousticWaveformSeries`` from the ndx_sound extension.
+        Supports WAV and MP3 audio file formats.
 
         Parameters
         ----------
@@ -52,12 +53,12 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
-            suffix for suffix in suffixes if suffix not in [".wav"]
+            suffix for suffix in suffixes if suffix not in [".wav", ".mp3"]
         ]  # TODO: add support for more formats
         if format_is_not_supported:
             raise ValueError(
-                "The currently supported file format for audio is WAV file. "
-                f"Some of the provided files does not match this format: {format_is_not_supported}."
+                "The currently supported file formats for audio are WAV and MP3 files. "
+                f"Some of the provided files do not match these formats: {format_is_not_supported}."
             )
 
         self._number_of_audio_files = len(file_paths)
@@ -172,6 +173,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         iterator_options: Optional[dict] = None,
     ):
         """
+        Add audio data to an NWB file.
+
+        Reads WAV or MP3 files and adds them as AcousticWaveformSeries to the NWB file.
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -210,7 +215,13 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         starting_times = self._segment_starting_times or [0.0]
 
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
-            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            file_path_obj = Path(file_path)
+
+            # Choose the appropriate reader based on the file extension
+            if file_path_obj.suffix.lower() == ".mp3":
+                sampling_rate, acoustic_series = read_mp3(filename=file_path)
+            else:  # Default to WAV
+                sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
