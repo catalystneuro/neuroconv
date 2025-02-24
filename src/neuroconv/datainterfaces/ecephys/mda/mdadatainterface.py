@@ -40,12 +40,12 @@ class MdaSortingInterface(BaseSortingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        # See MdaSortingExtractor documentation: 
+        # See MdaSortingExtractor documentation:
         # https://github.com/SpikeInterface/spikeinterface/blob/2c6e800a820aa0618007018b94a047f71f82ace5/src/spikeinterface/extractors/mdaextractors.py#L180
         # https://mountainsort.readthedocs.io/en/latest/first_sort.html#format-of-the-firings-mda
         metadata["Ecephys"]["UnitProperties"] = [
             dict(
-                name="max_channel", 
+                name="max_channel",
                 description=(
                     "1-indexed primary channel for the unit. The channel identification number "
                     "is relative and may not correspond to the ElectricalSeries also in the file. "
