@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 import scipy
@@ -20,12 +20,55 @@ def _check_audio_names_are_unique(metadata: dict):
     assert neurodata_names_are_unique, "Some of the names for Audio metadata are not unique."
 
 
-class AudioInterface(BaseTemporalAlignmentInterface):
-    """Data interface for writing .wav audio recordings to an NWB file."""
+def _read_mp3_file(file_path: Path) -> Tuple[int, np.ndarray]:
+    """
+    Read an MP3 file and convert it to the format expected by add_acoustic_waveform_series.
 
-    display_name = "Wav Audio"
+    Parameters
+    ----------
+    file_path : Path
+        Path to the MP3 file
+
+    Returns
+    -------
+    sampling_rate : int
+        The sampling rate of the audio in Hz
+    audio_data : np.ndarray
+        The audio data as a numpy array
+    """
+    try:
+        from pydub import AudioSegment
+    except ImportError:
+        raise ImportError(
+            "The pydub package is required to read MP3 files. " "Please install it using 'pip install pydub'."
+        )
+
+    # Load the MP3 file using pydub
+    audio = AudioSegment.from_mp3(file_path)
+
+    # Get the sampling rate
+    sampling_rate = audio.frame_rate
+
+    # Convert to numpy array - with shape (samples, channels)
+    # Convert from interleaved to channel-wise
+    samples = np.array(audio.get_array_of_samples())
+
+    # Handle mono vs stereo
+    if audio.channels == 1:
+        audio_data = samples.reshape(-1, 1)
+    else:
+        # Reshape from interleaved format to (samples, channels)
+        audio_data = samples.reshape(-1, audio.channels)
+
+    return sampling_rate, audio_data
+
+
+class AudioInterface(BaseTemporalAlignmentInterface):
+    """Data interface for writing audio recordings (.wav, .mp3) to an NWB file."""
+
+    display_name = "Audio"
     keywords = ("sound", "microphone")
-    associated_suffixes = (".wav",)
+    associated_suffixes = (".wav", ".mp3")
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
@@ -50,14 +93,14 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
 
-        suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
+        suffixes = [suffix.lower() for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
-            suffix for suffix in suffixes if suffix not in [".wav"]
+            suffix for suffix in suffixes if suffix not in [".wav", ".mp3"]
         ]  # TODO: add support for more formats
         if format_is_not_supported:
             raise ValueError(
-                "The currently supported file format for audio is WAV file. "
-                f"Some of the provided files does not match this format: {format_is_not_supported}."
+                "The currently supported file formats for audio are WAV and MP3. "
+                f"Some of the provided files do not match these formats: {format_is_not_supported}."
             )
 
         self._number_of_audio_files = len(file_paths)
@@ -210,7 +253,15 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         starting_times = self._segment_starting_times or [0.0]
 
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
-            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            file_path = Path(file_path)
+            suffix = file_path.suffix.lower()
+
+            if suffix == ".wav":
+                sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            elif suffix == ".mp3":
+                sampling_rate, acoustic_series = _read_mp3_file(file_path)
+            else:
+                raise ValueError(f"Unsupported file format: {suffix}")
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]

@@ -13,7 +13,10 @@ from pynwb import NWBHDF5IO
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
+from neuroconv.datainterfaces.behavior.audio.audiointerface import (
+    AudioInterface,
+    _read_mp3_file,
+)
 from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
 
 
@@ -23,15 +26,45 @@ def create_audio_files(
     sampling_rate: int,
     num_frames: int,
     dtype: str = "int16",
+    file_format: str = "wav",
 ):
     audio_file_names = []
     for audio_file_ind in range(num_audio_files):
-        audio_file_name = Path(test_dir) / f"test_audio_file_{audio_file_ind}.wav"
-        write(
-            filename=audio_file_name,
-            rate=sampling_rate,
-            data=np.random.randint(size=(num_frames,), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype),
-        )
+        audio_file_name = Path(test_dir) / f"test_audio_file_{audio_file_ind}.{file_format}"
+
+        if file_format == "wav":
+            write(
+                filename=audio_file_name,
+                rate=sampling_rate,
+                data=np.random.randint(
+                    size=(num_frames,), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype
+                ),
+            )
+        elif file_format == "mp3":
+            # For MP3 testing, create a WAV file first, then convert it using pydub
+            try:
+                from pydub import AudioSegment
+            except ImportError:
+                pytest.skip("pydub is required to test MP3 support")
+
+            temp_wav_file = Path(test_dir) / f"temp_audio_file_{audio_file_ind}.wav"
+            write(
+                filename=temp_wav_file,
+                rate=sampling_rate,
+                data=np.random.randint(
+                    size=(num_frames,), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype
+                ),
+            )
+
+            # Convert WAV to MP3
+            audio = AudioSegment.from_wav(temp_wav_file)
+            audio.export(audio_file_name, format="mp3")
+
+            # Remove temporary WAV file
+            temp_wav_file.unlink()
+        else:
+            raise ValueError(f"Unsupported file format: {file_format}")
+
         audio_file_names.append(audio_file_name)
     return audio_file_names
 
@@ -39,6 +72,62 @@ def create_audio_files(
 class TestAudioInterface(AudioInterfaceTestMixin):
 
     data_interface_cls = AudioInterface
+
+    @pytest.mark.parametrize("file_format", ["wav", "mp3"])
+    def test_file_format_support(self, file_format, tmp_path):
+        """Test that the AudioInterface can read different file formats."""
+        try:
+            # Skip MP3 test if pydub is not installed
+            if file_format == "mp3":
+                try:
+                    import pydub  # noqa
+                except ImportError:
+                    pytest.skip("pydub is required to test MP3 support")
+
+            # Create a test file with specified format
+            file_paths = create_audio_files(
+                test_dir=tmp_path,
+                num_audio_files=1,
+                sampling_rate=44100,
+                num_frames=1000,
+                file_format=file_format,
+            )
+
+            # Instantiate AudioInterface with the file
+            interface = AudioInterface(file_paths=file_paths)
+
+            # Verify that the interface was created successfully
+            assert interface._number_of_audio_files == 1
+
+            # Test basic metadata
+            metadata = interface.get_metadata()
+            assert "Behavior" in metadata
+            assert "Audio" in metadata["Behavior"]
+            assert len(metadata["Behavior"]["Audio"]) == 1
+
+        except Exception as e:
+            pytest.fail(f"Failed to create interface with {file_format} format: {e}")
+
+    def test_mp3_reader_function(self, tmp_path):
+        """Test the specific MP3 reader function."""
+
+        # Create a test MP3 file
+        file_paths = create_audio_files(
+            test_dir=tmp_path,
+            num_audio_files=1,
+            sampling_rate=44100,
+            num_frames=1000,
+            file_format="mp3",
+        )
+
+        # Test the MP3 reader function directly
+        sampling_rate, audio_data = _read_mp3_file(file_paths[0])
+
+        # Verify the returned data
+        assert sampling_rate == 44100
+        assert isinstance(audio_data, np.ndarray)
+        assert audio_data.ndim == 2  # Should be (samples, channels)
+        assert audio_data.shape[0] > 0  # Should have some samples
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_test(self, request, tmp_path_factory):
