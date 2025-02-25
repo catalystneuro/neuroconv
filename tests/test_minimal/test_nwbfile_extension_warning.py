@@ -1,6 +1,5 @@
 """Tests for the warning when nwbfile_path does not end with .nwb."""
 
-import os
 import tempfile
 import unittest
 import warnings
@@ -30,6 +29,7 @@ class TestNWBFileExtensionWarning(unittest.TestCase):
 
     def setUp(self):
         """Set up the test by creating a minimal converter and data interface."""
+
         # Create a minimal converter with no data interfaces
         class MinimalConverter(NWBConverter):
             """A minimal converter with no data interfaces."""
@@ -44,7 +44,7 @@ class TestNWBFileExtensionWarning(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a file path without .nwb extension
             non_nwb_path = Path(temp_dir) / "test_file.txt"
-            
+
             # Check that a warning is raised
             with pytest.warns(UserWarning, match="does not end with '.nwb'"):
                 # We don't actually need to run the full conversion, just call the method
@@ -53,9 +53,9 @@ class TestNWBFileExtensionWarning(unittest.TestCase):
                     nwbfile_path=non_nwb_path,
                     metadata={
                         "NWBFile": {
-                            "session_description": "test", 
+                            "session_description": "test",
                             "identifier": "test",
-                            "session_start_time": "2023-01-01T12:00:00"
+                            "session_start_time": "2023-01-01T12:00:00",
                         }
                     },
                     overwrite=True,
@@ -66,36 +66,36 @@ class TestNWBFileExtensionWarning(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a file path with .nwb extension
             nwb_path = Path(temp_dir) / "test_file.nwb"
-            
+
             # Check that no warning is raised
             with warnings.catch_warnings(record=True) as w:
                 # Filter out other warnings that might be raised
                 warnings.filterwarnings("always", category=UserWarning)
-                
+
                 # We don't actually need to run the full conversion, just call the method
                 # that checks the file extension
                 self.converter.run_conversion(
                     nwbfile_path=nwb_path,
                     metadata={
                         "NWBFile": {
-                            "session_description": "test", 
+                            "session_description": "test",
                             "identifier": "test",
-                            "session_start_time": "2023-01-01T12:00:00"
+                            "session_start_time": "2023-01-01T12:00:00",
                         }
                     },
                     overwrite=True,
                 )
-                
+
                 # Check that no warning about file extension was raised
                 for warning in w:
                     assert "does not end with '.nwb'" not in str(warning.message)
-    
+
     def test_data_interface_warning_raised_for_non_nwb_extension(self):
         """Test that a warning is raised when nwbfile_path does not end with .nwb in DataInterface."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a file path without .nwb extension
             non_nwb_path = Path(temp_dir) / "test_file.txt"
-            
+
             # Check that a warning is raised
             with pytest.warns(UserWarning, match="does not end with '.nwb'"):
                 # We don't actually need to run the full conversion, just call the method
@@ -104,9 +104,9 @@ class TestNWBFileExtensionWarning(unittest.TestCase):
                     nwbfile_path=non_nwb_path,
                     metadata={
                         "NWBFile": {
-                            "session_description": "test", 
+                            "session_description": "test",
                             "identifier": "test",
-                            "session_start_time": "2023-01-01T12:00:00"
+                            "session_start_time": "2023-01-01T12:00:00",
                         }
                     },
                     overwrite=True,
@@ -117,26 +117,26 @@ class TestNWBFileExtensionWarning(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a file path with .nwb extension
             nwb_path = Path(temp_dir) / "test_file.nwb"
-            
+
             # Check that no warning is raised
             with warnings.catch_warnings(record=True) as w:
                 # Filter out other warnings that might be raised
                 warnings.filterwarnings("always", category=UserWarning)
-                
+
                 # We don't actually need to run the full conversion, just call the method
                 # that checks the file extension
                 self.data_interface.run_conversion(
                     nwbfile_path=nwb_path,
                     metadata={
                         "NWBFile": {
-                            "session_description": "test", 
+                            "session_description": "test",
                             "identifier": "test",
-                            "session_start_time": "2023-01-01T12:00:00"
+                            "session_start_time": "2023-01-01T12:00:00",
                         }
                     },
                     overwrite=True,
                 )
-                
+
                 # Check that no warning about file extension was raised
                 for warning in w:
                     assert "does not end with '.nwb'" not in str(warning.message)
