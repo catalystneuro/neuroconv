@@ -212,10 +212,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
             # Check if the WAV file is 24-bit (3 bytes per sample)
             bit_depth = get_wav_bit_depth(file_path)
-            
+
             # Memory mapping is not compatible with 24-bit WAV files
             use_mmap = bit_depth != 24
-            
+
             sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=use_mmap)
 
             if stub_test:
