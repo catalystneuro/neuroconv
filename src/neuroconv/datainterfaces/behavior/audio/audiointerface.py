@@ -8,7 +8,7 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools.audio import add_acoustic_waveform_series
+from ....tools.audio import add_acoustic_waveform_series, get_wav_bit_depth
 from ....utils import (
     get_base_schema,
 )
@@ -210,7 +210,13 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         starting_times = self._segment_starting_times or [0.0]
 
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
-            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            # Check if the WAV file is 24-bit (3 bytes per sample)
+            bit_depth = get_wav_bit_depth(file_path)
+            
+            # Memory mapping is not compatible with 24-bit WAV files
+            use_mmap = bit_depth != 24
+            
+            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=use_mmap)
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
