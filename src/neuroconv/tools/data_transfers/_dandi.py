@@ -91,7 +91,7 @@ def automatic_dandi_upload(
                 nwbfile = io.read()
                 session_id = nwbfile.session_id
 
-             # Replace invalid characters with underscores
+            # Replace invalid characters with underscores
             session_id = session_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
             dandi_stem = organized_nwbfile.stem
