@@ -90,6 +90,10 @@ def automatic_dandi_upload(
             with NWBHDF5IO(path=organized_nwbfile, mode="r") as io:
                 nwbfile = io.read()
                 session_id = nwbfile.session_id
+
+             # Replace invalid characters with underscores
+            session_id = session_id.replace("/", "_").replace("\\", "_").replace(":", "_")
+
             dandi_stem = organized_nwbfile.stem
             dandi_stem_split = dandi_stem.split("_")
             dandi_stem_split.insert(1, f"ses-{session_id}")
