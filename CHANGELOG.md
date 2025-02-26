@@ -13,6 +13,7 @@ as used by hdmf >= 3.14.6.
 
 ## Features
 * Use the latest version of ndx-pose for `DeepLabCutInterface` and `LightningPoseDataInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
+* Added a first draft of `.clinerules` [#1229](https://github.com/catalystneuro/neuroconv/pull/1229)
 
 ## Improvements
 * Simple writing no longer uses a context manager [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
