@@ -340,7 +340,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = BinaryRecordingExtractor(
             file_paths=[binary_file_path],
             sampling_frequency=sampling_frequency,
-            num_chan=num_channels,
+            num_channels=num_channels,
             dtype=dtype,
             t_starts=None,
             file_offset=0,
