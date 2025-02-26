@@ -210,14 +210,14 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 assert self.aligned_segment_starting_times[audio_ind] == container[audio_interface_name].starting_time
                 assert self.sampling_rate == container[audio_interface_name].rate
                 assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)
-    
+
     def test_get_wav_bit_depth(self):
         """Test that _get_wav_bit_depth correctly identifies the bit depth of WAV files."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a 24-bit WAV file
             file_path = Path(temp_dir) / "test_24bit.wav"
             create_24bit_wav_file(file_path)
-            
+
             # Check that the bit depth is correctly identified as 24
             bit_depth = AudioInterface._get_wav_bit_depth(file_path)
             assert bit_depth == 24, f"Expected bit depth of 24, got {bit_depth}"
