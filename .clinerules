@@ -4,5 +4,5 @@
 * Always make a contribution to the CHANGELOG file summarizing any changes
 * Use typehints and numpy-style docstrings
 * always apply Black formatting
-* avoid making any modifications that are not strictly necessary to the task you've been requested to do (including dostrings)
+* avoid making any modifications that are not strictly necessary to the task you've been requested to do (including docstrings)
 * if you spot any possible errors or have suggestions for improvement outside of the scope of your requested task, you can add them to your Task Completed message
