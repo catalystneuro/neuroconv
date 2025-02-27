@@ -127,6 +127,7 @@ interface_list = [
     EDFRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
+    PlexonLFPInterface,
     Plexon2RecordingInterface,
     PlexonSortingInterface,
     BiocamRecordingInterface,
