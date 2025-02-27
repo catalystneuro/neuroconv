@@ -1,4 +1,5 @@
 import re
+import tempfile
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
+from neuroconv.tools.testing.audio import create_24bit_wav_file
 from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
 
 
@@ -208,3 +210,51 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 assert self.aligned_segment_starting_times[audio_ind] == container[audio_interface_name].starting_time
                 assert self.sampling_rate == container[audio_interface_name].rate
                 assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)
+
+    def test_get_wav_bit_depth(self):
+        """Test that _get_wav_bit_depth correctly identifies the bit depth of WAV files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create a 24-bit WAV file
+            file_path = Path(temp_dir) / "test_24bit.wav"
+            create_24bit_wav_file(file_path)
+
+            # Check that the bit depth is correctly identified as 24
+            bit_depth = AudioInterface._get_wav_bit_depth(file_path)
+            assert bit_depth == 24, f"Expected bit depth of 24, got {bit_depth}"
+
+    def test_24bit_wav_file(self):
+        """Test that AudioInterface works with 24-bit WAV files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create a 24-bit WAV file
+            file_path = Path(temp_dir) / "test_24bit.wav"
+            create_24bit_wav_file(file_path)
+
+            # Create a converter with the AudioInterface
+            class AudioTestNWBConverter(NWBConverter):
+                data_interface_classes = dict(Audio=AudioInterface)
+
+            # Initialize the converter with the 24-bit WAV file
+            source_data = dict(Audio=dict(file_paths=[file_path]))
+            nwb_converter = AudioTestNWBConverter(source_data)
+
+            # Get metadata
+            metadata = nwb_converter.get_metadata()
+            metadata["NWBFile"].update(session_start_time=self.session_start_time)
+
+            # Run conversion
+            nwbfile_path = str(self.test_dir / "audio_24bit_test.nwb")
+
+            # This will fail if the AudioInterface doesn't handle 24-bit WAV files correctly
+            nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+            # Verify the file was created and can be read
+            with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+                nwbfile = io.read()
+
+                # Check that the acoustic waveform series exists
+                audio_name = metadata["Behavior"]["Audio"][0]["name"]
+                assert audio_name in nwbfile.stimulus
+
+                # Try to read the data
+                acoustic_series = nwbfile.stimulus[audio_name].data[:]
+                assert len(acoustic_series) > 0
