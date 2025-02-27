@@ -56,6 +56,7 @@ from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.plexon.plexondatainterface import (
     Plexon2RecordingInterface,
     PlexonRecordingInterface,
+    PlexonLFPInterface,
     PlexonSortingInterface,
 )
 from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface

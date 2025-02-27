@@ -2,6 +2,7 @@ from pathlib import Path
 
 from pydantic import FilePath, validate_call
 
+from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import DeepDict
@@ -65,16 +66,16 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class PlexonLFPInterface(BaseRecordingExtractorInterface):
+class PlexonLFPInterface(BaseLFPExtractorInterface):
     """
-    Primary data interface class for converting Plexon data.
+    Primary data interface class for converting Plexon LFP data.
 
     Uses the :py:class:`~spikeinterface.extractors.PlexonRecordingExtractor`.
     """
 
-    display_name = "Plexon Recording"
+    display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
-    info = "Interface for Plexon recording data."
+    info = "Interface for Plexon low pass filtered data."
     ExtractorName = "PlexonRecordingExtractor"
 
     @classmethod
@@ -103,8 +104,12 @@ class PlexonLFPInterface(BaseRecordingExtractorInterface):
         es_key : str, default: "ElectricalSeries"
         stream_name: str, optional
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
-            the wideband data.
+            the FPllow pass filtered data.
         """
+
+        # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter
+        # But the user might modify it. For that case, we exclude the default stream names
+        # Of the other streams in the Plexon file.
 
         invalid_stream_names = ["WB-Wideband", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
