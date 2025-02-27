@@ -1,4 +1,4 @@
-### Remaining Functions to Check
+### Full List of Functions to Check
 1.  ./tests/test_ophys/test_tools_roiextractors.py: def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
 
 2.  ./tests/test_ophys/test_tools_roiextractors.py: def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:

@@ -34,6 +34,6 @@ None identified yet
 
 See checked_functions.md
 
-### Functions to Check
+### Full List of Functions to Check
 
 See functions_to_check.md
