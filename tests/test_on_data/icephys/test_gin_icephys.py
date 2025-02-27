@@ -110,7 +110,7 @@ class TestIcephysNwbConversions(unittest.TestCase):
             self.check_set_aligned_starting_time()
             self.check_set_aligned_segment_starting_times()
 
-            assert nwbfile.ic_electrodes["electrode-0"].cell_id == "ID001"
+            assert nwbfile.icephys_electrodes["electrode-0"].cell_id == "ID001"
 
 
 if __name__ == "__main__":
