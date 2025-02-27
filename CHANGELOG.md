@@ -12,6 +12,7 @@ as used by hdmf >= 3.14.6.
 * Fixed AudioInterface to properly handle 24-bit WAV files by disabling memory mapping for 24-bit files [PR #1226](https://github.com/catalystneuro/neuroconv/pull/1226)
 
 ## Features
+* Added `PlexonLFPInterface` for converting Plexon `FPl-Low Pass Filtered` stream data [#1209](https://github.com/catalystneuro/neuroconv/pull/1209)
 * Use the latest version of ndx-pose for `DeepLabCutInterface` and `LightningPoseDataInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
 * Added a first draft of `.clinerules` [#1229](https://github.com/catalystneuro/neuroconv/pull/1229)
 * Support for pynwb 3.0 [PR #1231](https://github.com/catalystneuro/neuroconv/pull/1231)
