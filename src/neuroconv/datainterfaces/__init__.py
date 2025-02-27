@@ -93,6 +93,9 @@ from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
+# Image
+from .image.imageinterface import ImageInterface
+
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
@@ -166,6 +169,8 @@ interface_list = [
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
+    # Image
+    ImageInterface,
 ]
 
 interfaces_by_category = dict(
@@ -201,5 +206,8 @@ interfaces_by_category = dict(
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
         MedPC=MedPCInterface,
+    ),
+    image=dict(
+        Image=ImageInterface,
     ),
 )
