@@ -79,7 +79,7 @@ def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Liter
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
-    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0)
+    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external")
     nwbfile.add_acquisition(image_series)
 
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
