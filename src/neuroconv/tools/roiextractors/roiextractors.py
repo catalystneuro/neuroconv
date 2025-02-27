@@ -151,7 +151,15 @@ def get_nwb_imaging_metadata(
     Parameters
     ----------
     imgextractor : ImagingExtractor
+        The imaging extractor to get metadata from.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to create metadata for.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, and photon series
+        specific to the imaging data.
     """
     metadata = _get_default_ophys_metadata()
 
@@ -869,7 +877,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 
     Parameters
     ----------
-    sgmextractor: SegmentationExtractor
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get metadata from.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, image segmentation,
+        and fluorescence data specific to the segmentation.
     """
     metadata = _get_default_segmentation_metadata()
     # Optical Channel name:
@@ -948,7 +963,6 @@ def add_plane_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -993,16 +1007,6 @@ def add_plane_segmentation_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression_options is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
@@ -1796,7 +1800,6 @@ def add_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Add segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1823,26 +1826,13 @@ def add_segmentation_to_nwbfile(
         Type of mask to use for segmentation; can be either "image" or "pixel", by default "image".
     iterator_options : dict, optional
         Options for iterating over the data, by default None.
-    compression_options : dict, optional
-        Deprecated: options for compression; will be removed after 2024-10-01, by default None.
+
 
     Returns
     -------
     NWBFile
         The NWBFile with the added segmentation data.
     """
-
-    # TODO: remove completely after 10/1/2024
-    if compression_options is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "The option will be removed after 2024-10-01. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     # Add device:
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)

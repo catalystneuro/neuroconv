@@ -52,6 +52,9 @@ jobs:
     uses: ./.github/workflows/live-service-testing.yml
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
     with:
       python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}

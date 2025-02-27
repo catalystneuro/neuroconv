@@ -10,7 +10,6 @@ import numpy as np
 import psutil
 import pynwb.ecephys
 import pytest
-from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
@@ -481,21 +480,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
-    def test_hdmf_iterator(self):
-        add_electrical_series_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1"
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        electrical_series_data_iterator = electrical_series.data
-
-        assert isinstance(electrical_series_data_iterator, DataChunkIterator)
-
-        extracted_data = np.concatenate([data_chunk.data for data_chunk in electrical_series_data_iterator])
-        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
-        np.testing.assert_array_almost_equal(expected_data, extracted_data)
-
     def test_non_iterative_write(self):
         add_electrical_series_to_nwbfile(
             recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
@@ -650,10 +634,8 @@ class TestAddElectrodes(TestCase):
     def test_integer_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are integers."""
         channel_ids = self.base_recording.get_channel_ids()
-        offest_channels_ids = channel_ids + 2
-        recorder_with_offset_channels = self.base_recording.channel_slice(
-            channel_ids=channel_ids, renamed_channel_ids=offest_channels_ids
-        )
+        channel_ids_with_offset = [int(channel_id) + 2 for channel_id in channel_ids]
+        recorder_with_offset_channels = self.base_recording.rename_channels(new_channel_ids=channel_ids_with_offset)
 
         add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
         add_electrodes_to_nwbfile(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
@@ -1145,10 +1127,8 @@ class TestAddUnitsTable(TestCase):
     def test_integer_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when unit names are integers."""
         unit_ids = self.base_sorting.get_unit_ids()
-        offest_units_ids = unit_ids + 2
-        sorting_with_offset_unit_ids = self.base_sorting.select_units(
-            unit_ids=unit_ids, renamed_unit_ids=offest_units_ids
-        )
+        offset_unit_ids = [int(unit_id) + 2 for unit_id in unit_ids]
+        sorting_with_offset_unit_ids = self.base_sorting.rename_units(new_unit_ids=offset_unit_ids)
 
         add_units_table_to_nwbfile(sorting=self.base_sorting, nwbfile=self.nwbfile)
         add_units_table_to_nwbfile(sorting=sorting_with_offset_unit_ids, nwbfile=self.nwbfile)

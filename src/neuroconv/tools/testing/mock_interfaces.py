@@ -228,7 +228,12 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self) -> dict:
         """
-        Returns the metadata dictionary for the current object.
+        Get metadata for the recording interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile metadata with session start time.
         """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()

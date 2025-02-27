@@ -1,0 +1,8 @@
+* When developing a new feature or fixing a bug, always write corresponding tests and run the tests to ensure the feature worked
+* When adding tests, first read through the existing tests and try to fit new tests in the existing testing infrastructure
+* If a new feature requires a new dependency, make sure to add it in the pyproject.toml
+* Always make a contribution to the CHANGELOG file summarizing any changes
+* Use typehints and numpy-style docstrings
+* always apply Black formatting
+* avoid making any modifications that are not strictly necessary to the task you've been requested to do (including docstrings)
+* if you spot any possible errors or have suggestions for improvement outside of the scope of your requested task, you can add them to your Task Completed message

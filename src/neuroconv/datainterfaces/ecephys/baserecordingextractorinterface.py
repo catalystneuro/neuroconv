@@ -48,7 +48,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ElectrodeGroup,
+            Electrodes, and optionally ElectricalSeries.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
@@ -250,8 +258,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Returns
         -------
-        has_probe : bool
-            True if the recording extractor has probe information.
+        bool
+            True if the recording extractor has probe information, False otherwise.
         """
         return self.recording_extractor.has_probe()
 
@@ -274,6 +282,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         Parameters
         ----------
         stub_test : bool, default: False
+            If True, only a subset of frames will be included.
+
+        Returns
+        -------
+        spikeinterface.core.BaseRecording
+            The subsetted recording extractor.
         """
         from spikeinterface.core.segmentutils import AppendSegmentRecording
 
@@ -377,8 +391,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             recording = self.recording_extractor
 
-        if metadata is None:
-            metadata = self.get_metadata()
+        metadata = metadata or self.get_metadata()
 
         add_recording_to_nwbfile(
             recording=recording,
