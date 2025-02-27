@@ -13,7 +13,7 @@ _excluded_hdf5_filters = set(
     (
         "shuffle",  # controlled via H5DataIO
         "fletcher32",  # controlled via H5DataIO
-        "scaleoffset",  # enforced indrectly by HDMF/PyNWB data types
+        "scaleoffset",  # enforced indirectly by HDMF/PyNWB data types
     )
 )
 _available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)

@@ -182,7 +182,6 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
     ):
         """
         Add segmentation data to the specified NWBFile.
@@ -228,5 +227,4 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=self.plane_segmentation_name,
             iterator_options=iterator_options,
-            compression_options=compression_options,
         )

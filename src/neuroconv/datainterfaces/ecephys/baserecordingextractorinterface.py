@@ -391,8 +391,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             recording = self.recording_extractor
 
-        if metadata is None:
-            metadata = self.get_metadata()
+        metadata = metadata or self.get_metadata()
 
         add_recording_to_nwbfile(
             recording=recording,
