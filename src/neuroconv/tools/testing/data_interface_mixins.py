@@ -408,7 +408,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 electrical_series_path = f"processing/ecephys/LFP/{electrical_series_name}"
             else:
                 electrical_series_path = f"acquisition/{electrical_series_name}"
-                
 
             self.nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
