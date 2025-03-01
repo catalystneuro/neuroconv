@@ -89,7 +89,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str = "ElectricalSeriesLF",
         stream_name: str = "FPl-Low Pass Filtered",
     ):
         """
@@ -102,7 +102,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
-        stream_name: str, optional
+        stream_name: str, default: "FPl-Low Pass Filtered""
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the FPllow pass filtered data.
         """

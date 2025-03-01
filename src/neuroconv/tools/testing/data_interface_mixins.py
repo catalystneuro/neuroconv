@@ -404,10 +404,11 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
 
-            if not self.is_lfp_interface:
-                electrical_series_path = f"acquisition/{electrical_series_name}"
-            else:
+            if self.is_lfp_interface:
                 electrical_series_path = f"processing/ecephys/LFP/{electrical_series_name}"
+            else:
+                electrical_series_path = f"acquisition/{electrical_series_name}"
+                
 
             self.nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
