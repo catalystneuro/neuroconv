@@ -107,7 +107,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
             the FPllow pass filtered data.
         """
 
-        # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter
+        # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter"
         # But the user might modify it. For that case, we exclude the default stream names
         # Of the other streams in the Plexon file.
 
