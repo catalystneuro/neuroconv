@@ -27,6 +27,7 @@ from neuroconv.datainterfaces import (
     OpenEphysLegacyRecordingInterface,
     OpenEphysRecordingInterface,
     Plexon2RecordingInterface,
+    PlexonLFPInterface,
     PlexonRecordingInterface,
     Spike2RecordingInterface,
     SpikeGadgetsRecordingInterface,
@@ -744,6 +745,15 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
+
+
+class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = PlexonLFPInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
+    )
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
 
 
 def is_macos():
