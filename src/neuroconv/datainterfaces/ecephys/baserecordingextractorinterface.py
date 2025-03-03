@@ -48,7 +48,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema for the RecordingExtractor, including
+            Ecephys-specific schema components for Device, ElectrodeGroup,
+            Electrodes, and ElectricalSeries.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
@@ -86,6 +95,19 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the RecordingExtractor.
+
+        Retrieves and organizes metadata for the RecordingExtractor,
+        including device information, electrode groups, and electrical series.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the RecordingExtractor,
+            including Ecephys.Device, Ecephys.ElectrodeGroup, and
+            optionally Ecephys.ElectricalSeries.
+        """
         metadata = super().get_metadata()
 
         from ...tools.spikeinterface.spikeinterface import _get_group_name

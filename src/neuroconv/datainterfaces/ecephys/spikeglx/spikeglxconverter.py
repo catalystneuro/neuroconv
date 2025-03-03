@@ -23,13 +23,34 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls):
+        """
+        Get the source schema for the SpikeGLX converter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the SpikeGLX converter.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing SpikeGLX streams."
         return source_schema
 
     @classmethod
     def get_streams(cls, folder_path: DirectoryPath) -> list[str]:
-        "Return the stream ids available in the folder."
+        """
+        Return the stream IDs available in the folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing SpikeGLX streams.
+
+        Returns
+        -------
+        list[str]
+            List of stream IDs available in the specified folder.
+        """
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
         # The first entry is the stream ids the second is the stream names
@@ -78,6 +99,16 @@ class SpikeGLXConverterPipe(ConverterPipe):
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
     def get_conversion_options_schema(self) -> dict:
+        """
+        Get the conversion options schema for the SpikeGLX converter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the conversion options
+            for the SpikeGLX converter, including options for all
+            contained data interfaces.
+        """
         conversion_options_schema = super().get_conversion_options_schema()
         conversion_options_schema["properties"].update(
             {name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()}

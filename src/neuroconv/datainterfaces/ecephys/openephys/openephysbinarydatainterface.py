@@ -21,6 +21,19 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available streams in the OpenEphys binary recording.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys binary files.
+
+        Returns
+        -------
+        list[str]
+            List of available stream names in the recording.
+        """
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
@@ -28,7 +41,15 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schema for the RecordingExtractor."""
+        """
+        Compile input schema for the OpenEphys binary recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the OpenEphys binary recording interface.
+        """
         source_schema = get_json_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
@@ -87,6 +108,18 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             self.subset_channels = [0, 1]
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the OpenEphys binary recording.
+
+        Retrieves and organizes metadata from the OpenEphys binary recording,
+        including session start time from the XML settings file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the OpenEphys binary recording,
+            including NWBFile section with session_start_time if available.
+        """
         from ._openephys_utils import _get_session_start_time
 
         metadata = super().get_metadata()

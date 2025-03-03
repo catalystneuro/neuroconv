@@ -49,7 +49,15 @@ class NWBConverter:
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schemas from each of the data interface classes."""
+        """
+        Compile input schemas from each of the data interface classes.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for all data interfaces in this converter.
+        """
         source_schema = get_base_schema(
             root=True,
             id_="source.schema.json",
@@ -88,7 +96,15 @@ class NWBConverter:
         }
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schemas from each of the data interface objects."""
+        """
+        Compile metadata schemas from each of the data interface objects.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the metadata requirements
+            for all data interfaces in this converter, with default values filled in.
+        """
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
@@ -99,7 +115,15 @@ class NWBConverter:
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        """
+        Auto-fill as much of the metadata as possible. Must comply with metadata schema.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for all data interfaces in this converter,
+            with default values filled in where possible.
+        """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
@@ -125,7 +149,15 @@ class NWBConverter:
             print("Metadata is valid!")
 
     def get_conversion_options_schema(self) -> dict:
-        """Compile conversion option schemas from each of the data interface classes."""
+        """
+        Compile conversion option schemas from each of the data interface classes.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the conversion options
+            for all data interfaces in this converter.
+        """
         conversion_options_schema = get_base_schema(
             root=True,
             id_="conversion_options.schema.json",
@@ -354,7 +386,15 @@ class ConverterPipe(NWBConverter):
         }
 
     def get_conversion_options_schema(self) -> dict:
-        """Compile conversion option schemas from each of the data interface classes."""
+        """
+        Compile conversion option schemas from each of the data interface classes.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the conversion options
+            for all data interfaces in this converter pipe.
+        """
         conversion_options_schema = get_base_schema(
             root=True,
             id_="conversion_options.schema.json",

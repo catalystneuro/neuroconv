@@ -36,6 +36,15 @@ class AbfInterface(BaseIcephysInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the ABF interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the ABF interface, including file paths and metadata options.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_paths"] = dict(
             type="array",
@@ -77,6 +86,21 @@ class AbfInterface(BaseIcephysInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the ABF interface.
+
+        Retrieves metadata from the ABF files and combines it with any provided
+        icephys metadata. Extracts session start times, calculates relative
+        session start times, and organizes recordings into sessions.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the ABF interface,
+            including NWBFile section with session start time,
+            Icephys section with Sessions information, and
+            optional ndx-dandi-icephys section if applicable.
+        """
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
         metadata = super().get_metadata()

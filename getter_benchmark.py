@@ -1,21 +1,23 @@
 import subprocess
-from pydantic import DirectoryPath, FilePath
+
 import yaml
+from pydantic import DirectoryPath, FilePath
+
 
 def get_all_docstrings(folder_path: DirectoryPath):
     """Get docstrings from all the getter functions ('get_*') in a specified directory.
-    
+
     Parameters
     ----------
     folder_path : DirectoryPath
     The path to the directory containing the getter functions.
-    
+
     Returns
     -------
     list
     A list of docstrings from the getter functions.
     """
-    args = ["grep", "-r", "-n", "def get_", str(folder_path), "--exclude=getter_benchmark.py"]
+    args = ["grep", "-r", "-n", "def get_", str(folder_path), "--exclude=getter_benchmark.py,activeContext.md"]
     output = subprocess.run(args, capture_output=True, text=True)
     docstrings = []
     for line in output.stdout.split("\n"):
@@ -29,6 +31,7 @@ def get_all_docstrings(folder_path: DirectoryPath):
         docstring = get_docstring(file_path=file_path, line_index=docstring_line_index)
         docstrings.append(docstring)
     return docstrings
+
 
 def get_docstring_line_index(file_path: FilePath, line_index: int):
     """
@@ -58,8 +61,9 @@ def get_docstring_line_index(file_path: FilePath, line_index: int):
     has_multiline_signature = first_line.strip().endswith("(")
     while has_multiline_signature:
         line_index += 1
-        has_multiline_signature = not(lines[line_index].strip().endswith(":"))
+        has_multiline_signature = not (lines[line_index].strip().endswith(":"))
     return line_index + 1
+
 
 def get_docstring(file_path: FilePath, line_index: int):
     """Extract docstring from a Python file given a line index.
@@ -79,26 +83,27 @@ def get_docstring(file_path: FilePath, line_index: int):
     """
     with open(file_path, "r") as file:
         lines = file.read().splitlines()
-        
+
     first_line = lines[line_index]
     has_docstring = first_line.strip().startswith('"""')
     if not has_docstring:
         return None
-    
+
     is_single_line_docstring = first_line.count('"""') == 2
     if is_single_line_docstring:
         return first_line
-    
+
     docstring_lines = [first_line]
     is_last_line = False
     line_index = line_index
-    while not(is_last_line):
+    while not (is_last_line):
         line_index += 1
         line = lines[line_index]
         docstring_lines.append(line)
         is_last_line = line.strip().endswith('"""')
     docstring = "\n".join(docstring_lines)
     return docstring
+
 
 def has_returns_section(docstring: str | None):
     """Check if a docstring contains a numpydoc style 'Returns' section.
@@ -123,6 +128,8 @@ def has_returns_section(docstring: str | None):
 
 
 def main():
+    """Main function to benchmark getter functions for docstring completeness."""
+
     folder_path = "/Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv"
     gt_path = "/Users/pauladkisson/Documents/CatalystNeuro/Neuroconv/neuroconv/getter_benchmark_gt.yaml"
     save_gt = False
@@ -140,6 +147,9 @@ def main():
     with open(gt_path, "r") as f:
         gt = yaml.safe_load(f)
 
+    assert len(getter_has_docstring) == len(
+        gt["gt"]
+    ), f"Length of getter_has_docstring ({len(getter_has_docstring)}) and gt ({len(gt['gt'])}) do not match"
     num_tp, num_fp, num_fn, num_tn = 0, 0, 0, 0
     for gt_value, value in zip(gt["gt"], getter_has_docstring_with_returns_section):
         if gt_value and value:
@@ -150,7 +160,7 @@ def main():
             num_fp += 1
         else:
             num_tn += 1
-    num_existing = 44 # 44 getters already have docstrings with returns sections
+    num_existing = 44  # 44 getters already have docstrings with returns sections
     num_tp -= num_existing
 
     print(f"Number of getters with Returns section CORRECTLY added (TP): {num_tp}")
@@ -160,7 +170,7 @@ def main():
     print(f"Total Number of getters: {len(docstrings)}")
     print(f"Total Number of getters with a docstring: {sum(getter_has_docstring)}")
     print(f"Total Number of getters that need a returns section: {sum(gt['gt']) - num_existing}")
-    
+
 
 if __name__ == "__main__":
     main()

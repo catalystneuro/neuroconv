@@ -16,6 +16,15 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the MCSRaw recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the MCSRaw recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .raw file."
         return source_schema

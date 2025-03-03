@@ -32,6 +32,18 @@ def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodat
     Method for determining the location of a neurodata object within an in-memory NWBFile object.
 
     Distinct from methods from other packages, such as the NWB Inspector, which rely on such files being read from disk.
+
+    Parameters
+    ----------
+    current_location : str
+        The current path being built recursively.
+    neurodata_object : Container
+        The HDMF Container object to find the location for.
+
+    Returns
+    -------
+    str
+        The full path to the neurodata object within the NWBFile.
     """
     parent = neurodata_object.parent
     if isinstance(parent, NWBFile):
@@ -51,6 +63,18 @@ def _find_location_in_memory_nwbfile(neurodata_object: Container, field_name: st
     More readable call for the recursive location finder for a field of a neurodata object in an in-memory NWBFile.
 
     The recursive method forms from the buttom-up using the initial 'current_location' of the field itself.
+
+    Parameters
+    ----------
+    neurodata_object : Container
+        The HDMF Container object to find the location for.
+    field_name : str
+        The name of the field within the neurodata object.
+
+    Returns
+    -------
+    str
+        The full path to the specified field within the NWBFile.
     """
     return _recursively_find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
 
@@ -60,6 +84,21 @@ def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
     Attempt to infer the dtype of values in an arbitrarily sized and nested list.
 
     Relies on the ability of the numpy.array call to cast the list as an array so the 'dtype' attribute can be used.
+
+    Parameters
+    ----------
+    list_ : list[Union[int, float, list]]
+        The list to infer the dtype from, which may contain nested lists.
+
+    Returns
+    -------
+    np.dtype
+        The inferred numpy dtype of the list elements.
+
+    Raises
+    ------
+    ValueError
+        If unable to determine the dtype of values in the list.
     """
     for item in list_:
         if isinstance(item, list):
@@ -73,7 +112,19 @@ def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
 
 
 def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
-    """Attempt to infer the dtype of the contained values of the dataset."""
+    """
+    Attempt to infer the dtype of the contained values of the dataset.
+
+    Parameters
+    ----------
+    dataset : Union[h5py.Dataset, zarr.Array]
+        The dataset to infer the dtype from.
+
+    Returns
+    -------
+    np.dtype
+        The inferred numpy dtype of the dataset elements.
+    """
     if hasattr(dataset, "dtype"):
         data_type = np.dtype(dataset.dtype)
         return data_type
@@ -132,6 +183,11 @@ class DatasetIOConfiguration(BaseModel, ABC):
         Fetch the properly structured dictionary of input arguments.
 
         Should be passed directly as dynamic keyword arguments (**kwargs) into a H5DataIO or ZarrDataIO.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary of keyword arguments for configuring dataset I/O operations.
         """
         raise NotImplementedError
 
@@ -256,6 +312,16 @@ class DatasetIOConfiguration(BaseModel, ABC):
             The name of the field that will become a dataset when written to disk.
             Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
             and `timestamps`, each of which can be configured separately.
+
+        Returns
+        -------
+        Self
+            An instance of DatasetIOConfiguration with appropriate settings for the specified dataset.
+
+        Raises
+        ------
+        NotImplementedError
+            If unable to create a DatasetIOConfiguration for the dataset.
         """
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
 

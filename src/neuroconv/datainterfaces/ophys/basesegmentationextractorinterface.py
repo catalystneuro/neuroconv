@@ -111,6 +111,17 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> dict:
+        """
+        Retrieve metadata for the segmentation extractor.
+
+        Combines the base metadata with segmentation-specific metadata
+        from the segmentation extractor.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the segmentation extractor.
+        """
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
@@ -118,15 +129,46 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original timestamps for each frame in the segmentation data.
+
+        Creates a new instance of the extractor to ensure original timestamps
+        are returned, regardless of any alignment that may have been applied.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for each frame in the segmentation data.
+        """
         reinitialized_extractor = self.get_extractor()(**self.source_data)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Get the current timestamps for each frame in the segmentation data.
+
+        Returns the timestamps that may have been aligned or modified
+        from the original timestamps.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for each frame in the segmentation data.
+        """
         return self.segmentation_extractor.frame_to_time(
             frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
         )
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Set aligned timestamps for the segmentation data.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            Array of aligned timestamps to set for the segmentation data.
+            Must have the same length as the number of frames in the segmentation data.
+        """
         self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(

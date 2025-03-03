@@ -57,6 +57,10 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             This argument is deprecated and will be removed in a future version. Set `photon_series_type` during
             the initialization of the `BaseImagingExtractorInterface` instance.
 
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the metadata requirements for optical physiology data.
         """
 
         metadata_schema = super().get_metadata_schema()
@@ -113,6 +117,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             The type of photon series to include in the metadata. If None, the value from the instance is used.
             This argument is deprecated and will be removed in a future version. Instead, set `photon_series_type`
             during the initialization of the `BaseImagingExtractorInterface` instance.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the imaging data, including device,
+            imaging plane, and photon series information.
         """
 
         from ...tools.roiextractors import get_nwb_imaging_metadata
@@ -131,13 +141,44 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the original timestamps for the imaging frames.
+
+        Creates a new instance of the extractor to get the original timestamps
+        before any alignment has been applied.
+
+        Returns
+        -------
+        np.ndarray
+            Array of original timestamps for each frame in the imaging data.
+        """
         reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
         return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the current timestamps for the imaging frames.
+
+        Returns the timestamps from the current imaging extractor instance,
+        which may have been aligned if set_aligned_timestamps was called.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for each frame in the imaging data.
+        """
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Set aligned timestamps for the imaging frames.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            Array of aligned timestamps to use for the imaging data.
+            Should have the same length as the number of frames.
+        """
         self.imaging_extractor.set_times(times=aligned_timestamps)
 
     def add_to_nwbfile(

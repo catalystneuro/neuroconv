@@ -50,6 +50,15 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
+        """
+        Get the keyword arguments for HDF5 dataset I/O configuration.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing the configured chunks and compression settings
+            for HDF5 dataset I/O.
+        """
         if is_package_installed(package_name="hdf5plugin"):
             import hdf5plugin
 

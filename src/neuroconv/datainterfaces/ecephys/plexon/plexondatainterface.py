@@ -20,6 +20,15 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Plexon recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Plexon recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
         return source_schema
@@ -53,6 +62,18 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the Plexon recording.
+
+        Retrieves and organizes metadata from the Plexon recording,
+        including session start time from the recording annotations if available.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the Plexon recording,
+            including NWBFile section with session_start_time if available.
+        """
         metadata = super().get_metadata()
         neo_reader = self.recording_extractor.neo_reader
 
@@ -78,11 +99,34 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Plexon2 recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Plexon2 recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the Plexon2 extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the Plexon2 extractor,
+            with all_annotations set to True and stream_id set to the appropriate value.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["all_annotations"] = True
         extractor_kwargs["stream_id"] = self.stream_id
@@ -119,6 +163,18 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the Plexon2 recording.
+
+        Retrieves and organizes metadata from the Plexon2 recording,
+        including session start time from the recording annotations.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the Plexon2 recording,
+            including NWBFile section with session_start_time.
+        """
         metadata = super().get_metadata()
 
         neo_reader = self.recording_extractor.neo_reader
@@ -143,6 +199,15 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Plexon sorting extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Plexon sorting interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the plexon spiking data (.plx file)."
         return source_schema
@@ -162,6 +227,18 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Plexon sorting.
+
+        Retrieves and organizes metadata from the Plexon sorting,
+        including session start time from the sorting annotations if available.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Plexon sorting,
+            including NWBFile section with session_start_time if available.
+        """
         metadata = super().get_metadata()
         neo_reader = self.sorting_extractor.neo_reader
 

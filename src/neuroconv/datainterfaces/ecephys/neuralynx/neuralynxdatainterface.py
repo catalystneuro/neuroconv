@@ -19,6 +19,19 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available streams in the Neuralynx recording.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to Neuralynx directory containing recording files.
+
+        Returns
+        -------
+        list[str]
+            List of available stream names in the recording.
+        """
         from spikeinterface.extractors import NeuralynxRecordingExtractor
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
@@ -26,6 +39,15 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Neuralynx recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Neuralynx recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -33,6 +55,20 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the Neuralynx extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the Neuralynx extractor,
+            with all_annotations set to True.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["all_annotations"] = True
 
@@ -72,6 +108,20 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Neuralynx recording.
+
+        Retrieves and organizes metadata from the Neuralynx recording,
+        including session information and device details extracted from
+        the recording headers.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Neuralynx recording,
+            including NWBFile and Ecephys sections with information
+            extracted from the recording headers.
+        """
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`

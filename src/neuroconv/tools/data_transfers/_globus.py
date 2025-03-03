@@ -17,9 +17,25 @@ def get_globus_dataset_content_sizes(
     globus_endpoint_id: str, path: str, recursive: bool = True, timeout: float = 120.0
 ) -> dict[str, int]:  # pragma: no cover
     """
+    Get file sizes from a Globus endpoint.
+
     May require external login via 'globus login' from CLI.
 
-    Returns dictionary whose keys are file names and values are sizes in bytes.
+    Parameters
+    ----------
+    globus_endpoint_id : str
+        The ID of the Globus endpoint to query.
+    path : str
+        The path within the endpoint to list files from.
+    recursive : bool, default: True
+        Whether to recursively list files in subdirectories.
+    timeout : float, default: 120.0
+        Maximum time in seconds to wait for the Globus command to complete.
+
+    Returns
+    -------
+    dict[str, int]
+        Dictionary whose keys are file names and values are sizes in bytes.
     """
     assert is_package_installed(package_name="globus_cli"), "You must install the globus CLI (pip install globus-cli)!"
 

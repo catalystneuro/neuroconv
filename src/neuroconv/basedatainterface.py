@@ -72,12 +72,28 @@ class BaseDataInterface(ABC):
         self.source_data = source_data
 
     def get_metadata_schema(self) -> dict:
-        """Retrieve JSON schema for metadata."""
+        """
+        Retrieve JSON schema for metadata.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the metadata.
+        """
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """Child DataInterface classes should override this to match their metadata."""
+        """
+        Get metadata for this interface.
+
+        Child DataInterface classes should override this to match their metadata.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary-like object containing metadata for this interface.
+        """
         metadata = DeepDict()
         metadata["NWBFile"]["session_description"] = ""
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
@@ -105,7 +121,14 @@ class BaseDataInterface(ABC):
         validate(instance=decoded_metadata, schema=metdata_schema)
 
     def get_conversion_options_schema(self) -> dict:
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
+        """
+        Infer the JSON schema for the conversion options from the method signature.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the conversion options.
+        """
         return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:

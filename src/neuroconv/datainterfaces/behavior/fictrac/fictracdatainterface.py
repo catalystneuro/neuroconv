@@ -149,6 +149,14 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source data needed for this interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .dat file (the output of fictrac)"
         return source_schema
@@ -193,7 +201,18 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self._timestamps = None
         self._starting_time = None
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        """
+        Get metadata for this FicTrac interface.
+
+        Extracts session start time from the data file or configuration file
+        and adds it to the metadata.
+
+        Returns
+        -------
+        dict
+            A dictionary containing metadata for the FicTrac data.
+        """
         metadata = super().get_metadata()
 
         session_start_time = extract_session_start_time(
@@ -331,17 +350,44 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         return timestamps
 
-    def get_timestamps(self):
+    def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns aligned timestamps if they have been set, otherwise returns original timestamps.
+        If a starting time has been set, it is added to the timestamps.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for the data.
+        """
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         if self._starting_time is not None:
             timestamps = timestamps + self._starting_time
 
         return timestamps
 
-    def set_aligned_timestamps(self, aligned_timestamps):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Replace timestamps with those aligned to the common session start time.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The synchronized timestamps for data in this interface.
+        """
         self._timestamps = aligned_timestamps
 
-    def set_aligned_starting_time(self, aligned_starting_time):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
+        """
+        Set the starting time for all data in this interface relative to the common session start time.
+
+        Parameters
+        ----------
+        aligned_starting_time : float
+            The starting time in seconds relative to the common session start time.
+        """
         self._starting_time = aligned_starting_time
 
 

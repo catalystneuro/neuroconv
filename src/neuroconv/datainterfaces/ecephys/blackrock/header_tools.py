@@ -75,6 +75,22 @@ STRING_TERMINUS = "\x00"
 
 
 def _parse_nsx_basic_header(nsx_file):
+    """
+    Parse the basic header of a Blackrock NSx file.
+
+    Parameters
+    ----------
+    nsx_file : str or Path
+        Path to the NSx file to parse
+
+    Returns
+    -------
+    dict
+        Dictionary containing the parsed header fields, including:
+        FileSpec, BytesInHeader, Label, Comment, Period, TimeStampResolution,
+        TimeOrigin, and ChannelCount. Returns an empty dictionary if the file
+        is identified as a NEURALSG file.
+    """
     nsx_basic_dict = [
         FieldDef("FileSpec", "2B", _format_filespec),  # 2 bytes   - 2 unsigned char
         FieldDef("BytesInHeader", "I", _format_none),  # 4 bytes   - uint32
@@ -94,6 +110,22 @@ def _parse_nsx_basic_header(nsx_file):
 
 
 def _parse_nev_basic_header(nev_file):
+    """
+    Parse the basic header of a Blackrock NEV file.
+
+    Parameters
+    ----------
+    nev_file : str or Path
+        Path to the NEV file to parse
+
+    Returns
+    -------
+    dict
+        Dictionary containing the parsed header fields, including:
+        FileTypeID, FileSpec, AddFlags, BytesInHeader, BytesInDataPackets,
+        TimeStampResolution, SampleTimeResolution, TimeOrigin,
+        CreatingApplication, Comment, and NumExtendedHeaders.
+    """
     nev_basic_dict = [
         FieldDef("FileTypeID", "8s", _format_stripstring),  # 8 bytes   - 8 char array
         FieldDef("FileSpec", "2B", _format_filespec),  # 2 bytes   - 2 unsigned char

@@ -34,6 +34,14 @@ class MockInterface(BaseDataInterface):
         super().__init__(verbose=verbose, **source_data)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the mock interface.
+
+        Returns
+        -------
+        dict
+            Metadata dictionary with NWBFile session_start_time set to current time.
+        """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -228,7 +236,12 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self) -> dict:
         """
-        Returns the metadata dictionary for the current object.
+        Get metadata for the mock recording interface.
+
+        Returns
+        -------
+        dict
+            Metadata dictionary with NWBFile session_start_time set to current time.
         """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
@@ -283,6 +296,14 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the mock sorting interface.
+
+        Returns
+        -------
+        dict
+            Metadata dictionary with NWBFile session_start_time set to current time.
+        """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -345,6 +366,14 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.photon_series_type = photon_series_type
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the mock imaging interface.
+
+        Returns
+        -------
+        dict
+            Metadata dictionary with NWBFile session_start_time set to current time.
+        """
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -417,6 +446,14 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the mock segmentation interface.
+
+        Returns
+        -------
+        dict
+            Metadata dictionary with NWBFile session_start_time set to current time.
+        """
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time

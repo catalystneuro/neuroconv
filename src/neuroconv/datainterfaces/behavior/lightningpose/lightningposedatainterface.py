@@ -26,6 +26,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     info = "Interface for handling a single stream of lightning pose data."
 
     def get_metadata_schema(self) -> dict:
+        """
+        Get the metadata schema for this Lightning Pose interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the metadata requirements.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
 
@@ -141,12 +149,40 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         return video_shape[0], video_shape[1]
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        """
+        Retrieve the original unaltered timestamps from the video file.
+
+        Parameters
+        ----------
+        stub_test : bool, default: False
+            If True, only retrieves timestamps for the first 10 frames.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps extracted from the original video file.
+        """
         max_frames = 10 if stub_test else None
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             timestamps = video.get_video_timestamps(max_frames=max_frames)
         return timestamps
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns aligned timestamps if they have been set, otherwise returns original timestamps.
+
+        Parameters
+        ----------
+        stub_test : bool, default: False
+            If True, only retrieves timestamps for the first 10 frames.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for the data.
+        """
         max_frames = 10 if stub_test else None
         if self._times is None:
             return self.get_original_timestamps(stub_test=stub_test)
@@ -155,9 +191,28 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         return timestamps
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Replace timestamps with those aligned to the common session start time.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The synchronized timestamps for data in this interface.
+        """
         self._times = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for this Lightning Pose interface.
+
+        Extracts session start time from the file path if available and adds
+        pose estimation metadata for each keypoint.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the Lightning Pose data.
+        """
         metadata = super().get_metadata()
 
         # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS

@@ -86,6 +86,19 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the MaxOne recording.
+
+        Retrieves metadata from the MaxOne recording and adds Maxwell version
+        information to the device description.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the MaxOne recording,
+            including Ecephys section with Device description that includes
+            the Maxwell version used for recording.
+        """
         metadata = super().get_metadata()
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]

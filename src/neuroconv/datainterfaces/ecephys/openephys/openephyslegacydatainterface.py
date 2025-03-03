@@ -20,6 +20,19 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available streams in the OpenEphys legacy recording.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys legacy files.
+
+        Returns
+        -------
+        list[str]
+            List of available stream names in the recording.
+        """
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
@@ -27,7 +40,15 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
+        """
+        Compile input schema for the OpenEphys legacy recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the OpenEphys legacy recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -78,6 +99,18 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_metadata(self):
+        """
+        Get metadata for the OpenEphys legacy recording.
+
+        Retrieves and organizes metadata from the OpenEphys legacy recording,
+        including session start time from the recording annotations.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the OpenEphys legacy recording,
+            including NWBFile section with session_start_time if available.
+        """
         metadata = super().get_metadata()
 
         neo_reader = self.recording_extractor.neo_reader

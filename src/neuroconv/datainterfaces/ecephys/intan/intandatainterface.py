@@ -21,11 +21,34 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Intan recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Intan recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the Intan extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the Intan extractor,
+            with all_annotations set to True and stream_id set to the class's stream_id.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["all_annotations"] = True
         extractor_kwargs["stream_id"] = self.stream_id
@@ -67,6 +90,16 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(**init_kwargs)
 
     def get_metadata_schema(self) -> dict:
+        """
+        Get metadata schema for the Intan recording.
+
+        Extends the base metadata schema with ElectricalSeriesRaw schema.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary with added ElectricalSeriesRaw schema.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
@@ -74,6 +107,19 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Intan recording.
+
+        Retrieves metadata from the Intan recording and adds device information
+        and ElectricalSeriesRaw configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Intan recording,
+            including Ecephys section with Device information and
+            ElectricalSeriesRaw configuration.
+        """
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 

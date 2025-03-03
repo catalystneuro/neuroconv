@@ -20,6 +20,14 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source data needed for this interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .slp file (the output of sleap)"
         source_schema["properties"]["video_file_path"][
@@ -76,6 +84,19 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         super().__init__(file_path=file_path)
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the original unaltered timestamps from the video file.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps extracted from the video file.
+
+        Raises
+        ------
+        ValueError
+            If video_file_path is not specified when initializing the interface.
+        """
         if self.video_file_path is None:
             raise ValueError(
                 "Unable to fetch the original timestamps from the video! "
@@ -84,10 +105,28 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         return np.array(extract_timestamps(self.video_file_path))
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns aligned timestamps if they have been set, otherwise returns original timestamps.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for the data.
+        """
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         return timestamps
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Replace timestamps with those aligned to the common session start time.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The synchronized timestamps for data in this interface.
+        """
         self._timestamps = aligned_timestamps
 
     def add_to_nwbfile(

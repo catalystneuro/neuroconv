@@ -18,6 +18,14 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source data needed for this interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the source data requirements.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -67,6 +75,17 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         self._timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for this Miniscope behavior interface.
+
+        Extracts session start time from recording information and adds
+        device and image series metadata for the Miniscope behavior camera.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the Miniscope behavior data.
+        """
         metadata = super().get_metadata()
         metadata["NWBFile"].update(session_start_time=self._recording_start_times[0])
 

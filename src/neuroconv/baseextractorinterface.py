@@ -20,6 +20,14 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
 
     @classmethod
     def get_extractor(cls):
+        """
+        Get the extractor class for this interface.
+
+        Returns
+        -------
+        class
+            The extractor class that this interface is based on.
+        """
         if cls.Extractor is not None:
             return cls.Extractor
         extractor_module = get_package(package_name=cls.ExtractorModuleName)
@@ -37,5 +45,17 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
         self._extractor_instance = self.extractor(**self.extractor_kwargs)
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        """This functions maps the source_data to kwargs required to initialize the Extractor."""
+        """
+        Map the source_data to kwargs required to initialize the Extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            The source data dictionary passed to the interface.
+
+        Returns
+        -------
+        dict
+            The keyword arguments dictionary to pass to the extractor.
+        """
         return source_data

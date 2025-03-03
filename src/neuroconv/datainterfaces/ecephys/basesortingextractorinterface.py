@@ -26,7 +26,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the SortingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema for the SortingExtractor, including
+            Ecephys-specific schema components for Device, ElectrodeGroup,
+            Electrodes, and UnitProperties.
+        """
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()

@@ -22,6 +22,15 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the icephys interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the icephys interface.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
         return source_schema
 
@@ -55,6 +64,17 @@ class BaseIcephysInterface(BaseExtractorInterface):
         self._timestamps = None
 
     def get_metadata_schema(self) -> dict:
+        """
+        Get metadata schema for the icephys interface.
+
+        Extends the base metadata schema with Icephys-specific schema
+        and optional DANDI icephys metadata schema if available.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary with added Icephys schema.
+        """
         metadata_schema = super().get_metadata_schema()
         if self.DandiIcephysMetadata is not None:
             metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(self.DandiIcephysMetadata)
@@ -62,6 +82,18 @@ class BaseIcephysInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the icephys interface.
+
+        Retrieves metadata and adds Icephys-specific information
+        including Device and Electrodes configurations.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the icephys interface,
+            including Icephys section with Device and Electrodes information.
+        """
         from ...tools.neo import get_number_of_electrodes
 
         metadata = super().get_metadata()
@@ -75,9 +107,35 @@ class BaseIcephysInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get original timestamps for the icephys recording.
+
+        Returns
+        -------
+        np.ndarray
+            Not implemented for icephys interfaces.
+
+        Raises
+        ------
+        NotImplementedError
+            Icephys interfaces do not yet support timestamps.
+        """
         raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Get timestamps for the icephys recording.
+
+        Returns
+        -------
+        np.ndarray
+            Not implemented for icephys interfaces.
+
+        Raises
+        ------
+        NotImplementedError
+            Icephys interfaces do not yet support timestamps.
+        """
         raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):

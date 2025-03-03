@@ -290,6 +290,15 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the CellExplorer recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the CellExplorer recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
         return source_schema
@@ -354,6 +363,15 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_original_timestamps(self):
+        """
+        Get the original timestamps for this recording.
+
+        Returns
+        -------
+        numpy.ndarray
+            Timestamps for each sample in seconds, calculated from the
+            sampling frequency and number of frames.
+        """
         num_frames = self.recording_extractor.get_num_frames()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
         timestamps = np.arange(num_frames) / sampling_frequency
@@ -420,6 +438,20 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     info = "Interface for CellExplorer sorting data."
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the CellExplorer extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the CellExplorer extractor,
+            with sampling_frequency added from the class's sampling_frequency attribute.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
@@ -575,6 +607,19 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         return dummy_recording_extractor
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the CellExplorer sorting.
+
+        Retrieves metadata from the CellExplorer sorting and adds session ID
+        and unit properties from the spikes.cellinfo.mat file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the CellExplorer sorting,
+            including NWBFile section with session_id and Ecephys section
+            with UnitProperties extracted from the spikes.cellinfo.mat file.
+        """
         metadata = super().get_metadata()
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem

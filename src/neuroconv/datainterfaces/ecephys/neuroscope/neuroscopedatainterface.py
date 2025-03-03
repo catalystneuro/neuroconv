@@ -103,13 +103,35 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
+        """
+        Compile input schema for the NeuroScope recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the NeuroScope recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .dat file."
         return source_schema
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
-        """Auto-populates ecephys metadata from the xml_file_path."""
+        """
+        Auto-populates ecephys metadata from the xml_file_path.
+
+        Parameters
+        ----------
+        xml_file_path : str
+            Path to the XML file containing the NeuroScope metadata.
+
+        Returns
+        -------
+        dict
+            Dictionary containing ecephys metadata extracted from the XML file,
+            including ElectrodeGroup and Electrodes information.
+        """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
@@ -163,6 +185,19 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the NeuroScope recording.
+
+        Retrieves and organizes metadata from the NeuroScope recording,
+        including ecephys metadata and session start time from the XML file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the NeuroScope recording,
+            including Ecephys and NWBFile sections with information
+            extracted from the XML file.
+        """
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -174,6 +209,16 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original timestamps for the NeuroScope recording.
+
+        Returns
+        -------
+        numpy.ndarray or list
+            If the recording has only one segment, returns a numpy array of timestamps.
+            If the recording has multiple segments, returns a list of numpy arrays,
+            one for each segment.
+        """
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
         new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
         if self._number_of_segments == 1:
@@ -196,6 +241,15 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
+        """
+        Compile input schema for the NeuroScope LFP extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the NeuroScope LFP interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .lfp or .eeg file."
         return source_schema
@@ -237,6 +291,18 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the NeuroScope LFP.
+
+        Retrieves and organizes metadata from the NeuroScope LFP,
+        including ecephys metadata from the XML file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the NeuroScope LFP,
+            including Ecephys section with information extracted from the XML file.
+        """
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -254,6 +320,15 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(self) -> dict:
+        """
+        Compile input schema for the NeuroScope sorting extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the NeuroScope sorting interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to folder containing .res and .clu files."
         source_schema["properties"]["keep_mua_units"][
@@ -301,6 +376,19 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the NeuroScope sorting.
+
+        Retrieves and organizes metadata from the NeuroScope sorting,
+        including ecephys metadata and session start time from the XML file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the NeuroScope sorting,
+            including Ecephys and NWBFile sections with information
+            extracted from the XML file if available.
+        """
         metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem

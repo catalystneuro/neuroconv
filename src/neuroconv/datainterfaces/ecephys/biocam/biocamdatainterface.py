@@ -16,6 +16,15 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Biocam recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Biocam recording interface.
+        """
         schema = super().get_source_schema()
         schema["properties"]["file_path"]["description"] = "Path to the .bwr file."
         return schema

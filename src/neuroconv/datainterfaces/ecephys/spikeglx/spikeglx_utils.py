@@ -91,13 +91,20 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
 
 
 def get_device_metadata(meta) -> dict:
-    """Returns a device with description including the metadata as described here
-    # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+    """
+    Returns a device with description including the metadata as described here
+    https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
+    Parameters
+    ----------
+    meta : dict
+        The metadata dictionary from a SpikeGLX recording.
 
     Returns
     -------
     dict
-        a dict containing the metadata necessary for creating the device
+        A dictionary containing the metadata necessary for creating the device,
+        including name, description, and manufacturer.
     """
     # TODO, get probe metadata from spikeinterface
     metadata_dict = dict()

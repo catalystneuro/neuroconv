@@ -19,7 +19,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Miniscope imaging interface."""
+        """
+        Get the source schema for the Miniscope imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Miniscope imaging interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -50,7 +58,18 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self.photon_series_type = "OnePhotonSeries"
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the Miniscope imaging data."""
+        """
+        Get metadata for the Miniscope imaging data.
+
+        Combines base metadata with Miniscope-specific metadata including
+        device configuration, imaging plane details, and photon series settings.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the Miniscope imaging data,
+            including NWBFile, Device, ImagingPlane, and OnePhotonSeries information.
+        """
         from ....tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
@@ -76,12 +95,33 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        """Get the metadata schema for the Miniscope imaging data."""
+        """
+        Get the metadata schema for the Miniscope imaging data.
+
+        Extends the base metadata schema to allow additional properties
+        for the Miniscope device.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the metadata structure
+            for the Miniscope imaging interface.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original timestamps for each frame in the Miniscope imaging data.
+
+        Retrieves timestamps from the Miniscope recording files.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for each frame in the Miniscope imaging data.
+        """
         from ndx_miniscope.utils import get_timestamps
 
         timestamps = get_timestamps(folder_path=self.source_data["folder_path"])
