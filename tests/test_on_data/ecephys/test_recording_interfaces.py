@@ -543,6 +543,26 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
+class TestOpenEphysBinaryRecordingInterfaceNonNeuralDatExcluded(RecordingExtractorInterfaceTestMixin):
+    """Test that non-neural channels are not written as ElectricalSeries"""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "neural_and_non_neural_data_mixed"),
+        stream_name="Rhythm_FPGA-100.0",
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_non_neural_channels_not_added(self, setup_interface):
+        interface, test_name = setup_interface
+        nwbfile = interface.create_nwbfile()
+
+        written_channels = nwbfile.acquisition["ElectricalSeries"].electrodes["channel_name"].data
+        # Note the absence of "ADC1" and "ADC2"
+        assert all("ADC" not in channel for channel in written_channels)
+        assert np.array_equal(written_channels, np.asarray(["CH1", "CH2", "CH3", "CH4"]))
+
+
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysLegacyRecordingInterface
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
