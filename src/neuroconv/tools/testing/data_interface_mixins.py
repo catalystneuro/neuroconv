@@ -392,6 +392,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     """
 
     data_interface_cls: Type[BaseRecordingExtractorInterface]
+    is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.extractors import NwbRecordingExtractor
@@ -402,9 +403,15 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
+
+            if self.is_lfp_interface:
+                electrical_series_path = f"processing/ecephys/LFP/{electrical_series_name}"
+            else:
+                electrical_series_path = f"acquisition/{electrical_series_name}"
+
             self.nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
-                electrical_series_path=f"acquisition/{electrical_series_name}",
+                electrical_series_path=electrical_series_path,
                 use_pynwb=True,
             )
 
