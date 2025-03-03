@@ -17,7 +17,15 @@ def get_all_docstrings(folder_path: DirectoryPath):
     list
     A list of docstrings from the getter functions.
     """
-    args = ["grep", "-r", "-n", "def get_", str(folder_path), "--exclude=getter_benchmark.py,activeContext.md"]
+    args = [
+        "grep",
+        "-r",
+        "-n",
+        "def get_",
+        str(folder_path),
+        "--exclude=getter_benchmark.py",
+        "--exclude=activeContext.md",
+    ]
     output = subprocess.run(args, capture_output=True, text=True)
     docstrings = []
     for line in output.stdout.split("\n"):
@@ -151,11 +159,12 @@ def main():
         gt["gt"]
     ), f"Length of getter_has_docstring ({len(getter_has_docstring)}) and gt ({len(gt['gt'])}) do not match"
     num_tp, num_fp, num_fn, num_tn = 0, 0, 0, 0
-    for gt_value, value in zip(gt["gt"], getter_has_docstring_with_returns_section):
+    for i, (gt_value, value) in enumerate(zip(gt["gt"], getter_has_docstring_with_returns_section)):
         if gt_value and value:
             num_tp += 1
         elif gt_value and not value:
             num_fn += 1
+            print(f"Getter {i+1} is missing a returns section")
         elif not gt_value and value:
             num_fp += 1
         else:
