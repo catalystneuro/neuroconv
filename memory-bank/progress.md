@@ -30,10 +30,10 @@ None identified yet
 4. Move to next function
 5. Track progress through the list
 
-### Checked Functions
+### Checked Files
 
-See checked_functions.md
+See checked_files.md
 
-### Full List of Functions to Check
+### Full List of Files to Check
 
-See functions_to_check.md
+See files_to_check.md
