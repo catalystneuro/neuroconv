@@ -18,14 +18,23 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "spikeinterface.extractors"
 
-    def __init__(self, verbose=True, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
+
         super().__init__(**source_data)
         self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ElectrodeGroup,
+            Electrodes, and UnitProperties.
+        """
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()

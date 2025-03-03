@@ -24,7 +24,7 @@ class MiniscopeConverter(NWBConverter):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
 
@@ -51,7 +51,7 @@ class MiniscopeConverter(NWBConverter):
         ----------
         folder_path : FolderPathType
             The path to the main Miniscope folder.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         self.verbose = verbose
@@ -61,7 +61,14 @@ class MiniscopeConverter(NWBConverter):
         )
 
     def get_conversion_options_schema(self) -> dict:
-        """get the conversion options schema."""
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Miniscope interface.
+        """
         return self.data_interface_objects["MiniscopeImaging"].get_conversion_options_schema()
 
     def add_to_nwbfile(

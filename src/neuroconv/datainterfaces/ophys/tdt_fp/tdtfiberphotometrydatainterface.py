@@ -29,7 +29,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
@@ -47,7 +47,14 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         import ndx_fiber_photometry  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the TDTFiberPhotometryInterface."""
+        """
+        Get metadata for the TDTFiberPhotometryInterface.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary for this interface.
+        """
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
@@ -56,7 +63,14 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        """Get the metadata schema for the TDTFiberPhotometryInterface."""
+        """
+        Get the metadata schema for the TDTFiberPhotometryInterface.
+
+        Returns
+        -------
+        dict
+            The metadata schema for this interface.
+        """
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 

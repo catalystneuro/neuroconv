@@ -159,7 +159,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         file_path: FilePath,
         radius: Optional[float] = None,
         configuration_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Interface for writing FicTrac files to nwb.
@@ -173,7 +173,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             and the units are set to meters. If not provided the units are set to radians.
         configuration_file_path : FilePath, optional
             Path to the .txt file with the configuration metadata. Usually called config.txt
-        verbose : bool, default: True
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
         self.file_path = Path(file_path)
@@ -271,7 +271,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         # Add the container to the processing module
         processing_module = get_module(nwbfile=nwbfile, name="behavior")
-        processing_module.add_data_interface(position_container)
+        processing_module.add(position_container)
 
     def get_original_timestamps(self):
         """

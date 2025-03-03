@@ -23,7 +23,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the MEArec .h5 file."
         return source_schema
 
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MEArec.
 
@@ -31,7 +31,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : str or Path
             Path to the MEArec .h5 file.
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
         """

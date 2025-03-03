@@ -1,7 +1,6 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
 import json
-import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -14,6 +13,7 @@ from .basedatainterface import BaseDataInterface
 from .tools.nwb_helpers import (
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
+    configure_and_write_nwbfile,
     configure_backend,
     get_default_backend_configuration,
     get_default_nwbfile_metadata,
@@ -48,7 +48,14 @@ class NWBConverter:
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schemas from each of the data interface classes."""
+        """
+        Compile input schemas from each of the data interface classes.
+
+        Returns
+        -------
+        dict
+            The compiled source schema from all data interface classes.
+        """
         source_schema = get_base_schema(
             root=True,
             id_="source.schema.json",
@@ -61,11 +68,11 @@ class NWBConverter:
         return source_schema
 
     @classmethod
-    def validate_source(cls, source_data: dict[str, dict], verbose: bool = True):
+    def validate_source(cls, source_data: dict[str, dict], verbose: bool = False):
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = True):
+    def _validate_source_data(self, source_data: dict[str, dict], verbose: bool = False):
 
         # We do this to ensure that python objects are in string format for the JSON schema
         encoder = _NWBSourceDataEncoder()
@@ -77,10 +84,9 @@ class NWBConverter:
             print("Source data is valid!")
 
     @validate_call
-    def __init__(self, source_data: dict[str, dict], verbose: bool = True):
+    def __init__(self, source_data: dict[str, dict], verbose: bool = False):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
-        self._validate_source_data(source_data=source_data, verbose=self.verbose)
         self.data_interface_objects = {
             name: data_interface(**source_data[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -88,7 +94,14 @@ class NWBConverter:
         }
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schemas from each of the data interface objects."""
+        """
+        Compile metadata schemas from each of the data interface objects.
+
+        Returns
+        -------
+        dict
+            The compiled metadata schema from all data interface objects.
+        """
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
@@ -99,7 +112,14 @@ class NWBConverter:
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        """
+        Auto-fill as much of the metadata as possible. Must comply with metadata schema.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing auto-filled metadata from all interfaces.
+        """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
@@ -125,7 +145,14 @@ class NWBConverter:
             print("Metadata is valid!")
 
     def get_conversion_options_schema(self) -> dict:
-        """Compile conversion option schemas from each of the data interface classes."""
+        """
+        Compile conversion option schemas from each of the data interface classes.
+
+        Returns
+        -------
+        dict
+            The compiled conversion options schema from all data interface classes.
+        """
         conversion_options_schema = get_base_schema(
             root=True,
             id_="conversion_options.schema.json",
@@ -200,15 +227,12 @@ class NWBConverter:
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[FilePath] = None,
+        nwbfile_path: FilePath,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        # TODO: when all H5DataIO prewraps are gone, introduce Zarr safely
-        # backend: Union[Literal["hdf5", "zarr"]],
-        # backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
-        backend: Optional[Literal["hdf5"]] = None,
-        backend_configuration: Optional[HDF5BackendConfiguration] = None,
+        backend: Optional[Literal["hdf5", "zarr"]] = None,
+        backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
         conversion_options: Optional[dict] = None,
     ) -> None:
         """
@@ -226,11 +250,11 @@ class NWBConverter:
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        backend : "hdf5", optional
+        backend : {"hdf5", "zarr"}, optional
             The type of backend to use when writing the file.
             If a `backend_configuration` is not specified, the default type will be "hdf5".
             If a `backend_configuration` is specified, then the type will be auto-detected.
-        backend_configuration : HDF5BackendConfiguration, optional
+        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
             The configuration model to use when configuring the datasets for this backend.
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
@@ -240,44 +264,58 @@ class NWBConverter:
             conversion specification is requested.
         """
 
-        if nwbfile_path is None:
-            warnings.warn(  # TODO: remove on or after 2024/12/26
-                "Using Converter.run_conversion without specifying nwbfile_path is deprecated. To create an "
-                "NWBFile object in memory, use Converter.create_nwbfile. To append to an existing NWBFile object,"
-                " use Converter.add_to_nwbfile."
-            )
-
-        backend = _resolve_backend(backend, backend_configuration)
-        no_nwbfile_provided = nwbfile is None  # Otherwise, variable reference may mutate later on inside the context
-
+        appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        append_mode = file_initially_exists and not overwrite
+        appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
+
+        if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot append to an existing file while also providing an in-memory NWBFile. "
+                "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
 
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata, append_mode=append_mode)
+        self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)
+        self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
-        self.temporally_align_data_interfaces()
+        if not appending_to_in_disk_nwbfile:
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            backend=backend,
-            verbose=getattr(self, "verbose", False),
-        ) as nwbfile_out:
-            if no_nwbfile_provided:
+            if appending_to_in_memory_nwbfile:
+                self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+            else:
+                nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+
+            configure_and_write_nwbfile(
+                nwbfile=nwbfile,
+                output_filepath=nwbfile_path,
+                backend=backend,
+                backend_configuration=backend_configuration,
+            )
+
+        else:  # We are only using the context in append mode, see issue #1143
+
+            backend = _resolve_backend(backend, backend_configuration)
+            with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                overwrite=overwrite,
+                backend=backend,
+                verbose=getattr(self, "verbose", False),
+            ) as nwbfile_out:
                 self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
 
-            if backend_configuration is None:
-                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+                if backend_configuration is None:
+                    backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
 
-            configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
+                configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
-    def temporally_align_data_interfaces(self):
+    def temporally_align_data_interfaces(
+        self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
+    ):
         """Override this method to implement custom alignment."""
         pass
 
@@ -298,7 +336,7 @@ class NWBConverter:
 
         Returns
         -------
-        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration
+        Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
             The default configuration for the specified backend type.
         """
         return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
@@ -315,7 +353,7 @@ class ConverterPipe(NWBConverter):
     def validate_source(cls):
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
-    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=True):
+    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=False):
         self.verbose = verbose
         if isinstance(data_interfaces, list):
             # Create unique names for each interface
@@ -336,7 +374,20 @@ class ConverterPipe(NWBConverter):
         }
 
     def get_conversion_options_schema(self) -> dict:
-        """Compile conversion option schemas from each of the data interface classes."""
+        """
+        Compile conversion option schemas from each of the data interface classes.
+
+        Returns
+        -------
+        dict
+            The compiled conversion options schema containing:
+            - root: True
+            - id: "conversion_options.schema.json"
+            - title: "Conversion options schema"
+            - description: "Schema for the conversion options"
+            - version: "0.1.0"
+            - properties: Dictionary mapping interface names to their unrooted schemas
+        """
         conversion_options_schema = get_base_schema(
             root=True,
             id_="conversion_options.schema.json",

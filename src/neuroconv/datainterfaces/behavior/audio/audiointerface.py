@@ -1,4 +1,5 @@
 import json
+import wave
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -170,8 +171,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: Optional[dict] = None,
-        overwrite: bool = False,
-        verbose: bool = True,
     ):
         """
         Parameters
@@ -186,8 +185,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
-        overwrite : bool, default: False
-        verbose : bool, default: True
 
         Returns
         -------
@@ -214,7 +211,13 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         starting_times = self._segment_starting_times or [0.0]
 
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
-            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+            # Check if the WAV file is 24-bit (3 bytes per sample)
+            bit_depth = self._get_wav_bit_depth(file_path)
+
+            # Memory mapping is not compatible with 24-bit WAV files
+            use_mmap = bit_depth != 24
+
+            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=use_mmap)
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
@@ -230,3 +233,23 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             )
 
         return nwbfile
+
+    @staticmethod
+    def _get_wav_bit_depth(file_path):
+        """
+        Get the bit depth of a WAV file.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the WAV file
+
+        Returns
+        -------
+        int
+            Bit depth of the WAV file (8, 16, 24, 32, etc.)
+        """
+        with wave.open(str(file_path), "rb") as wav_file:
+            sample_width = wav_file.getsampwidth()
+            bit_depth = sample_width * 8
+        return bit_depth

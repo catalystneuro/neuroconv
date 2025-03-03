@@ -12,7 +12,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
     display_name = "DeepLabCut"
-    keywords = ("DLC",)
+    keywords = ("DLC", "DeepLabCut", "pose estimation", "behavior")
     associated_suffixes = (".h5", ".csv")
     info = "Interface for handling data from DeepLabCut."
 
@@ -31,7 +31,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         file_path: FilePath,
         config_file_path: Optional[FilePath] = None,
         subject_name: str = "ind1",
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Interface for writing DLC's output files to nwb using dlc2nwb.
@@ -48,7 +48,18 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             Controls verbosity.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
-        from ndx_pose import PoseEstimation, PoseEstimationSeries  # noqa: F401
+        from importlib.metadata import version
+
+        import ndx_pose  # noqa: F401
+        from packaging import version as version_parse
+
+        ndx_pose_version = version("ndx-pose")
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.0"):
+            raise ImportError(
+                "DeepLabCut interface requires ndx-pose version 0.2.0 or later. "
+                f"Found version {ndx_pose_version}. Please upgrade: "
+                "pip install 'ndx-pose>=0.2.0'"
+            )
 
         from ._dlc_utils import _read_config
 
@@ -62,6 +73,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
+        self.pose_estimation_container_kwargs = dict()
+
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
@@ -101,7 +114,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        container_name: str = "PoseEstimation",
+        container_name: str = "PoseEstimationDeepLabCut",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -112,10 +125,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-        container_name: str, default: "PoseEstimation"
-            Name of the container to store the pose estimation.
+        container_name: str, default: "PoseEstimationDeepLabCut"
+            name of the PoseEstimation container in the nwb
+
         """
         from ._dlc_utils import _add_subject_to_nwbfile
+
+        self.pose_estimation_container_kwargs["name"] = container_name
 
         _add_subject_to_nwbfile(
             nwbfile=nwbfile,
@@ -123,5 +139,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             individual_name=self.subject_name,
             config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,
-            pose_estimation_container_kwargs=dict(name=container_name),
+            pose_estimation_container_kwargs=self.pose_estimation_container_kwargs,
         )

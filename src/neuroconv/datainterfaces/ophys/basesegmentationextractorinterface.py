@@ -141,9 +141,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[
-            dict
-        ] = None,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
     ):
         """
 
@@ -195,6 +192,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             segmentation_extractor = self.segmentation_extractor
 
+        metadata = metadata or self.get_metadata()
+
         add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
@@ -205,5 +204,4 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
-            compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
         )

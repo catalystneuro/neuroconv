@@ -35,7 +35,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def __init__(
         self,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
         **source_data,
     ):
@@ -48,15 +48,13 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
     ) -> dict:
         """
-        Retrieve the metadata schema for the optical physiology (Ophys) data, with optional handling of photon series type.
+        Retrieve the metadata schema for the optical physiology (Ophys) data.
 
-        Parameters
-        ----------
-        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
-            The type of photon series to include in the schema. If None, the value from the instance is used.
-            This argument is deprecated and will be removed in a future version. Set `photon_series_type` during
-            the initialization of the `BaseImagingExtractorInterface` instance.
-
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ImagingPlane,
+            and either OnePhotonSeries or TwoPhotonSeries based on the photon_series_type.
         """
 
         metadata_schema = super().get_metadata_schema()
@@ -105,14 +103,13 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
     ) -> DeepDict:
         """
-        Retrieve the metadata for the imaging data, with optional handling of photon series type.
+        Retrieve the metadata for the imaging data.
 
-        Parameters
-        ----------
-        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
-            The type of photon series to include in the metadata. If None, the value from the instance is used.
-            This argument is deprecated and will be removed in a future version. Instead, set `photon_series_type`
-            during the initialization of the `BaseImagingExtractorInterface` instance.
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata including device information, imaging plane details,
+            and photon series configuration.
         """
 
         from ...tools.roiextractors import get_nwb_imaging_metadata
@@ -181,6 +178,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
             imaging_extractor = self.imaging_extractor
+
+        metadata = metadata or self.get_metadata()
 
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,

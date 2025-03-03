@@ -1,7 +1,6 @@
 import datetime
 
 import probeinterface as pi
-import pytest
 from numpy.testing import assert_array_equal
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
@@ -33,12 +32,14 @@ def test_spikelgx_recording_property_addition():
     probe_name = "Imec0"
 
     expected_shank_ids = probe.shank_ids
-    expected_group_name = [f"{probe_name}{shank_id}" for shank_id in expected_shank_ids]
+    expected_group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in expected_shank_ids]
+
     expected_contact_shapes = ["square"] * n_channels
     expected_contact_ids = probe.contact_ids
 
     # Initialize the interface and get the added properties
-    interface = SpikeGLXRecordingInterface(file_path=ap_file_path)
+    folder_path = ap_file_path.parent
+    interface = SpikeGLXRecordingInterface(folder_path=folder_path, stream_id="imec0.ap")
     group_name = interface.recording_extractor.get_property("group_name")
     contact_shapes = interface.recording_extractor.get_property("contact_shapes")
     shank_ids = interface.recording_extractor.get_property("shank_ids")
@@ -48,21 +49,3 @@ def test_spikelgx_recording_property_addition():
     assert_array_equal(contact_shapes, expected_contact_shapes)
     assert_array_equal(shank_ids, expected_shank_ids)
     assert_array_equal(contact_ids, expected_contact_ids)
-
-
-@pytest.mark.skip(reason="Legacy spikeextractors cannot read new GIN file.")
-def test_matching_recording_property_addition_between_backends():
-    """Test that the extracted properties match with both backends"""
-    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-    ap_file_path = folder_path / "Noise4Sam_g0_t0.imec0.ap.bin"
-
-    interface_new = SpikeGLXRecordingInterface(file_path=ap_file_path)
-    shank_electrode_number_new = interface_new.recording_extractor.get_property("shank_electrode_number")
-    group_name_new = interface_new.recording_extractor.get_property("group_name")
-
-    interface_old = SpikeGLXRecordingInterface(file_path=ap_file_path, spikeextractors_backend=True)
-    shank_electrode_number_old = interface_old.recording_extractor.get_property("shank_electrode_number")
-    group_name_old = interface_old.recording_extractor.get_property("group_name")
-
-    assert_array_equal(shank_electrode_number_new, shank_electrode_number_old)
-    assert_array_equal(group_name_new, group_name_old)

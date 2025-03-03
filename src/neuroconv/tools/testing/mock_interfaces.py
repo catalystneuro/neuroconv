@@ -208,7 +208,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         super().__init__(
@@ -220,9 +220,20 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
 
+        # Adding this as a safeguard before the spikeinterface changes are merged:
+        # https://github.com/SpikeInterface/spikeinterface/pull/3588
+        channel_ids = self.recording_extractor.get_channel_ids()
+        channel_ids_as_strings = [str(id) for id in channel_ids]
+        self.recording_extractor = self.recording_extractor.rename_channels(new_channel_ids=channel_ids_as_strings)
+
     def get_metadata(self) -> dict:
         """
-        Returns the metadata dictionary for the current object.
+        Get metadata for the recording interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile metadata with session start time.
         """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
@@ -245,7 +256,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Parameters
@@ -270,6 +281,11 @@ class MockSortingInterface(BaseSortingExtractorInterface):
             seed=seed,
             verbose=verbose,
         )
+
+        # Sorting extractor to have string unit ids until is changed in SpikeInterface
+        # https://github.com/SpikeInterface/spikeinterface/pull/3588
+        string_unit_ids = [str(id) for id in self.sorting_extractor.unit_ids]
+        self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()

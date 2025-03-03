@@ -18,9 +18,9 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     if probe.get_shank_count() > 1:
         shank_ids = probe.shank_ids
         recording_extractor.set_property(key="shank_ids", values=shank_ids)
-        group_name = [f"{probe_name}{shank_id}" for shank_id in shank_ids]
+        group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in shank_ids]
     else:
-        group_name = [f"{probe_name}"] * len(channel_ids)
+        group_name = [f"Neuropixels{probe_name}"] * len(channel_ids)
 
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 
@@ -93,6 +93,11 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
 def get_device_metadata(meta) -> dict:
     """Returns a device with description including the metadata as described here
     # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
+    Parameters
+    ----------
+    meta : dict
+        The metadata dictionary containing SpikeGLX probe information.
 
     Returns
     -------
