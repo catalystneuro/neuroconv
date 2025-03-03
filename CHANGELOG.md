@@ -1,3 +1,14 @@
+# v0.7.1 (Upcoming)
+
+## Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+
 # v0.7.0 (March 03, 2025)
 
 ## Deprecations and Changes
@@ -8,7 +19,7 @@
 
 ## Bug Fixes
 * `run_conversion` does not longer trigger append mode when `nwbfile_path` points to a faulty file [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
-* `DatasetIOConfiguration` now recommends `chunk_shape = (len(candidate_dataset),)` for datasets with compound dtypes as used by hdmf >= 3.14.6.[PR #1146](https://github.com/catalystneuro/neuroconv/pull/1146)
+* `DatasetIOConfiguration` now recommends `chunk_shape = (len(candidate_dataset),)` for datasets with compound dtypes as used by hdmf >= 3.14.6. [PR #1146](https://github.com/catalystneuro/neuroconv/pull/1146)
 * `OpenEphysBinaryRecordingInterface` no longer stores analog data as an `ElectricalSeries` [PR #1179](https://github.com/catalystneuro/neuroconv/pull/1179)
 
 ## Features
