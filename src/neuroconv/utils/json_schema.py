@@ -122,30 +122,6 @@ def get_base_schema(
     return base_schema
 
 
-def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
-    """
-    Deprecated version of `get_json_schema_from_method_signature`.
-
-    Returns
-    -------
-    dict
-        The JSON schema corresponding to the method signature. See
-        get_json_schema_from_method_signature for details.
-
-    Notes
-    -----
-    This method is deprecated and will be removed after January 2025.
-    Use get_json_schema_from_method_signature instead.
-    """
-    message = (
-        "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
-        "This method is deprecated and will be removed after January 2025."
-    )
-    warnings.warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-    return get_json_schema_from_method_signature(method=method, exclude=exclude)
-
-
 def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
     """
     Get the equivalent JSON schema for a signature of a method.

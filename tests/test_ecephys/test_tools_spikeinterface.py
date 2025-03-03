@@ -10,7 +10,6 @@ import numpy as np
 import psutil
 import pynwb.ecephys
 import pytest
-from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from pynwb import NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
@@ -480,21 +479,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         electrical_series_data_iterator = electrical_series.data
 
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
-
-    def test_hdmf_iterator(self):
-        add_electrical_series_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1"
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        electrical_series_data_iterator = electrical_series.data
-
-        assert isinstance(electrical_series_data_iterator, DataChunkIterator)
-
-        extracted_data = np.concatenate([data_chunk.data for data_chunk in electrical_series_data_iterator])
-        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
-        np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_non_iterative_write(self):
         add_electrical_series_to_nwbfile(
