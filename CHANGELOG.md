@@ -3,6 +3,7 @@
 ## Deprecations and Changes
 
 ## Bug Fixes
+* Fix parsing of group_names in `tools.spikeinterface` [PR #1234](https://github.com/catalystneuro/neuroconv/pull/1234/files)
 
 ## Features
 
