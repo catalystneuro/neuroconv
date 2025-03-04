@@ -706,6 +706,8 @@ def _report_variable_offset(channel_offsets, channel_ids):
     # Group the different offsets per channel IDs
     offset_to_channel_ids = {}
     for offset, channel_id in zip(channel_offsets, channel_ids):
+        offset = offset.item() if isinstance(offset, np.generic) else offset
+        channel_id = channel_id.item() if isinstance(channel_id, np.generic) else channel_id
         if offset not in offset_to_channel_ids:
             offset_to_channel_ids[offset] = []
         offset_to_channel_ids[offset].append(channel_id)
