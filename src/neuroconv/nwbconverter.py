@@ -1,6 +1,7 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
 import json
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -263,6 +264,14 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
+        # Check if the nwbfile_path ends with .nwb and warn if not
+        if nwbfile_path is not None and not str(nwbfile_path).endswith(".nwb"):
+            warnings.warn(
+                f"The output file path '{nwbfile_path}' does not end with '.nwb'. "
+                "It is recommended to use the '.nwb' extension for NWB files.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
