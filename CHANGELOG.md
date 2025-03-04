@@ -8,7 +8,7 @@
 ## Features
 
 ## Improvements
-* Support python 3.12 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
+* Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
 
 
 # v0.7.0 (March 3, 2025)
