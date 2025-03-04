@@ -9,16 +9,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional
 
-from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from pynwb.file import Subject
 
-from . import BackendConfiguration, configure_backend, get_default_backend_configuration
+from . import (
+    BACKEND_NWB_IO,
+    BackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+    get_existing_backend_configuration,
+)
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
-
-BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -371,6 +374,7 @@ def configure_and_write_nwbfile(
     output_filepath: str,
     backend: Optional[Literal["hdf5"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
+    export: bool = False,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -389,6 +393,8 @@ def configure_and_write_nwbfile(
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
+    export: bool, default: False
+        Whether to export the NWB file instead of writing.
 
     """
 
@@ -403,4 +409,69 @@ def configure_and_write_nwbfile(
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
     with IO(output_filepath, mode="w") as io:
-        io.write(nwbfile)
+        if export:
+            nwbfile.set_modified()
+            io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
+        else:
+            io.write(nwbfile)
+
+
+def repack_nwbfile(
+    *,
+    nwbfile_path: Path,
+    export_nwbfile_path: Path,
+    backend: Literal["hdf5", "zarr"] = "hdf5",
+    export_backend: Literal["hdf5", "zarr", None] = None,
+    use_default_backend_configuration: bool = True,
+    backend_configuration_changes: dict[str, dict] = None,
+):
+    """
+    Repack an NWBFile with a new backend configuration.
+
+    Parameters
+    ----------
+    nwbfile_path : Path
+        Path to the NWB file to be repacked.
+    export_nwbfile_path : Path
+        Path to export the repacked NWB file.
+    backend : {"hdf5", "zarr"}, default: "hdf5"
+        The type of backend used to read the file.
+    export_backend : {"hdf5", "zarr", None}, default: None
+        The type of backend used to write the repacked file. If None, the same backend as the input file is used.
+    use_default_backend_configuration : bool, default: True
+        Whether to use the default backend configuration for the specified backend and nwbfile. If False, the nwbfile
+        must be written to disk and its existing backend configuration is used.
+    backend_configuration_changes : dict, default: None
+        Changes to the backend configuration. The keys are the locations of the datasets in the NWB file, and the values
+        are dictionaries of the changes to be made to the dataset configuration.
+
+    Notes
+    -----
+    The keys for the `backend_configuration_changes` must be as they appear in the BackendConfiguration NOT how they
+    appear in the H5DataIO. For example, if you want to change the chunking of the 'acquisition/RawTimeSeries/data'
+    dataset to (10,), you would pass {'acquisition/RawTimeSeries/data': {'chunk_shape': (10,)}}.
+    """
+    backend_configuration_changes = backend_configuration_changes or dict()
+    export_backend = export_backend or backend
+
+    IO = BACKEND_NWB_IO[backend]
+    with IO(nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        if use_default_backend_configuration:
+            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        else:
+            backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+        dataset_configurations = backend_configuration.dataset_configurations
+
+        for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
+            dataset_configuration = dataset_configurations[neurodata_object_location]
+            for dataset_config_key, dataset_config_value in dataset_config_changes.items():
+                setattr(dataset_configuration, dataset_config_key, dataset_config_value)
+
+        configure_and_write_nwbfile(
+            nwbfile=nwbfile,
+            backend_configuration=backend_configuration,
+            output_filepath=export_nwbfile_path,
+            backend=export_backend,
+            export=True,
+        )
