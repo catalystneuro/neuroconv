@@ -1815,14 +1815,15 @@ def write_sorting_analyzer_to_nwbfile(
 def _get_electrode_group_indices(recording, nwbfile):
     """ """
     if "group_name" in recording.get_property_keys():
-        group_names = list(np.unique(recording.get_property("group_name")))
+        group_names = np.unique(recording.get_property("group_name"))
     elif "group" in recording.get_property_keys():
-        group_names = list(np.unique(recording.get_property("group").astype(str)))
+        group_names = np.unique(recording.get_property("group"))
     else:
         group_names = None
 
     if group_names is None:
         electrode_group_indices = None
     else:
+        group_names = [str(group_name) for group_name in group_names]
         electrode_group_indices = nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
     return electrode_group_indices
