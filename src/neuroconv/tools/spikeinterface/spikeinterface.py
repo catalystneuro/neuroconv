@@ -1817,7 +1817,7 @@ def _get_electrode_group_indices(recording, nwbfile):
     if "group_name" in recording.get_property_keys():
         group_names = np.unique(recording.get_property("group_name"))
     elif "group" in recording.get_property_keys():
-        group_names = np.unique(recording.get_property("group").astype(str))
+        group_names = np.unique(recording.get_property("group"))
     else:
         group_names = None
 
