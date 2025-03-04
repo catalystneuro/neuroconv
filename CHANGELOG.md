@@ -3,6 +3,7 @@
 ## Deprecations and Changes
 
 ## Bug Fixes
+* Fix parsing of group_names in `tools.spikeinterface`
 
 ## Features
 
