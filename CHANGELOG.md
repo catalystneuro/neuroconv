@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
 
 
 # v0.7.1 (March 5, 2025)
@@ -19,7 +20,6 @@
 ## Features
 
 ## Improvements
-* Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
 * Testing suite now supports numpy 2.0. [PR #1235](https://github.com/catalystneuro/neuroconv/pull/1235)
 
 
@@ -51,10 +51,7 @@
 * Simple writing no longer uses a context manager [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
 * Added Returns section to all getter docstrings [PR #1185](https://github.com/catalystneuro/neuroconv/pull/1185)
 * ElectricalSeries have better chunking defaults when data is passed as plain array [PR #1184](https://github.com/catalystneuro/neuroconv/pull/1184)
-* Support Spikeinterface 0.102 [PR #1194](https://github.com/catalystneuro/neuroconv/pull/1194)
 * Ophys interfaces now call `get_metadata` by default when no metadata is passed [PR #1200](https://github.com/catalystneuro/neuroconv/pull/1200)
-* Support for hdmf 4.0 [PR #1204](https://github.com/catalystneuro/neuroconv/pull/1204)
-* Support for numpy 2.0 [PR #1206](https://github.com/catalystneuro/neuroconv/pull/1206)
 * Ophys interfaces now call `get_metadata` by default when no metadata is passed [PR #1200](https://github.com/catalystneuro/neuroconv/pull/1200) and [PR #1232](https://github.com/catalystneuro/neuroconv/pull/1232)
 
 # v0.6.7 (January 20, 2025)
