@@ -1,9 +1,20 @@
-# v0.7.1 (Upcoming)
+# v0.7.2 (Upcoming)
 
 ## Deprecations and Changes
 
 ## Bug Fixes
-* Fix parsing of group_names in `tools.spikeinterface` [PR #1234](https://github.com/catalystneuro/neuroconv/pull/1234/files)
+
+## Features
+
+## Improvements
+
+
+# v0.7.1 (March 5, 2025)
+
+## Deprecations and Changes
+
+## Bug Fixes
+* Fix parsing of group_names in `tools.spikeinterface` [PR #1234](https://github.com/catalystneuro/neuroconv/pull/1234)
 
 ## Features
 
