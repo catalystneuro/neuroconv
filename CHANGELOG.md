@@ -8,6 +8,7 @@
 ## Features
 
 ## Improvements
+* Testing suite now supports numpy 2.0. [PR #1235](https://github.com/catalystneuro/neuroconv/pull/1235)
 
 
 # v0.7.0 (March 03, 2025)
