@@ -79,15 +79,15 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
 
             # Aligned data was written
             assert_array_almost_equal(
-                x=nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
-                y=self.aligned_behavior_event_timestamps,
+                nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
+                self.aligned_behavior_event_timestamps,
             )
             assert_array_almost_equal(
-                x=nwbfile.intervals["trials"]["start_time"][:], y=self.aligned_trial_start_times, decimal=4
+                nwbfile.intervals["trials"]["start_time"][:], self.aligned_trial_start_times, decimal=4
             )
             assert_array_almost_equal(
-                x=nwbfile.intervals["trials"]["stop_time"][:],
-                y=self.aligned_trial_start_times + self.regular_trial_length,
+                nwbfile.intervals["trials"]["stop_time"][:],
+                self.aligned_trial_start_times + self.regular_trial_length,
                 decimal=4,
             )
 
@@ -109,27 +109,27 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
         )
 
         assert_array_equal(
-            x=self.trial_interface.get_timestamps(column="start_time"), y=inferred_aligned_trial_start_timestamps
+            self.trial_interface.get_timestamps(column="start_time"), inferred_aligned_trial_start_timestamps
         )
         assert_array_almost_equal(
-            x=self.trial_interface.get_timestamps(column="stop_time"),
-            y=inferred_aligned_trial_start_timestamps + self.regular_trial_length,
+            self.trial_interface.get_timestamps(column="stop_time"),
+            inferred_aligned_trial_start_timestamps + self.regular_trial_length,
             decimal=2,
         )
-        assert_array_almost_equal(x=self.behavior_interface.get_timestamps(), y=self.aligned_behavior_event_timestamps)
+        assert_array_almost_equal(self.behavior_interface.get_timestamps(), self.aligned_behavior_event_timestamps)
 
         # Check original unaltered timestamps are the same
         assert_array_equal(
-            x=self.trial_interface.get_original_timestamps(column="start_time"),
-            y=self.expected_unaligned_trial_start_times,
+            self.trial_interface.get_original_timestamps(column="start_time"),
+            self.expected_unaligned_trial_start_times,
         )
         assert_array_equal(
-            x=self.trial_interface.get_original_timestamps(column="stop_time"),
-            y=self.expected_unaligned_trial_start_times + self.regular_trial_length,
+            self.trial_interface.get_original_timestamps(column="stop_time"),
+            self.expected_unaligned_trial_start_times + self.regular_trial_length,
         )
         assert_array_equal(
-            x=self.behavior_interface.get_original_timestamps(),
-            y=self.unaligned_behavior_event_timestamps,
+            self.behavior_interface.get_original_timestamps(),
+            self.unaligned_behavior_event_timestamps,
         )
 
         converter = ConverterPipe(data_interfaces=[self.nidq_interface, self.trial_interface, self.behavior_interface])
@@ -250,16 +250,16 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
 
             # Aligned data was written
             assert_array_almost_equal(
-                x=nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
-                y=self.aligned_behavior_event_timestamps,
+                nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
+                self.aligned_behavior_event_timestamps,
                 decimal=4,
             )
             assert_array_almost_equal(
-                x=nwbfile.intervals["trials"]["start_time"][:], y=self.aligned_trial_start_times, decimal=5
+                nwbfile.intervals["trials"]["start_time"][:], self.aligned_trial_start_times, decimal=5
             )
             assert_array_almost_equal(
-                x=nwbfile.intervals["trials"]["stop_time"][:],
-                y=self.aligned_trial_start_times + self.regular_trial_length,
+                nwbfile.intervals["trials"]["stop_time"][:],
+                self.aligned_trial_start_times + self.regular_trial_length,
                 decimal=5,
             )
 
@@ -281,27 +281,27 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
             aligned_timestamps=externally_aligned_timestamps,
         )
 
-        assert_array_equal(x=self.trial_interface.get_timestamps(column="start_time"), y=externally_aligned_timestamps)
+        assert_array_equal(self.trial_interface.get_timestamps(column="start_time"), externally_aligned_timestamps)
         assert_array_equal(
-            x=self.trial_interface.get_timestamps(column="stop_time"),
-            y=externally_aligned_timestamps + self.regular_trial_length,
+            self.trial_interface.get_timestamps(column="stop_time"),
+            externally_aligned_timestamps + self.regular_trial_length,
         )
         assert_array_almost_equal(
-            x=self.behavior_interface.get_timestamps(), y=self.aligned_behavior_event_timestamps, decimal=4
+            self.behavior_interface.get_timestamps(), self.aligned_behavior_event_timestamps, decimal=4
         )
 
         # Check original unaltered timestamps are the same
         assert_array_equal(
-            x=self.trial_interface.get_original_timestamps(column="start_time"),
-            y=self.expected_unaligned_trial_start_times,
+            self.trial_interface.get_original_timestamps(column="start_time"),
+            self.expected_unaligned_trial_start_times,
         )
         assert_array_equal(
-            x=self.trial_interface.get_original_timestamps(column="stop_time"),
-            y=self.expected_unaligned_trial_start_times + self.regular_trial_length,
+            self.trial_interface.get_original_timestamps(column="stop_time"),
+            self.expected_unaligned_trial_start_times + self.regular_trial_length,
         )
         assert_array_equal(
-            x=self.behavior_interface.get_original_timestamps(),
-            y=self.unaligned_behavior_event_timestamps,
+            self.behavior_interface.get_original_timestamps(),
+            self.unaligned_behavior_event_timestamps,
         )
 
         converter = ConverterPipe(data_interfaces=[self.trial_interface, self.behavior_interface])
@@ -440,25 +440,25 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
         self.trial_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
         self.behavior_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
 
-        assert_array_equal(x=self.trial_interface.get_timestamps(column="start_time"), y=self.aligned_trial_start_times)
+        assert_array_equal(self.trial_interface.get_timestamps(column="start_time"), self.aligned_trial_start_times)
         assert_array_equal(
-            x=self.trial_interface.get_timestamps(column="stop_time"),
-            y=self.aligned_trial_start_times + self.regular_trial_length,
+            self.trial_interface.get_timestamps(column="stop_time"),
+            self.aligned_trial_start_times + self.regular_trial_length,
         )
-        assert_array_almost_equal(x=self.behavior_interface.get_timestamps(), y=self.aligned_behavior_event_timestamps)
+        assert_array_almost_equal(self.behavior_interface.get_timestamps(), self.aligned_behavior_event_timestamps)
 
         # Check original unaltered timestamps are the same
         assert_array_equal(
-            x=self.trial_interface.get_original_timestamps(column="start_time"),
-            y=self.expected_unaligned_trial_start_times,
+            self.trial_interface.get_original_timestamps(column="start_time"),
+            self.expected_unaligned_trial_start_times,
         )
         assert_array_equal(
-            x=self.trial_interface.get_original_timestamps(column="stop_time"),
-            y=self.expected_unaligned_trial_start_times + self.regular_trial_length,
+            self.trial_interface.get_original_timestamps(column="stop_time"),
+            self.expected_unaligned_trial_start_times + self.regular_trial_length,
         )
         assert_array_equal(
-            x=self.behavior_interface.get_original_timestamps(),
-            y=self.unaligned_behavior_event_timestamps,
+            self.behavior_interface.get_original_timestamps(),
+            self.unaligned_behavior_event_timestamps,
         )
 
         converter = ConverterPipe(data_interfaces=[self.nidq_interface, self.trial_interface, self.behavior_interface])

@@ -9,6 +9,7 @@
 
 ## Improvements
 * Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
+* Testing suite now supports numpy 2.0. [PR #1235](https://github.com/catalystneuro/neuroconv/pull/1235)
 
 
 # v0.7.0 (March 3, 2025)
