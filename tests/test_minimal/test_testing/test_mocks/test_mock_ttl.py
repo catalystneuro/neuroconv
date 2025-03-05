@@ -104,7 +104,7 @@ class TestMockTTLSignals(TestCase):
     def test_default(self):
         ttl_signal = generate_mock_ttl_signal()
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["DefaultTTLSignal"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["DefaultTTLSignal"].data)
 
     def test_irregular_short_pulses(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -114,7 +114,7 @@ class TestMockTTLSignals(TestCase):
             sampling_frequency_hz=self.sampling_frequency_hz,
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["IrregularShortPulses"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["IrregularShortPulses"].data)
 
     def test_non_default_regular(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -124,7 +124,7 @@ class TestMockTTLSignals(TestCase):
             sampling_frequency_hz=self.sampling_frequency_hz,
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegular"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["NonDefaultRegular"].data)
 
     def test_non_default_regular_adjusted_means(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -136,7 +136,7 @@ class TestMockTTLSignals(TestCase):
             signal_mean=20000,
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularAdjustedMeans"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["NonDefaultRegularAdjustedMeans"].data)
 
     def test_irregular_short_pulses_adjusted_noise(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -147,7 +147,7 @@ class TestMockTTLSignals(TestCase):
             channel_noise=2,
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["IrregularShortPulsesAdjustedNoise"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["IrregularShortPulsesAdjustedNoise"].data)
 
     def test_non_default_regular_floats(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -158,7 +158,7 @@ class TestMockTTLSignals(TestCase):
             dtype="float32",
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularFloats"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["NonDefaultRegularFloats"].data)
 
     def test_non_default_regular_as_uint16(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -169,7 +169,7 @@ class TestMockTTLSignals(TestCase):
             dtype="uint16",
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularUInt16"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["NonDefaultRegularUInt16"].data)
 
     def test_non_default_regular_floats_adjusted_means_and_noise(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -183,7 +183,7 @@ class TestMockTTLSignals(TestCase):
             channel_noise=0.4,
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["FloatsAdjustedMeansAndNoise"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["FloatsAdjustedMeansAndNoise"].data)
 
     def test_irregular_short_pulses_different_seed(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -194,4 +194,4 @@ class TestMockTTLSignals(TestCase):
             random_seed=1,
         )
 
-        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["IrregularShortPulsesDifferentSeed"].data)
+        assert_array_equal(ttl_signal, self.nwbfile.acquisition["IrregularShortPulsesDifferentSeed"].data)
