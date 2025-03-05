@@ -1,4 +1,4 @@
-# v0.7.1 (Upcoming)
+# v0.7.1 (March 5, 2025)
 
 ## Deprecations and Changes
 
@@ -11,7 +11,7 @@
 * Testing suite now supports numpy 2.0. [PR #1235](https://github.com/catalystneuro/neuroconv/pull/1235)
 
 
-# v0.7.0 (March 03, 2025)
+# v0.7.0 (March 3, 2025)
 
 ## Deprecations and Changes
 * Interfaces and converters now have `verbose=False` by default [PR #1153](https://github.com/catalystneuro/neuroconv/pull/1153)
