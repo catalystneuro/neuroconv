@@ -15,10 +15,10 @@ from ....utils import (
 class OpenEphysBinaryAnalogInterface(BaseDataInterface):
     """Primary data interface class for converting analog channels from OpenEphysBinary data."""
 
-    display_name = "OpenEphys Analog Recording"
+    display_name = "OpenEphysBinary Analog Recording"
     keywords = ("OpenEphys", "analog", "ADC")
     associated_suffixes = (".dat", ".oebin", ".npy")
-    info = "Interface for OpenEphys analog channel recording data."
+    info = "Interface for OpenEphysBinary analog channel recording data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -36,7 +36,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         time_series_key: str = "TimeSeriesAnalog",
     ):
         """
-        Read analog channel data from the OpenEphys recording.
+        Read analog channel data from the OpenEphysBinary recording.
 
         Parameters
         ----------
@@ -88,7 +88,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             raise ValueError(f"No analog channels (ADC) found in the selected stream '{self.stream_name}'!")
 
         # Select only analog channels
-        self.analog_recorder = self.recording_extractor.select_channels(channel_ids=self.analog_channel_ids)
+        self.recording_extractor = self.recording_extractor.select_channels(channel_ids=self.analog_channel_ids)
 
         super().__init__(
             folder_path=folder_path,
@@ -104,15 +104,6 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:
             metadata["NWBFile"].update(session_start_time=session_start_time)
-
-        # Device metadata
-        device = dict(
-            name="OpenEphysAnalogDevice",
-            description="An OpenEphys device for analog data acquisition.",
-            manufacturer="Open Ephys",
-        )
-
-        metadata["Devices"] = [device]
 
         return metadata
 
@@ -168,16 +159,16 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
                 nwbfile.create_device(**device)
 
         if stub_test:
-            end_time = self.analog_recorder.get_end_time()
+            end_time = self.recording_extractor.get_end_time()
             end_time = min(end_time, 0.100)
-            self.analog_recorder = self.analog_recorder.time_slice(start_time=0, end_time=end_time)
+            recording = self.recording_extractor.time_slice(start_time=0, end_time=end_time)
         else:
-            analog_recorder = self.analog_recorder
+            recording = self.recording_extractor
 
-        channel_names = analog_recorder.get_property(key="channel_names")
+        channel_names = recording.get_property(key="channel_names")
         segment_index = 0
         analog_data_iterator = _recording_traces_to_hdmf_iterator(
-            recording=analog_recorder,
+            recording=recording,
             segment_index=segment_index,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
@@ -188,22 +179,22 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         time_series_kwargs = dict(name=name, data=analog_data_iterator, unit="a.u.", description=description)
 
         if always_write_timestamps:
-            timestamps = analog_recorder.get_times(segment_index=segment_index)
+            timestamps = recording.get_times(segment_index=segment_index)
             shifted_timestamps = timestamps
             time_series_kwargs.update(timestamps=shifted_timestamps)
         else:
-            recording_has_timestamps = analog_recorder.has_time_vector(segment_index=segment_index)
+            recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
             if recording_has_timestamps:
-                timestamps = analog_recorder.get_times(segment_index=segment_index)
+                timestamps = recording.get_times(segment_index=segment_index)
                 rate = calculate_regular_series_rate(series=timestamps)
                 recording_t_start = timestamps[0]
             else:
-                rate = analog_recorder.get_sampling_frequency()
-                recording_t_start = analog_recorder._recording_segments[segment_index].t_start or 0
+                rate = recording.get_sampling_frequency()
+                recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
             if rate:
                 starting_time = float(recording_t_start)
-                time_series_kwargs.update(starting_time=starting_time, rate=analog_recorder.get_sampling_frequency())
+                time_series_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
             else:
                 shifted_timestamps = timestamps
                 time_series_kwargs.update(timestamps=shifted_timestamps)
