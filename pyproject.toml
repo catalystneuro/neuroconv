@@ -278,46 +278,46 @@ image = [
 
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 cnmfe = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 extract = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 hdf5 = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 sbx = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 scanimage = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 suite2p = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "tdt",
 ]
 tiff = [
