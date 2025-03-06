@@ -57,6 +57,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
             If True, print verbose output
         """
+
         super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
         self.channel_name = channel_name
 
@@ -98,36 +99,13 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         # LSM metadata
         lsm = thor_experiment["LSM"]
         pixel_size = float(lsm["@pixelSizeUM"])
-        frame_rate = float(lsm["@frameRate"])
         width_um = float(lsm["@widthUM"])
         height_um = float(lsm["@heightUM"])
-        # pixel_x = int(lsm["@pixels"]) # Not used and wrong spelling because code spell marks it as error
-        pixel_y = int(lsm["@pixelY"])
-
-        # PMT metadata
-        pmt = thor_experiment["PMT"]
-        pmt_gains = {"ChanA": float(pmt["@gainA"]), "ChanB": float(pmt["@gainB"])}
-
-        # Get wavelength information
-        wavelengths = thor_experiment["Wavelengths"]
-        wavelength_list = wavelengths["Wavelength"]
-
-        # Ensure wavelength_list is a list
-        if not isinstance(wavelength_list, list):
-            wavelength_list = [wavelength_list]
-
-        optical_channels = []
-        for wavelength in wavelength_list:
-            name = wavelength["@name"]
-            optical_channels.append(
-                {
-                    "name": name,
-                    "description": "",
-                    "emission_lambda": np.nan,
-                }  # Placeholder
-            )
 
         ChannelName = _to_camel_case(self.channel_name)
+
+        optical_channel_dict = {"name": ChannelName, "description": "", "emission_lambda": np.nan}
+        optical_channels = [optical_channel_dict]
 
         imaging_plane_name = f"ImagingPlane{ChannelName}"
         channel_imaging_plane_metadata = {
@@ -137,22 +115,18 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             "device": "ThorMicroscope",
             "excitation_lambda": np.nan,  # Placeholder
             "indicator": "unknown",
-            "location": "unknown",  # TODO: Extract if possible.
+            "location": "unknown",
             "grid_spacing": [pixel_size * 1e-6, pixel_size * 1e-6],  # Convert um to meters
             "grid_spacing_unit": "meters",
-            "imaging_rate": frame_rate,
         }
         metadata["Ophys"]["ImagingPlane"] = [channel_imaging_plane_metadata]
 
-        selected_channel = self.source_data.get("channel_name")
-        photo_multiplier_gain = pmt_gains.get(selected_channel)
+        # TwoPhotonSeries metadata
         two_photon_series_name = f"TwoPhotonSeries{ChannelName}"
         two_photon_series_metadata = {
             "name": two_photon_series_name,
             "imaging_plane": imaging_plane_name,
             "field_of_view": [width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
-            "pmt_gain": photo_multiplier_gain,
-            "scan_line_rate": frame_rate * pixel_y,
             "unit": "n.a.",
         }
         metadata["Ophys"]["TwoPhotonSeries"] = [two_photon_series_metadata]
