@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Added `OpenEphysBinaryAnalogInterface` for converting OpenEphys analog channels data similar to the SpikeGLX NIDQ interface
 
 ## Improvements
 
