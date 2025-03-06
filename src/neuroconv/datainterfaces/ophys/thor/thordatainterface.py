@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, FilePathType, get_json_schema_from_method_signature
+from ....utils import DeepDict, FilePath, get_json_schema_from_method_signature
 
 
 class ThorImagingInterface(BaseImagingExtractorInterface):
@@ -25,7 +25,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
 
     display_name = "ThorLabs TIFF Imaging"
     associated_suffixes = (".tif", ".tiff")
-    info = "Interface for Thor TIFF files with OME metadata."
+    info = "Interface for Thor TIFF files Exporter with ThorImageLS."
     ExtractorName = "ThorTiffImagingExtractor"
 
     @classmethod
@@ -44,13 +44,13 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePathType, channel_name: Optional[str] = None, verbose: bool = False):
+    def __init__(self, file_path: FilePath, channel_name: Optional[str] = None, verbose: bool = False):
         """
         Initialize reading of a TIFF file.
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to first OME TIFF file (e.g., ChanA_001_001_001_001.tif)
         channel_name : str, optional
             Name of the channel to extract (must match name in Experiment.xml)
