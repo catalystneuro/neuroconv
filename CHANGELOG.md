@@ -6,7 +6,7 @@
 
 ## Features
 * Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
-* Added ThorImagingInterface for Thor TIFF files with OME metadata
+* Added ThorImagingInterface for Thor TIFF files with OME metadata [PR #1238](https://github.com/catalystneuro/neuroconv/pull/1238)
 
 ## Improvements
 

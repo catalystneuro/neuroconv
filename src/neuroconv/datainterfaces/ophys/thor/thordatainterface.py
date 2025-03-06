@@ -145,14 +145,13 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         metadata["Ophys"]["ImagingPlane"] = [channel_imaging_plane_metadata]
 
         selected_channel = self.source_data.get("channel_name")
-        pmt_gain = pmt_gains.get(selected_channel)
-
+        photo_multiplier_gain = pmt_gains.get(selected_channel)
         two_photon_series_name = f"TwoPhotonSeries{ChannelName}"
         two_photon_series_metadata = {
             "name": two_photon_series_name,
             "imaging_plane": imaging_plane_name,
             "field_of_view": [width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
-            "pmt_gain": pmt_gain,
+            "pmt_gain": photo_multiplier_gain,
             "scan_line_rate": frame_rate * pixel_y,
             "unit": "n.a.",
         }
