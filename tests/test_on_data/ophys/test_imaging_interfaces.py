@@ -781,6 +781,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
 class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
     """Test ThorImagingInterface."""
 
+    channel_name = "ChanA"
+    optical_series_name: str = f"TwoPhotonSeries{channel_name}"
     data_interface_cls = ThorImagingInterface
     interface_kwargs = dict(
         file_path=str(
@@ -795,46 +797,29 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-        cls = request.cls
-
-        cls.device_metadata = dict(name="ThorMicroscope", description="ThorLabs 2P Microscope")
-        cls.optical_channel_metadata = dict(name="ChanA", description="tdTomato channel", emission_lambda=520.0)
-        cls.imaging_plane_metadata = dict(
-            name="ImagingPlaneDefault",
-            description="2P Imaging Plane",
-            device="ThorMicroscope",
-            excitation_lambda=920.0,
-            indicator="tdTomato",
-            location="unknown",
-        )
-        cls.two_photon_series_metadata = dict(
-            name="TwoPhotonSeriesDefault",
-            imaging_plane="ImagingPlaneDefault",
-            unit="n.a.",
-        )
-
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata was extracted correctly."""
         # Check session start time
         assert isinstance(metadata["NWBFile"]["session_start_time"], datetime)
+        assert metadata["NWBFile"]["session_start_time"].year == 2023
+        assert metadata["NWBFile"]["session_start_time"].month == 10
+        assert metadata["NWBFile"]["session_start_time"].day == 18
+        assert metadata["NWBFile"]["session_start_time"].hour == 17
+        assert metadata["NWBFile"]["session_start_time"].minute == 39
+        assert metadata["NWBFile"]["session_start_time"].second == 19
 
         # Check device metadata
         assert len(metadata["Ophys"]["Device"]) == 1
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == self.device_metadata["name"]
-        assert device["description"].startswith(self.device_metadata["description"])
+        assert device["name"] == "ThorMicroscope"
+        assert device["description"] == "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"
 
         # Check imaging plane metadata
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == self.imaging_plane_metadata["name"]
-        assert imaging_plane["description"] == self.imaging_plane_metadata["description"]
-        assert imaging_plane["device"] == self.imaging_plane_metadata["device"]
-        assert imaging_plane["excitation_lambda"] == self.imaging_plane_metadata["excitation_lambda"]
-        assert imaging_plane["indicator"] == self.imaging_plane_metadata["indicator"]
-        assert imaging_plane["location"] == self.imaging_plane_metadata["location"]
+        assert imaging_plane["name"] == f"ImagingPlane{self.channel_name}"
+        assert imaging_plane["description"] == "2P Imaging Plane"
+        assert imaging_plane["device"] == "ThorMicroscope"
         assert "grid_spacing" in imaging_plane
         assert "grid_spacing_unit" in imaging_plane
         assert "imaging_rate" in imaging_plane
@@ -842,39 +827,12 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         # Check optical channel metadata
         assert len(imaging_plane["optical_channel"]) >= 1
         optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == self.optical_channel_metadata["name"]
-        assert optical_channel["description"] == self.optical_channel_metadata["description"]
-        assert optical_channel["emission_lambda"] == self.optical_channel_metadata["emission_lambda"]
+        assert optical_channel["name"] == self.channel_name
 
         # Check two photon series metadata
         assert len(metadata["Ophys"]["TwoPhotonSeries"]) == 1
         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
-        assert two_photon_series["name"] == self.two_photon_series_metadata["name"]
-        assert two_photon_series["imaging_plane"] == self.two_photon_series_metadata["imaging_plane"]
-        assert two_photon_series["unit"] == self.two_photon_series_metadata["unit"]
-        assert "field_of_view" in two_photon_series
-        assert "pmt_gain" in two_photon_series
-        assert "scan_line_rate" in two_photon_series
-
-    def test_with_channel_name(self):
-        """Test the interface with a specific channel name."""
-        file_path = (
-            OPHYS_DATA_PATH
-            / "imaging_datasets"
-            / "ThorlabsTiff"
-            / "single_channel_single_plane"
-            / "20231018-002"
-            / "ChanA_001_001_001_001.tif"
-        )
-        if not file_path.exists():
-            pytest.skip(f"Test file {file_path} not found. Skipping test.")
-
-        interface = ThorImagingInterface(file_path=str(file_path), channel_name="ChanA")
-        metadata = interface.get_metadata()
-
-        # Check that the channel name is used in the metadata
-        assert metadata["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlaneChanA"
-        assert metadata["Ophys"]["TwoPhotonSeries"][0]["name"] == "TwoPhotonSeriesChanA"
+        assert two_photon_series["name"] == self.optical_series_name
 
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):

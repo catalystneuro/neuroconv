@@ -339,13 +339,14 @@ class TemporalAlignmentMixin:
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: Type[BaseImagingExtractorInterface]
+    optical_series_name: str = "TwoPhotonSeries"
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
         from roiextractors.testing import check_imaging_equal
 
         imaging = self.interface.imaging_extractor
-        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
+        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name=self.optical_series_name)
 
         exclude_channel_comparison = False
         if imaging.get_channel_names() is None:
@@ -371,7 +372,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.acquisition["TwoPhotonSeries"].starting_time == aligned_starting_time
+            assert nwbfile.acquisition[self.optical_series_name].starting_time == aligned_starting_time
 
 
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

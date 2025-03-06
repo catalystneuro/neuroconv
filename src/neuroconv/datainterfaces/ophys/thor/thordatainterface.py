@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, FilePathType
+from ....utils import DeepDict, FilePathType, get_json_schema_from_method_signature
 
 
 class ThorImagingInterface(BaseImagingExtractorInterface):
@@ -39,16 +39,8 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             The JSON schema for the Thor imaging interface source data,
             containing file path and channel name parameters.
         """
-        source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"] = {
-            "type": "string",
-            "description": "Path to first OME TIFF file (e.g., ChanA_001_001_001_001.tif)",
-        }
-        source_schema["properties"]["channel_name"] = {
-            "type": "string",
-            "description": "Name of the channel to extract (must match name in Experiment.xml)",
-            "required": False,
-        }
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
+
         return source_schema
 
     @validate_call
@@ -128,7 +120,11 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         for wavelength in wavelength_list:
             name = wavelength["@name"]
             optical_channels.append(
-                {"name": name, "description": f"{name} channel", "emission_lambda": np.nan}  # Placeholder
+                {
+                    "name": name,
+                    "description": "",
+                    "emission_lambda": np.nan,
+                }  # Placeholder
             )
 
         ChannelName = _to_camel_case(self.channel_name)
