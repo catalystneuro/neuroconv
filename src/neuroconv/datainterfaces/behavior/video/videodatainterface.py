@@ -32,6 +32,7 @@ class VideoInterface(BaseDataInterface):
     def __init__(
         self,
         file_paths: list[FilePath],
+        video_names: list[str] = None,
         verbose: bool = False,
         *,
         metadata_key_name: str = "Videos",
@@ -44,6 +45,9 @@ class VideoInterface(BaseDataInterface):
         file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
+        video_names : list of str, optional
+            The names of the videos to be used in the metadata.
+            If not provided, the names will be inferred from the file paths.
         metadata_key_name : str, optional
             The key used to identify this video data within the overall experiment metadata.
             Defaults to "Videos".
@@ -75,6 +79,9 @@ class VideoInterface(BaseDataInterface):
         self._timestamps = None
         self._segment_starting_times = None
         self.metadata_key_name = metadata_key_name
+        self._video_names = (
+            video_names if video_names is not None else [Path(file_path).stem for file_path in file_paths]
+        )
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -97,8 +104,7 @@ class VideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
-                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
-                for file_path in self.source_data["file_paths"]
+                dict(name=name, description="Video recorded by camera.", unit="Frames") for name in self._video_names
             ]
         }
         metadata["Behavior"] = behavior_metadata
