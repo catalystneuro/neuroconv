@@ -431,7 +431,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path: FilePath
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
