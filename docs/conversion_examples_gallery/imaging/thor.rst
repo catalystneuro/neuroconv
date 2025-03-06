@@ -12,7 +12,6 @@ Convert Thor TIFF imaging data to NWB using
 
 .. code-block:: python
 
-    >>> from datetime import datetime
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ThorImagingInterface
     >>>
@@ -21,7 +20,6 @@ Convert Thor TIFF imaging data to NWB using
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> metadata = {...}  # Define your metadata here
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
