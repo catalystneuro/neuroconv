@@ -13,15 +13,15 @@ Convert Thor TIFF imaging data to NWB using
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ThorImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff" / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
-    >>> interface = ThorImagingInterface(file_path=file_path, channel_name="ChanA", verbose=False)
+    >>> interface = ThorImagingInterface(file_path=file_path, channel_name="ChanA")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> metadata = {...}  # Define your metadata here
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
