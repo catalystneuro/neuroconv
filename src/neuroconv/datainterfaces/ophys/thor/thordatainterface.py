@@ -103,6 +103,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         frame_rate = float(lsm["@frameRate"])
         width_um = float(lsm["@widthUM"])
         height_um = float(lsm["@heightUM"])
+        # pixel_x = int(lsm["@pixels"]) # Not used and wrong spelling because code spell is
         pixel_y = int(lsm["@pixelY"])
 
         # PMT metadata
