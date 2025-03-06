@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
 
 ## Improvements
 * Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
