@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
-from pydantic import validate_call
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, FilePath, get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class ThorImagingInterface(BaseImagingExtractorInterface):
