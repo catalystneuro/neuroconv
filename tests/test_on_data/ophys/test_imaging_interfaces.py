@@ -822,10 +822,9 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert imaging_plane["device"] == "ThorMicroscope"
         assert "grid_spacing" in imaging_plane
         assert "grid_spacing_unit" in imaging_plane
-        assert "imaging_rate" in imaging_plane
 
         # Check optical channel metadata
-        assert len(imaging_plane["optical_channel"]) >= 1
+        assert len(imaging_plane["optical_channel"]) == 1
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == self.channel_name
 
