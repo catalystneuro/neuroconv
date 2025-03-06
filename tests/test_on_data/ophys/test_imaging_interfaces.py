@@ -391,13 +391,13 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -471,13 +471,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -546,13 +546,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlaneCh2000002",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -636,13 +636,13 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlaneCh2",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -718,13 +718,13 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         cls.device_metadata = dict(name="Microscope")
         cls.optical_channel_metadata = dict(
             name="OpticalChannelDefault",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The plane or volume being imaged by the microscope.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
