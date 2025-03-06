@@ -8,7 +8,7 @@
 * Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
 
 ## Improvements
-
+* Filter out warnings for missing timezone information in continuous integration [PR #1240](https://github.com/catalystneuro/neuroconv/pull/1240)
 
 # v0.7.1 (March 5, 2025)
 
