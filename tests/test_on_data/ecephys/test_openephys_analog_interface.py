@@ -3,7 +3,6 @@ from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import OpenEphysBinaryAnalogInterface
 
-# enable to run locally in interactive mode
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
 except ImportError:
