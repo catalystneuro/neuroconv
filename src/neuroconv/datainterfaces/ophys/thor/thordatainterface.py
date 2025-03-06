@@ -1,6 +1,6 @@
 """Interface for Thor TIFF files with OME metadata."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
@@ -26,7 +26,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
     display_name = "ThorLabs TIFF Imaging"
     associated_suffixes = (".tif", ".tiff")
     info = "Interface for Thor TIFF files with OME metadata."
-    Extractor = "ThorTiffImagingExtractor"
+    ExtractorName = "ThorTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -91,8 +91,14 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
 
         # Session start time
         date_info = thor_experiment["Date"]
-        date_str = date_info["@date"]
-        self.session_start_time = datetime.strptime(date_str, "%m/%d/%Y %H:%M:%S")
+        if isinstance(date_info, list):
+            # Locate the first entry that contains "date"
+            first_entry_with_date = next((entry for entry in date_info if "@date" in entry), None)
+            unix_timestamps = first_entry_with_date["@uTime"]
+        else:
+            unix_timestamps = date_info["@uTime"]
+
+        self.session_start_time = datetime.fromtimestamp(float(unix_timestamps), tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = self.session_start_time
 
         metadata.setdefault("Ophys", {})["Device"] = [{"name": "ThorMicroscope", "description": device_description}]
@@ -103,7 +109,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         frame_rate = float(lsm["@frameRate"])
         width_um = float(lsm["@widthUM"])
         height_um = float(lsm["@heightUM"])
-        # pixel_x = int(lsm["@pixels"]) # Not used and wrong spelling because code spell is
+        # pixel_x = int(lsm["@pixels"]) # Not used and wrong spelling because code spell marks it as error
         pixel_y = int(lsm["@pixelY"])
 
         # PMT metadata

@@ -791,6 +791,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
             / "20231018-002"
             / "ChanA_001_001_001_001.tif"
         ),
+        channel_name="ChanA",
     )
     save_directory = OUTPUT_PATH
 
