@@ -273,6 +273,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
+        *,
         stub_test: bool = False,
         t1: float = 0.0,
         t2: float = 0.0,
