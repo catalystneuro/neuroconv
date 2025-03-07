@@ -20,6 +20,7 @@ from neuroconv.datainterfaces import (
     SbxImagingInterface,
     ScanImageImagingInterface,
     ScanImageMultiFileImagingInterface,
+    ThorImagingInterface,
     TiffImagingInterface,
 )
 from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
@@ -775,6 +776,62 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
+    """Test ThorImagingInterface."""
+
+    channel_name = "ChanA"
+    optical_series_name: str = f"TwoPhotonSeries{channel_name}"
+    data_interface_cls = ThorImagingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ThorlabsTiff"
+            / "single_channel_single_plane"
+            / "20231018-002"
+            / "ChanA_001_001_001_001.tif"
+        ),
+        channel_name="ChanA",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that the metadata was extracted correctly."""
+        # Check session start time
+        assert isinstance(metadata["NWBFile"]["session_start_time"], datetime)
+        assert metadata["NWBFile"]["session_start_time"].year == 2023
+        assert metadata["NWBFile"]["session_start_time"].month == 10
+        assert metadata["NWBFile"]["session_start_time"].day == 18
+        assert metadata["NWBFile"]["session_start_time"].hour == 17
+        assert metadata["NWBFile"]["session_start_time"].minute == 39
+        assert metadata["NWBFile"]["session_start_time"].second == 19
+
+        # Check device metadata
+        assert len(metadata["Ophys"]["Device"]) == 1
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "ThorMicroscope"
+        assert device["description"] == "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"
+
+        # Check imaging plane metadata
+        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["name"] == f"ImagingPlane{self.channel_name}"
+        assert imaging_plane["description"] == "2P Imaging Plane"
+        assert imaging_plane["device"] == "ThorMicroscope"
+        assert "grid_spacing" in imaging_plane
+        assert "grid_spacing_unit" in imaging_plane
+
+        # Check optical channel metadata
+        assert len(imaging_plane["optical_channel"]) == 1
+        optical_channel = imaging_plane["optical_channel"][0]
+        assert optical_channel["name"] == self.channel_name
+
+        # Check two photon series metadata
+        assert len(metadata["Ophys"]["TwoPhotonSeries"]) == 1
+        two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
+        assert two_photon_series["name"] == self.optical_series_name
 
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
