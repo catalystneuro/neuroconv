@@ -407,7 +407,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         file_pattern : str
             Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
         channel_name : str
-            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_avaliable_channels(file_path=...).
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
         extract_all_metadata : bool
             If True, extract metadata from every file in the folder. If False, only extract metadata from the first
             file in the folder. The default is False.
