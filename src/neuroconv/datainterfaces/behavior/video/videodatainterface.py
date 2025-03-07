@@ -32,9 +32,9 @@ class VideoInterface(BaseDataInterface):
     def __init__(
         self,
         file_paths: list[FilePath],
-        video_names: list[str] = None,
         verbose: bool = False,
         *,
+        video_names: list[str] = None,
         metadata_key_name: str = "Videos",
     ):
         """
@@ -45,6 +45,8 @@ class VideoInterface(BaseDataInterface):
         file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
+        verbose : bool, optional
+            If True, display verbose output.
         video_names : list of str, optional
             The names of the videos to be used in the metadata.
             If not provided, the names will be inferred from the file paths.
