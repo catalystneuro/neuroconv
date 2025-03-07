@@ -628,7 +628,7 @@ def write_imaging_to_nwbfile(
     ----------
     imaging: ImagingExtractor
         The imaging extractor object to be written to nwb
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
@@ -1510,7 +1510,7 @@ def write_segmentation_to_nwbfile(
     ----------
     segmentation_extractor: SegmentationExtractor
         The segmentation extractor object to be written to nwb
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional

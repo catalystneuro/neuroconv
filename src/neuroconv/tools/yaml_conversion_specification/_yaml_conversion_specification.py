@@ -59,7 +59,7 @@ def run_conversion_from_yaml(
 
     Parameters
     ----------
-    specification_file_path : FilePathType
+    specification_file_path : FilePath
         File path leading to .yml specification file for NWB conversion.
     data_folder_path : FolderPathType, optional
         Folder path leading to root location of the data files.

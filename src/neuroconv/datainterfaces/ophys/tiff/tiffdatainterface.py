@@ -40,7 +40,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
         sampling_frequency : float
         verbose : bool, default: False
         photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, default: "TwoPhotonSeries"

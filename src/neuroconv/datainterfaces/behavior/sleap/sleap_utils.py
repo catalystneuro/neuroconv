@@ -8,7 +8,7 @@ def extract_timestamps(video_file_path: FilePath) -> list:
 
     Parameters
     ----------
-    video_file_path : FilePathType
+    video_file_path : FilePath
         The path to the multimedia video
 
     Returns

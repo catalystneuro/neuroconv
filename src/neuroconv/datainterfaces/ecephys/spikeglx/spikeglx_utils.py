@@ -71,7 +71,7 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         The file_path of spikelgx file.
 
     Returns

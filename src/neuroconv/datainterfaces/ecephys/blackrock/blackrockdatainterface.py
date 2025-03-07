@@ -43,7 +43,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"

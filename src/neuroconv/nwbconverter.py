@@ -240,7 +240,7 @@ class NWBConverter:
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
+        nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
         nwbfile : NWBFile, optional

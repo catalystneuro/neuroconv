@@ -59,7 +59,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .smr or .smrx file.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"

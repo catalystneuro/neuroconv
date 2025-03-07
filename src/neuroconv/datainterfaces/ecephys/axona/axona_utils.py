@@ -35,7 +35,7 @@ def read_eeg_file_lfp_data(file_path: FilePath) -> np.memmap:
 
     Parameters:
     -------
-    file_path : FilePathType
+    file_path : FilePath
         Full file_path of Axona `.eegX` or `.egfX` file.
 
     Returns:
@@ -71,7 +71,7 @@ def get_all_file_paths(file_path: FilePath) -> list:
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         Full file_path of either .egg or .egf file
 
     Returns
@@ -97,7 +97,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePath) -> np.ndarray:
 
     Parameters
     ---------
-    file_path FilePathType
+    file_path FilePath
         Full file_path of Axona `.eeg` or `.egf` file.
 
     Returns
@@ -130,7 +130,7 @@ def parse_generic_header(file_path: FilePath, params: Union[list, set]) -> dict:
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         Full file_path of Axona `.eeg` or `.egf` file.
     params : list or set
         Parameter names to search for.
@@ -205,7 +205,7 @@ def read_bin_file_position_data(bin_file_path: FilePath) -> np.ndarray:
 
     Parameters
     ----------
-    bin_file_path : FilePathType
+    bin_file_path : FilePath
         Full file_path of Axona file with any extension.
 
     Returns
@@ -296,7 +296,7 @@ def read_pos_file_position_data(pos_file_path: FilePath) -> np.ndarray:
 
     Parameters
     ----------
-    pos_file_path: FilePathType
+    pos_file_path: FilePath
         Full file_path of Axona file with any extension.
 
     Returns

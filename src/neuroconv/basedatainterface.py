@@ -186,7 +186,7 @@ class BaseDataInterface(ABC):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
+        nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.

@@ -60,7 +60,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         stream_id: str, optional
             Stream ID of the SpikeGLX recording.
             Examples are 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
-        file_path : FilePathType
+        file_path : FilePath
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
         verbose : bool, default: False
             Whether to output verbose text.

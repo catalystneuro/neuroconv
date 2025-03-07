@@ -8,7 +8,7 @@ def get_medpc_variables(file_path: FilePath, variable_names: list) -> dict:
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         The path to the MedPC file.
     variable_names : list
         The names of the variables to get the values of.
@@ -94,7 +94,7 @@ def read_medpc_file(
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         The path to the MedPC file.
     medpc_name_to_info_dict : dict
         A dictionary where the keys are the MedPC variable names and the values are dictionaries with the keys 'name' and

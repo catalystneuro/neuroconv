@@ -23,7 +23,7 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
         sampling_frequency : float
         output_struct_name : str, optional
         verbose: bool, default : True
