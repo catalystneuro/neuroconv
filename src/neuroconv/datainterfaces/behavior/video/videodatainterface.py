@@ -82,7 +82,7 @@ class VideoInterface(BaseDataInterface):
         self._segment_starting_times = None
         self.metadata_key_name = metadata_key_name
         self._video_names = (
-            video_names if video_names is not None else [Path(file_path).stem for file_path in file_paths]
+            video_names if video_names is not None else [f"Video {Path(file_path).stem}" for file_path in file_paths]
         )
         super().__init__(file_paths=file_paths)
 
