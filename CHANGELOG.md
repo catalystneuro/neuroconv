@@ -8,7 +8,7 @@
 * Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
 
 ## Improvements
-* Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1237](https://github.com/catalystneuro/neuroconv/pull/1237)
+* Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1245](https://github.com/catalystneuro/neuroconv/pull/1245)
 
 # v0.7.1 (March 5, 2025)
 
