@@ -308,9 +308,8 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
+                    f"available chanenls are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
         assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
@@ -405,7 +404,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         file_pattern : str
             Pattern for the TIFF files to read -- see pathlib.Path.glob for details.
         channel_name : str
-            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_avaliable_channels(file_path=...).
         extract_all_metadata : bool
             If True, extract metadata from every file in the folder. If False, only extract metadata from the first
             file in the folder. The default is False.
@@ -436,9 +435,8 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
+                    f"available chanenls are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
         assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
@@ -535,7 +533,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePath
             Path to the TIFF file.
         channel_name : str
-            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_avaliable_channels(file_path=...).
         plane_name : str
             The name of the plane to load, to determine what planes are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...).
         """
@@ -556,9 +554,8 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
+                    f"available chanenls are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
         assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
@@ -696,9 +693,8 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
+                    f"available chanenls are {available_channels}"
                 )
             channel_name = avaliable_channels[0]
         assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
