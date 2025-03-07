@@ -308,11 +308,14 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
-                    f"available chanenls are: {avaliable_channels}"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+        assert (
+            channel_name in avaliable_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
 
         two_photon_series_name_suffix = None
         if len(avaliable_channels) > 1:
@@ -423,7 +426,9 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
         version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+            raise ValueError(
+                "ScanImage version 3.8 is not supported. \n " "Please use ScanImageImagingInterface instead."
+            )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
         if parsed_metadata["num_planes"] == 1:
@@ -435,11 +440,14 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
-                    f"available chanenls are: {avaliable_channels}"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+        assert (
+            channel_name in avaliable_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
 
         two_photon_series_name_suffix = None
         if len(avaliable_channels) > 1:
@@ -547,29 +555,36 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+            raise ValueError(
+                "ScanImage version 3.8 is not supported. \n " "Please use ScanImageImagingInterface instead."
+            )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
         avaliable_channels = parsed_metadata["channel_names"]
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
-                    f"available chanenls are: {avaliable_channels}"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+        assert (
+            channel_name in avaliable_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
 
         available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
         if plane_name is None:
             if len(available_planes) > 1:
                 raise ValueError(
-                    "More than one plane is detected! Please specify which plane you wish to load "
-                    "with the `plane_name` argument. To see which planes are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
+                    "More than one plane is detected! \n "
+                    "Please specify which plane you wish to load with the `plane_name` argument \n "
+                    f"Available planes are: {available_planes}"
                 )
             plane_name = available_planes[0]
-        assert plane_name in available_planes, f"Plane '{plane_name}' not found in the tiff file."
+        assert (
+            plane_name in available_planes
+        ), f"Plane '{plane_name}' not found! \n Available planes are: {available_planes}"
 
         two_photon_series_name_suffix = None
         if len(avaliable_channels) > 1:
@@ -686,29 +701,36 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
 
         version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+            raise ValueError(
+                "ScanImage version 3.8 is not supported. \n " "Please use ScanImageImagingInterface instead."
+            )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
         avaliable_channels = parsed_metadata["channel_names"]
         if channel_name is None:
             if len(avaliable_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load with the `channel_name` argument "
-                    f"available chanenls are {available_channels}"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {avaliable_channels}"
                 )
             channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+        assert (
+            channel_name in avaliable_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
 
         available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
         if plane_name is None:
             if len(available_planes) > 1:
                 raise ValueError(
-                    "More than one plane is detected! Please specify which plane you wish to load "
-                    "with the `plane_name` argument. To see which planes are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
+                    "More than one plane is detected! \n "
+                    "Please specify which plane you wish to load with the `plane_name` argument \n "
+                    f"Available planes are: {available_planes}"
                 )
             plane_name = available_planes[0]
-        assert plane_name in available_planes, f"Plane '{plane_name}' not found in the tiff file."
+        assert (
+            plane_name in available_planes
+        ), f"Plane '{plane_name}' not found! \n Available planes are: {available_planes}"
 
         two_photon_series_name_suffix = None
         if len(avaliable_channels) > 1:
