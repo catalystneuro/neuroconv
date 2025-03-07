@@ -20,6 +20,7 @@ from neuroconv.datainterfaces import (
     SbxImagingInterface,
     ScanImageImagingInterface,
     ScanImageMultiFileImagingInterface,
+    ThorImagingInterface,
     TiffImagingInterface,
 )
 from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
@@ -390,13 +391,13 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -470,13 +471,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -545,13 +546,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlaneCh2000002",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -635,13 +636,13 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
         cls.optical_channel_metadata = dict(
             name="Ch2",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlaneCh2",
             description="The imaging plane origin_coords units are in the microscope reference frame.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -717,13 +718,13 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         cls.device_metadata = dict(name="Microscope")
         cls.optical_channel_metadata = dict(
             name="OpticalChannelDefault",
-            emission_lambda=np.NAN,
+            emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
         cls.imaging_plane_metadata = dict(
             name="ImagingPlane",
             description="The plane or volume being imaged by the microscope.",
-            excitation_lambda=np.NAN,
+            excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
             device=cls.device_metadata["name"],
@@ -775,6 +776,62 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
+    """Test ThorImagingInterface."""
+
+    channel_name = "ChanA"
+    optical_series_name: str = f"TwoPhotonSeries{channel_name}"
+    data_interface_cls = ThorImagingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ThorlabsTiff"
+            / "single_channel_single_plane"
+            / "20231018-002"
+            / "ChanA_001_001_001_001.tif"
+        ),
+        channel_name="ChanA",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that the metadata was extracted correctly."""
+        # Check session start time
+        assert isinstance(metadata["NWBFile"]["session_start_time"], datetime)
+        assert metadata["NWBFile"]["session_start_time"].year == 2023
+        assert metadata["NWBFile"]["session_start_time"].month == 10
+        assert metadata["NWBFile"]["session_start_time"].day == 18
+        assert metadata["NWBFile"]["session_start_time"].hour == 17
+        assert metadata["NWBFile"]["session_start_time"].minute == 39
+        assert metadata["NWBFile"]["session_start_time"].second == 19
+
+        # Check device metadata
+        assert len(metadata["Ophys"]["Device"]) == 1
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "ThorMicroscope"
+        assert device["description"] == "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"
+
+        # Check imaging plane metadata
+        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["name"] == f"ImagingPlane{self.channel_name}"
+        assert imaging_plane["description"] == "2P Imaging Plane"
+        assert imaging_plane["device"] == "ThorMicroscope"
+        assert "grid_spacing" in imaging_plane
+        assert "grid_spacing_unit" in imaging_plane
+
+        # Check optical channel metadata
+        assert len(imaging_plane["optical_channel"]) == 1
+        optical_channel = imaging_plane["optical_channel"][0]
+        assert optical_channel["name"] == self.channel_name
+
+        # Check two photon series metadata
+        assert len(metadata["Ophys"]["TwoPhotonSeries"]) == 1
+        two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
+        assert two_photon_series["name"] == self.optical_series_name
 
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
