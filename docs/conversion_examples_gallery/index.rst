@@ -71,6 +71,7 @@ Imaging
     Miniscope <imaging/miniscope>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    Thor <imaging/thor>
     Tiff <imaging/tiff>
 
 Segmentation
