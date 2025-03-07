@@ -304,21 +304,21 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
                 "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead."
             )
 
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
                     "More than one channel is detected! \n "
                     "Please specify which channel you wish to load with the `channel_name` argument \n "
-                    f"Available channels are: {avaliable_channels}"
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
+            channel_name = available_channels[0]
         assert (
-            channel_name in avaliable_channels
-        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
@@ -436,21 +436,21 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
                 "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneMultiFileImagingInterface instead."
             )
 
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
                     "More than one channel is detected! \n "
                     "Please specify which channel you wish to load with the `channel_name` argument \n "
-                    f"Available channels are: {avaliable_channels}"
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
+            channel_name = available_channels[0]
         assert (
-            channel_name in avaliable_channels
-        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
@@ -541,7 +541,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePath
             Path to the TIFF file.
         channel_name : str
-            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_avaliable_channels(file_path=...).
+            The name of the channel to load, to determine what channels are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...).
         plane_name : str
             The name of the plane to load, to determine what planes are available use ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...).
         """
@@ -560,18 +560,18 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
                     "More than one channel is detected! \n "
                     "Please specify which channel you wish to load with the `channel_name` argument \n "
-                    f"Available channels are: {avaliable_channels}"
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
+            channel_name = available_channels[0]
         assert (
-            channel_name in avaliable_channels
-        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
         if plane_name is None:
@@ -587,7 +587,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         ), f"Plane '{plane_name}' not found! \n Available planes are: {available_planes}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         if len(available_planes) > 1:
             two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
@@ -706,18 +706,18 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
             )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
                     "More than one channel is detected! \n "
                     "Please specify which channel you wish to load with the `channel_name` argument \n "
-                    f"Available channels are: {avaliable_channels}"
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
+            channel_name = available_channels[0]
         assert (
-            channel_name in avaliable_channels
-        ), f"Channel '{channel_name}' not found! \n Available channels are: {avaliable_channels}"
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
         if plane_name is None:
@@ -733,7 +733,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         ), f"Plane '{plane_name}' not found! \n Available planes are: {available_planes}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         if len(available_planes) > 1:
             two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
