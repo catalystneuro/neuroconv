@@ -110,8 +110,8 @@ class TestVideoInterface(TestCase):
         # Verify custom names are used in metadata
         video_metadata = metadata_with_names["Behavior"]["CustomVideos"]
         self.assertEqual(len(video_metadata), len(custom_names))
-        for i, name in enumerate(custom_names):
-            self.assertEqual(video_metadata[i]["name"], name)
+        for meta, name in zip(video_metadata, custom_names):
+            self.assertEqual(meta["name"], name)
 
         # Test without video_names (default behavior)
         interface_without_names = VideoInterface(file_paths=self.video_files, metadata_key_name="DefaultVideos")
@@ -120,9 +120,9 @@ class TestVideoInterface(TestCase):
         # Verify default names are used in metadata
         video_metadata = metadata_without_names["Behavior"]["DefaultVideos"]
         self.assertEqual(len(video_metadata), len(self.video_files))
-        for i, file_path in enumerate(self.video_files):
+        for meta, file_path in zip(video_metadata, self.video_files):
             expected_name = f"Video {Path(file_path).stem}"
-            self.assertEqual(video_metadata[i]["name"], expected_name)
+            self.assertEqual(meta["name"], expected_name)
 
 
 @unittest.skipIf(skip_test, "cv2 not installed")
