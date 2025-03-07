@@ -25,6 +25,7 @@ and synchronize data across multiple sources.
   csvs
   expand_path
   backend_configuration
+  linking_sorted_data
   yaml
   docker_demo
   aws_demo
