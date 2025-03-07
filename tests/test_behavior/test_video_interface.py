@@ -98,6 +98,32 @@ class TestVideoInterface(TestCase):
         )
         return VideoTestNWBConverter(source_data=source_data)
 
+    def test_video_names_parameter(self):
+        """Test that the video_names parameter works correctly."""
+        # Test with custom video_names
+        custom_names = ["Custom Video 1", "Custom Video 2", "Custom Video 3"]
+        interface_with_names = VideoInterface(
+            file_paths=self.video_files, video_names=custom_names, metadata_key_name="CustomVideos"
+        )
+        metadata_with_names = interface_with_names.get_metadata()
+
+        # Verify custom names are used in metadata
+        video_metadata = metadata_with_names["Behavior"]["CustomVideos"]
+        self.assertEqual(len(video_metadata), len(custom_names))
+        for i, name in enumerate(custom_names):
+            self.assertEqual(video_metadata[i]["name"], name)
+
+        # Test without video_names (default behavior)
+        interface_without_names = VideoInterface(file_paths=self.video_files, metadata_key_name="DefaultVideos")
+        metadata_without_names = interface_without_names.get_metadata()
+
+        # Verify default names are used in metadata
+        video_metadata = metadata_without_names["Behavior"]["DefaultVideos"]
+        self.assertEqual(len(video_metadata), len(self.video_files))
+        for i, file_path in enumerate(self.video_files):
+            expected_name = f"Video {Path(file_path).stem}"
+            self.assertEqual(video_metadata[i]["name"], expected_name)
+
 
 @unittest.skipIf(skip_test, "cv2 not installed")
 class TestExternalVideoInterface(TestVideoInterface):
