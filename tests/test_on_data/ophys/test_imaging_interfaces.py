@@ -185,7 +185,9 @@ class TestScanImageImagingInterfacesAssertions(hdmf_TestCase):
         """Test that ValueError is raised when incorrect channel name is specified."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
         channel_name = "Channel 2"
-        with self.assertRaisesRegex(AssertionError, "Channel 'Channel 2' not found in the tiff file."):
+        with self.assertRaisesRegex(
+            AssertionError, "Channel 'Channel 2' not found! Available channels are: \['Channel 1', 'Channel 4'\]"
+        ):
             self.data_interface_cls(file_path=file_path, channel_name=channel_name)
 
     def test_incorrect_plane_name(self):
