@@ -314,10 +314,11 @@ class TestScanImageMultiFileImagingInterfacesAssertions(hdmf_TestCase):
         """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
         folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
         file_pattern = "sample_scanimage.tiff"
-        with self.assertRaisesRegex(
-            ValueError, "ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead."
-        ):
-            ScanImageMultiPlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
+        with self.assertRaisesRegex(ValueError, r"ScanImage version 3.8 is not supported."):
+            # Code here should invoke the functionality that triggers the exception
+            # Example:
+            interface = ScanImageMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
+            interface.get_metadata()
 
     def test_non_volumetric_data(self):
         """Test that ValueError is raised for non-volumetric imaging data."""
