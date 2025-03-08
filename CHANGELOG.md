@@ -12,6 +12,7 @@
 ## Improvements
 * Filter out warnings for missing timezone information in continuous integration [PR #1240](https://github.com/catalystneuro/neuroconv/pull/1240)
 * Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1245](https://github.com/catalystneuro/neuroconv/pull/1245)
+* Added support for changing names in VideoInterface [PR #1244](https://github.com/catalystneuro/neuroconv/pull/1244)
 
 # v0.7.1 (March 5, 2025)
 
