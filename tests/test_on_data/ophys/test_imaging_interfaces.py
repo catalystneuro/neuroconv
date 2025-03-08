@@ -186,14 +186,17 @@ class TestScanImageImagingInterfacesAssertions(hdmf_TestCase):
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
         channel_name = "Channel 2"
         with self.assertRaisesRegex(
-            AssertionError, "Channel 'Channel 2' not found! Available channels are: \['Channel 1', 'Channel 4'\]"
+            AssertionError, r"Channel 'Channel 2' not found![\s\n]+Available channels are: \['Channel 1', 'Channel 4'\]"
         ):
             self.data_interface_cls(file_path=file_path, channel_name=channel_name)
 
     def test_incorrect_plane_name(self):
         """Test that ValueError is raised when incorrect plane name is specified."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
-        with self.assertRaisesRegex(AssertionError, "Plane '20' not found in the tiff file"):
+        with self.assertRaisesRegex(
+            AssertionError,
+            r"Plane '20' not found![\s\n]+Available planes are: \['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'\]",
+        ):
             self.data_interface_cls(file_path=file_path, plane_name="20")
 
     def test_non_volumetric_data(self):
