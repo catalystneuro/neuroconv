@@ -1,3 +1,4 @@
+import re
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ try:
 except ImportError:
     from setup_paths import OUTPUT_PATH
 
+import pytest
 from parameterized import parameterized
 
 
@@ -310,6 +312,34 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
 
         self.conversion_options["timing_source"] = timing_source
         super().test_all_conversion_checks(metadata=metadata)
+
+    def test_all_conversion_checks_stub_test(self):
+        metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
+        editable_metadata = load_dict_from_file(metadata_file_path)
+        metadata = self.data_interface_cls(**self.interface_kwargs).get_metadata()
+        metadata = dict_deep_update(metadata, editable_metadata)
+
+        self.conversion_options["stub_test"] = True
+        self.conversion_options["t2"] = 0.0
+        super().test_all_conversion_checks(metadata=metadata)
+        self.conversion_options["stub_test"] = False
+        self.conversion_options["t2"] = 1.0
+
+    def test_all_conversion_checks_stub_test_invalid(self):
+        metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
+        editable_metadata = load_dict_from_file(metadata_file_path)
+        metadata = self.data_interface_cls(**self.interface_kwargs).get_metadata()
+        metadata = dict_deep_update(metadata, editable_metadata)
+
+        self.conversion_options["stub_test"] = True
+        self.conversion_options["t2"] = 1.0
+        error_message = re.escape(
+            "stub_test cannot be used with a specified t2 (1.0). Use t2=0.0 for stub_test or set stub_test=False."
+        )
+        with pytest.raises(AssertionError, match=error_message):
+            super().test_all_conversion_checks(metadata=metadata)
+        self.conversion_options["stub_test"] = False
+        self.conversion_options["t2"] = 1.0
 
     def test_get_original_starting_time_and_rate(self):
         t1 = self.conversion_options.get("t1", 0.0)
