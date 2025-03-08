@@ -365,7 +365,9 @@ minversion = "6.0"
 addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
-
+filterwarnings = [
+    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file"
+]
 
 [tool.black]
 line-length = 120
