@@ -12,6 +12,7 @@
 ## Improvements
 * Filter out warnings for missing timezone information in continuous integration [PR #1240](https://github.com/catalystneuro/neuroconv/pull/1240)
 * Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1245](https://github.com/catalystneuro/neuroconv/pull/1245)
+* Re activate Plexon tests on Mac. Testing this for a while as they are unreliable tests.
 
 # v0.7.1 (March 5, 2025)
 
@@ -24,7 +25,6 @@
 
 ## Improvements
 * Testing suite now supports numpy 2.0. [PR #1235](https://github.com/catalystneuro/neuroconv/pull/1235)
-
 
 # v0.7.0 (March 3, 2025)
 
