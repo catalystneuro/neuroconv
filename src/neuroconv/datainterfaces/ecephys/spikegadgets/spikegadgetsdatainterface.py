@@ -36,7 +36,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to the .rec file.
         gains : array_like, optional
             The early versions of SpikeGadgets do not automatically record the conversion factor ('gain') of the
