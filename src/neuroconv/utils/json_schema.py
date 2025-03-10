@@ -73,7 +73,39 @@ def get_base_schema(
     properties: Optional[dict] = None,
     **kwargs,
 ) -> dict:
-    """Return the base schema used for all other schemas."""
+    """
+    Return the base schema used for all other schemas.
+
+    Parameters
+    ----------
+    tag : str, optional
+        Tag to identify the schema.
+    root : bool, default: False
+        Whether this schema is a root schema.
+    id_ : str, optional
+        Schema identifier.
+    required : list of str, optional
+        List of required property names.
+    properties : dict, optional
+        Dictionary of property definitions.
+    **kwargs
+        Additional schema properties.
+
+    Returns
+    -------
+    dict
+        Base JSON schema with the following structure:
+        {
+            "required": List of required properties (empty if not provided)
+            "properties": Dictionary of property definitions (empty if not provided)
+            "type": "object"
+            "additionalProperties": False
+            "tag": Optional tag if provided
+            "$schema": Schema version if root is True
+            "$id": Schema ID if provided
+            **kwargs: Any additional properties
+        }
+    """
     base_schema = dict(
         required=required or [],
         properties=properties or {},
@@ -88,17 +120,6 @@ def get_base_schema(
         base_schema.update({"$id": id_})
     base_schema.update(**kwargs)
     return base_schema
-
-
-def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
-    """Deprecated version of `get_json_schema_from_method_signature`."""
-    message = (
-        "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
-        "This method is deprecated and will be removed after January 2025."
-    )
-    warnings.warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-    return get_json_schema_from_method_signature(method=method, exclude=exclude)
 
 
 def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
@@ -241,7 +262,23 @@ def _is_member(types, target_types):
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    """Get metadata schema from hdmf class."""
+    """
+    Get metadata schema from hdmf class.
+
+    Parameters
+    ----------
+    hdmf_class : type
+        The HDMF class to generate a schema from.
+
+    Returns
+    -------
+    dict
+        JSON schema derived from the HDMF class, containing:
+        - tag: Full class path (module.name)
+        - required: List of required fields
+        - properties: Dictionary of field definitions including types and descriptions
+        - additionalProperties: Whether extra fields are allowed
+    """
     schema = get_base_schema()
     schema["tag"] = hdmf_class.__module__ + "." + hdmf_class.__name__
 
@@ -311,9 +348,11 @@ def get_metadata_schema_for_icephys() -> dict:
     """
     Returns the metadata schema for icephys data.
 
-    Returns:
-        dict: The metadata schema for icephys data.
-
+    Returns
+    -------
+    dict
+        The metadata schema for icephys data, containing definitions for Device,
+        Electrode, and Session configurations.
     """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]

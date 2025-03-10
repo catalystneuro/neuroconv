@@ -72,12 +72,26 @@ class BaseDataInterface(ABC):
         self.source_data = source_data
 
     def get_metadata_schema(self) -> dict:
-        """Retrieve JSON schema for metadata."""
+        """
+        Retrieve JSON schema for metadata.
+
+        Returns
+        -------
+        dict
+            The JSON schema defining the metadata structure.
+        """
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        """Child DataInterface classes should override this to match their metadata."""
+        """
+        Child DataInterface classes should override this to match their metadata.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing basic NWBFile metadata.
+        """
         metadata = DeepDict()
         metadata["NWBFile"]["session_description"] = ""
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
@@ -105,7 +119,14 @@ class BaseDataInterface(ABC):
         validate(instance=decoded_metadata, schema=metdata_schema)
 
     def get_conversion_options_schema(self) -> dict:
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
+        """
+        Infer the JSON schema for the conversion options from the method signature (annotation typing).
+
+        Returns
+        -------
+        dict
+            The JSON schema for the conversion options.
+        """
         return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
@@ -165,7 +186,7 @@ class BaseDataInterface(ABC):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
+        nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
@@ -249,7 +270,7 @@ class BaseDataInterface(ABC):
 
         Returns
         -------
-        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration
+        Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
             The default configuration for the specified backend type.
         """
         return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)

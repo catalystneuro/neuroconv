@@ -28,7 +28,15 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the ScanImage imaging interface."""
+        """
+        Get the source schema for the ScanImage imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the ScanImage interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -140,7 +148,15 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time and device information
+            specific to the ScanImage system.
+        """
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
         metadata = super().get_metadata()
@@ -176,7 +192,15 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """get the source schema for the ScanImage multi-file imaging interface."""
+        """
+        Get the source schema for the ScanImage multi-file imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the ScanImage multi-file interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing the TIFF files."
         return source_schema
@@ -280,19 +304,21 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
                 "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead."
             )
 
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+            channel_name = available_channels[0]
+        assert (
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
@@ -307,7 +333,15 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time and device information
+            specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -392,7 +426,9 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
         version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+            raise ValueError(
+                "ScanImage version 3.8 is not supported. \n " "Please use ScanImageImagingInterface instead."
+            )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
         if parsed_metadata["num_planes"] == 1:
@@ -400,19 +436,21 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
                 "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneMultiFileImagingInterface instead."
             )
 
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+            channel_name = available_channels[0]
+        assert (
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         self.two_photon_series_name_suffix = two_photon_series_name_suffix
 
@@ -425,7 +463,15 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -509,33 +555,39 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+            raise ValueError(
+                "ScanImage version 3.8 is not supported. \n " "Please use ScanImageImagingInterface instead."
+            )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+            channel_name = available_channels[0]
+        assert (
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
         if plane_name is None:
             if len(available_planes) > 1:
                 raise ValueError(
-                    "More than one plane is detected! Please specify which plane you wish to load "
-                    "with the `plane_name` argument. To see which planes are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
+                    "More than one plane is detected! \n "
+                    "Please specify which plane you wish to load with the `plane_name` argument \n "
+                    f"Available planes are: {available_planes}"
                 )
             plane_name = available_planes[0]
-        assert plane_name in available_planes, f"Plane '{plane_name}' not found in the tiff file."
+        assert (
+            plane_name in available_planes
+        ), f"Plane '{plane_name}' not found! \n Available planes are: {available_planes}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         if len(available_planes) > 1:
             two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
@@ -553,7 +605,15 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -641,33 +701,39 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
 
         version = get_scanimage_major_version(scanimage_metadata=image_metadata)
         if version == "3.8":
-            raise ValueError("ScanImage version 3.8 is not supported. Please use ScanImageImagingInterface instead.")
+            raise ValueError(
+                "ScanImage version 3.8 is not supported. \n " "Please use ScanImageImagingInterface instead."
+            )
 
         parsed_metadata = parsed_metadata or parse_metadata(metadata=image_metadata)
-        avaliable_channels = parsed_metadata["channel_names"]
+        available_channels = parsed_metadata["channel_names"]
         if channel_name is None:
-            if len(avaliable_channels) > 1:
+            if len(available_channels) > 1:
                 raise ValueError(
-                    "More than one channel is detected! Please specify which channel you wish to load "
-                    "with the `channel_name` argument. To see which channels are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_channels(file_path=...)`"
+                    "More than one channel is detected! \n "
+                    "Please specify which channel you wish to load with the `channel_name` argument \n "
+                    f"Available channels are: {available_channels}"
                 )
-            channel_name = avaliable_channels[0]
-        assert channel_name in avaliable_channels, f"Channel '{channel_name}' not found in the tiff file."
+            channel_name = available_channels[0]
+        assert (
+            channel_name in available_channels
+        ), f"Channel '{channel_name}' not found! \n Available channels are: {available_channels}"
 
         available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
         if plane_name is None:
             if len(available_planes) > 1:
                 raise ValueError(
-                    "More than one plane is detected! Please specify which plane you wish to load "
-                    "with the `plane_name` argument. To see which planes are available, use "
-                    "`ScanImageTiffSinglePlaneImagingExtractor.get_available_planes(file_path=...)`"
+                    "More than one plane is detected! \n "
+                    "Please specify which plane you wish to load with the `plane_name` argument \n "
+                    f"Available planes are: {available_planes}"
                 )
             plane_name = available_planes[0]
-        assert plane_name in available_planes, f"Plane '{plane_name}' not found in the tiff file."
+        assert (
+            plane_name in available_planes
+        ), f"Plane '{plane_name}' not found! \n Available planes are: {available_planes}"
 
         two_photon_series_name_suffix = None
-        if len(avaliable_channels) > 1:
+        if len(available_channels) > 1:
             two_photon_series_name_suffix = f"{channel_name.replace(' ', '')}"
         if len(available_planes) > 1:
             two_photon_series_name_suffix = f"{two_photon_series_name_suffix}Plane{plane_name}"
@@ -683,7 +749,15 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         )
 
     def get_metadata(self) -> dict:
-        """get metadata for the ScanImage imaging data"""
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, device information,
+            and imaging plane configuration specific to the ScanImage system.
+        """
         metadata = super().get_metadata()
 
         extracted_session_start_time = datetime.datetime.strptime(
@@ -730,8 +804,13 @@ def get_scanimage_major_version(scanimage_metadata: dict) -> str:
 
     Returns
     -------
-    version : str
+    version: str
         The version of ScanImage that produced the TIFF file.
+
+    Raises
+    ------
+    ValueError
+        If the ScanImage version could not be determined from metadata.
     """
     if "SI.VERSION_MAJOR" in scanimage_metadata:
         return scanimage_metadata["SI.VERSION_MAJOR"]

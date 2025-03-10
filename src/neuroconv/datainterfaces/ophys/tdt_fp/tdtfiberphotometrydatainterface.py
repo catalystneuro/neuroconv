@@ -47,7 +47,14 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         import ndx_fiber_photometry  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the TDTFiberPhotometryInterface."""
+        """
+        Get metadata for the TDTFiberPhotometryInterface.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary for this interface.
+        """
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
@@ -56,7 +63,14 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        """Get the metadata schema for the TDTFiberPhotometryInterface."""
+        """
+        Get the metadata schema for the TDTFiberPhotometryInterface.
+
+        Returns
+        -------
+        dict
+            The metadata schema for this interface.
+        """
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 
@@ -259,6 +273,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
+        *,
+        stub_test: bool = False,
         t1: float = 0.0,
         t2: float = 0.0,
         timing_source: Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"] = "original",
@@ -272,6 +288,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The in-memory object to add the data to.
         metadata : dict
             Metadata dictionary with information used to create the NWBFile.
+        stub_test : bool, optional
+            If True, only add a subset of the data (1s) to the NWBFile for testing purposes, default = False.
         t1 : float, optional
             Retrieve data starting at t1 (in seconds), default = 0 for start of recording.
         t2 : float, optional
@@ -292,6 +310,12 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
 
         # Load Data
+        if stub_test:
+            assert (
+                t2 == 0.0
+            ), f"stub_test cannot be used with a specified t2 ({t2}). Use t2=0.0 for stub_test or set stub_test=False."
+            t2 = t1 + 1.0
+
         tdt_photometry = self.load(t1=t1, t2=t2)
 
         # timing_source is used to avoid loading the data twice if alignment is NOT used.

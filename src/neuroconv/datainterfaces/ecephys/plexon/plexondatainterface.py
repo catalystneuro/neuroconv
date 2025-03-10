@@ -2,6 +2,7 @@ from pathlib import Path
 
 from pydantic import FilePath, validate_call
 
+from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import DeepDict
@@ -48,6 +49,69 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
+        assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        neo_reader = self.recording_extractor.neo_reader
+
+        if hasattr(neo_reader, "raw_annotations"):
+            block_ind = self.recording_extractor.block_index
+            neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
+            if "rec_datetime" in neo_metadata:
+                metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
+
+        return metadata
+
+
+class PlexonLFPInterface(BaseLFPExtractorInterface):
+    """
+    Primary data interface class for converting Plexon LFP data.
+
+    Uses the :py:class:`~spikeinterface.extractors.PlexonRecordingExtractor`.
+    """
+
+    display_name = "Plexon LFP Recording"
+    associated_suffixes = (".plx",)
+    info = "Interface for Plexon low pass filtered data."
+    ExtractorName = "PlexonRecordingExtractor"
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .plx file."
+        return source_schema
+
+    @validate_call
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = False,
+        es_key: str = "ElectricalSeriesLF",
+        stream_name: str = "FPl-Low Pass Filtered",
+    ):
+        """
+        Load and prepare data for Plexon.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the .plx file.
+        verbose : bool, default: False
+            Allows verbosity.
+        es_key : str, default: "ElectricalSeries"
+        stream_name: str, default: "FPl-Low Pass Filtered""
+            Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
+            the FPllow pass filtered data.
+        """
+
+        # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter"
+        # But the user might modify it. For that case, we exclude the default stream names
+        # Of the other streams in the Plexon file.
+
+        invalid_stream_names = ["WB-Wideband", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
@@ -154,7 +218,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path: FilePath
             Path to the plexon spiking data (.plx file).
         verbose: bool, default: True
             Allows verbosity.

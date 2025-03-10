@@ -104,7 +104,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 '-e NEUROCONV_YAML="$NEUROCONV_YAML" '
                 '-e NEUROCONV_DATA_PATH="$NEUROCONV_DATA_PATH" '
                 '-e NEUROCONV_OUTPUT_PATH="$NEUROCONV_OUTPUT_PATH" '
-                "ghcr.io/catalystneuro/neuroconv:yaml_variable"
+                f"ghcr.io/catalystneuro/neuroconv_yaml_variable:{self.tag}"
             )
         else:  # running locally
             os.environ["NEUROCONV_DATA_PATH"] = str(DATA_PATH)
@@ -116,7 +116,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 '-e NEUROCONV_YAML="$NEUROCONV_YAML" '
                 '-e NEUROCONV_DATA_PATH="$NEUROCONV_DATA_PATH" '
                 '-e NEUROCONV_OUTPUT_PATH="$NEUROCONV_OUTPUT_PATH" '
-                "ghcr.io/catalystneuro/neuroconv:yaml_variable"
+                f"ghcr.io/catalystneuro/neuroconv_yaml_variable:{self.tag}"
             )
 
         output = deploy_process(

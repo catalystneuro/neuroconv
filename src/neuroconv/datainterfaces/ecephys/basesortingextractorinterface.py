@@ -26,7 +26,15 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ElectrodeGroup,
+            Electrodes, and UnitProperties.
+        """
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()
@@ -75,6 +83,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             ),
         )
         return metadata_schema
+
+    @property
+    def units_ids(self):
+        "Gets the units ids of the data."
+        return self.sorting_extractor.get_unit_ids()
 
     def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)

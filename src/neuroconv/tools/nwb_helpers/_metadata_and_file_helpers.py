@@ -25,7 +25,23 @@ from ...utils.json_schema import validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
-    """Check if processing module exists. If not, create it. Then return module."""
+    """
+    Check if processing module exists. If not, create it. Then return module.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to check or add the module to.
+    name : str
+        The name of the processing module.
+    description : str, optional
+        Description of the module. Only used if creating a new module.
+
+    Returns
+    -------
+    ProcessingModule
+        The existing or newly created processing module.
+    """
     if name in nwbfile.processing:
         if description is not None and nwbfile.processing[name].description != description:
             warnings.warn(
@@ -49,6 +65,12 @@ def get_default_nwbfile_metadata() -> DeepDict:
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
 
     Proper conversions should override these fields prior to calling ``NWBConverter.run_conversion()``
+
+    Returns
+    -------
+    DeepDict
+        A dictionary containing default metadata values for an NWBFile, including
+        session description, identifier, and NeuroConv version information.
     """
     neuroconv_version = importlib.metadata.version("neuroconv")
 
@@ -65,7 +87,20 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
 
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
-    """Make NWBFile from available metadata."""
+    """
+    Make NWBFile from available metadata.
+
+    Parameters
+    ----------
+    metadata : dict
+        Dictionary containing metadata for creating the NWBFile.
+        Must contain an 'NWBFile' key with required fields.
+
+    Returns
+    -------
+    NWBFile
+        A newly created NWBFile object initialized with the provided metadata.
+    """
     # Validate metadata
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
@@ -176,7 +211,7 @@ def make_or_load_nwbfile(
 
     Parameters
     ----------
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional

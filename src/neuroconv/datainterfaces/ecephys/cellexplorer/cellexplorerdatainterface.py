@@ -340,7 +340,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = BinaryRecordingExtractor(
             file_paths=[binary_file_path],
             sampling_frequency=sampling_frequency,
-            num_chan=num_channels,
+            num_channels=num_channels,
             dtype=dtype,
             t_starts=None,
             file_offset=0,
@@ -431,7 +431,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path: FilePath
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
