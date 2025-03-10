@@ -543,7 +543,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
-class TestOpenEphysBinaryRecordingInterfaceNonNeuralDatExcluded(RecordingExtractorInterfaceTestMixin):
+class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
     """Test that non-neural channels are not written as ElectricalSeries"""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
