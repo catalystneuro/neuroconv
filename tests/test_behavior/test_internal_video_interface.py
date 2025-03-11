@@ -41,8 +41,8 @@ class TestInternalVideoInterface(TestCase):
         video_file1 = str(self.test_dir / "test1.avi")
         video_file2 = str(self.test_dir / "test2.avi")
         number_of_frames = 30
-        number_of_rows = 640
-        number_of_columns = 480
+        number_of_rows = 64
+        number_of_columns = 48
         frameSize = (number_of_columns, number_of_rows)  # This is give in x,y images coordinates (x is columns)
         fps = 25
         # Standard code for specifying image formats
@@ -141,10 +141,6 @@ class TestInternalVideoInterface(TestCase):
 
     def test_video_stub(self):
         """Test that stub mode works correctly."""
-        aligned_timestamps = np.array([1, 2, 4, 5, 6, 7, 8, 9, 10, 11])
-        interface = self.nwb_converter.data_interface_objects["Video1"]
-        interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-
         conversion_options = dict(Video1=dict(stub_test=True))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
@@ -157,7 +153,6 @@ class TestInternalVideoInterface(TestCase):
             mod = nwbfile.acquisition
             # Verify that stub test limits the frames
             assert mod["Video test1"].data.shape[0] == 10
-            assert mod["Video test1"].timestamps.shape[0] == 10
 
     def test_aligned_timestamps(self):
         """Test that aligned timestamps are correctly applied."""

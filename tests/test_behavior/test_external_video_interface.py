@@ -42,8 +42,8 @@ class TestExternalVideoInterface(TestCase):
         video_file2 = str(self.test_dir / "test2.avi")
         video_file3 = str(self.test_dir / "test3.avi")
         number_of_frames = 30
-        number_of_rows = 640
-        number_of_columns = 480
+        number_of_rows = 64
+        number_of_columns = 48
         frameSize = (number_of_columns, number_of_rows)  # This is give in x,y images coordinates (x is columns)
         fps = 25
         # Standard code for specifying image formats
