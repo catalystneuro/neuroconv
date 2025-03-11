@@ -34,6 +34,8 @@ jobs:
       group: live-service-testing
       cancel-in-progress: false
     strategy:
+      # This is crucial - it forces jobs to run sequentially
+      max-parallel: 1
       fail-fast: false
       matrix:
         python-version: ${{ fromJson(inputs.python-versions) }}
