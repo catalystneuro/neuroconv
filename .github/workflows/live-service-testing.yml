@@ -29,6 +29,10 @@ jobs:
   run:
     name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    # We are adding concurrency here to avoid concurrent writes to the dandi API.
+    concurrency:  # This avoids two tests within the matrix running at the same time
+      group: live-service-testing
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
