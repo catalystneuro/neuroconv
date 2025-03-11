@@ -1,5 +1,4 @@
 from copy import deepcopy
-from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -11,7 +10,7 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
-from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_class
 
 
 class ExternalVideoInterface(BaseDataInterface):
@@ -29,7 +28,7 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
-        metadata_key_name: str = "Videos",
+        video_name: str = "Video1",
     ):
         """
         Create the interface for writing videos as ImageSeries.
@@ -39,37 +38,30 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
-        metadata_key_name : str, optional
-            The key used to identify this video data within the overall experiment metadata.
-            Defaults to "Videos".
+        video_name : str, optional
+            The name of this video as it will appear in the ImageSeries.
+            Defaults to "Video1".
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
-            containing metadata for a specific video segment:
+            containing metadata for a set of video segments:
 
             ```
-            metadata["Behavior"][metadata_key_name] = [
-                {video1_metadata},
-                {video2_metadata},
+            metadata["Behavior"]["Video"] = [
+                dict(name="Video1", description="description 1.", unit="Frames", **video1_metadata),
+                dict(name="Video2", description="description 2.", unit="Frames", **video2_metadata),
                 ...
             ]
             ```
 
-            If other video interfaces exist, they would follow a similar structure:
-
-            ```
-            metadata["Behavior"]["other_video_key_name"] = [
-                {other_video1_metadata},
-                {other_video2_metadata},
-                ...
-            ]
+            Where each entry corresponds to a separate VideoInterface and ImageSeries.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
         self._segment_starting_times = None
-        self.metadata_key_name = metadata_key_name
+        self.video_name = video_name
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -80,8 +72,8 @@ class ExternalVideoInterface(BaseDataInterface):
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["required"].append(self.metadata_key_name)
-        metadata_schema["properties"]["Behavior"]["properties"][self.metadata_key_name] = dict(
+        metadata_schema["properties"]["Behavior"]["required"].append("Video")
+        metadata_schema["properties"]["Behavior"]["properties"]["Video"] = dict(
             type="array",
             minItems=1,
             items=image_series_metadata_schema,
@@ -90,14 +82,10 @@ class ExternalVideoInterface(BaseDataInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        behavior_metadata = {
-            self.metadata_key_name: [
-                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
-                for file_path in self.source_data["file_paths"]
-            ]
+        video_metadata = {
+            "Behavior": {"Video": [dict(name=self.video_name, description="Video recorded by camera.", unit="Frames")]}
         }
-        metadata["Behavior"] = behavior_metadata
-
+        dict_deep_update(metadata, video_metadata)
         return metadata
 
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
@@ -305,23 +293,12 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths = self.source_data["file_paths"]
 
         # Be sure to copy metadata at this step to avoid mutating in-place
-        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get(self.metadata_key_name, None)
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("Video", None)
         if videos_metadata is None:
-            videos_metadata = deepcopy(self.get_metadata()["Behavior"][self.metadata_key_name])
-
-        assert len(videos_metadata) == self._number_of_files, (
-            "Incomplete metadata "
-            f"(number of metadata in video {len(videos_metadata)})"
-            f"is not equal to the number of file_paths {self._number_of_files}"
-        )
-
-        videos_name_list = [video["name"] for video in videos_metadata]
-        any_duplicated_video_names = len(set(videos_name_list)) < len(videos_name_list)
-        if any_duplicated_video_names:
-            raise ValueError("There are duplicated file names in the metadata!")
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["Video"])
+        image_series_kwargs = next(meta for meta in videos_metadata if meta["name"] == self.video_name)
 
         timing_type = self.get_timing_type()
-        image_series_kwargs = videos_metadata[0]
         if self._number_of_files > 1 and starting_frames is None:
             raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
         elif starting_frames is not None and len(starting_frames) != self._number_of_files:
