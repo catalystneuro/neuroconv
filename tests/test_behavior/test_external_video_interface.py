@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 import unittest
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
+from neuroconv.utils import dict_deep_update
 
 try:
     import cv2
@@ -221,3 +223,84 @@ class TestExternalVideoInterface(TestCase):
             assert module_description == nwbfile.processing[module_name].description
             assert "Video test1" in nwbfile.processing[module_name].data_interfaces
             assert "Video test3" in nwbfile.processing[module_name].data_interfaces
+
+    def test_get_timing_type_with_timestamps(self):
+        """Test that get_timing_type returns 'timestamps' when timestamps are set."""
+        interface = self.nwb_converter.data_interface_objects["Video1"]
+        interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+        assert interface.get_timing_type() == "timestamps"
+
+    def test_get_timing_type_with_segment_starting_times(self):
+        """Test that get_timing_type returns 'starting_time and rate' when segment_starting_times are set."""
+        interface = self.nwb_converter.data_interface_objects["Video1"]
+        interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
+        assert interface.get_timing_type() == "starting_time and rate"
+
+    def test_get_timing_type_single_file_default(self):
+        """Test that get_timing_type returns 'starting_time and rate' by default for a single file."""
+        # Create a new interface with a single file
+        interface = ExternalVideoInterface(file_paths=[self.video_files[0]], video_name="SingleVideo")
+        assert interface.get_timing_type() == "starting_time and rate"
+
+    def test_set_aligned_timestamps_after_segment_starting_times_error(self):
+        """Test that setting timestamps after segment_starting_times raises an error."""
+        interface = self.nwb_converter.data_interface_objects["Video1"]
+
+        # First set segment_starting_times
+        interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
+
+        # Now try to set timestamps - should raise an assertion error
+        with self.assertRaises(AssertionError):
+            interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+
+    def test_set_aligned_starting_time_no_timing_info_error(self):
+        """Test that set_aligned_starting_time raises an error when no timing info exists."""
+        interface = self.nwb_converter.data_interface_objects["Video1"]
+
+        # Mock _timestamps and _segment_starting_times to be None
+        interface._timestamps = None
+        interface._segment_starting_times = None
+
+        with self.assertRaises(ValueError):
+            interface.set_aligned_starting_time(aligned_starting_time=10.0)
+
+    def test_get_original_timestamps_stub(self):
+        """Test that get_original_timestamps respects stub_test parameter."""
+        interface = self.nwb_converter.data_interface_objects["Video2"]  # Using Video2 which has a single file
+
+        # Get stub timestamps
+        stub_timestamps = interface.get_original_timestamps(stub_test=True)
+
+        # Stub should have exactly 10 timestamps in the first array
+        assert len(stub_timestamps[0]) == 10
+
+        # Get full timestamps
+        full_timestamps = interface.get_original_timestamps(stub_test=False)
+
+        # Full should have more timestamps
+        assert len(full_timestamps[0]) > len(stub_timestamps[0])
+
+    def test_add_to_nwbfile_with_custom_metadata(self):
+        """Test adding to NWBFile with custom metadata."""
+        metadata = deepcopy(self.metadata)
+        custom_metadata = {
+            "Behavior": {"Video": [{"name": "Video test1", "description": "Custom description", "unit": "CustomUnit"}]}
+        }
+        metadata = dict_deep_update(metadata, custom_metadata)
+
+        # Set up the interface for conversion
+        interface = self.nwb_converter.data_interface_objects["Video1"]
+        interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+
+        conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=metadata,
+        )
+
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert nwbfile.acquisition["Video test1"].description == "Custom description"
+            assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"

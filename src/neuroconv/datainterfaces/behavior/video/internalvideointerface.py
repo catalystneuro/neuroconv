@@ -116,7 +116,7 @@ class InternalVideoInterface(BaseDataInterface):
             The timestamps for the data stream.
         """
         max_frames = 10 if stub_test else None
-        file_path = self.source_data["file_paths"]
+        file_path = self.source_data["file_path"]
         with VideoCaptureContext(file_path=str(file_path)) as video:
             # fps = video.get_video_fps()  # There is some debate about whether the OpenCV timestamp
             # method is simply returning range(length) / fps 100% of the time for any given format
@@ -160,7 +160,10 @@ class InternalVideoInterface(BaseDataInterface):
         timestamps : numpy.ndarray
             The timestamps for the data stream.
         """
-        return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
+        if self._timestamps is not None:
+            return self._timestamps
+        else:
+            return self.get_original_timestamps(stub_test=stub_test)
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         """
