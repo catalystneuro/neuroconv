@@ -25,16 +25,17 @@ on:
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
+# We are adding concurrency here to avoid concurrent writes to the dandi API.
+concurrency:
+  group: live-service-testing
+  cancel-in-progress: false
+
 jobs:
   run:
     name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
-    # We are adding concurrency here to avoid concurrent writes to the dandi API.
-    concurrency:  # This avoids two tests within the matrix running at the same time
-      group: live-service-testing
-      cancel-in-progress: false
     strategy:
-      # This is crucial - it forces jobs to run sequentially
+      # This avoids two tests within the matrix running at the same time
       max-parallel: 1
       fail-fast: false
       matrix:
