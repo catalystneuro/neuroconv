@@ -85,8 +85,7 @@ class ExternalVideoInterface(BaseDataInterface):
         video_metadata = {
             "Behavior": {"Video": [dict(name=self.video_name, description="Video recorded by camera.", unit="Frames")]}
         }
-        dict_deep_update(metadata, video_metadata)
-        return metadata
+        return dict_deep_update(metadata, video_metadata)
 
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """

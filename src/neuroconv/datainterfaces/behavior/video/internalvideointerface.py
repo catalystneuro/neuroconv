@@ -72,6 +72,7 @@ class InternalVideoInterface(BaseDataInterface):
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._timestamps = None
+        self._starting_time = None
         self.video_name = video_name
         super().__init__(file_path=file_path)
 
@@ -96,8 +97,7 @@ class InternalVideoInterface(BaseDataInterface):
         video_metadata = {
             "Behavior": {"Video": [dict(name=self.video_name, description="Video recorded by camera.", unit="Frames")]}
         }
-        dict_deep_update(metadata, video_metadata)
-        return metadata
+        return dict_deep_update(metadata, video_metadata)
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
         """
@@ -195,13 +195,12 @@ class InternalVideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        if self._timestamps is not None:
+        timing_type = self.get_timing_type()
+        if timing_type == "timestamps":
             aligned_timestamps = self.get_timestamps(stub_test=stub_test) + aligned_starting_time
             self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-        elif self._starting_time is not None:
-            self._starting_time = self._starting_time + aligned_starting_time
-        else:
-            raise ValueError("There are no timestamps or starting times set to shift by a common value!")
+        elif timing_type == "starting_time and rate":
+            self._starting_time = aligned_starting_time
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")

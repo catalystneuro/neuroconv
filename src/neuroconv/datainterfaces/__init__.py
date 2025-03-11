@@ -11,6 +11,7 @@ from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
+from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -161,6 +162,8 @@ interface_list = [
     ThorImagingInterface,
     # Behavior
     VideoInterface,
+    ExternalVideoInterface,
+    InternalVideoInterface,
     AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
@@ -201,6 +204,8 @@ interfaces_by_category = dict(
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
         Video=VideoInterface,
+        ExternalVideo=ExternalVideoInterface,
+        InternalVideo=InternalVideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
