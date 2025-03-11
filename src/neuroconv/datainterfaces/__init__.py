@@ -10,6 +10,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
+from .behavior.video.externalvideointerface import ExternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
