@@ -38,7 +38,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_paths : list of FilePathTypes
+        file_paths : list of FilePaths
             The file paths to the audio recordings in sorted, consecutive order.
             We recommend using ``natsort`` to ensure the files are in consecutive order::
 

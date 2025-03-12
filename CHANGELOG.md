@@ -5,12 +5,19 @@
 ## Bug Fixes
 
 ## Features
+* Added `SortedRecordingConverter` to convert sorted recordings to NWB with correct metadata mapping between units and electrodes [PR #1132](https://github.com/catalystneuro/neuroconv/pull/1132)
 * Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
+* Added stub_test option to TDTFiberPhotometryInterface [PR #1242](https://github.com/catalystneuro/neuroconv/pull/1242)
 * Added ThorImagingInterface for Thor TIFF files with OME metadata [PR #1238](https://github.com/catalystneuro/neuroconv/pull/1238)
 
 ## Improvements
+* Filter out warnings for missing timezone information in continuous integration [PR #1240](https://github.com/catalystneuro/neuroconv/pull/1240)
+* `FilePathType` is deprecated, use `FilePath` from pydantic instead [PR #1239](https://github.com/catalystneuro/neuroconv/pull/1239)
 * Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1245](https://github.com/catalystneuro/neuroconv/pull/1245)
-* Re activate Plexon tests on Mac. Testing this for a while as they are unreliable tests.
+* Re activate Plexon tests on Mac. Testing this for a while as they are unreliable tests [#1195](https://github.com/catalystneuro/neuroconv/pull/1195)
+* Testing: only run tests for oldest and newest versions of python [#1249](https://github.com/catalystneuro/neuroconv/pull/1249)
+* Improve error display on scan image interfaces [PR #1246](https://github.com/catalystneuro/neuroconv/pull/1246)
+* Added concurrency to live-service-testing GitHub Actions workflow to prevent simultaneous write to the dandiset. [#1252](https://github.com/catalystneuro/neuroconv/pull/1252)
 
 # v0.7.1 (March 5, 2025)
 

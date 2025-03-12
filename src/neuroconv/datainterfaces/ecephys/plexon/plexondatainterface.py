@@ -218,7 +218,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path: FilePath
             Path to the plexon spiking data (.plx file).
         verbose: bool, default: True
             Allows verbosity.
