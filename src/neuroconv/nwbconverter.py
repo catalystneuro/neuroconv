@@ -109,13 +109,14 @@ class NWBConverter:
 
         self.data_interface_objects: dict[str, BaseDataInterface] = {}
         for interface_name, interface_class in available_interfaces.items():
-            interface_kwargs = source_data[interface_name].copy()
+            interface_kwargs = source_data[interface_name]
 
             # Pass the verbose argument if the interface's constructor supports it.
             if "verbose" in inspect.signature(interface_class.__init__).parameters:
                 interface_kwargs["verbose"] = verbose
 
-            self.data_interface_objects[interface_name] = interface_class(**interface_kwargs)
+            interface_instance = interface_class(**interface_kwargs)
+            self.data_interface_objects[interface_name] = interface_instance
 
     def get_metadata_schema(self) -> dict:
         """
