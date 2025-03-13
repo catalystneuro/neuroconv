@@ -7,7 +7,6 @@ from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....tools import get_package
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: DirectoryPath):
@@ -434,8 +433,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
-
-        hdf5storage = get_package(package_name="hdf5storage")
 
         file_path = Path(file_path)
         self.session_path = Path(file_path).parent
