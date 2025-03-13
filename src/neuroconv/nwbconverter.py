@@ -87,11 +87,12 @@ class NWBConverter:
     def __init__(self, source_data: dict[str, dict], verbose: bool = False):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
-        self.data_interface_objects = {
-            name: data_interface(**source_data[name])
-            for name, data_interface in self.data_interface_classes.items()
-            if name in source_data
-        }
+        self.data_interface_objects = dict()
+        for name, data_interface in self.data_interface_classes.items():
+            if name not in source_data:
+                continue
+            interface = data_interface(verbose=verbose, **source_data.get(name, dict()))
+            self.data_interface_objects[name] = interface
 
     def get_metadata_schema(self) -> dict:
         """
