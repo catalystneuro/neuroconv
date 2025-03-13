@@ -1,5 +1,6 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
+import inspect
 import json
 from collections import Counter
 from pathlib import Path
@@ -88,11 +89,18 @@ class NWBConverter:
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
         self.data_interface_objects = dict()
-        for name, data_interface in self.data_interface_classes.items():
-            if name not in source_data:
+        for interface_name, data_interface in self.data_interface_classes.items():
+            # If the name of an interface is not passed in the source_data, skip it
+            # TODO: shouldn't this throw an error? keeping the current behavior now
+            if interface_name not in source_data:
                 continue
-            interface = data_interface(verbose=verbose, **source_data.get(name, dict()))
-            self.data_interface_objects[name] = interface
+            data_interface_kwargs = source_data.get(interface_name, dict())
+
+            # Check if the interface takes a verbose argument
+            if verbose in inspect.signature(data_interface.__init__).parameters:
+                data_interface_kwargs["verbose"] = verbose
+            interface = data_interface(**data_interface_kwargs)
+            self.data_interface_objects[interface_name] = interface
 
     def get_metadata_schema(self) -> dict:
         """
