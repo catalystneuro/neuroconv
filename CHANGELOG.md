@@ -1,7 +1,7 @@
 # v0.7.2 (Upcoming)
 
 ## Deprecations and Changes
-* Added an `appending_to_in_disk_nwbfile` argumento to `run_conversion`. This changes the semantics of the overwrite parameter from escaping append mode when a file exists to a more conventional `safe writing` mode where confirmation is required to overwrite an existing file. Append mode now is controlled with the `appending_to_in_disk_nwbfile`.
+* Added an `appending_to_in_disk_nwbfile` argumento to `run_conversion`. This changes the semantics of the overwrite parameter from escaping append mode when a file exists to a more conventional `safe writing` mode where confirmation is required to overwrite an existing file. Append mode now is controlled with the `appending_to_in_disk_nwbfile`. [#1256](https://github.com/catalystneuro/neuroconv/pull/1256)
 
 ## Bug Fixes
 
