@@ -18,7 +18,7 @@
 * Improve error display on scan image interfaces [PR #1246](https://github.com/catalystneuro/neuroconv/pull/1246)
 * Added concurrency to live-service-testing GitHub Actions workflow to prevent simultaneous write to the dandiset. [#1252](https://github.com/catalystneuro/neuroconv/pull/1252)
 * Propagate `verbose` parameter from Converters to Interfaces [#1253](https://github.com/catalystneuro/neuroconv/issues/1253)
-
+* Replace uses of scipy load_mat and h5storage loadmat with pymat_reader read_mat in `CellExplorerSortingInterface` [#1254](https://github.com/catalystneuro/neuroconv/pull/1254)
 
 # v0.7.1 (March 5, 2025)
 

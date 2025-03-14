@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-import scipy
 from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
@@ -435,14 +434,16 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
-
-        hdf5storage = get_package(package_name="hdf5storage")
+        # Triggers import error at initialization
+        pymatreader = get_package(
+            package_name="pymatreader",
+            installation_instructions="pip install pymatreader",
+        )
 
         file_path = Path(file_path)
         self.session_path = Path(file_path).parent
         self.session_id = self.session_path.stem
 
-        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release
         from pymatreader import read_mat
 
         matlab_file = read_mat(file_path)
@@ -469,52 +470,35 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             spikes_matfile_path.is_file()
         ), f"The file_path should point to an existing .spikes.cellinfo.mat file ({spikes_matfile_path})"
 
-        try:
-            spikes_mat = scipy.io.loadmat(file_name=str(spikes_matfile_path))
-            self.read_spikes_info_with_scipy = True
-        except NotImplementedError:
-            spikes_mat = hdf5storage.loadmat(file_name=str(spikes_matfile_path))
-            self.read_spikes_info_with_scipy = False
-        cell_info = spikes_mat.get("spikes", np.empty(0))
-        self.cell_info_fields = cell_info.dtype.names
+        from pymatreader import read_mat
+
+        spikes_mat = read_mat(filename=str(spikes_matfile_path))
+        cell_info = spikes_mat.get("spikes", {})
+        self.cell_info_fields = list(cell_info.keys())
 
         unit_ids = self.sorting_extractor.get_unit_ids()
-        if self.read_spikes_info_with_scipy:
-            if "cluID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0][0]]
-                )
-            if "shankID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0][0]]
-                )
-            if "region" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0][0]]
-                )
-        else:  # Logic for hdf5storage
-            if "cluID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0]]
-                )
-            if "shankID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0]]
-                )
-            if "region" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0]]
-                )
+        if "cluID" in self.cell_info_fields:
+            self.sorting_extractor.set_property(ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"]])
+        if "shankID" in self.cell_info_fields:
+            self.sorting_extractor.set_property(
+                ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"]]
+            )
+        if "region" in self.cell_info_fields:
+            self.sorting_extractor.set_property(
+                ids=unit_ids, key="location", values=[str(x) for x in cell_info["region"]]
+            )
 
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = self.session_path / f"{self.session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
-            celltype_info = scipy.io.loadmat(celltype_file_path).get("CellClass", np.empty(0))
-            if "label" in celltype_info.dtype.names:
+            from pymatreader import read_mat
+
+            celltype_info = read_mat(filename=celltype_file_path).get("CellClass", {})
+            if "label" in celltype_info:
                 self.sorting_extractor.set_property(
                     ids=unit_ids,
                     key="cell_type",
-                    values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
+                    values=[str(celltype_mapping[str(x)]) for x in celltype_info["label"]],
                 )
 
     def generate_recording_with_channel_metadata(self):
@@ -608,8 +592,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 )
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
-            celltype_info = scipy.io.loadmat(celltype_filepath).get("CellClass", np.empty(0))
-            if "label" in celltype_info.dtype.names:
+            from pymatreader import read_mat
+
+            celltype_info = read_mat(filename=celltype_filepath).get("CellClass", {})
+            if "label" in celltype_info:
                 unit_properties.append(
                     dict(
                         name="cell_type",
