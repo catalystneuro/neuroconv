@@ -179,6 +179,7 @@ class BaseDataInterface(ABC):
         overwrite: bool = False,
         backend: Optional[Literal["hdf5", "zarr"]] = None,
         backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
+        appending_to_in_disk_nwbfile: bool = False,
         **conversion_options,
     ):
         """
@@ -204,11 +205,18 @@ class BaseDataInterface(ABC):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+        appending_to_in_disk_nwbfile : bool, default: False
+            Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
+            This is useful for appending data to an existing file without overwriting it.
         """
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
+
+        if file_initially_exists and not overwrite:
+            raise ValueError(
+                f"The file at '{nwbfile_path}' already exists. Set overwrite=True to overwrite the existing file."
+            )
 
         if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
             raise ValueError(
