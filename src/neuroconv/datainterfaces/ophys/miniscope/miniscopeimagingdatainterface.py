@@ -36,7 +36,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Initialize reading the Miniscope imaging data.
 
@@ -45,13 +45,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         folder_path : DirectoryPath
             The main Miniscope folder.
             The microscope movie files are expected to be in sub folders within the main folder.
+        verbose : bool, optional
+            If True, enables verbose mode for detailed logging, by default False.
         """
         from ndx_miniscope.utils import get_recording_start_times, read_miniscope_config
 
         miniscope_folder_paths = list(Path(folder_path).rglob("Miniscope"))
         assert miniscope_folder_paths, "The main folder should contain at least one subfolder named 'Miniscope'."
 
-        super().__init__(folder_path=folder_path)
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
         self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_folder_paths[0]))
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)

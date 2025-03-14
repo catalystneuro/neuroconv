@@ -218,6 +218,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePath,
         gain: Optional[float] = None,
         xml_file_path: Optional[FilePath] = None,
+        verbose: bool = False,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -234,6 +235,8 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        verbose : bool, default: False
+            If True, enables verbose mode for detailed logging.
         """
         get_package(package_name="lxml")
 
