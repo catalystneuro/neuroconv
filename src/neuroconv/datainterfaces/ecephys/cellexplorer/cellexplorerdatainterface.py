@@ -7,6 +7,7 @@ from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: DirectoryPath):
@@ -438,7 +439,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         self.session_path = Path(file_path).parent
         self.session_id = self.session_path.stem
 
-        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release
+        pymatreader = get_package(
+            package_name="pymatreader",
+            installation_instructions="pip install pymatreader",
+        )
         from pymatreader import read_mat
 
         matlab_file = read_mat(file_path)
