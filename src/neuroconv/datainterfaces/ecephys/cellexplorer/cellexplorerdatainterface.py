@@ -434,15 +434,16 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
+        # Triggers import error at initialization
+        pymatreader = get_package(
+            package_name="pymatreader",
+            installation_instructions="pip install pymatreader",
+        )
 
         file_path = Path(file_path)
         self.session_path = Path(file_path).parent
         self.session_id = self.session_path.stem
 
-        pymatreader = get_package(
-            package_name="pymatreader",
-            installation_instructions="pip install pymatreader",
-        )
         from pymatreader import read_mat
 
         matlab_file = read_mat(file_path)
