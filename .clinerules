@@ -1,7 +1,7 @@
 * When developing a new feature or fixing a bug, always write corresponding tests and run the tests to ensure the feature worked
 * When adding tests, first read through the existing tests and try to fit new tests in the existing testing infrastructure
 * If a new feature requires a new dependency, make sure to add it in the pyproject.toml
-* Avoid making imports at the top of the file for dependencies that are not pyproject dependencies. Inline the imports for extra dependencies.
+* To enable dependencies that are specific to certain Interface or Converter classes, import these additional dependencies within the class using `tools.get_package` instead of importing them at the top of the file.
 * Always make a contribution to the CHANGELOG file summarizing any changes
 * Use typehints and numpy-style docstrings
 * always apply Black formatting
