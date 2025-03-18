@@ -1,8 +1,14 @@
 name: NeuroConv Docker CLI tests
 on:
-  schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      S3_GIN_BUCKET:
+        required: true
 
 jobs:
   run:
@@ -37,7 +43,7 @@ jobs:
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ephys-datasets-2023-06-26-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-2024-08-30-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
@@ -76,7 +82,7 @@ jobs:
       - name: Pull docker image
         run: |
           docker pull ghcr.io/catalystneuro/neuroconv:latest
-          docker pull ghcr.io/catalystneuro/neuroconv:yaml_variable
+          docker pull ghcr.io/catalystneuro/neuroconv_yaml_variable:latest
 
       - name: Run docker tests
         run: pytest tests/docker_yaml_conversion_specification_cli.py -vv -rsx

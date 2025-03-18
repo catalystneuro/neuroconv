@@ -1,5 +1,6 @@
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.types import FilePathType
 
 
 class BiocamRecordingInterface(BaseRecordingExtractorInterface):
@@ -19,7 +20,7 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
         schema["properties"]["file_path"]["description"] = "Path to the .bwr file."
         return schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for Biocam.
 
@@ -27,7 +28,7 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : string or Path
             Path to the .bwr file.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Allows verbose.
         es_key: str, default: "ElectricalSeries"
         """

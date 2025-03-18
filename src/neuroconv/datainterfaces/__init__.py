@@ -5,6 +5,7 @@ from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
 )
+from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
@@ -53,7 +54,9 @@ from .ecephys.openephys.openephyslegacydatainterface import (
 from .ecephys.openephys.openephyssortingdatainterface import OpenEphysSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.plexon.plexondatainterface import (
+    Plexon2RecordingInterface,
     PlexonRecordingInterface,
+    PlexonLFPInterface,
     PlexonSortingInterface,
 )
 from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
@@ -87,7 +90,12 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
+from .ophys.thor.thordatainterface import ThorImagingInterface
+
+# Image
+from .image.imageinterface import ImageInterface
 
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
@@ -123,6 +131,8 @@ interface_list = [
     EDFRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
+    PlexonLFPInterface,
+    Plexon2RecordingInterface,
     PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
@@ -146,6 +156,8 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    TDTFiberPhotometryInterface,
+    ThorImagingInterface,
     # Behavior
     VideoInterface,
     AudioInterface,
@@ -155,9 +167,12 @@ interface_list = [
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
+    MedPCInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
+    # Image
+    ImageInterface,
 ]
 
 interfaces_by_category = dict(
@@ -181,6 +196,7 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
+    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
         Video=VideoInterface,
@@ -191,5 +207,9 @@ interfaces_by_category = dict(
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
+        MedPC=MedPCInterface,
+    ),
+    image=dict(
+        Image=ImageInterface,
     ),
 )

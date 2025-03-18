@@ -28,6 +28,7 @@ Recording
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
     Plexon <recording/plexon>
+    Plexon2 <recording/plexon2>
     Spike2 <recording/spike2>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
@@ -70,6 +71,7 @@ Imaging
     Miniscope <imaging/miniscope>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    Thor <imaging/thor>
     Tiff <imaging/tiff>
 
 Segmentation
@@ -82,6 +84,14 @@ Segmentation
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
     Suite2P <segmentation/suite2p>
+
+Fiber Photometry
+~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    TDT Fiber Photometry <fiberphotometry/tdt_fp>
 
 Behavior
 --------
@@ -96,7 +106,16 @@ Behavior
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
+    MedPC <behavior/medpc>
 
+
+Image
+-----
+
+.. toctree::
+    :maxdepth: 1
+
+    Image (png, jpeg, tiff, etc) <imaging/image>
 
 Text
 ----

@@ -8,7 +8,6 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional
-from warnings import warn
 
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
@@ -23,10 +22,26 @@ BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
-    """Check if processing module exists. If not, create it. Then return module."""
+    """
+    Check if processing module exists. If not, create it. Then return module.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to check or add the module to.
+    name : str
+        The name of the processing module.
+    description : str, optional
+        Description of the module. Only used if creating a new module.
+
+    Returns
+    -------
+    ProcessingModule
+        The existing or newly created processing module.
+    """
     if name in nwbfile.processing:
         if description is not None and nwbfile.processing[name].description != description:
-            warn(
+            warnings.warn(
                 "Custom description given to get_module does not match existing module description! "
                 "Ignoring custom description."
             )
@@ -47,6 +62,12 @@ def get_default_nwbfile_metadata() -> DeepDict:
         metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
 
     Proper conversions should override these fields prior to calling ``NWBConverter.run_conversion()``
+
+    Returns
+    -------
+    DeepDict
+        A dictionary containing default metadata values for an NWBFile, including
+        session description, identifier, and NeuroConv version information.
     """
     neuroconv_version = importlib.metadata.version("neuroconv")
 
@@ -63,7 +84,20 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
 
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
-    """Make NWBFile from available metadata."""
+    """
+    Make NWBFile from available metadata.
+
+    Parameters
+    ----------
+    metadata : dict
+        Dictionary containing metadata for creating the NWBFile.
+        Must contain an 'NWBFile' key with required fields.
+
+    Returns
+    -------
+    NWBFile
+        A newly created NWBFile object initialized with the provided metadata.
+    """
     # Validate metadata
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
@@ -157,7 +191,7 @@ def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
     # Windows in particular can encounter errors at this step
     except PermissionError:  # pragma: no cover
         message = f"Unable to remove NWB file located at {nwbfile_path.absolute()}! Please remove it manually."
-        warn(message=message, stacklevel=2)
+        warnings.warn(message=message, stacklevel=2)
 
 
 @contextmanager
@@ -167,14 +201,14 @@ def make_or_load_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     backend: Literal["hdf5", "zarr"] = "hdf5",
-    verbose: bool = True,
+    verbose: bool = False,
 ):
     """
     Context for automatically handling decision of write vs. append for writing an NWBFile.
 
     Parameters
     ----------
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
@@ -339,16 +373,19 @@ def configure_and_write_nwbfile(
     backend_configuration: Optional[BackendConfiguration] = None,
 ) -> None:
     """
-    Write an NWBFile to a file using a specific backend or backend configuration.
+    Write an NWB file using a specific backend or backend configuration.
 
-    You must provide either a ``backend`` or a ``backend_configuration``. If both are provided, they must match.
+    A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
+    the specified backend, provide only ``backend``. To use a custom backend configuration, provide
+    ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
 
     Parameters
     ----------
     nwbfile: NWBFile
     output_filepath: str
     backend: {"hdf5"}, optional
-        The type of backend used to create the file. If no ``backend`` is specified, the ``backend_configuration`` is used.
+        The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
+        specified backend. If no ``backend`` is specified, the ``backend_configuration`` is used.
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.

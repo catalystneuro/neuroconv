@@ -2,7 +2,7 @@ name: Build and Upload Docker Image of latest with YAML variable to GHCR
 
 on:
   workflow_run:
-    workflows: [build_and_upload_docker_image_latest_release]
+    workflows: [Build and Upload Docker Image of Latest Release to GHCR]
     types: [completed]
   workflow_dispatch:
 
@@ -31,7 +31,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: ghcr.io/catalystneuro/neuroconv:yaml_variable
+          tags: ghcr.io/catalystneuro/neuroconv_yaml_variable:latest
           context: .
           file: dockerfiles/neuroconv_latest_yaml_variable
           provenance: false

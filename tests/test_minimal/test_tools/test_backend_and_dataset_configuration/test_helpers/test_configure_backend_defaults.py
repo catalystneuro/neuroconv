@@ -66,7 +66,7 @@ def test_simple_time_series(
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_time_series.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_time_series.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -81,7 +81,7 @@ def test_simple_time_series(
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(x=integer_array, y=written_data[:])
+        assert_array_equal(integer_array, written_data[:])
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -98,7 +98,7 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestDynamicTable/TestColumn/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb")
     NWB_IO = BACKEND_NWB_IO[backend]
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
@@ -114,7 +114,7 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(x=integer_array, y=written_data[:])
+        assert_array_equal(integer_array, written_data[:])
 
 
 @pytest.mark.parametrize(
@@ -164,7 +164,7 @@ def test_time_series_timestamps_linkage(
         assert nwbfile.acquisition["TestTimeSeries1"].timestamps
         assert nwbfile.acquisition["TestTimeSeries2"].timestamps
 
-    nwbfile_path = str(tmpdir / f"test_time_series_timestamps_linkage_{case_name}_data.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_time_series_timestamps_linkage_{case_name}_data.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -177,7 +177,7 @@ def test_time_series_timestamps_linkage(
             assert written_data_1.compression == "gzip"
         elif backend == "zarr":
             assert written_data_1.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(x=integer_array, y=written_data_1[:])
+        assert_array_equal(integer_array, written_data_1[:])
 
         written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
         assert written_data_2.chunks == dataset_configuration_2.chunk_shape
@@ -185,7 +185,7 @@ def test_time_series_timestamps_linkage(
             assert written_data_2.compression == "gzip"
         elif backend == "zarr":
             assert written_data_2.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(x=integer_array, y=written_data_2[:])
+        assert_array_equal(integer_array, written_data_2[:])
 
         written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
         assert written_timestamps_1.chunks == timestamps_configuration_1.chunk_shape
@@ -193,7 +193,7 @@ def test_time_series_timestamps_linkage(
             assert written_timestamps_1.compression == "gzip"
         elif backend == "zarr":
             assert written_timestamps_1.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(x=timestamps_array, y=written_timestamps_1[:])
+        assert_array_equal(timestamps_array, written_timestamps_1[:])
 
         written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
         assert written_timestamps_2 == written_timestamps_1

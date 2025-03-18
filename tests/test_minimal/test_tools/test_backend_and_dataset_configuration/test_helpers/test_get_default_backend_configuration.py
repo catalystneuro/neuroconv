@@ -42,7 +42,7 @@ def generate_complex_nwbfile() -> NWBFile:
 
 @pytest.fixture(scope="session")
 def hdf5_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb.h5")
+    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_complex_nwbfile()
         with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
@@ -52,7 +52,7 @@ def hdf5_nwbfile_path(tmpdir_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb.zarr")
+    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_complex_nwbfile()
         with NWBZarrIO(path=str(nwbfile_path), mode="w") as io:

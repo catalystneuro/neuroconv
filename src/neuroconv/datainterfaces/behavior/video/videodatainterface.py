@@ -1,12 +1,12 @@
+import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Literal, Optional
-from warnings import warn
+from typing import Literal, Optional
 
 import numpy as np
 import psutil
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
@@ -28,9 +28,10 @@ class VideoInterface(BaseDataInterface):
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats."
 
+    @validate_call
     def __init__(
         self,
-        file_paths: list,
+        file_paths: list[FilePath],
         verbose: bool = False,
         *,
         metadata_key_name: str = "Videos",
@@ -40,7 +41,7 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths : list of FilePathTypes
+        file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         metadata_key_name : str, optional
@@ -96,7 +97,7 @@ class VideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
-                dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
+                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
         }
@@ -104,7 +105,7 @@ class VideoInterface(BaseDataInterface):
 
         return metadata
 
-    def get_original_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+    def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -134,7 +135,7 @@ class VideoInterface(BaseDataInterface):
 
         Returns
         -------
-        timing_type : 'starting_time and rate' or 'timestamps'
+        Literal["starting_time and rate", "timestamps"]
             The type of timing that has been set explicitly according to alignment.
 
             If only timestamps have been set, then only those will be used.
@@ -159,7 +160,7 @@ class VideoInterface(BaseDataInterface):
                 "Please specify the temporal alignment of each video."
             )
 
-    def get_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+    def get_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -176,7 +177,7 @@ class VideoInterface(BaseDataInterface):
         """
         return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
 
-    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -221,7 +222,7 @@ class VideoInterface(BaseDataInterface):
         else:
             raise ValueError("There are no timestamps or starting times set to shift by a common value!")
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float], stub_test: bool = False):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
@@ -264,12 +265,10 @@ class VideoInterface(BaseDataInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_frames: Optional[list] = None,
+        starting_frames: Optional[list[int]] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
-        compression: Optional[str] = "gzip",
-        compression_options: Optional[int] = None,
     ):
         """
         Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
@@ -321,13 +320,6 @@ class VideoInterface(BaseDataInterface):
         module_description: str, optional
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
-        compression: str, default: "gzip"
-            Compression strategy to use for :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO`. For full list of currently
-            supported filters, see
-            https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
-        compression_options: int, optional
-            Parameter(s) for compression filter. Currently, only supports the compression level (integer from 0 to 9) of
-            compression="gzip".
         """
         metadata = metadata or dict()
 
@@ -388,7 +380,7 @@ class VideoInterface(BaseDataInterface):
                 uncompressed_estimate = Path(file).stat().st_size * 70
                 available_memory = psutil.virtual_memory().available
                 if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
-                    warn(
+                    warnings.warn(
                         f"Not enough memory (estimated {human_readable_size(uncompressed_estimate)}) to load video file"
                         f"as array ({human_readable_size(available_memory)} available)! Forcing chunk_data to True."
                     )
@@ -437,14 +429,7 @@ class VideoInterface(BaseDataInterface):
                                 pbar.update(1)
                     iterable = video
 
-                # Wrap data for compression
-                wrapped_io_data = H5DataIO(
-                    iterable,
-                    compression=compression,
-                    compression_opts=compression_options,
-                    chunks=chunks,
-                )
-                image_series_kwargs.update(data=wrapped_io_data)
+                image_series_kwargs.update(data=iterable)
 
                 if timing_type == "starting_time and rate":
                     starting_time = (

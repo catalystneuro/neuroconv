@@ -66,26 +66,30 @@ linkcheck_ignore = [
 # Extension configuration
 # --------------------------------------------------
 
+
 # Napoleon
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = False
 napoleon_use_ivar = True
 napoleon_include_init_with_doc = False
-napoleon_include_private_with_doc = True
+napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
 autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
 autodata_content = "both"
+
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
-    "private-members": True,
+    "private-members": False,
     "show-inheritance": False,
     "toctree": True,
+    'undoc-members': True,
 }
+
 add_module_names = False
 
 

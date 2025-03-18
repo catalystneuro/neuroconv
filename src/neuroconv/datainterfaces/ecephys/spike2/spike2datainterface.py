@@ -1,8 +1,10 @@
 from pathlib import Path
 
+from pydantic import FilePath, validate_call
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 def _test_sonpy_installation() -> None:
@@ -27,26 +29,39 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["smrx_channel_ids"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["smrx_channel_ids"])
         source_schema.update(additionalProperties=True)
         source_schema["properties"]["file_path"].update(description="Path to .smrx file.")
         return source_schema
 
     @classmethod
-    def get_all_channels_info(cls, file_path: FilePathType):
-        """Retrieve and inspect necessary channel information prior to initialization."""
+    def get_all_channels_info(cls, file_path: FilePath):
+        """
+        Retrieve and inspect necessary channel information prior to initialization.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to .smr or .smrx file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing information about all channels in the Spike2 file.
+        """
         _test_sonpy_installation()
         return cls.get_extractor().get_all_channels_info(file_path=file_path)
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    @validate_call
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Initialize reading of Spike2 file.
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .smr or .smrx file.
-        verbose : bool, default: True
+        verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
         _test_sonpy_installation()

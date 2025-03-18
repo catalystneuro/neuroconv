@@ -31,7 +31,7 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v29.0.4
+        uses: tj-actions/changed-files@v46.0.1
 
       - name: Assess Source Code Changes
         id: assess-changes
@@ -41,7 +41,7 @@ jobs:
           echo "CHANGELOG_UPDATED=false" >> $GITHUB_OUTPUT
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo $file
-            if [[ $file == "src/"* || $file == "tests/"* || $file == "requirements-minimal.txt" || $file == "requirements-testing.txt" || $file == "setup.py" || $file == ".github/"* ]]
+            if [[ $file == "src/"* || $file == "tests/"* || $file == "pyproject.toml"   || $file == "setup.py" || $file == ".github/"* ]]
             then
               echo "Source changed"
               echo "SOURCE_CHANGED=true" >> $GITHUB_OUTPUT

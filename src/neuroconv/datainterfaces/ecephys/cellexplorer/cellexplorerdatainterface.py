@@ -2,16 +2,15 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-import scipy
+from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType
 
 
-def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPathType):
+def add_channel_metadata_to_recoder(recording_extractor, folder_path: DirectoryPath):
     """
     Main function to add channel metadata to a recording extractor from a CellExplorer session.
     The metadata is added as channel properties to the recording extractor.
@@ -73,7 +72,7 @@ def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPath
 
 def add_channel_metadata_to_recorder_from_session_file(
     recording_extractor,
-    folder_path: FolderPathType,
+    folder_path: DirectoryPath,
 ):
     """
     Extracts channel metadata from the CellExplorer's `session.mat` file and adds
@@ -177,7 +176,7 @@ def add_channel_metadata_to_recorder_from_session_file(
 
 def add_channel_metadata_to_recorder_from_channel_map_file(
     recording_extractor,
-    folder_path: FolderPathType,
+    folder_path: DirectoryPath,
 ):
     """
     Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds
@@ -254,7 +253,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         The folder where the session data is located. It should contain a
         `{folder.name}.session.mat` file and the binary files `{folder.name}.dat`
         or `{folder.name}.lfp` for the LFP interface.
-    verbose : bool, default: True
+    verbose : bool, default: Falsee
             Whether to output verbose text.
     es_key : str, default: "ElectricalSeries" and "ElectricalSeriesLFP" for the LFP interface
 
@@ -294,7 +293,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
@@ -340,7 +339,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = BinaryRecordingExtractor(
             file_paths=[binary_file_path],
             sampling_frequency=sampling_frequency,
-            num_chan=num_channels,
+            num_channels=num_channels,
             dtype=dtype,
             t_starts=None,
             file_offset=0,
@@ -361,6 +360,14 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):
+    """
+    Adds lfp data from binary files with the new CellExplorer format:
+
+    https://cellexplorer.org/
+
+    See the `CellExplorerRecordingInterface` class for more information.
+    """
+
     display_name = "CellExplorer LFP"
     keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",
@@ -374,7 +381,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     sampling_frequency_key = "srLfp"
     binary_file_extension = "lfp"
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeriesLFP"):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
 
     def add_to_nwbfile(
@@ -411,24 +418,32 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        return extractor_kwargs
+
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Initialize read of Cell Explorer file.
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path: FilePath
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
-
-        hdf5storage = get_package(package_name="hdf5storage")
+        # Triggers import error at initialization
+        pymatreader = get_package(
+            package_name="pymatreader",
+            installation_instructions="pip install pymatreader",
+        )
 
         file_path = Path(file_path)
         self.session_path = Path(file_path).parent
         self.session_id = self.session_path.stem
 
-        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release
         from pymatreader import read_mat
 
         matlab_file = read_mat(file_path)
@@ -446,7 +461,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "extracellular" in session_data.keys():
                 sampling_frequency = session_data["extracellular"].get("sr", None)
 
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        self.sampling_frequency = sampling_frequency
+        super().__init__(file_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 
@@ -454,55 +470,65 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             spikes_matfile_path.is_file()
         ), f"The file_path should point to an existing .spikes.cellinfo.mat file ({spikes_matfile_path})"
 
-        try:
-            spikes_mat = scipy.io.loadmat(file_name=str(spikes_matfile_path))
-            self.read_spikes_info_with_scipy = True
-        except NotImplementedError:
-            spikes_mat = hdf5storage.loadmat(file_name=str(spikes_matfile_path))
-            self.read_spikes_info_with_scipy = False
-        cell_info = spikes_mat.get("spikes", np.empty(0))
-        self.cell_info_fields = cell_info.dtype.names
+        from pymatreader import read_mat
+
+        spikes_mat = read_mat(filename=str(spikes_matfile_path))
+        cell_info = spikes_mat.get("spikes", {})
+        self.cell_info_fields = list(cell_info.keys())
 
         unit_ids = self.sorting_extractor.get_unit_ids()
-        if self.read_spikes_info_with_scipy:
-            if "cluID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0][0]]
-                )
-            if "shankID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0][0]]
-                )
-            if "region" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0][0]]
-                )
-        else:  # Logic for hdf5storage
-            if "cluID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0]]
-                )
-            if "shankID" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0]]
-                )
-            if "region" in self.cell_info_fields:
-                self.sorting_extractor.set_property(
-                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0]]
-                )
+        if "cluID" in self.cell_info_fields:
+            self.sorting_extractor.set_property(ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"]])
+        if "shankID" in self.cell_info_fields:
+            self.sorting_extractor.set_property(
+                ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"]]
+            )
+        if "region" in self.cell_info_fields:
+            self.sorting_extractor.set_property(
+                ids=unit_ids, key="location", values=[str(x) for x in cell_info["region"]]
+            )
 
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = self.session_path / f"{self.session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
-            celltype_info = scipy.io.loadmat(celltype_file_path).get("CellClass", np.empty(0))
-            if "label" in celltype_info.dtype.names:
+            from pymatreader import read_mat
+
+            celltype_info = read_mat(filename=celltype_file_path).get("CellClass", {})
+            if "label" in celltype_info:
                 self.sorting_extractor.set_property(
                     ids=unit_ids,
                     key="cell_type",
-                    values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
+                    values=[str(celltype_mapping[str(x)]) for x in celltype_info["label"]],
                 )
 
     def generate_recording_with_channel_metadata(self):
+        """
+        Generate a dummy recording extractor with channel metadata from session data.
+
+        This method reads session data from a `.session.mat` file (if available) and generates a dummy recording
+        extractor. The recording extractor is then populated with channel metadata extracted from the session file.
+
+        Returns
+        -------
+        NumpyRecording
+            A `NumpyRecording` object representing the dummy recording extractor, containing the channel metadata.
+
+        Notes
+        -----
+        - The method reads the `.session.mat` file using `pymatreader` and extracts `extracellular` data.
+        - It creates a dummy recording extractor using `spikeinterface.core.numpyextractors.NumpyRecording`.
+        - The generated extractor includes channel IDs and other relevant metadata such as number of channels,
+        number of samples, and sampling frequency.
+        - Channel metadata is added to the dummy extractor using the `add_channel_metadata_to_recoder` function.
+        - If the `.session.mat` file is not found, no extractor is returned.
+
+        Warnings
+        --------
+        Ensure that the `.session.mat` file is correctly located in the expected session path, or the method will not generate
+        a recording extractor. The expected session is self.session_path / f"{self.session_id}.session.mat"
+
+        """
+
         session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
         if session_data_file_path.is_file():
             from pymatreader import read_mat
@@ -566,8 +592,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 )
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
-            celltype_info = scipy.io.loadmat(celltype_filepath).get("CellClass", np.empty(0))
-            if "label" in celltype_info.dtype.names:
+            from pymatreader import read_mat
+
+            celltype_info = read_mat(filename=celltype_filepath).get("CellClass", {})
+            if "label" in celltype_info:
                 unit_properties.append(
                     dict(
                         name="cell_type",

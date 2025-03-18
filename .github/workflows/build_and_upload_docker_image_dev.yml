@@ -1,13 +1,13 @@
 name: Build and Upload Docker Image of Current Dev Branch to GHCR
 
 on:
-  schedule:
-    - cron: "0 16 * * 1"  # Weekly at noon EST on Monday
   workflow_dispatch:
-
-concurrency:  # Cancel previous workflows on the same pull request
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
+    secrets:
+      DOCKER_UPLOADER_USERNAME:
+        required: true
+      DOCKER_UPLOADER_PASSWORD:
+        required: true
 
 jobs:
   release-image:
@@ -26,16 +26,11 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
           password: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
-      - name: Get current date
-        id: date
-        run: |
-          date_tag="$(date +'%Y-%m-%d')"
-          echo "date_tag=$date_tag" >> $GITHUB_OUTPUT
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: ghcr.io/catalystneuro/neuroconv:dev,ghcr.io/catalystneuro/neuroconv:${{ steps.date.outputs.date_tag }}
+          tags: ghcr.io/catalystneuro/neuroconv:dev
           context: .
           file: dockerfiles/neuroconv_dev_dockerfile
           provenance: false
