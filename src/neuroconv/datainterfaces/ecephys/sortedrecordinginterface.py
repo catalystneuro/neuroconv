@@ -59,8 +59,8 @@ class SortedRecordingConverter(ConverterPipe):
         self.channel_ids = self.recording_interface.channel_ids
         self.unit_ids = self.sorting_interface.units_ids
 
-        # Convert channel_ids to set for comparison
-        available_channels = set(self.channel_ids)
+        # Convert channel_ids to set for comparison (use list to avoid numpy scalar representation issues)
+        available_channels = set(self.channel_ids.tolist())
 
         # Check that all referenced channels exist in recording
         for unit_id, channel_ids in unit_ids_to_channel_ids.items():
@@ -72,7 +72,7 @@ class SortedRecordingConverter(ConverterPipe):
                 )
 
         # Check that all units have a channel mapping
-        available_units = set(self.unit_ids)
+        available_units = set(self.unit_ids.tolist())  # Use tolist() to avoid numpy scalar representation issues
         mapped_units = set(unit_ids_to_channel_ids.keys())
         unmapped_units = available_units - mapped_units
         if unmapped_units:
