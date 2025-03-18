@@ -56,6 +56,7 @@ from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.plexon.plexondatainterface import (
     Plexon2RecordingInterface,
     PlexonRecordingInterface,
+    PlexonLFPInterface,
     PlexonSortingInterface,
 )
 from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
@@ -91,6 +92,10 @@ from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
+from .ophys.thor.thordatainterface import ThorImagingInterface
+
+# Image
+from .image.imageinterface import ImageInterface
 
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
@@ -126,6 +131,7 @@ interface_list = [
     EDFRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
+    PlexonLFPInterface,
     Plexon2RecordingInterface,
     PlexonSortingInterface,
     BiocamRecordingInterface,
@@ -151,6 +157,7 @@ interface_list = [
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     TDTFiberPhotometryInterface,
+    ThorImagingInterface,
     # Behavior
     VideoInterface,
     AudioInterface,
@@ -164,6 +171,8 @@ interface_list = [
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
+    # Image
+    ImageInterface,
 ]
 
 interfaces_by_category = dict(
@@ -199,5 +208,8 @@ interfaces_by_category = dict(
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
         MedPC=MedPCInterface,
+    ),
+    image=dict(
+        Image=ImageInterface,
     ),
 )

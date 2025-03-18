@@ -44,7 +44,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to either a rhd or a rhs file
 
         verbose : bool, default: False

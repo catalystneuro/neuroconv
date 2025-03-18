@@ -71,6 +71,7 @@ Imaging
     Miniscope <imaging/miniscope>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    Thor <imaging/thor>
     Tiff <imaging/tiff>
 
 Segmentation
@@ -107,6 +108,14 @@ Behavior
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
+
+Image
+-----
+
+.. toctree::
+    :maxdepth: 1
+
+    Image (png, jpeg, tiff, etc) <imaging/image>
 
 Text
 ----
