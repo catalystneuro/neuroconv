@@ -5,7 +5,6 @@ import unittest
 from datetime import datetime
 
 import numpy as np
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
@@ -151,7 +150,7 @@ class TestVideoInterface(unittest.TestCase):
 
     def test_iterator_stub(self):
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
-        it = H5DataIO(VideoDataChunkIterator(video_file, stub_test=True), compression="gzip")
+        it = VideoDataChunkIterator(video_file, stub_test=True)
         img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
@@ -165,7 +164,7 @@ class TestVideoInterface(unittest.TestCase):
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
         num_frames_chunk = 6
         num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
-        it = H5DataIO(VideoDataChunkIterator(video_file), compression="gzip")
+        it = VideoDataChunkIterator(video_file)
         img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
@@ -180,7 +179,7 @@ class TestVideoInterface(unittest.TestCase):
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
         num_frames_chunk = 27
         num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
-        it = H5DataIO(VideoDataChunkIterator(video_file), compression="gzip")
+        it = VideoDataChunkIterator(video_file)
         img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
@@ -193,7 +192,7 @@ class TestVideoInterface(unittest.TestCase):
     def test_custom_chunk_shape(self):
         custom_frame_shape = (1, 100, 100, 3)
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
-        it = H5DataIO(VideoDataChunkIterator(video_file, chunk_shape=custom_frame_shape), compression="gzip")
+        it = VideoDataChunkIterator(video_file, chunk_shape=custom_frame_shape)
         img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
@@ -209,4 +208,4 @@ class TestVideoInterface(unittest.TestCase):
         buffer_size = frame_size_mb / 1e3 / 2
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
         with self.assertRaises(AssertionError):
-            it = H5DataIO(VideoDataChunkIterator(video_file, buffer_gb=buffer_size), compression="gzip")
+            it = VideoDataChunkIterator(video_file, buffer_gb=buffer_size)

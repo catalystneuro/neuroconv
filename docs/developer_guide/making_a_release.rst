@@ -7,7 +7,7 @@ A simple to-do list for the Neuroconv release process:
 
    - Format and update the changelog.
    - Ensure correct formatting and add a header to indicate that the changes belong to a specific release and not upcoming ones.
-   - Example: `Commit Example <https://github.com/catalystneuro/neuroconv/commit/2fbea8f05e5bd92c445fcbb6bf24de45330fcbbc>`_
+   - Example: `Format Changelog Example <https://github.com/catalystneuro/neuroconv/commit/2fbea8f05e5bd92c445fcbb6bf24de45330fcbbc>`_
 
 2. **Set the Correct Version for Release**:
 
@@ -17,7 +17,7 @@ A simple to-do list for the Neuroconv release process:
 
 3. **Perform Checks**:
 
-   - Ensure that no requirement files include pointers to `git`-based dependencies (including specific branches or commit hashes). All dependencies for a PyPI release should point to the released package versions that are available on conda-forge or PyPI.
+   - Ensure that no requirement files include pointers to `git`-based dependencies (including specific branches or commit hashes). All dependencies for a PyPI release should point to the released package versions that are available on conda-forge or PyPI. This can be done efficiently by searching for `@ git` in the pyproject.toml on an IDE.
 
 4. **Tag on GitHub**:
 
@@ -29,7 +29,8 @@ A simple to-do list for the Neuroconv release process:
 
    - GitHub tagging triggers the `auto-publish.yml` action on the CI, which takes care of the rest.
 
-6. **Bump Version Post-Release**:
+6. **Post-Release: Bump Version and Update Changelog**:
 
    - To comply with the one patch version ahead policy, bump the version after the release.
-   - Example: `Post-Release Version Bump <https://github.com/catalystneuro/neuroconv/commit/89d5e41f5140c3aa1ffa066974befb21c7a01567>`_
+   - Update the changelog with the new version header.
+   - Example: `Post-Release Version Bump <https://github.com/catalystneuro/neuroconv/commit/43748036bc23c402bb7c0ee1030606c57ac1abc2>`_

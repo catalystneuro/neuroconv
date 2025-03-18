@@ -2,7 +2,6 @@ import json
 import unittest
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
 
 import pytest
 from parse import parse
@@ -10,11 +9,11 @@ from parse import parse
 from neuroconv.tools import LocalPathExpander
 from neuroconv.tools.path_expansion import construct_path_template
 from neuroconv.tools.testing import generate_path_expander_demo_ibl
-from neuroconv.utils import NWBMetaDataEncoder
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
 def create_test_directories_and_files(
-    base_directory: Path, directories_and_files: List[Tuple[List[str], List[str]]]
+    base_directory: Path, directories_and_files: list[tuple[list[str], list[str]]]
 ) -> None:
     """
     Create test directories and files in a way that is compatible across different
@@ -24,7 +23,7 @@ def create_test_directories_and_files(
     ----------
     base_directory : Path
         The base directory under which all subdirectories and files will be created.
-    directories_and_files : List[Tuple[List[str], List[str]]]
+    directories_and_files : list[tuple[list[str], list[str]]]
         A list where each element is a tuple. The first element of the tuple is a list
         of directory components, and the second element is a list of file names to be
         created in that directory.
@@ -410,7 +409,7 @@ def test_expand_paths_ibl(tmpdir):
             ),
         ),
     )
-    path_expansion_results = json.loads(json.dumps(path_expansion_results, cls=NWBMetaDataEncoder))
+    path_expansion_results = json.loads(json.dumps(path_expansion_results, cls=_NWBMetaDataEncoder))
 
     # build expected output from file
     expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"

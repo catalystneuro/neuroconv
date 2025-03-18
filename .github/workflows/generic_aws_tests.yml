@@ -1,0 +1,42 @@
+name: AWS Tests
+on:
+  schedule:
+    - cron: "0 16 * * 1"  # Weekly at noon on Monday
+  workflow_dispatch:
+
+concurrency:  # Cancel previous workflows on the same pull request
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  run:
+    name: ${{ matrix.os }} Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: git fetch --prune --unshallow --tags
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Global Setup
+        run: |
+          python -m pip install -U pip  # Official recommended way
+          git config --global user.email "CI@example.com"
+          git config --global user.name "CI Almighty"
+
+      - name: Install AWS requirements
+        run: pip install .[aws,test]
+
+      - name: Run generic AWS tests
+        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools_tests.py

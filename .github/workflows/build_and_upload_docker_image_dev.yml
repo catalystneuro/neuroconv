@@ -1,13 +1,13 @@
 name: Build and Upload Docker Image of Current Dev Branch to GHCR
 
 on:
-  schedule:
-    - cron: "0 13 * * *" # Daily at 9 EST
   workflow_dispatch:
-
-concurrency:  # Cancel previous workflows on the same pull request
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
+    secrets:
+      DOCKER_UPLOADER_USERNAME:
+        required: true
+      DOCKER_UPLOADER_PASSWORD:
+        required: true
 
 jobs:
   release-image:

@@ -2,16 +2,16 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....utils import (
     DeepDict,
-    FilePathType,
     calculate_regular_series_rate,
     get_base_schema,
 )
@@ -40,9 +40,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
                         description=dict(type="string"),
                         scorer=dict(type="string"),
                         source_software=dict(type="string", default="LightningPose"),
+                        camera_name=dict(type="string", default="CameraPoseEstimation"),
                     ),
                     patternProperties={
-                        "^(?!(name|description|scorer|source_software)$)[a-zA-Z0-9_]+$": dict(
+                        "^(?!(name|description|scorer|source_software|camera_name)$)[a-zA-Z0-9_]+$": dict(
                             title="PoseEstimationSeries",
                             type="object",
                             properties=dict(name=dict(type="string"), description=dict(type="string")),
@@ -58,27 +59,44 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        original_video_file_path: FilePathType,
-        labeled_video_file_path: Optional[FilePathType] = None,
-        verbose: bool = True,
+        file_path: FilePath,
+        original_video_file_path: FilePath,
+        labeled_video_file_path: Optional[FilePath] = None,
+        verbose: bool = False,
     ):
         """
         Interface for writing pose estimation data from the Lightning Pose algorithm.
 
         Parameters
         ----------
-        file_path : a string or a path
+        file_path : FilePath
             Path to the .csv file that contains the predictions from Lightning Pose.
-        original_video_file_path : a string or a path
+        original_video_file_path : FilePath
             Path to the original video file (.mp4).
         labeled_video_file_path : a string or a path, optional
             Path to the labeled video file (.mp4).
-        verbose : bool, default: True
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
+
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        from importlib.metadata import version
+
+        import ndx_pose  # noqa: F401
+        from packaging import version as version_parse
+
+        ndx_pose_version = version("ndx-pose")
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.0"):
+            raise ImportError(
+                "LightningPose interface requires ndx-pose version 0.2.0 or later. "
+                f"Found version {ndx_pose_version}. Please upgrade: "
+                "pip install 'ndx-pose>=0.2.0'"
+            )
+
         from neuroconv.datainterfaces.behavior.video.video_utils import (
             VideoCaptureContext,
         )
@@ -116,7 +134,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         pose_estimation_data = pd.read_csv(self.file_path, header=[0, 1, 2])
         return pose_estimation_data
 
-    def _get_original_video_shape(self) -> Tuple[int, int]:
+    def _get_original_video_shape(self) -> tuple[int, int]:
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             video_shape = video.get_frame_shape()
         # image size of the original video is in height x width
@@ -157,6 +175,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             description="Contains the pose estimation series for each keypoint.",
             scorer=self.scorer_name,
             source_software="LightningPose",
+            camera_name="CameraPoseEstimation",
         )
         for keypoint_name in self.keypoint_names:
             keypoint_name_without_spaces = keypoint_name.replace(" ", "")
@@ -193,7 +212,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             The description of how the confidence was computed, e.g., 'Softmax output of the deep neural network'.
         stub_test : bool, default: False
         """
-        from ndx_pose import PoseEstimation, PoseEstimationSeries
+        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
         metadata_copy = deepcopy(metadata)
 
@@ -210,15 +229,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             original_video_name = str(self.original_video_file_path)
         else:
             original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
-
-        pose_estimation_kwargs = dict(
-            name=pose_estimation_metadata["name"],
-            description=pose_estimation_metadata["description"],
-            source_software=pose_estimation_metadata["source_software"],
-            scorer=pose_estimation_metadata["scorer"],
-            original_videos=[original_video_name],
-            dimensions=[self.dimension],
-        )
+        camera_name = pose_estimation_metadata["camera_name"]
+        if camera_name in nwbfile.devices:
+            camera = nwbfile.devices[camera_name]
+        else:
+            camera = nwbfile.create_device(
+                name=camera_name,
+                description="Camera used for behavioral recording and pose estimation.",
+            )
 
         pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
         timestamps = self.get_timestamps(stub_test=stub_test)
@@ -250,8 +268,28 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
             pose_estimation_series.append(PoseEstimationSeries(**pose_estimation_series_kwargs))
 
-        pose_estimation_kwargs.update(
+        # Add Skeleton(s)
+        nodes = [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names]
+        subject = nwbfile.subject if nwbfile.subject is not None else None
+        name = f"Skeleton{pose_estimation_name}"
+        skeleton = Skeleton(name=name, nodes=nodes, subject=subject)
+        if "Skeletons" in behavior.data_interfaces:
+            skeletons = behavior.data_interfaces["Skeletons"]
+            skeletons.add_skeletons(skeleton)
+        else:
+            skeletons = Skeletons(skeletons=[skeleton])
+            behavior.add(skeletons)
+
+        pose_estimation_kwargs = dict(
+            name=pose_estimation_metadata["name"],
+            description=pose_estimation_metadata["description"],
+            source_software=pose_estimation_metadata["source_software"],
+            scorer=pose_estimation_metadata["scorer"],
+            original_videos=[original_video_name],
+            dimensions=[self.dimension],
             pose_estimation_series=pose_estimation_series,
+            devices=[camera],
+            skeleton=skeleton,
         )
 
         if self.source_data["labeled_video_file_path"]:

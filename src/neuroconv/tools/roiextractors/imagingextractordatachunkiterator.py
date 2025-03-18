@@ -1,12 +1,13 @@
 """General purpose iterator for all ImagingExtractor data."""
 
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
-from hdmf.data_utils import GenericDataChunkIterator
 from roiextractors import ImagingExtractor
 from tqdm import tqdm
+
+from neuroconv.tools.hdmf import GenericDataChunkIterator
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
@@ -44,8 +45,8 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
             The chunk_shape will be set implicitly by this argument.
             Cannot be set if `chunk_shape` is also specified.
-            The default is 10MB. For more details, see
-            https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
+            The default is 10MB, as recommended by the HDF5 group.
+            For more details, search the hdf5 documentation for "Improving IO Performance Compressed Datasets".
         chunk_shape : tuple, optional
             Manual specification of the internal chunk shape for the HDF5 dataset.
             Cannot be set if `chunk_mb` is also specified.
@@ -138,7 +139,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             video_shape += (depth,)
         return video_shape
 
-    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+    def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         data = self.imaging_extractor.get_video(
             start_frame=selection[0].start,
             end_frame=selection[0].stop,

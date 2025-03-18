@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from pydantic import DirectoryPath, FilePath
 
 from .neuroscope_utils import (
     get_channel_groups,
@@ -13,7 +14,6 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType
 
 
 def filter_non_neural_channels(recording_extractor, xml_file_path: str):
@@ -109,7 +109,20 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
-        """Auto-populates ecephys metadata from the xml_file_path."""
+        """
+        Auto-populates ecephys metadata from the xml_file_path.
+
+        Parameters
+        ----------
+        xml_file_path : str
+            Path to the XML file containing device and electrode configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for ElectrodeGroup and Electrodes.
+            Includes group names, descriptions, and electrode properties.
+        """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
@@ -125,10 +138,10 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         gain: Optional[float] = None,
-        xml_file_path: Optional[FilePathType] = None,
-        verbose: bool = True,
+        xml_file_path: Optional[FilePath] = None,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -136,13 +149,13 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .dat file.
         gain : Optional[float], optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : FilePathType, optional
+        xml_file_path : FilePath, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
@@ -202,22 +215,22 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         gain: Optional[float] = None,
-        xml_file_path: Optional[FilePathType] = None,
+        xml_file_path: Optional[FilePath] = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .lfp or .eeg file.
         gain : float, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePathType, optional
+        xml_file_path : OptionalFilePath, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
@@ -267,11 +280,11 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         keep_mua_units: bool = True,
-        exclude_shanks: Optional[list] = None,
-        xml_file_path: Optional[FilePathType] = None,
-        verbose: bool = True,
+        exclude_shanks: Optional[list[int]] = None,
+        xml_file_path: Optional[FilePath] = None,
+        verbose: bool = False,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).
@@ -282,10 +295,10 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Path to folder containing .clu and .res files.
         keep_mua_units : bool, default: True
             Optional. Whether to return sorted spikes from multi-unit activity.
-        exclude_shanks : list, optional
+        exclude_shanks : list of integers, optional
             List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
             final integer of all the .res.%i and .clu.%i pairs.
-        xml_file_path : FilePathType, optional
+        xml_file_path : FilePath, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.

@@ -1,14 +1,28 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
+from typing import Optional
 from warnings import warn
+
+from pydantic import FilePath, validate_call
 
 from ..baseicephysinterface import BaseIcephysInterface
 
 
 def get_start_datetime(neo_reader):
-    """Get start datetime for Abf file."""
+    """
+    Get start datetime for Abf file.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.AxonIO
+        The Neo reader object for the ABF file.
+
+    Returns
+    -------
+    datetime
+        The start date and time of the recording.
+    """
     if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
         startDate = str(neo_reader._axon_info["uFileStartDate"])
         startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
@@ -49,17 +63,23 @@ class AbfInterface(BaseIcephysInterface):
         )
         return source_schema
 
-    def __init__(self, file_paths: list, icephys_metadata: dict = None, icephys_metadata_file_path: str = None):
+    @validate_call
+    def __init__(
+        self,
+        file_paths: list[FilePath],
+        icephys_metadata: Optional[dict] = None,
+        icephys_metadata_file_path: Optional[FilePath] = None,
+    ):
         """
         ABF IcephysInterface based on Neo AxonIO.
 
         Parameters
         ----------
-        file_paths : list
+        file_paths : list of FilePaths
             List of files to be converted to the same NWB file.
         icephys_metadata : dict, optional
             Dictionary containing the Icephys-specific metadata.
-        icephys_metadata_file_path : str, optional
+        icephys_metadata_file_path : FilePath, optional
             JSON file containing the Icephys-specific metadata.
         """
         super().__init__(file_paths=file_paths)
@@ -157,7 +177,7 @@ class AbfInterface(BaseIcephysInterface):
                 reader._t_starts[segment_index] += aligned_starting_time
 
     def set_aligned_segment_starting_times(
-        self, aligned_segment_starting_times: List[List[float]], stub_test: bool = False
+        self, aligned_segment_starting_times: list[list[float]], stub_test: bool = False
     ):
         """
         Align the individual starting time for each video in this interface relative to the common session start time.

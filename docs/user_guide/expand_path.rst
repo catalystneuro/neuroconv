@@ -17,7 +17,6 @@ expander will find all matching paths and automatically extract the specified me
 .. code-block:: python
 
     from pathlib import Path
-    from typing import Dict
 
     from neuroconv.tools.path_expansion import LocalPathExpander
 
