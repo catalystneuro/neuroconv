@@ -295,7 +295,7 @@ class TemporalAlignmentMixin:
         self.interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
 
         retrieved_aligned_timestamps = self.interface.get_timestamps()
-        assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
+        assert_array_equal(retrieved_aligned_timestamps, aligned_timestamps)
 
     def check_shift_timestamps_by_start_time(self):
         """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
@@ -307,7 +307,7 @@ class TemporalAlignmentMixin:
 
         aligned_timestamps = self.interface.get_timestamps()
         expected_timestamps = unaligned_timestamps + aligned_starting_time
-        assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+        assert_array_equal(aligned_timestamps, expected_timestamps)
 
     def check_interface_original_timestamps_inmutability(self):
         """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
@@ -318,7 +318,7 @@ class TemporalAlignmentMixin:
         self.interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
 
         post_alignment_original_timestamps = self.interface.get_original_timestamps()
-        assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
+        assert_array_equal(post_alignment_original_timestamps, pre_alignment_original_timestamps)
 
     def check_nwbfile_temporal_alignment(self):
         """Check the temporally aligned timing information makes it into the NWB file."""
@@ -339,13 +339,14 @@ class TemporalAlignmentMixin:
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: Type[BaseImagingExtractorInterface]
+    optical_series_name: str = "TwoPhotonSeries"
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
         from roiextractors.testing import check_imaging_equal
 
         imaging = self.interface.imaging_extractor
-        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
+        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name=self.optical_series_name)
 
         exclude_channel_comparison = False
         if imaging.get_channel_names() is None:
@@ -371,7 +372,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.acquisition["TwoPhotonSeries"].starting_time == aligned_starting_time
+            assert nwbfile.acquisition[self.optical_series_name].starting_time == aligned_starting_time
 
 
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -392,6 +393,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     """
 
     data_interface_cls: Type[BaseRecordingExtractorInterface]
+    is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.extractors import NwbRecordingExtractor
@@ -402,9 +404,15 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
+
+            if self.is_lfp_interface:
+                electrical_series_path = f"processing/ecephys/LFP/{electrical_series_name}"
+            else:
+                electrical_series_path = f"acquisition/{electrical_series_name}"
+
             self.nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
-                electrical_series_path=f"acquisition/{electrical_series_name}",
+                electrical_series_path=electrical_series_path,
                 use_pynwb=True,
             )
 
@@ -466,7 +474,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             self.interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
-            assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
+            assert_array_equal(retrieved_aligned_timestamps, aligned_timestamps)
         else:
             with pytest.raises(
                 AssertionError,
@@ -493,7 +501,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             self.interface.set_aligned_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
-            assert_array_equal(x=retrieved_aligned_timestamps, y=all_aligned_segment_timestamps[0])
+            assert_array_equal(retrieved_aligned_timestamps, all_aligned_segment_timestamps[0])
         else:
             all_unaligned_timestamps = self.interface.get_timestamps()
             all_aligned_segment_timestamps = [
@@ -506,7 +514,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             for retrieved_aligned_timestamps, aligned_segment_timestamps in zip(
                 all_retrieved_aligned_timestamps, all_aligned_segment_timestamps
             ):
-                assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_segment_timestamps)
+                assert_array_equal(retrieved_aligned_timestamps, aligned_segment_timestamps)
 
     def check_shift_timestamps_by_start_time(self):
         self.setUpFreshInterface()
@@ -518,7 +526,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         if self.interface._number_of_segments == 1:
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             expected_timestamps = all_unaligned_timestamps + aligned_starting_time
-            assert_array_equal(x=retrieved_aligned_timestamps, y=expected_timestamps)
+            assert_array_equal(retrieved_aligned_timestamps, expected_timestamps)
         else:
             all_retrieved_aligned_timestamps = self.interface.get_timestamps()
             all_expected_timestamps = [
@@ -527,7 +535,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             for retrieved_aligned_timestamps, expected_timestamps in zip(
                 all_retrieved_aligned_timestamps, all_expected_timestamps
             ):
-                assert_array_equal(x=retrieved_aligned_timestamps, y=expected_timestamps)
+                assert_array_equal(retrieved_aligned_timestamps, expected_timestamps)
 
     def check_shift_segment_timestamps_by_starting_times(self):
         self.setUpFreshInterface()
@@ -542,7 +550,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             expected_aligned_timestamps = unaligned_timestamps + aligned_segment_starting_times[0]
-            assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
+            assert_array_equal(retrieved_aligned_timestamps, expected_aligned_timestamps)
         else:
             all_unaligned_timestamps = self.interface.get_timestamps()
 
@@ -558,7 +566,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             for retrieved_aligned_timestamps, expected_aligned_timestamps in zip(
                 all_retrieved_aligned_timestamps, all_expected_aligned_timestamps
             ):
-                assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
+                assert_array_equal(retrieved_aligned_timestamps, expected_aligned_timestamps)
 
     def check_interface_original_timestamps_inmutability(self):
         """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
@@ -571,7 +579,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             self.interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
 
             post_alignment_original_timestamps = self.interface.get_original_timestamps()
-            assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
+            assert_array_equal(post_alignment_original_timestamps, pre_alignment_original_timestamps)
         else:
             with pytest.raises(
                 AssertionError,
@@ -654,7 +662,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 self.interface.set_aligned_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
                 retrieved_aligned_timestamps = self.interface.get_timestamps()
-                assert_array_equal(x=retrieved_aligned_timestamps, y=all_aligned_segment_timestamps[0])
+                assert_array_equal(retrieved_aligned_timestamps, all_aligned_segment_timestamps[0])
             else:
                 all_unaligned_timestamps = self.interface.get_timestamps()
                 all_aligned_segment_timestamps = [
@@ -667,7 +675,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 for retrieved_aligned_timestamps, aligned_segment_timestamps in zip(
                     all_retrieved_aligned_timestamps, all_aligned_segment_timestamps
                 ):
-                    assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_segment_timestamps)
+                    assert_array_equal(retrieved_aligned_timestamps, aligned_segment_timestamps)
 
     def check_shift_segment_timestamps_by_starting_times(self):
         self.setUpFreshInterface()
@@ -682,7 +690,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             expected_aligned_timestamps = unaligned_timestamps + aligned_segment_starting_times[0]
-            assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
+            assert_array_equal(retrieved_aligned_timestamps, expected_aligned_timestamps)
         else:
             all_unaligned_timestamps = self.interface.get_timestamps()
 
@@ -700,7 +708,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             for retrieved_aligned_timestamps, expected_aligned_timestamps in zip(
                 all_retrieved_aligned_timestamps, all_expected_aligned_timestamps
             ):
-                assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
+                assert_array_equal(retrieved_aligned_timestamps, expected_aligned_timestamps)
 
     def test_interface_alignment(self, setup_interface):
 
@@ -754,7 +762,7 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         self.interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
 
         retrieved_aligned_timestamps = self.interface.get_timestamps()
-        assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
+        assert_array_equal(retrieved_aligned_timestamps, aligned_timestamps)
 
     def check_shift_timestamps_by_start_time(self):
         self.setUpFreshInterface()
@@ -767,7 +775,7 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         unaligned_timestamps = self.interface.get_original_timestamps()
         all_expected_timestamps = [timestamps + aligned_starting_time for timestamps in unaligned_timestamps]
         [
-            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+            assert_array_equal(aligned_timestamps, expected_timestamps)
             for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps)
         ]
 
@@ -786,7 +794,7 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             for timestamps, segment_starting_time in zip(unaligned_timestamps, aligned_segment_starting_times)
         ]
         for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps):
-            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+            assert_array_equal(aligned_timestamps, expected_timestamps)
 
     def check_interface_original_timestamps_inmutability(self):
         self.setUpFreshInterface()
@@ -803,7 +811,7 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         for post_alignment_original_timestamps, pre_alignment_original_timestamps in zip(
             all_post_alignment_original_timestamps, all_pre_alignment_original_timestamps
         ):
-            assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
+            assert_array_equal(post_alignment_original_timestamps, pre_alignment_original_timestamps)
 
 
 class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

@@ -19,7 +19,7 @@ nested dictionaries of arbitrary depth. For example, :py:func:`SpikeGLXRecording
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         stub_test: bool = False,
         verbose: bool = True,
     )
