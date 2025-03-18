@@ -29,7 +29,7 @@ except ImportError:
 
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockSortingInterface
-    interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
+    interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"), sampling_frequency=30_000.0)
 
     associated_recording_cls = BlackrockRecordingInterface
     associated_recording_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
@@ -156,13 +156,17 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"))
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"), stream_id="0"
+    )
     save_directory = OUTPUT_PATH
 
 
 class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"))
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), stream_id="0"
+    )
 
     save_directory = OUTPUT_PATH
 

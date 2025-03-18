@@ -35,7 +35,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
         ignore_integrity_checks: bool = False,
     ):
@@ -44,10 +44,10 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to either a rhd or a rhs file
 
-        verbose : bool, default: True
+        verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
         ignore_integrity_checks, bool, default: False.
@@ -91,8 +91,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         ecephys_metadata.update(Device=device_list)
 
         electrode_group_metadata = ecephys_metadata["ElectrodeGroup"]
-        electrode_group_metadata[0]["device"] = intan_device["name"]
-
+        for electrode_group in electrode_group_metadata:
+            electrode_group["device"] = intan_device["name"]
         # Add electrodes and electrode groups
         ecephys_metadata.update(
             ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces."),

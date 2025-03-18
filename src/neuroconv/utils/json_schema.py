@@ -16,13 +16,8 @@ from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
 
-class _NWBMetaDataEncoder(json.JSONEncoder):
-    """
-    Custom JSON encoder for NWB metadata.
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in NWB metadata.
-    """
+class _GenericNeuroconvEncoder(json.JSONEncoder):
+    """Generic JSON encoder for NeuroConv data."""
 
     def default(self, obj):
         """
@@ -36,28 +31,38 @@ class _NWBMetaDataEncoder(json.JSONEncoder):
         if isinstance(obj, np.generic):
             return obj.item()
 
+        # Numpy arrays should be converted to lists
         if isinstance(obj, np.ndarray):
             return obj.tolist()
-
-        # The base-class handles it
-        return super().default(obj)
-
-
-class _NWBSourceDataEncoder(_NWBMetaDataEncoder):
-    """
-    Custom JSON encoder for data interface source data (i.e. kwargs).
-
-    This encoder extends the default JSONEncoder class and provides custom serialization
-    for certain data types commonly used in interface source data.
-    """
-
-    def default(self, obj):
 
         # Over-write behaviors for Paths
         if isinstance(obj, Path):
             return str(obj)
 
+        # The base-class handles it
         return super().default(obj)
+
+
+class _NWBMetaDataEncoder(_GenericNeuroconvEncoder):
+    """
+    Custom JSON encoder for NWB metadata.
+    """
+
+
+class _NWBSourceDataEncoder(_GenericNeuroconvEncoder):
+    """
+    Custom JSON encoder for data interface source data (i.e. kwargs).
+    """
+
+
+class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
+    """
+    Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
+    """
+
+
+# This is used in the Guide so we will keep it public.
+NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
 def get_base_schema(
@@ -68,7 +73,39 @@ def get_base_schema(
     properties: Optional[dict] = None,
     **kwargs,
 ) -> dict:
-    """Return the base schema used for all other schemas."""
+    """
+    Return the base schema used for all other schemas.
+
+    Parameters
+    ----------
+    tag : str, optional
+        Tag to identify the schema.
+    root : bool, default: False
+        Whether this schema is a root schema.
+    id_ : str, optional
+        Schema identifier.
+    required : list of str, optional
+        List of required property names.
+    properties : dict, optional
+        Dictionary of property definitions.
+    **kwargs
+        Additional schema properties.
+
+    Returns
+    -------
+    dict
+        Base JSON schema with the following structure:
+        {
+            "required": List of required properties (empty if not provided)
+            "properties": Dictionary of property definitions (empty if not provided)
+            "type": "object"
+            "additionalProperties": False
+            "tag": Optional tag if provided
+            "$schema": Schema version if root is True
+            "$id": Schema ID if provided
+            **kwargs: Any additional properties
+        }
+    """
     base_schema = dict(
         required=required or [],
         properties=properties or {},
@@ -83,17 +120,6 @@ def get_base_schema(
         base_schema.update({"$id": id_})
     base_schema.update(**kwargs)
     return base_schema
-
-
-def get_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
-    """Deprecated version of `get_json_schema_from_method_signature`."""
-    message = (
-        "The method `get_schema_from_method_signature` is now named `get_json_schema_from_method_signature`."
-        "This method is deprecated and will be removed after January 2025."
-    )
-    warnings.warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-    return get_json_schema_from_method_signature(method=method, exclude=exclude)
 
 
 def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
@@ -135,12 +161,16 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
             additional_properties = True
             continue
 
-        annotation = parameter.annotation
+        # Raise error if the type annotation is missing as a json schema cannot be generated in that case
+        if parameter.annotation is inspect._empty:
+            raise TypeError(
+                f"Parameter '{argument_name}' in method '{method_display}' is missing a type annotation. "
+                f"Either add a type annotation for '{argument_name}' or add it to the exclude list."
+            )
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default
-
-        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
+        arguments_to_annotations.update({argument_name: (parameter.annotation, pydantic_default)})
 
     # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
@@ -232,7 +262,23 @@ def _is_member(types, target_types):
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    """Get metadata schema from hdmf class."""
+    """
+    Get metadata schema from hdmf class.
+
+    Parameters
+    ----------
+    hdmf_class : type
+        The HDMF class to generate a schema from.
+
+    Returns
+    -------
+    dict
+        JSON schema derived from the HDMF class, containing:
+        - tag: Full class path (module.name)
+        - required: List of required fields
+        - properties: Dictionary of field definitions including types and descriptions
+        - additionalProperties: Whether extra fields are allowed
+    """
     schema = get_base_schema()
     schema["tag"] = hdmf_class.__module__ + "." + hdmf_class.__name__
 
@@ -302,9 +348,11 @@ def get_metadata_schema_for_icephys() -> dict:
     """
     Returns the metadata schema for icephys data.
 
-    Returns:
-        dict: The metadata schema for icephys data.
-
+    Returns
+    -------
+    dict
+        The metadata schema for icephys data, containing definitions for Device,
+        Electrode, and Session configurations.
     """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]

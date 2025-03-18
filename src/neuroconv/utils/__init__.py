@@ -7,12 +7,12 @@ from .dict import (
     load_dict_from_file,
 )
 from .json_schema import (
-    _NWBMetaDataEncoder,
+    NWBMetaDataEncoder,
     fill_defaults,
     get_base_schema,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
+    get_json_schema_from_method_signature,
     unroot_schema,
     get_json_schema_from_method_signature,
 )
@@ -30,17 +30,17 @@ def __getattr__(name):
 
     from pydantic import FilePath, DirectoryPath
 
-    if name == "FilePathType":
+    if name == "FilePath":
         message = (
-            "The 'FilePathType' type has been deprecated and will be removed after 3/1/2025. "
+            "The 'FilePath' type has been deprecated and will be removed after 3/1/2025. "
             "Please use `pydantic.FilePath` instead."
         )
         warn(message=message, category=DeprecationWarning, stacklevel=2)
 
         return FilePath
-    if name == "OptionalFilePathType":
+    if name == "OptionalFilePath":
         message = (
-            "The 'OptionalFilePathType' type has been deprecated and will be removed after 3/1/2025. "
+            "The 'OptionalFilePath' type has been deprecated and will be removed after 3/1/2025. "
             "Please use `typing.Optional[pydantic.FilePath]` instead."
         )
         warn(message=message, category=DeprecationWarning, stacklevel=2)

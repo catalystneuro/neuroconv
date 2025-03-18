@@ -49,7 +49,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         start_variable: str,
         metadata_medpc_name_to_info_dict: dict,
         aligned_timestamp_names: Optional[list[str]] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize MedpcInterface.
@@ -73,6 +73,10 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print verbose output, by default True
         """
+        # This import is to assure that the ndx_events is in the global namespace when an pynwb.io object is created
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        import ndx_events  # noqa: F401
+
         if aligned_timestamp_names is None:
             aligned_timestamp_names = []
         super().__init__(
@@ -183,6 +187,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: dict,
     ) -> None:
+
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", None)
         assert medpc_name_to_info_dict is not None, "medpc_name_to_info_dict must be provided in metadata"
