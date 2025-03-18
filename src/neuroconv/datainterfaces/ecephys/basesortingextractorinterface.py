@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -18,14 +18,23 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "spikeinterface.extractors"
 
-    def __init__(self, verbose=True, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
+
         super().__init__(**source_data)
         self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ElectrodeGroup,
+            Electrodes, and UnitProperties.
+        """
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()
@@ -75,6 +84,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
+    @property
+    def units_ids(self):
+        "Gets the units ids of the data."
+        return self.sorting_extractor.get_unit_ids()
+
     def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
@@ -83,7 +97,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
 
-    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -124,7 +138,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         ), "This recording has multiple segments; please use 'set_aligned_segment_timestamps' instead."
 
         if self._number_of_segments == 1:
-            self.sorting_extractor._recording.set_times(times=aligned_timestamps)
+            self.sorting_extractor._recording.set_times(times=aligned_timestamps, with_warning=False)
         else:
             assert isinstance(
                 aligned_timestamps, list
@@ -135,10 +149,12 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
             for segment_index in range(self._number_of_segments):
                 self.sorting_extractor._recording.set_times(
-                    times=aligned_timestamps[segment_index], segment_index=segment_index
+                    times=aligned_timestamps[segment_index],
+                    segment_index=segment_index,
+                    with_warning=False,
                 )
 
-    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for all segments in this interface with those aligned to the common session start time.
 
@@ -164,7 +180,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         for segment_index in range(self._number_of_segments):
             self.sorting_extractor._recording.set_times(
-                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
+                times=aligned_segment_timestamps[segment_index],
+                segment_index=segment_index,
+                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -182,7 +200,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 else:
                     sorting_segment._t_start += aligned_starting_time
 
-    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
         """
         Align the starting time for each segment in this interface relative to the common session start time.
 
@@ -216,6 +234,19 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 sorting_segment._t_start = aligned_segment_starting_time
 
     def subset_sorting(self):
+        """
+        Generate a subset of the sorting extractor based on spike timing data.
+
+        This method identifies the earliest spike time across all units in the sorting extractor and creates a
+        subset of the sorting data up to 110% of the earliest spike time. If the sorting extractor is associated
+        with a recording, the subset is further limited by the total number of samples in the recording.
+
+        Returns
+        -------
+        SortingExtractor
+            A new `SortingExtractor` object representing the subset of the original sorting data,
+            sliced from the start frame to the calculated end frame.
+        """
         max_min_spike_time = max(
             [
                 min(x)
@@ -263,17 +294,17 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         This function adds metadata to the `nwbfile` in-place, meaning the `nwbfile` object is modified directly.
         """
         from ...tools.spikeinterface import (
-            add_devices,
-            add_electrode_groups,
-            add_electrodes,
+            add_devices_to_nwbfile,
+            add_electrode_groups_to_nwbfile,
+            add_electrodes_to_nwbfile,
         )
 
         if hasattr(self, "generate_recording_with_channel_metadata"):
             recording = self.generate_recording_with_channel_metadata()
 
-            add_devices(nwbfile=nwbfile, metadata=metadata)
-            add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-            add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+            add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     def add_to_nwbfile(
         self,
@@ -284,6 +315,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         write_as: Literal["units", "processing"] = "units",
         units_name: str = "units",
         units_description: str = "Autogenerated by neuroconv.",
+        unit_electrode_indices: Optional[list[list[int]]] = None,
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
@@ -308,8 +340,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         units_name : str, default: 'units'
             The name of the units table. If write_as=='units', then units_name must also be 'units'.
         units_description : str, default: 'Autogenerated by neuroconv.'
+        unit_electrode_indices : list of lists of int, optional
+            A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
+            The length of the list must match the number of units in the sorting extractor.
         """
-        from ...tools.spikeinterface import add_sorting
+        from ...tools.spikeinterface import add_sorting_to_nwbfile
+
+        if metadata is None:
+            metadata = self.get_metadata()
 
         metadata_copy = deepcopy(metadata)
         if write_ecephys_metadata:
@@ -335,11 +373,12 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                         value=value,
                     )
 
-        add_sorting(
+        add_sorting_to_nwbfile(
             sorting_extractor,
             nwbfile=nwbfile,
             property_descriptions=property_descriptions,
             write_as=write_as,
             units_name=units_name,
             units_description=units_description,
+            unit_electrode_indices=unit_electrode_indices,
         )

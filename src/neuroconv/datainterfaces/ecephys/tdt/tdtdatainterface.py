@@ -1,5 +1,6 @@
+from pydantic import DirectoryPath, validate_call
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.types import FolderPathType
 
 
 class TdtRecordingInterface(BaseRecordingExtractorInterface):
@@ -9,12 +10,20 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
     info = "Interface for TDT recording data."
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("gain")
+
+        return extractor_kwargs
+
+    @validate_call
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         gain: float,
         stream_id: str = "0",
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -28,7 +37,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             Select from multiple streams.
         gain : float
             The conversion factor from int16 to microvolts.
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             Allows verbose.
         es_key : str, optional
 
@@ -42,6 +51,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             stream_id=stream_id,
             verbose=verbose,
             es_key=es_key,
+            gain=gain,
         )
 
         # Fix channel name format

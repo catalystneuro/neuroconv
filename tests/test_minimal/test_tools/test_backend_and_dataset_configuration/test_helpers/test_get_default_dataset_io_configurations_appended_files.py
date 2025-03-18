@@ -31,7 +31,7 @@ def generate_nwbfile_with_existing_time_series() -> NWBFile:
 
 @pytest.fixture(scope="session")
 def hdf5_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_dataset_configurations_hdf5_nwbfile_.nwb.h5")
+    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_dataset_configurations_hdf5_nwbfile_.nwb")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_nwbfile_with_existing_time_series()
         with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:

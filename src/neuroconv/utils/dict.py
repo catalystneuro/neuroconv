@@ -9,11 +9,10 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import yaml
+from pydantic import FilePath
 
-from .types import FilePathType
 
-
-class NoDatesSafeLoader(yaml.SafeLoader):
+class _NoDatesSafeLoader(yaml.SafeLoader):
     """Custom override of yaml Loader class for datetime considerations."""
 
     @classmethod
@@ -34,10 +33,10 @@ class NoDatesSafeLoader(yaml.SafeLoader):
             ]
 
 
-NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
+_NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
-def load_dict_from_file(file_path: FilePathType) -> dict:
+def load_dict_from_file(file_path: FilePath) -> dict:
     """Safely load metadata from .yml or .json files."""
     file_path = Path(file_path)
     assert file_path.is_file(), f"{file_path} is not a file."
@@ -45,7 +44,7 @@ def load_dict_from_file(file_path: FilePathType) -> dict:
 
     if file_path.suffix in (".yml", ".yaml"):
         with open(file=file_path, mode="r") as stream:
-            dictionary = yaml.load(stream=stream, Loader=NoDatesSafeLoader)
+            dictionary = yaml.load(stream=stream, Loader=_NoDatesSafeLoader)
     elif file_path.suffix == ".json":
         with open(file=file_path, mode="r") as fp:
             dictionary = json.load(fp=fp)
@@ -210,12 +209,29 @@ class DeepDict(defaultdict):
     """A defaultdict of defaultdicts"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """A defaultdict of defaultdicts"""
         super().__init__(lambda: DeepDict(), *args, **kwargs)
         for key, value in self.items():
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
     def deep_update(self, other: Optional[Union[dict, "DeepDict"]] = None, **kwargs) -> None:
+        """
+        Recursively update the DeepDict with another dictionary or DeepDict.
+
+        Parameters
+        ----------
+        other : dict or DeepDict, optional
+            The dictionary or DeepDict to update the current instance with.
+        **kwargs : Any
+            Additional keyword arguments representing key-value pairs to update the DeepDict.
+
+        Notes
+        -----
+        For any keys that exist in both the current instance and the provided dictionary, the values are merged
+        recursively if both are dictionaries. Otherwise, the value from `other` or `kwargs` will overwrite the
+        existing value.
+        """
         for key, value in (other or kwargs).items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
                 self[key].deep_update(value)

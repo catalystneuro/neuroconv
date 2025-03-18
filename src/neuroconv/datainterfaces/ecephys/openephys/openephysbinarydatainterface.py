@@ -1,7 +1,9 @@
-from typing import List, Optional
+from typing import Optional
+
+from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FolderPathType, get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
@@ -18,7 +20,20 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys binary folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys binary files.
+
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+        """
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
@@ -26,8 +41,17 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(
+        """
+        Compile input schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the OpenEphys binary recording interface source data,
+            containing folder path and other configuration parameters. The schema
+            excludes recording_id, experiment_id, and stub_test parameters.
+        """
+        source_schema = get_json_schema_from_method_signature(
             method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
         source_schema["properties"]["folder_path"][
@@ -37,11 +61,11 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        folder_path: FolderPathType,
+        folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
         stub_test: bool = False,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -57,7 +81,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         block_index : int, optional, default: None
             The index of the block to extract from the data.
         stub_test : bool, default: False
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
         es_key : str, default: "ElectricalSeries"
         """
         from ._openephys_utils import _read_settings_xml
@@ -83,6 +107,13 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
         if stub_test:
             self.subset_channels = [0, 1]
+
+        # Check if the recording has ADC channels
+        recording = self.recording_extractor
+        channel_ids = recording.get_channel_ids()
+        neural_channels = [id for id in channel_ids if "ADC" not in id]
+        if len(neural_channels) < len(channel_ids):
+            self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
 
     def get_metadata(self) -> dict:
         from ._openephys_utils import _get_session_start_time

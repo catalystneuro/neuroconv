@@ -1,0 +1,49 @@
+{
+  "NWBFile": {
+    "session_description": ""
+  },
+  "Ecephys": {
+    "Device": [
+      {
+        "name": "NeuropixelsImec0",
+        "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
+        "manufacturer": "Imec"
+      }
+    ],
+    "ElectrodeGroup": [
+      {
+        "name": "NeuropixelsImec0",
+        "description": "A group representing probe/shank 'NeuropixelsImec0'.",
+        "location": "unknown",
+        "device": "NeuropixelsImec0"
+      }
+
+    ],
+    "ElectricalSeriesAP": {
+      "name": "ElectricalSeriesAP",
+      "description": "Acquisition traces for the ElectricalSeriesAP."
+    },
+    "Electrodes": [
+      {
+        "name": "group_name",
+        "description": "Name of the ElectrodeGroup this electrode is a part of."
+      },
+      {
+        "name": "contact_shapes",
+        "description": "The shape of the electrode"
+      },
+      {
+        "name": "contact_ids",
+        "description": "The id of the contact on the electrode"
+      },
+      {
+        "name": "inter_sample_shift",
+        "description": "Array of relative phase shifts for each channel, with values ranging from 0 to 1, representing the fractional delay within the sampling period due to sequential ADC."
+      }
+    ],
+    "ElectricalSeriesLF": {
+      "name": "ElectricalSeriesLF",
+      "description": "Acquisition traces for the ElectricalSeriesLF."
+    }
+  }
+}

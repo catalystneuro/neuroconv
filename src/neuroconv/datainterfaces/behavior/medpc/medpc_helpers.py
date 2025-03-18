@@ -1,15 +1,14 @@
 import numpy as np
+from pydantic import FilePath
 
-from neuroconv.utils import FilePathType
 
-
-def get_medpc_variables(file_path: FilePathType, variable_names: list) -> dict:
+def get_medpc_variables(file_path: FilePath, variable_names: list) -> dict:
     """
     Get the values of the given single-line variables from a MedPC file for all sessions in that file.
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         The path to the MedPC file.
     variable_names : list
         The names of the variables to get the values of.
@@ -85,7 +84,7 @@ def _get_session_lines(lines: list, session_conditions: dict, start_variable: st
 
 
 def read_medpc_file(
-    file_path: FilePathType,
+    file_path: FilePath,
     medpc_name_to_info_dict: dict,
     session_conditions: dict,
     start_variable: str,
@@ -95,7 +94,7 @@ def read_medpc_file(
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         The path to the MedPC file.
     medpc_name_to_info_dict : dict
         A dictionary where the keys are the MedPC variable names and the values are dictionaries with the keys 'name' and

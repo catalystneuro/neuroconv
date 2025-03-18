@@ -18,11 +18,33 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
+        self.verbose = verbose
         self.segmentation_extractor = self.get_extractor()(**source_data)
 
     def get_metadata_schema(self) -> dict:
+        """
+        Generate the metadata schema for Ophys data, updating required fields and properties.
+
+        This method builds upon the base schema and customizes it for Ophys-specific metadata, including required
+        components such as devices, fluorescence data, imaging planes, and two-photon series. It also applies
+        temporary schema adjustments to handle certain use cases until a centralized metadata schema definition
+        is available.
+
+        Returns
+        -------
+        dict
+            A dictionary representing the updated Ophys metadata schema.
+
+        Notes
+        -----
+        - Ensures that `Device` and `ImageSegmentation` are marked as required.
+        - Updates various properties, including ensuring arrays for `ImagingPlane` and `TwoPhotonSeries`.
+        - Adjusts the schema for `Fluorescence`, including required fields and pattern properties.
+        - Adds schema definitions for `DfOverF`, segmentation images, and summary images.
+        - Applies temporary fixes, such as setting additional properties for `ImageSegmentation` to True.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
         metadata_schema["properties"]["Ophys"] = get_base_schema()
@@ -119,9 +141,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[
-            dict
-        ] = None,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
     ):
         """
 
@@ -165,7 +184,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         -------
 
         """
-        from ...tools.roiextractors import add_segmentation
+        from ...tools.roiextractors import add_segmentation_to_nwbfile
 
         if stub_test:
             stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
@@ -173,7 +192,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             segmentation_extractor = self.segmentation_extractor
 
-        add_segmentation(
+        metadata = metadata or self.get_metadata()
+
+        add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -183,5 +204,4 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
-            compression_options=compression_options,  # TODO: remove completely after 10/1/2024; still passing for deprecation warning
         )
