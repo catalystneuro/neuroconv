@@ -28,10 +28,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.array([25_000, 75_000, 125_000])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([50_000, 100_000, 150_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_explicit_original_defaults(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -50,10 +50,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.array([25_000, 75_000, 125_000])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([50_000, 100_000, 150_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_start_during_on_pulse_int16(self):
         """
@@ -67,10 +67,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.empty(shape=0)
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([25_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_end_during_on_pulse_int16(self):
         """
@@ -84,10 +84,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.array([62_500])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.empty(shape=0)
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_end_during_off_pulse_int16(self):
         """A couple of normal TTL pulses at the specified time."""
@@ -97,10 +97,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.array([27_500, 155_000])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([77_500, 205_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_start_during_on_pulse_floats(self):
         """
@@ -114,10 +114,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.empty(shape=0)
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([25_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_end_during_on_pulse_floats(self):
         """
@@ -131,10 +131,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.array([62_500])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.empty(shape=0)
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_end_during_off_pulse_floats(self):
         """A couple of normal TTL pulses at the specified time."""
@@ -146,10 +146,10 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal)
 
         expected_rising_frames = np.array([27_500, 155_000])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([77_500, 205_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)
 
     def test_custom_threshold_floats(self):
         ttl_signal = generate_mock_ttl_signal(
@@ -160,7 +160,7 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         falling_frames = get_falling_frames_from_ttl(trace=ttl_signal, threshold=1.5)
 
         expected_rising_frames = np.array([27_500, 155_000])
-        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+        assert_array_equal(rising_frames, expected_rising_frames)
 
         expected_falling_frames = np.array([77_500, 205_000])
-        assert_array_equal(x=falling_frames, y=expected_falling_frames)
+        assert_array_equal(falling_frames, expected_falling_frames)

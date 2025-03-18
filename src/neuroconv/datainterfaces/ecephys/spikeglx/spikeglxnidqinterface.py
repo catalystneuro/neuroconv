@@ -49,7 +49,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ----------
         folder_path : DirectoryPath
             Path to the folder containing the .nidq.bin file.
-        file_path : FilePathType
+        file_path : FilePath
             Path to .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.

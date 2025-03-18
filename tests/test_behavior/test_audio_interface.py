@@ -166,7 +166,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             aligned_segment_starting_times=aligned_segment_starting_times
         )
 
-        assert_array_equal(x=self.interface._segment_starting_times, y=self.aligned_segment_starting_times)
+        assert_array_equal(self.interface._segment_starting_times, self.aligned_segment_starting_times)
 
     def test_set_aligned_starting_time(self):
         fresh_interface = AudioInterface(file_paths=self.file_paths[:2])
@@ -179,7 +179,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
         expecting_starting_times = [
             relative_starting_time + aligned_starting_time for relative_starting_time in relative_starting_times
         ]
-        assert_array_equal(x=fresh_interface._segment_starting_times, y=expecting_starting_times)
+        assert_array_equal(fresh_interface._segment_starting_times, expecting_starting_times)
 
     def test_run_conversion(self):
         file_paths = self.nwb_converter.data_interface_objects["Audio"].source_data["file_paths"]

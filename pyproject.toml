@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.0"
+version = "0.7.2"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -164,7 +164,6 @@ blackrock = [
     "spikeinterface>=0.102",
 ]
 cellexplorer = [
-    "hdf5storage>=0.1.18",
     "neo>=0.13.3",
     "pymatreader>=0.0.32",
     "spikeinterface>=0.102",
@@ -271,49 +270,58 @@ icephys = [
     "neuroconv[abf]",
 ]
 
+## Image
+image = [
+    "pillow>=10.0.0",
+]
+
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 cnmfe = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 extract = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 hdf5 = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 sbx = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 scanimage = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 suite2p = [
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.10",
+    "roiextractors>=0.5.11",
     "tdt",
+]
+thor = [
+    "roiextractors>=0.5.11",
+    "tifffile>=2023.3.21",
 ]
 tiff = [
     "roiextractors>=0.5.9",
@@ -332,6 +340,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
+    "neuroconv[thor]",
     "neuroconv[tiff]",
 ]
 # Note these are references to the package in pipy (not local)
@@ -342,6 +351,7 @@ full = [
     "neuroconv[behavior]",
     "neuroconv[ecephys]",
     "neuroconv[icephys]",
+    "neuroconv[image]",
     "neuroconv[ophys]",
     "neuroconv[text]",
 ]
@@ -354,7 +364,9 @@ minversion = "6.0"
 addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
-
+filterwarnings = [
+    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file"
+]
 
 [tool.black]
 line-length = 120

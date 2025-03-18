@@ -1,19 +1,56 @@
-# v0.7.0 (Upcoming)
+# v0.7.2 (Upcoming)
+
+## Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+* Added `SortedRecordingConverter` to convert sorted recordings to NWB with correct metadata mapping between units and electrodes [PR #1132](https://github.com/catalystneuro/neuroconv/pull/1132)
+* Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
+* Added stub_test option to TDTFiberPhotometryInterface [PR #1242](https://github.com/catalystneuro/neuroconv/pull/1242)
+* Added ThorImagingInterface for Thor TIFF files with OME metadata [PR #1238](https://github.com/catalystneuro/neuroconv/pull/1238)
+
+## Improvements
+* Filter out warnings for missing timezone information in continuous integration [PR #1240](https://github.com/catalystneuro/neuroconv/pull/1240)
+* `FilePathType` is deprecated, use `FilePath` from pydantic instead [PR #1239](https://github.com/catalystneuro/neuroconv/pull/1239)
+* Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1245](https://github.com/catalystneuro/neuroconv/pull/1245)
+* Testing: only run tests for oldest and newest versions of python [#1249](https://github.com/catalystneuro/neuroconv/pull/1249)
+* Improve error display on scan image interfaces [PR #1246](https://github.com/catalystneuro/neuroconv/pull/1246)
+* Added concurrency to live-service-testing GitHub Actions workflow to prevent simultaneous write to the dandiset. [#1252](https://github.com/catalystneuro/neuroconv/pull/1252)
+* Replace uses of scipy load_mat and h5storage loadmat with pymat_reader read_mat in `CellExplorerSortingInterface` [#1254](https://github.com/catalystneuro/neuroconv/pull/1254)
+
+# v0.7.1 (March 5, 2025)
+
+## Deprecations and Changes
+
+## Bug Fixes
+* Fix parsing of group_names in `tools.spikeinterface` [PR #1234](https://github.com/catalystneuro/neuroconv/pull/1234)
+
+## Features
+
+## Improvements
+* Testing suite now supports numpy 2.0. [PR #1235](https://github.com/catalystneuro/neuroconv/pull/1235)
+
+
+# v0.7.0 (March 3, 2025)
 
 ## Deprecations and Changes
 * Interfaces and converters now have `verbose=False` by default [PR #1153](https://github.com/catalystneuro/neuroconv/pull/1153)
 * Added `metadata` and `conversion_options` as arguments to `NWBConverter.temporally_align_data_interfaces` [PR #1162](https://github.com/catalystneuro/neuroconv/pull/1162)
-* Deprecations. in the ecephys pipeline: compression options, old iterator options, methods that did not end up in *to_nwbfile and the `get_schema_from_method_signature` function [PR #1207](https://github.com/catalystneuro/neuroconv/pull/1207)
+* Deprecations in the ecephys pipeline: compression options, old iterator options, methods that did not end up in *to_nwbfile and the `get_schema_from_method_signature` function [PR #1207](https://github.com/catalystneuro/neuroconv/pull/1207)
+* Removed all deprecated functions from the roiextractors module: `add_fluorescence_traces`, `add_background_fluorescence_traces`, `add_summary_images`, `add_segmentation`, and `write_segmentation` [#1233](https://github.com/catalystneuro/neuroconv/pull/1233)
 
 ## Bug Fixes
-* `run_conversion` does not longer trigger append mode an index error when `nwbfile_path` points to a faulty file [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
-* `DatasetIOConfiguration` now recommends `chunk_shape = (len(candidate_dataset),)` for datasets with compound dtypes,
-as used by hdmf >= 3.14.6.
-* Fixed AudioInterface to properly handle 24-bit WAV files by disabling memory mapping for 24-bit files [PR #1226](https://github.com/catalystneuro/neuroconv/pull/1226)
+* `run_conversion` does not longer trigger append mode when `nwbfile_path` points to a faulty file [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
+* `DatasetIOConfiguration` now recommends `chunk_shape = (len(candidate_dataset),)` for datasets with compound dtypes as used by hdmf >= 3.14.6. [PR #1146](https://github.com/catalystneuro/neuroconv/pull/1146)
+* `OpenEphysBinaryRecordingInterface` no longer stores analog data as an `ElectricalSeries` [PR #1179](https://github.com/catalystneuro/neuroconv/pull/1179)
 
 ## Features
+* Added `PlexonLFPInterface` for converting Plexon `FPl-Low Pass Filtered` stream data [PR #1209](https://github.com/catalystneuro/neuroconv/pull/1209)
+* Added `ImageInterface` for writing large collection of images to NWB and automatically map the images to the correct NWB data types [PR #1190](https://github.com/catalystneuro/neuroconv/pull/1190)
+* Fixed AudioInterface to properly handle 24-bit WAV files by disabling memory mapping for 24-bit files [PR #1226](https://github.com/catalystneuro/neuroconv/pull/1226)
 * Use the latest version of ndx-pose for `DeepLabCutInterface` and `LightningPoseDataInterface` [PR #1128](https://github.com/catalystneuro/neuroconv/pull/1128)
-* Added a first draft of `.clinerules` [#1229](https://github.com/catalystneuro/neuroconv/pull/1229)
+* Added a first draft of `.clinerules` [PR #1229](https://github.com/catalystneuro/neuroconv/pull/1229)
 * Support for pynwb 3.0 [PR #1231](https://github.com/catalystneuro/neuroconv/pull/1231)
 * Support for hdmf 4.0 [PR #1204](https://github.com/catalystneuro/neuroconv/pull/1204)
 * Support for numpy 2.0 [PR #1206](https://github.com/catalystneuro/neuroconv/pull/1206)
@@ -23,8 +60,7 @@ as used by hdmf >= 3.14.6.
 * Simple writing no longer uses a context manager [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
 * Added Returns section to all getter docstrings [PR #1185](https://github.com/catalystneuro/neuroconv/pull/1185)
 * ElectricalSeries have better chunking defaults when data is passed as plain array [PR #1184](https://github.com/catalystneuro/neuroconv/pull/1184)
-* Ophys interfaces now call `get_metadata` by default when no metadata is passed [PR #1200](https://github.com/catalystneuro/neuroconv/pull/1200)
-
+* Ophys interfaces now call `get_metadata` by default when no metadata is passed [PR #1200](https://github.com/catalystneuro/neuroconv/pull/1200) and [PR #1232](https://github.com/catalystneuro/neuroconv/pull/1232)
 
 
 # v0.6.7 (January 20, 2025)

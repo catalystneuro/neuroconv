@@ -196,28 +196,6 @@ def get_nwb_imaging_metadata(
     return metadata
 
 
-def add_devices(nwbfile: NWBFile, metadata: Optional[dict] = None) -> NWBFile:
-    """
-    Deprecated function. Use 'add_devices_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_devices' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_devices_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_devices_to_nwbfile(
-        nwbfile=nwbfile,
-        metadata=metadata,
-    )
-
-
 def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: Optional[dict] = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
@@ -267,33 +245,6 @@ def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata
     imaging_plane = ImagingPlane(**imaging_plane_metadata)
 
     return imaging_plane
-
-
-def add_imaging_plane(
-    nwbfile: NWBFile,
-    metadata: dict,
-    imaging_plane_name: Optional[str] = None,
-):
-    """
-    Deprecated function. Use 'add_imaging_plane_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_imaging_plane' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_imaging_plane_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_imaging_plane_to_nwbfile(
-        nwbfile=nwbfile,
-        metadata=metadata,
-        imaging_plane_name=imaging_plane_name,
-    )
 
 
 def add_imaging_plane_to_nwbfile(
@@ -352,28 +303,6 @@ def add_imaging_plane_to_nwbfile(
     return nwbfile
 
 
-def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
-    """
-    Deprecated function. Use 'add_image_segmentation_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_image_segmentation' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_image_segmentation_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_image_segmentation_to_nwbfile(
-        nwbfile=nwbfile,
-        metadata=metadata,
-    )
-
-
 def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     Adds the image segmentation specified by the metadata to the nwb file.
@@ -405,43 +334,6 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
         ophys.add(ImageSegmentation(name=image_segmentation_name))
 
     return nwbfile
-
-
-def add_photon_series(
-    imaging: ImagingExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
-    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-    photon_series_index: int = 0,
-    parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
-    iterator_type: Optional[str] = "v2",
-    iterator_options: Optional[dict] = None,
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_photon_series_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_photon_series' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_photon_series_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_photon_series_to_nwbfile(
-        imaging=imaging,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        photon_series_type=photon_series_type,
-        photon_series_index=photon_series_index,
-        parent_container=parent_container,
-        iterator_type=iterator_type,
-        iterator_options=iterator_options,
-    )
 
 
 def add_photon_series_to_nwbfile(
@@ -657,43 +549,6 @@ def _imaging_frames_to_hdmf_iterator(
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
-def add_imaging(
-    imaging: ImagingExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
-    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-    photon_series_index: int = 0,
-    iterator_type: Optional[str] = "v2",
-    iterator_options: Optional[dict] = None,
-    parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_imaging_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_imaging' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_imaging_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_imaging_to_nwbfile(
-        imaging=imaging,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        photon_series_type=photon_series_type,
-        photon_series_index=photon_series_index,
-        iterator_type=iterator_type,
-        iterator_options=iterator_options,
-        parent_container=parent_container,
-    )
-
-
 def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
@@ -755,45 +610,6 @@ def add_imaging_to_nwbfile(
     return nwbfile
 
 
-def write_imaging(
-    imaging: ImagingExtractor,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[NWBFile] = None,
-    metadata: Optional[dict] = None,
-    overwrite: bool = False,
-    verbose: bool = False,
-    iterator_type: str = "v2",
-    iterator_options: Optional[dict] = None,
-    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-):
-    """
-    Deprecated function. Use 'write_imaging_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'write_imaging' is deprecated and will be removed on or after March 2025. "
-        "Use 'write_imaging_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return write_imaging_to_nwbfile(
-        imaging=imaging,
-        nwbfile_path=nwbfile_path,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        overwrite=overwrite,
-        verbose=verbose,
-        iterator_type=iterator_type,
-        iterator_options=iterator_options,
-        photon_series_type=photon_series_type,
-    )
-
-
 def write_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile_path: Optional[FilePath] = None,
@@ -812,7 +628,7 @@ def write_imaging_to_nwbfile(
     ----------
     imaging: ImagingExtractor
         The imaging extractor object to be written to nwb
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
@@ -913,45 +729,6 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
             )
 
     return metadata
-
-
-def add_plane_segmentation(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict],
-    plane_segmentation_name: Optional[str] = None,
-    include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_plane_segmentation_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_plane_segmentation' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_plane_segmentation_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_plane_segmentation_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
-        include_roi_centroids=include_roi_centroids,
-        include_roi_acceptance=include_roi_acceptance,
-        mask_type=mask_type,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
 
 
 def add_plane_segmentation_to_nwbfile(
@@ -1169,41 +946,6 @@ def _add_plane_segmentation(
     return nwbfile
 
 
-def add_background_plane_segmentation(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict],
-    background_plane_segmentation_name: Optional[str] = None,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_background_plane_segmentation_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_background_plane_segmentation' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_background_plane_segmentation_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_background_plane_segmentation_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        background_plane_segmentation_name=background_plane_segmentation_name,
-        mask_type=mask_type,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
-
-
 def add_background_plane_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
@@ -1273,41 +1015,6 @@ def add_background_plane_segmentation_to_nwbfile(
         iterator_options=iterator_options,
     )
     return nwbfile
-
-
-def add_fluorescence_traces(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict],
-    plane_segmentation_name: Optional[str] = None,
-    include_background_segmentation: bool = False,
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_fluorescence_traces_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_fluorescence_traces' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_fluorescence_traces_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_fluorescence_traces_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
-        include_background_segmentation=include_background_segmentation,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
 
 
 def add_fluorescence_traces_to_nwbfile(
@@ -1550,39 +1257,6 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
     return data_interface
 
 
-def add_background_fluorescence_traces(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict],
-    background_plane_segmentation_name: Optional[str] = None,
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_background_fluorescence_traces_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_background_fluorescence_traces' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_background_fluorescence_traces_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_background_fluorescence_traces_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        background_plane_segmentation_name=background_plane_segmentation_name,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
-
-
 def add_background_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
@@ -1650,35 +1324,6 @@ def add_background_fluorescence_traces_to_nwbfile(
     return nwbfile
 
 
-def add_summary_images(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
-    plane_segmentation_name: Optional[str] = None,
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_summary_images_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_summary_images' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_summary_images_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_summary_images_to_nwbfile(
-        nwbfile=nwbfile,
-        segmentation_extractor=segmentation_extractor,
-        metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
-    )
-
-
 def add_summary_images_to_nwbfile(
     nwbfile: NWBFile,
     segmentation_extractor: SegmentationExtractor,
@@ -1744,49 +1389,6 @@ def add_summary_images_to_nwbfile(
         image_collection.add_image(GrayscaleImage(**image_kwargs))
 
     return nwbfile
-
-
-def add_segmentation(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
-    plane_segmentation_name: Optional[str] = None,
-    background_plane_segmentation_name: Optional[str] = None,
-    include_background_segmentation: bool = False,
-    include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-) -> NWBFile:
-    """
-    Deprecated function. Use 'add_segmentation_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'add_segmentation' is deprecated and will be removed on or after March 2025. "
-        "Use 'add_segmentation_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return add_segmentation_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
-        background_plane_segmentation_name=background_plane_segmentation_name,
-        include_background_segmentation=include_background_segmentation,
-        include_roi_centroids=include_roi_centroids,
-        include_roi_acceptance=include_roi_acceptance,
-        mask_type=mask_type,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
 
 
 def add_segmentation_to_nwbfile(
@@ -1888,51 +1490,6 @@ def add_segmentation_to_nwbfile(
     return nwbfile
 
 
-def write_segmentation(
-    segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[NWBFile] = None,
-    metadata: Optional[dict] = None,
-    overwrite: bool = False,
-    verbose: bool = False,
-    include_background_segmentation: bool = False,
-    include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
-) -> NWBFile:
-    """
-    Deprecated function. Use 'write_segmentation_to_nwbfile' instead.
-    """
-
-    message = (
-        "Function 'write_segmentation' is deprecated and will be removed on or after March 2025. "
-        "Use 'write_segmentation_to_nwbfile' instead."
-    )
-
-    warnings.warn(
-        message=message,
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return write_segmentation_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile_path=nwbfile_path,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        overwrite=overwrite,
-        verbose=verbose,
-        include_background_segmentation=include_background_segmentation,
-        include_roi_centroids=include_roi_centroids,
-        include_roi_acceptance=include_roi_acceptance,
-        mask_type=mask_type,
-        iterator_options=iterator_options,
-        compression_options=compression_options,
-    )
-
-
 def write_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile_path: Optional[FilePath] = None,
@@ -1945,7 +1502,6 @@ def write_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.
@@ -1954,7 +1510,7 @@ def write_segmentation_to_nwbfile(
     ----------
     segmentation_extractor: SegmentationExtractor
         The segmentation extractor object to be written to nwb
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
@@ -2001,18 +1557,6 @@ def write_segmentation_to_nwbfile(
     assert (
         nwbfile_path is None or nwbfile is None
     ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
-
-    # TODO: remove completely after 10/1/2024
-    if compression_options is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "They will be removed on or after 2024-10-01. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     iterator_options = iterator_options or dict()
 
