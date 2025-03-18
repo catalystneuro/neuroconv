@@ -8,7 +8,8 @@ from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import DeepDict, _NWBMetaDataEncoder, get_base_schema
+from ....utils import DeepDict, get_base_schema
+from ....utils.json_schema import _NWBMetaDataEncoder
 from ....utils.path import infer_path
 
 
@@ -21,7 +22,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing Neuralynx position tracking .nvt files to NWB."
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = True):
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Interface for writing Neuralynx .nvt files to nwb.
 
@@ -29,7 +30,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .nvt file
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             controls verbosity.
         """
 

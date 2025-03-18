@@ -16,6 +16,14 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the Bruker TIFF imaging data.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the Bruker TIFF imaging data source.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -28,6 +36,23 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         folder_path: DirectoryPath,
         plane_separation_type: Literal["contiguous", "disjoint"] = None,
     ) -> dict:
+        """
+        Get streams for the Bruker TIFF imaging data.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing the Bruker TIFF files.
+        plane_separation_type : Literal["contiguous", "disjoint"], optional
+            Type of plane separation to apply. If "contiguous", only the first plane stream for each channel is retained.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the streams for the Bruker TIFF imaging data. The dictionary has the following keys:
+            - "channel_streams": List of channel stream names.
+            - "plane_streams": Dictionary where keys are channel stream names and values are lists of plane streams.
+        """
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
@@ -42,7 +67,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize reading of TIFF files.
@@ -53,7 +78,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         self.folder_path = folder_path
         super().__init__(
@@ -117,6 +142,14 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the Bruker TIFF imaging data.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing imaging metadata from the Bruker TIFF files.
+        """
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
@@ -183,6 +216,14 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the Bruker TIFF imaging data.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the Bruker TIFF imaging data source.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -191,6 +232,19 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_streams(cls, folder_path: DirectoryPath) -> dict:
+        """
+        Get streams for the Bruker TIFF imaging data.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing the Bruker TIFF files.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the streams extracted from the Bruker TIFF files.
+        """
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
@@ -200,7 +254,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Initialize reading of TIFF files.
@@ -211,7 +265,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(
             folder_path=folder_path,
@@ -263,6 +317,14 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the Bruker TIFF imaging data.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing imaging metadata from the Bruker TIFF files.
+        """
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata

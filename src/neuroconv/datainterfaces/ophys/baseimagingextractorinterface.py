@@ -35,7 +35,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def __init__(
         self,
-        verbose: bool = True,
+        verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
         **source_data,
     ):
@@ -47,6 +47,15 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_metadata_schema(
         self,
     ) -> dict:
+        """
+        Retrieve the metadata schema for the optical physiology (Ophys) data.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ImagingPlane,
+            and either OnePhotonSeries or TwoPhotonSeries based on the photon_series_type.
+        """
 
         metadata_schema = super().get_metadata_schema()
 
@@ -93,6 +102,15 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_metadata(
         self,
     ) -> DeepDict:
+        """
+        Retrieve the metadata for the imaging data.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata including device information, imaging plane details,
+            and photon series configuration.
+        """
 
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
@@ -160,6 +178,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
             imaging_extractor = self.imaging_extractor
+
+        metadata = metadata or self.get_metadata()
 
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,

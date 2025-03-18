@@ -1,12 +1,12 @@
-import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 from hdmf.testing import TestCase
-from jsonschema import RefResolver, validate
+from jsonschema import validate
 from pynwb import NWBHDF5IO
+from referencing import Registry, Resource
 
 from neuroconv import run_conversion_from_yaml
 from neuroconv.utils import load_dict_from_file
@@ -19,6 +19,7 @@ from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     "fname",
     [
         "GIN_conversion_specification.yml",
+        "GIN_conversion_specification_dandi_upload.yml",
         "GIN_conversion_specification_missing_nwbfile_names.yml",
         "GIN_conversion_specification_no_nwbfile_name_or_other_metadata.yml",
         "GIN_conversion_specification_videos.yml",
@@ -27,16 +28,19 @@ from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 def test_validate_example_specifications(fname):
     path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
     schema_folder = path_to_test_yml_files.parent.parent.parent.parent / "src" / "neuroconv" / "schemas"
+
+    # Load schemas
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
-    sys_uri_base = "file://"
-    if sys.platform.startswith("win32"):
-        sys_uri_base = "file:/"
+    metadata_schema = load_dict_from_file(file_path=schema_folder / "metadata_schema.json")
+
+    # The yaml specification references the metadata schema, so we need to load it into the registry
+    registry = Registry().with_resource("metadata_schema.json", Resource.from_contents(metadata_schema))
 
     yaml_file_path = path_to_test_yml_files / fname
     validate(
         instance=load_dict_from_file(file_path=yaml_file_path),
-        schema=load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json"),
-        resolver=RefResolver(base_uri=sys_uri_base + str(schema_folder) + "/", referrer=specification_schema),
+        schema=specification_schema,
+        registry=registry,
     )
 
 

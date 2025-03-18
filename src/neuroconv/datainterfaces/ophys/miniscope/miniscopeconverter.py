@@ -24,7 +24,7 @@ class MiniscopeConverter(NWBConverter):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = True):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
 
@@ -51,7 +51,7 @@ class MiniscopeConverter(NWBConverter):
         ----------
         folder_path : FolderPathType
             The path to the main Miniscope folder.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         self.verbose = verbose
@@ -61,6 +61,14 @@ class MiniscopeConverter(NWBConverter):
         )
 
     def get_conversion_options_schema(self) -> dict:
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Miniscope interface.
+        """
         return self.data_interface_objects["MiniscopeImaging"].get_conversion_options_schema()
 
     def add_to_nwbfile(
@@ -70,6 +78,21 @@ class MiniscopeConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add Miniscope imaging and behavioral camera data to the specified NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the imaging and behavioral data will be added.
+        metadata : dict
+            Metadata dictionary containing information about the imaging and behavioral recordings.
+        stub_test : bool, optional
+            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        """
         self.data_interface_objects["MiniscopeImaging"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -90,6 +113,25 @@ class MiniscopeConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ) -> None:
+        """
+        Run the NWB conversion process for the instantiated data interfaces.
+
+        Parameters
+        ----------
+        nwbfile_path : str, optional
+            Path where the NWBFile will be written. If None, the file is handled in-memory.
+        nwbfile : NWBFile, optional
+            An in-memory NWBFile object to be written to the file. If None, a new NWBFile is created.
+        metadata : dict, optional
+            Metadata dictionary with information to create the NWBFile. If None, metadata is auto-generated.
+        overwrite : bool, optional
+            If True, overwrites the existing NWBFile at `nwbfile_path`. If False (default), data is appended.
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) is written for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        """
         if metadata is None:
             metadata = self.get_metadata()
 

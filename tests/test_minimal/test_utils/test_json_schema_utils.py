@@ -6,12 +6,12 @@ import numpy as np
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
-    _NWBMetaDataEncoder,
     dict_deep_update,
     fill_defaults,
     get_schema_from_hdmf_class,
     load_dict_from_file,
 )
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
 def compare_dicts(a: dict, b: dict):

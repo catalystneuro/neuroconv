@@ -17,13 +17,13 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
         file_path: FilePath,
         sampling_frequency: float,
         output_struct_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
         sampling_frequency : float
         output_struct_name : str, optional
         verbose: bool, default : True

@@ -8,7 +8,7 @@ import zarr
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, get_manager
 from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
 
@@ -101,6 +101,8 @@ def get_default_dataset_io_configurations(
         )
 
     known_dataset_fields = ("data", "timestamps")
+    manager = get_manager()
+    builder = manager.build(nwbfile)
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
 
@@ -132,7 +134,7 @@ def get_default_dataset_io_configurations(
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=column, dataset_name=dataset_name
+                    neurodata_object=column, dataset_name=dataset_name, builder=builder
                 )
 
                 yield dataset_io_configuration
@@ -166,7 +168,7 @@ def get_default_dataset_io_configurations(
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-                    neurodata_object=neurodata_object, dataset_name=known_dataset_field
+                    neurodata_object=neurodata_object, dataset_name=known_dataset_field, builder=builder
                 )
 
                 yield dataset_io_configuration

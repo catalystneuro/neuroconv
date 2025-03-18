@@ -13,17 +13,30 @@ on:
         type: string
 
     secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      S3_GIN_BUCKET:
+        required: true
       DANDI_API_KEY:
         required: true
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
+# We are adding concurrency here to avoid concurrent writes to the dandi API.
+concurrency:
+  group: live-service-testing
+  cancel-in-progress: false
+
 jobs:
   run:
     name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
+      # This avoids two tests within the matrix running at the same time
+      max-parallel: 1
       fail-fast: false
       matrix:
         python-version: ${{ fromJson(inputs.python-versions) }}
@@ -45,7 +58,17 @@ jobs:
       - name: Install full requirements
         run: pip install .[test,full]
 
+      - name: Prepare data for tests
+        uses: ./.github/actions/load-data
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
+          os: ${{ matrix.os }}
+
       - name: Run subset of tests that use DANDI live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/dandi_transfer_tools.py
+      - name: Run subset of tests that use DANDI live services with YAML
+        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_dandi_transfer_tools.py
       - name: Run subset of tests that use Globus live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/globus_transfer_tools.py

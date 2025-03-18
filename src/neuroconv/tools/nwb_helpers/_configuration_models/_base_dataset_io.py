@@ -9,7 +9,9 @@ import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
-from hdmf.utils import get_data_shape
+from hdmf.build.builders import (
+    BaseBuilder,
+)
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -19,8 +21,10 @@ from pydantic import (
     model_validator,
 )
 from pynwb import NWBFile
+from pynwb.ecephys import ElectricalSeries
 from typing_extensions import Self
 
+from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
@@ -246,7 +250,12 @@ class DatasetIOConfiguration(BaseModel, ABC):
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
-    def from_neurodata_object(cls, neurodata_object: Container, dataset_name: Literal["data", "timestamps"]) -> Self:
+    def from_neurodata_object(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+        builder: Union[BaseBuilder, None] = None,
+    ) -> Self:
         """
         Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
 
@@ -258,16 +267,37 @@ class DatasetIOConfiguration(BaseModel, ABC):
             The name of the field that will become a dataset when written to disk.
             Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
             and `timestamps`, each of which can be configured separately.
+        builder : hdmf.build.builders.BaseBuilder, optional
+            The builder object that would be used to construct the NWBFile object. If None, the dataset is assumed to
+            NOT have a compound dtype.
         """
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
-
         candidate_dataset = getattr(neurodata_object, dataset_name)
-        full_shape = get_data_shape(data=candidate_dataset)
+        full_shape = get_full_data_shape(dataset=candidate_dataset, location_in_file=location_in_file, builder=builder)
         dtype = _infer_dtype(dataset=candidate_dataset)
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
+            compression_method = "gzip"
+
+        elif isinstance(neurodata_object, ElectricalSeries) and dataset_name == "data":
+            from ....tools.spikeinterface import get_electrical_series_chunk_shape
+
+            number_of_frames = candidate_dataset.shape[0]
+            number_of_channels = candidate_dataset.shape[1]
+            dtype = candidate_dataset.dtype
+
+            chunk_shape = get_electrical_series_chunk_shape(
+                number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
+            )
+
+            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                buffer_gb=1.0,
+                chunk_shape=chunk_shape,
+                maxshape=full_shape,
+                dtype=dtype,
+            )
             compression_method = "gzip"
         elif dtype != np.dtype("object"):
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(

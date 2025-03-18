@@ -5,7 +5,6 @@ from pathlib import Path
 from warnings import warn
 
 from hdmf.testing import TestCase
-from ndx_pose import PoseEstimation
 from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
 
@@ -65,6 +64,7 @@ class TestLightningPoseConverter(TestCase):
             description="Contains the pose estimation series for each keypoint.",
             scorer="heatmap_tracker",
             source_software="LightningPose",
+            camera_name="CameraPoseEstimation",
         )
 
         cls.pose_estimation_metadata.update(
@@ -134,6 +134,8 @@ class TestLightningPoseConverter(TestCase):
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
 
     def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False):
+        from ndx_pose import PoseEstimation
+
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 

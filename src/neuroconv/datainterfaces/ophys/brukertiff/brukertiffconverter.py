@@ -30,7 +30,15 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         ] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
         return source_schema
 
-    def get_conversion_options_schema(self):
+    def get_conversion_options_schema(self) -> dict:
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Bruker TIFF interface.
+        """
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -50,7 +58,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         plane_separation_type: {'contiguous', 'disjoint'}
             Defines how to write volumetric imaging data. Use 'contiguous' to create the volumetric two photon series,
             and 'disjoint' to create separate imaging plane and two photon series for each plane.
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         self.verbose = verbose
@@ -91,6 +99,20 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add data from multiple data interfaces to the specified NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the data will be added.
+        metadata : dict
+            Metadata dictionary containing information to describe the data being added to the NWB file.
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) will be added for testing purposes. Default is False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True. Default is 100.
+        """
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
@@ -109,6 +131,24 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ) -> None:
+        """
+        Run the conversion process for the instantiated data interfaces and add data to the NWB file.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePath, optional
+            Path where the NWB file will be written. If None, the file will be handled in-memory.
+        nwbfile : NWBFile, optional
+            An in-memory NWBFile object. If None, a new NWBFile object will be created.
+        metadata : dict, optional
+            Metadata dictionary for describing the NWB file. If None, it will be auto-generated using the `get_metadata()` method.
+        overwrite : bool, optional
+            If True, overwrites the existing NWB file at `nwbfile_path`. If False, appends to the file (default is False).
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) will be added for testing purposes, by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        """
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -140,7 +180,15 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
     def get_source_schema(cls):
         return get_json_schema_from_method_signature(cls)
 
-    def get_conversion_options_schema(self):
+    def get_conversion_options_schema(self) -> dict:
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing conversion options for the Bruker TIFF interface.
+        """
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -156,7 +204,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         ----------
         folder_path : DirectoryPath
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
-        verbose : bool, default: True
+        verbose : bool, default: False
             Controls verbosity.
         """
         from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (
@@ -187,6 +235,21 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        """
+        Add data from all instantiated data interfaces to the provided NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the data will be added.
+        metadata : dict
+            Metadata dictionary containing information about the data to be added.
+        stub_test : bool, optional
+            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            by default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        """
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
@@ -205,6 +268,24 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int = 100,
     ) -> None:
+        """
+        Run the NWB conversion process for all instantiated data interfaces.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePath, optional
+            The file path where the NWB file will be written. If None, the file is handled in-memory.
+        nwbfile : NWBFile, optional
+            An existing in-memory NWBFile object. If None, a new NWBFile object will be created.
+        metadata : dict, optional
+            Metadata dictionary used to create or validate the NWBFile. If None, metadata is automatically generated.
+        overwrite : bool, optional
+            If True, the NWBFile at `nwbfile_path` is overwritten if it exists. If False (default), data is appended.
+        stub_test : bool, optional
+            If True, only a subset of the data (up to `stub_frames`) is used for testing purposes. By default False.
+        stub_frames : int, optional
+            The number of frames to include in the subset if `stub_test` is True. By default 100.
+        """
         if metadata is None:
             metadata = self.get_metadata()
 
