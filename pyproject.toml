@@ -164,7 +164,6 @@ blackrock = [
     "spikeinterface>=0.102",
 ]
 cellexplorer = [
-    "hdf5storage>=0.1.18",
     "neo>=0.13.3",
     "pymatreader>=0.0.32",
     "spikeinterface>=0.102",

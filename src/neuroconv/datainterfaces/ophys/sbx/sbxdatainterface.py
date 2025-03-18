@@ -23,7 +23,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         """
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .sbx file.
         sampling_frequency : float, optional
         verbose : bool, default: False
