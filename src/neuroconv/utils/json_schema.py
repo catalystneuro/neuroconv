@@ -72,7 +72,7 @@ def get_base_schema(
     required: Optional[list[str]] = None,
     properties: Optional[dict[str, Any]] = None,
     **kwargs,
-) -> dict[str, Any]::
+) -> dict[str, Any]:
     """
     Return the base schema used for all other schemas.
 
