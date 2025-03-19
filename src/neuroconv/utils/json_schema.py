@@ -122,8 +122,6 @@ def get_base_schema(
     return base_schema
 
 
-
-
 def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.
@@ -324,8 +322,7 @@ def get_schema_from_hdmf_class(hdmf_class: Type) -> dict[str, Any]:
             # if another nwb object (or list of nwb objects)
             if any([hasattr(t, "__nwbfields__") for t in docval_arg_type]):
                 is_nwb = [hasattr(t, "__nwbfields__") for t in docval_arg_type]
-                item = docv>>>>>>> main
-al_arg_type[np.where(is_nwb)[0][0]]
+                item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
                 if arg_name in pynwb_children_fields:
                     items = get_schema_from_hdmf_class(item)
