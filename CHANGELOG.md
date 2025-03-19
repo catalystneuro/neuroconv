@@ -115,8 +115,7 @@
 * Use pytest format for dandi tests to avoid window permission error on teardown [PR #1151](https://github.com/catalystneuro/neuroconv/pull/1151)
 * Added many docstrings for public functions [PR #1063](https://github.com/catalystneuro/neuroconv/pull/1063)
 * Clean up warnings and deprecations in the testing framework for the ecephys pipeline [PR #1158](https://github.com/catalystneuro/neuroconv/pull/1158)
-* Enhance the typing of the signature on t<<<<<<< configure_backend_with_ndx-events_0.3.0
-he `NWBConverter` by adding zarr as a literal option on the backend and backend configuration [PR #1160](https://github.com/catalystneuro/neuroconv/pull/1160)
+* Enhance the typing of the signature on the `NWBConverter` by adding zarr as a literal option on the backend and backend configuration [PR #1160](https://github.com/catalystneuro/neuroconv/pull/1160)
 
 
 # v0.6.5 (November 1, 2024)
