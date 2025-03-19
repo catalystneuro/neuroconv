@@ -3,15 +3,14 @@ import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import neo.io.baseio
 import numpy as np
 import pynwb
-from hdmf.backends.hdf5 import H5DataIO
+from pydantic import FilePath
 
 from ..nwb_helpers import add_device_from_metadata
-from ...utils import OptionalFilePathType
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -56,27 +55,61 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
 
 
 def get_number_of_electrodes(neo_reader) -> int:
-    """Get number of electrodes from Neo reader."""
+    """
+    Get number of electrodes from Neo reader.
+
+    Returns
+    -------
+    int
+        The total number of electrodes in the recording.
+    """
     # TODO - take in account the case with multiple streams.
     return len(neo_reader.header["signal_channels"])
 
 
 def get_number_of_segments(neo_reader, block: int = 0) -> int:
-    """Get number of segments from Neo reader."""
+    """
+    Get number of segments from Neo reader.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+        The Neo reader object.
+    block : int, default: 0
+        Block index.
+
+    Returns
+    -------
+    int
+        The number of segments in the specified block.
+    """
     return neo_reader.header["nb_segment"][block]
 
 
-def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
+def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tuple[list, str, str]:
     """
     Get command traces (e.g. voltage clamp command traces).
 
     Parameters
     ----------
     neo_reader : neo.io.baseio
+        The Neo reader object.
     segment : int, optional
-        Defaults to 0.
+        Segment index. Defaults to 0.
     cmd_channel : int, optional
         ABF command channel (0 to 7). Defaults to 0.
+
+    Returns
+    -------
+    tuple[list, str, str]
+        A tuple containing:
+        - list: The command trace data
+        - str: The title of the command trace
+        - str: The units of the command trace
+
+    Notes
+    -----
+    This function only works for AxonIO interface.
     """
     try:
         traces, titles, units = neo_reader.read_raw_protocol()
@@ -93,11 +126,14 @@ def get_conversion_from_unit(unit: str) -> float:
 
     Parameters
     ----------
-    unit (str): Unit as string. E.g. pA, mV, uV, etc...
+    unit : str
+        Unit as string. E.g. pA, mV, uV, etc...
 
     Returns
     -------
-    float: conversion to Ampere or Volt
+    float
+        The conversion factor to convert to Ampere or Volt.
+        For example, for 'pA' returns 1e-12 to convert to Ampere.
     """
     if unit in ["pA", "pV"]:
         conversion = 1e-12
@@ -121,9 +157,15 @@ def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
 
     Parameters
     ----------
-    neo_reader: Neo reader object
-    metadata: dict, optional
+    neo_reader : neo.io.baseio
+        Neo reader object
+    metadata : dict, optional
         Metadata info for constructing the nwb file.
+
+    Returns
+    -------
+    dict
+        Default metadata dictionary containing NWBFile and Icephys device information.
     """
     metadata = dict(
         NWBFile=dict(
@@ -149,7 +191,8 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
         NWBFile object to add the icephys electrode to.
     metadata : dict, optional
         Metadata info for constructing the nwb file.
-        Should be of the format
+        Should be of the format::
+
             metadata['Icephys']['Electrodes'] = [
                 {
                     'name': my_name,
@@ -159,17 +202,16 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
                 ...
             ]
     """
+    metadata_copy = deepcopy(metadata) if metadata is not None else dict()
+
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding Icephys Electrode, no Devices were found on nwbfile. Creating a Device now...")
-        add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
+        add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata_copy)
 
-    if metadata is None:
-        metadata = dict()
-
-    if "Icephys" not in metadata:
-        metadata["Icephys"] = dict()
+    if "Icephys" not in metadata_copy:
+        metadata_copy["Icephys"] = dict()
 
     defaults = [
         dict(
@@ -180,15 +222,15 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
         for elec_id in range(get_number_of_electrodes(neo_reader))
     ]
 
-    if "Electrodes" not in metadata["Icephys"] or len(metadata["Icephys"]["Electrodes"]) == 0:
-        metadata["Icephys"]["Electrodes"] = deepcopy(defaults)
+    if "Electrodes" not in metadata_copy["Icephys"] or len(metadata_copy["Icephys"]["Electrodes"]) == 0:
+        metadata_copy["Icephys"]["Electrodes"] = defaults
 
     assert all(
-        [isinstance(x, dict) for x in metadata["Icephys"]["Electrodes"]]
+        [isinstance(x, dict) for x in metadata_copy["Icephys"]["Electrodes"]]
     ), "Expected metadata['Icephys']['Electrodes'] to be a list of dictionaries!"
 
     # Create Icephys electrode from metadata
-    for elec in metadata["Icephys"]["Electrodes"]:
+    for elec in metadata_copy["Icephys"]["Electrodes"]:
         if elec.get("name", defaults[0]["name"]) not in nwbfile.icephys_electrodes:
             device_name = elec.pop("device_name", None) or elec.pop("device", defaults[0]["device_name"])
             # elec.pop("device_name", 0)
@@ -214,8 +256,7 @@ def add_icephys_recordings(
     metadata: dict = None,
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: str = "not described",
-    skip_electrodes: Tuple[int] = (),
-    compression: str = "gzip",
+    skip_electrodes: tuple[int] = (),
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -230,8 +271,8 @@ def add_icephys_recordings(
     stimulus_type : str, default: 'not described'
     skip_electrodes : tuple, default: ()
         Electrode IDs to skip.
-    compression : str | bool
     """
+
     n_segments = get_number_of_segments(neo_reader, block=0)
 
     # Check for protocol data (only ABF2), necessary for stimuli data
@@ -286,8 +327,10 @@ def add_icephys_recordings(
     else:
         sessions_offset = 0
 
-    relative_session_start_time = metadata["Icephys"]["Sessions"][sessions_offset]["relative_session_start_time"]
-    session_stimulus_type = metadata["Icephys"]["Sessions"][sessions_offset]["stimulus_type"]
+    relative_session_start_time = deepcopy(
+        metadata["Icephys"]["Sessions"][sessions_offset]["relative_session_start_time"]
+    )
+    session_stimulus_type = deepcopy(metadata["Icephys"]["Sessions"][sessions_offset]["stimulus_type"])
 
     # Sequential icephys recordings
     simultaneous_recordings = list()
@@ -315,10 +358,7 @@ def add_icephys_recordings(
                 name=response_name,
                 description=f"Response to: {session_stimulus_type}",
                 electrode=electrode,
-                data=H5DataIO(
-                    data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
-                    compression=compression,
-                ),
+                data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
                 starting_time=starting_time,
                 rate=sampling_rate,
                 conversion=response_conversion * response_gain,
@@ -372,10 +412,9 @@ def add_neo_to_nwb(
     neo_reader,
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
-    compression: Optional[str] = "gzip",
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
-    skip_electrodes: Tuple[int] = (),
+    skip_electrodes: tuple[int] = (),
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -391,9 +430,6 @@ def add_neo_to_nwb(
         metadata info for constructing the nwb file (optional).
         Check the auxiliary function docstrings for more information
         about metadata format.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
@@ -402,6 +438,8 @@ def add_neo_to_nwb(
         Electrode IDs to skip. Defaults to ().
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    # TODO: remove completely after 10/1/2024
 
     add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
@@ -418,17 +456,15 @@ def add_neo_to_nwb(
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
         skip_electrodes=skip_electrodes,
-        compression=compression,
     )
 
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: OptionalFilePathType = None,  # pragma: no cover
+    save_path: Optional[FilePath] = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,
-    compression: Optional[str] = "gzip",
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
     skip_electrodes: Optional[tuple] = (),
@@ -448,9 +484,12 @@ def write_neo_to_nwb(
         Required if a save_path is not specified. If passed, this function
         will fill the relevant fields within the nwbfile.
     metadata: dict
-        metadata info for constructing the nwb file (optional). Should be of the format
+        metadata info for constructing the nwb file (optional). Should be of the format::
+
             metadata['Ecephys'] = {}
-        with keys of the forms
+
+        with keys of the forms::
+
             metadata['Ecephys']['Device'] = [
                 {
                     'name': my_name,
@@ -481,9 +520,6 @@ def write_neo_to_nwb(
 
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
@@ -506,7 +542,6 @@ def write_neo_to_nwb(
     kwargs = dict(
         neo_reader=neo_reader,
         metadata=metadata,
-        compression=compression,
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
         skip_electrodes=skip_electrodes,

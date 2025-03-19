@@ -4,11 +4,12 @@ from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
+from pydantic import DirectoryPath
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from ..importing import is_package_installed
-from ...utils import ArrayType, FolderPathType
+from ...utils import ArrayType
 
 
 def _check_parameter_dtype_consistency(
@@ -128,7 +129,7 @@ def generate_mock_ttl_signal(
     return trace
 
 
-def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_images: bool = False):  # pragma: no cover
+def regenerate_test_cases(folder_path: DirectoryPath, regenerate_reference_images: bool = False):  # pragma: no cover
     """
     Regenerate the test cases of the file included in the main testing suite, which is frozen between breaking changes.
 

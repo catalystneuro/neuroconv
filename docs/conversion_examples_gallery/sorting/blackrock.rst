@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Blackro
 
 .. code-block:: bash
 
-    pip install neuroconv[blackrock]
+    pip install "neuroconv[blackrock]"
 
 Convert Blackrock sorting data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
@@ -13,19 +13,19 @@ Convert Blackrock sorting data to NWB using
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from dateutil import tz
+    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import BlackrockSortingInterface
     >>>
     >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.nev"
     >>> # Change the file_path to the location of the file in your system
-    >>> interface = BlackrockSortingInterface(file_path=file_path, verbose=False)
+    >>> interface = BlackrockSortingInterface(file_path=file_path, sampling_frequency=30000.0, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
-    >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}" # This should be something like: "./saved_file.nwb"

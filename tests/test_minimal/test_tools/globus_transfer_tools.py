@@ -1,3 +1,4 @@
+import importlib
 import os
 import unittest
 from pathlib import Path
@@ -9,20 +10,13 @@ from hdmf.testing import TestCase
 
 from neuroconv.tools import deploy_process
 from neuroconv.tools.data_transfers import (
-    estimate_s3_conversion_cost,
-    estimate_total_conversion_runtime,
     get_globus_dataset_content_sizes,
     transfer_globus_content,
 )
 
-try:
-    import globus_cli
+HAVE_GLOBUS = importlib.util.find_spec(name="globus_cli") is None
+LOGGED_INTO_GLOBUS = os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read()
 
-    HAVE_GLOBUS, LOGGED_INTO_GLOBUS = True, True
-    if not os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read():
-        LOGGED_INTO_GLOBUS = False
-except ModuleNotFoundError:
-    HAVE_GLOBUS, LOGGED_INTO_GLOBUS = False, False
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
 
@@ -54,85 +48,6 @@ def test_get_globus_dataset_content_sizes():
         "YutaMouse41-150821.temp.clu.7": 214835,
         "YutaMouse41-150821.temp.clu.8": 174434,
     }
-
-
-def test_estimate_s3_conversion_cost_standard():
-    test_sizes = [
-        1,
-        100,
-        1e3,  # 1 GB
-        1e5,  # 100 GB
-        1e6,  # 1 TB
-        1e7,  # 10 TB
-        1e8,  # 100 TB
-    ]
-    results = [estimate_s3_conversion_cost(total_mb=total_mb) for total_mb in test_sizes]
-    assert results == [
-        2.9730398740210563e-15,  # 1 MB
-        2.973039874021056e-11,  # 100 MB
-        2.9730398740210564e-09,  # 1 GB
-        2.9730398740210563e-05,  # 100 GB
-        0.002973039874021056,  # 1 TB
-        0.2973039874021056,  # 10 TB
-        29.73039874021056,  # 100 TB
-    ]
-
-
-@pytest.mark.skipif(
-    not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
-    reason="You must have globus installed and be logged in to run this test!",
-)
-def test_estimate_s3_conversion_cost_from_globus_single_session():
-    content_sizes = get_globus_dataset_content_sizes(
-        globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
-        path="/SenzaiY/YutaMouse41/YutaMouse41-150821/originalClu/",
-    )
-    assert estimate_s3_conversion_cost(total_mb=sum(content_sizes.values()) / 1e6) == 1.756555806400279e-13
-
-
-@pytest.mark.skipif(
-    not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
-    reason="You must have globus installed and be logged in to run this test!",
-)
-def test_estimate_s3_conversion_cost_from_globus_multiple_sessions():
-    all_content_sizes = {
-        session_name: get_globus_dataset_content_sizes(
-            globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
-            path=f"/SenzaiY/YutaMouse41/{session_name}",
-        )
-        for session_name in ["YutaMouse41-150821", "YutaMouse41-150829"]
-    }
-    assert (
-        sum(
-            [
-                estimate_s3_conversion_cost(total_mb=sum(content_sizes.values()) / 1e6)
-                for content_sizes in all_content_sizes.values()
-            ]
-        )
-        == 1.3393785277236152e-07
-    )
-
-
-def test_estimate_total_conversion_runtime():
-    test_sizes = [
-        1,
-        100,
-        1e3,  # 1 GB
-        1e5,  # 100 GB
-        1e6,  # 1 TB
-        1e7,  # 10 TB
-        1e8,  # 100 TB
-    ]
-    results = [estimate_total_conversion_runtime(total_mb=total_mb) for total_mb in test_sizes]
-    assert results == [
-        0.12352941176470589,
-        12.352941176470589,
-        123.52941176470588,
-        12352.94117647059,
-        123529.41176470589,
-        1235294.1176470588,
-        12352941.176470589,
-    ]
 
 
 @pytest.mark.skipif(

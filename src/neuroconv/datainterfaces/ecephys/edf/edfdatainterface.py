@@ -1,6 +1,9 @@
+from typing import Optional
+
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils.types import FilePathType
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
@@ -11,14 +14,33 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     Not supported for Python 3.8 and 3.9 on M1 macs.
     """
 
-    help = "Interface for European Data Format (EDF) recording data."
     display_name = "EDF Recording"
+    keywords = BaseRecordingExtractorInterface.keywords + ("European Data Format",)
+    associated_suffixes = (".edf",)
+    info = "Interface for European Data Format (EDF) recording data."
 
-    keywords = BaseRecordingExtractorInterface.keywords + [
-        "European Data Format",
-    ]
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
+        return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("channels_to_skip")
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["use_names_as_ids"] = True
+
+        return extractor_kwargs
+
+    def __init__(
+        self,
+        file_path: FilePath,
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        channels_to_skip: Optional[list] = None,
+    ):
         """
         Load and prepare data for EDF.
         Currently, only continuous EDF+ files (EDF+C) and original EDF files (EDF) are supported
@@ -28,17 +50,26 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the edf file
-        verbose : bool, default: True
+        verbose : bool, default: Falseeeeee
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
+            Key for the ElectricalSeries metadata
+        channels_to_skip : list, default: None
+            Channels to skip when adding the data to the nwbfile. These parameter can be used to skip non-neural
+            channels that are present in the EDF file.
+
         """
         get_package(
             package_name="pyedflib",
-            excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.8", "3.9"])),
+            excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9"])),
         )
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, channels_to_skip=channels_to_skip)
         self.edf_header = self.recording_extractor.neo_reader.edf_header
+
+        # We remove the channels that are not neural
+        if channels_to_skip:
+            self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channels_to_skip)
 
     def extract_nwb_file_metadata(self) -> dict:
         nwbfile_metadata = dict(

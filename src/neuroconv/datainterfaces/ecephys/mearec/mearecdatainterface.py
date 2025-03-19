@@ -1,8 +1,9 @@
 import json
 
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import NWBMetaDataEncoder, get_schema_from_hdmf_class
-from ....utils.types import FilePathType
+from ....utils.json_schema import _NWBMetaDataEncoder
 
 
 class MEArecRecordingInterface(BaseRecordingExtractorInterface):
@@ -12,10 +13,17 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.MEArecRecordingExtractor`.
     """
 
-    help = "Interface for MEArec recording data."
     display_name = "MEArec Recording"
+    associated_suffixes = (".h5",)
+    info = "Interface for MEArec recording data."
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the MEArec .h5 file."
+        return source_schema
+
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MEArec.
 
@@ -23,7 +31,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : str or Path
             Path to the MEArec .h5 file.
-        verbose : bool, default: True
+        verbose : bool, default: Falsee
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
         """
@@ -53,7 +61,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         for unneeded_key in ["fs", "dtype"]:
             recording_metadata.pop(unneeded_key)
         metadata["Ecephys"].update(
-            {self.es_key: dict(name=self.es_key, description=json.dumps(recording_metadata, cls=NWBMetaDataEncoder))}
+            {self.es_key: dict(name=self.es_key, description=json.dumps(recording_metadata, cls=_NWBMetaDataEncoder))}
         )
 
         return metadata

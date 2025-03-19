@@ -1,13 +1,28 @@
 import json
 from datetime import datetime, timedelta
-from typing import List
+from pathlib import Path
+from typing import Optional
 from warnings import warn
+
+from pydantic import FilePath, validate_call
 
 from ..baseicephysinterface import BaseIcephysInterface
 
 
 def get_start_datetime(neo_reader):
-    """Get start datetime for Abf file."""
+    """
+    Get start datetime for Abf file.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.AxonIO
+        The Neo reader object for the ABF file.
+
+    Returns
+    -------
+    datetime
+        The start date and time of the recording.
+    """
     if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
         startDate = str(neo_reader._axon_info["uFileStartDate"])
         startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
@@ -25,8 +40,10 @@ def get_start_datetime(neo_reader):
 class AbfInterface(BaseIcephysInterface):
     """Interface for ABF intracellular electrophysiology data."""
 
-    help = "Interface for ABF intracellular electrophysiology data."
     display_name = "ABF Icephys"
+    associated_suffixes = (".abf",)
+    info = "Interface for ABF intracellular electrophysiology data."
+
     ExtractorName = "AxonIO"
 
     @classmethod
@@ -46,17 +63,23 @@ class AbfInterface(BaseIcephysInterface):
         )
         return source_schema
 
-    def __init__(self, file_paths: list, icephys_metadata: dict = None, icephys_metadata_file_path: str = None):
+    @validate_call
+    def __init__(
+        self,
+        file_paths: list[FilePath],
+        icephys_metadata: Optional[dict] = None,
+        icephys_metadata_file_path: Optional[FilePath] = None,
+    ):
         """
         ABF IcephysInterface based on Neo AxonIO.
 
         Parameters
         ----------
-        file_paths : list
+        file_paths : list of FilePaths
             List of files to be converted to the same NWB file.
         icephys_metadata : dict, optional
             Dictionary containing the Icephys-specific metadata.
-        icephys_metadata_file_path : str, optional
+        icephys_metadata_file_path : FilePath, optional
             JSON file containing the Icephys-specific metadata.
         """
         super().__init__(file_paths=file_paths)
@@ -106,10 +129,9 @@ class AbfInterface(BaseIcephysInterface):
         iii = 0
         for ir, reader in enumerate(self.readers_list):
             # Get extra info from metafile, if present
-            abf_file_name = reader.filename.split("/")[-1]
-            item = [s for s in icephys_sessions if s.get("abf_file_name", "") == abf_file_name]
+            abf_file_name = Path(reader.filename).name
+            item = [s for s in icephys_sessions if Path(s.get("abf_file_name", "")).name == abf_file_name]
             extra_info = item[0] if len(item) > 0 else dict()
-
             abfDateTime = get_start_datetime(neo_reader=reader)
 
             # Calculate session start time relative to first abf file (first session), in seconds
@@ -155,7 +177,7 @@ class AbfInterface(BaseIcephysInterface):
                 reader._t_starts[segment_index] += aligned_starting_time
 
     def set_aligned_segment_starting_times(
-        self, aligned_segment_starting_times: List[List[float]], stub_test: bool = False
+        self, aligned_segment_starting_times: list[list[float]], stub_test: bool = False
     ):
         """
         Align the individual starting time for each video in this interface relative to the common session start time.
@@ -168,6 +190,7 @@ class AbfInterface(BaseIcephysInterface):
             The relative starting times of each video.
             Outer list is over file paths (readers).
             Inner list is over segments of each recording.
+        stub_test : bool, default=False
         """
         number_of_files_from_starting_times = len(aligned_segment_starting_times)
         assert number_of_files_from_starting_times == len(self.readers_list), (

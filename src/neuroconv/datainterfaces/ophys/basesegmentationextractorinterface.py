@@ -14,13 +14,37 @@ from ...utils import fill_defaults, get_base_schema, get_schema_from_hdmf_class
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     """Parent class for all SegmentationExtractorInterfaces."""
 
+    keywords = ("segmentation", "roi", "cells")
+
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
+        self.verbose = verbose
         self.segmentation_extractor = self.get_extractor()(**source_data)
 
     def get_metadata_schema(self) -> dict:
+        """
+        Generate the metadata schema for Ophys data, updating required fields and properties.
+
+        This method builds upon the base schema and customizes it for Ophys-specific metadata, including required
+        components such as devices, fluorescence data, imaging planes, and two-photon series. It also applies
+        temporary schema adjustments to handle certain use cases until a centralized metadata schema definition
+        is available.
+
+        Returns
+        -------
+        dict
+            A dictionary representing the updated Ophys metadata schema.
+
+        Notes
+        -----
+        - Ensures that `Device` and `ImageSegmentation` are marked as required.
+        - Updates various properties, including ensuring arrays for `ImagingPlane` and `TwoPhotonSeries`.
+        - Adjusts the schema for `Fluorescence`, including required fields and pattern properties.
+        - Adds schema definitions for `DfOverF`, segmentation images, and summary images.
+        - Applies temporary fixes, such as setting additional properties for `ImageSegmentation` to True.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
         metadata_schema["properties"]["Ophys"] = get_base_schema()
@@ -111,12 +135,12 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         stub_frames: int = 100,
+        include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
     ):
         """
 
@@ -128,6 +152,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             The metadata for the interface
         stub_test : bool, default: False
         stub_frames : int, default: 100
+        include_background_segmentation : bool, default: False
+            Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
+            neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
         include_roi_centroids : bool, default: True
             Whether to include the ROI centroids on the PlaneSegmentation table.
             If there are a very large number of ROIs (such as in whole-brain recordings),
@@ -136,29 +163,28 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Whether to include if the detected ROI was 'accepted' or 'rejected'.
             If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
-        mask_type : {'image', 'pixel', 'voxel'}, optional
-            There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-            Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-                by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-            Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-                of pixels in each ROI.
-            Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-                of voxels in each ROI.
-            Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
+        mask_type : str, default: 'image'
+            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+              by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+              of pixels in each ROI.
+            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+              of voxels in each ROI.
+
+            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
             If None, the mask information is not written to the NWB file.
-            Defaults to 'image'.
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
-        compression_options : dict, optional
-            The options to use when compressing the image masks of the segmentation extractor.
 
         Returns
         -------
 
         """
-        from ...tools.roiextractors import add_segmentation
+        from ...tools.roiextractors import add_segmentation_to_nwbfile
 
         if stub_test:
             stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
@@ -166,14 +192,16 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             segmentation_extractor = self.segmentation_extractor
 
-        add_segmentation(
+        metadata = metadata or self.get_metadata()
+
+        add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
+            include_background_segmentation=include_background_segmentation,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
-            compression_options=compression_options,
         )

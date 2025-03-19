@@ -4,7 +4,31 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from ....utils import FilePathType
+from pydantic import FilePath
+
+
+def add_recording_extractor_properties(recording_extractor) -> None:
+    """Utility functions for setting some properties on the recording extractor"""
+    probe = recording_extractor.get_probe()
+    channel_ids = recording_extractor.get_channel_ids()
+
+    # Should follow pattern 'Imec0', 'Imec1', etc.
+    probe_name = recording_extractor.stream_id[:5].capitalize()
+
+    if probe.get_shank_count() > 1:
+        shank_ids = probe.shank_ids
+        recording_extractor.set_property(key="shank_ids", values=shank_ids)
+        group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in shank_ids]
+    else:
+        group_name = [f"Neuropixels{probe_name}"] * len(channel_ids)
+
+    recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
+
+    contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
+    recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+
+    contact_ids = probe.contact_ids  # s{shank_number}e{electrode_number} or e{electrode_number}
+    recording_extractor.set_property(key="contact_ids", ids=channel_ids, values=contact_ids)
 
 
 def get_session_start_time(recording_metadata: dict) -> datetime:
@@ -31,7 +55,7 @@ def get_session_start_time(recording_metadata: dict) -> datetime:
     return session_start_time
 
 
-def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
+def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
     """
     Returns the stream_id for a spikelgx file.
 
@@ -47,7 +71,7 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         The file_path of spikelgx file.
 
     Returns
@@ -70,12 +94,17 @@ def get_device_metadata(meta) -> dict:
     """Returns a device with description including the metadata as described here
     # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
 
+    Parameters
+    ----------
+    meta : dict
+        The metadata dictionary containing SpikeGLX probe information.
+
     Returns
     -------
     dict
         a dict containing the metadata necessary for creating the device
     """
-
+    # TODO, get probe metadata from spikeinterface
     metadata_dict = dict()
     if "imDatPrb_type" in meta:
         probe_type_to_probe_description = {
@@ -85,7 +114,7 @@ def get_device_metadata(meta) -> dict:
             "1030": "NP1.0 NHP",
         }
         probe_type = str(meta["imDatPrb_type"])
-        probe_type_description = probe_type_to_probe_description[probe_type]
+        probe_type_description = probe_type_to_probe_description.get(probe_type, "Unknown SpikeGLX probe type.")
         metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
 
     if "imDatFx_pn" in meta:
@@ -94,9 +123,9 @@ def get_device_metadata(meta) -> dict:
     if "imDatBsc_pn" in meta:
         metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
 
-    description_string = "no description"
+    description_string = "A Neuropixel probe of unknown subtype."
     if metadata_dict:
         description_string = json.dumps(metadata_dict)
-    device_metadata = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
+    device_metadata = dict(name="NeuropixelImec", description=description_string, manufacturer="Imec")
 
     return device_metadata

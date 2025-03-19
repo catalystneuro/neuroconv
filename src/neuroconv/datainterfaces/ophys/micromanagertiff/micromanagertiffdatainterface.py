@@ -1,25 +1,34 @@
 from dateutil.parser import parse
+from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FolderPathType
 
 
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for MicroManagerTiffImagingExtractor."""
 
     display_name = "Micro-Manager TIFF Imaging"
-    help = "Interface for Micro-Manager TIFF imaging data."
+    associated_suffixes = (".ome", ".tif", ".json")
+    info = "Interface for Micro-Manager TIFF imaging data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the Micro-Manager TIFF imaging interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary containing input parameters and descriptions
+            for initializing the Micro-Manager TIFF interface.
+        """
         source_schema = super().get_source_schema()
 
-        source_schema["properties"]["folder_path"][
-            "description"
-        ] = "The path that points to the folder containing the OME-TIF image files."
+        source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    @validate_call
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Data Interface for MicroManagerTiffImagingExtractor.
 
@@ -28,7 +37,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         folder_path : FolderPathType
             The folder path that contains the OME-TIF image files (.ome.tif files) and
            the 'DisplaySettings' JSON file.
-        verbose : bool, default: True
+        verbose : bool, default: False
         """
         super().__init__(folder_path=folder_path)
         self.verbose = verbose
@@ -37,6 +46,15 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Micro-Manager TIFF imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including session start time, imaging plane details,
+            and two-photon series configuration.
+        """
         metadata = super().get_metadata()
 
         micromanager_metadata = self.imaging_extractor.micromanager_metadata

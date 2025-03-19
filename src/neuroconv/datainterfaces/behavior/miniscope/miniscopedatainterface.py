@@ -1,27 +1,41 @@
 from pathlib import Path
 
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from .... import BaseDataInterface
 from ....tools import get_package
-from ....utils import DeepDict, FolderPathType
+from ....utils import DeepDict
 
 
 class MiniscopeBehaviorInterface(BaseDataInterface):
     """Data Interface for Miniscope behavior data."""
 
-    help = "Interface for Miniscope behavior data."
     display_name = "Miniscope Behavior"
+    keywords = ("video",)
+    associated_suffixes = (".avi",)
+    info = "Interface for Miniscope behavior video data."
 
-    def __init__(self, folder_path: FolderPathType):
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "The main Miniscope folder. The movie files are expected to be in sub folders within the main folder."
+        return source_schema
+
+    @validate_call
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Initialize reading recordings from the Miniscope behavioral camera.
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The path that points to the main Miniscope folder.
             The movie files are expected to be in sub folders within the main folder.
+        verbose : bool, optional
+            If True, enables verbose mode for detailed logging, by default False.
         """
         from ndx_miniscope.utils import (
             get_recording_start_times,
@@ -32,7 +46,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
 
         natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
 
-        super().__init__(folder_path=folder_path)
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
         folder_path = Path(self.source_data["folder_path"])
         self._behav_avi_file_paths = natsort.natsorted(list(folder_path.glob("*/BehavCam*/*.avi")))
@@ -44,9 +58,9 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         miniscope_config_files = natsort.natsorted(list(folder_path.glob(f"*/BehavCam*/{configuration_file_name}")))
         assert (
             miniscope_config_files
-        ), f"The configuration files ({configuration_file_name} files) are missing from '{self.folder_path}'."
+        ), f"The configuration files ({configuration_file_name} files) are missing from '{folder_path}'."
 
-        behavcam_subfolders = list(folder_path.glob(f"*/BehavCam*/"))
+        behavcam_subfolders = list(folder_path.glob("*/BehavCam*/"))
         self._miniscope_config = read_miniscope_config(folder_path=str(behavcam_subfolders[0]))
 
         self._recording_start_times = get_recording_start_times(folder_path=str(folder_path))

@@ -1,0 +1,37 @@
+name: Build and Upload Docker Image of latest with YAML variable to GHCR
+
+on:
+  workflow_run:
+    workflows: [Build and Upload Docker Image of Latest Release to GHCR]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:  # Cancel previous workflows on the same pull request
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-image:
+    name: Build and Upload Docker Image of latest with YAML variable to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
+          password: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
+      - name: Build and push YAML variable image based on latest
+        uses: docker/build-push-action@v5
+        with:
+          push: true  # Push is a shorthand for --output=type=registry
+          tags: ghcr.io/catalystneuro/neuroconv_yaml_variable:latest
+          context: .
+          file: dockerfiles/neuroconv_latest_yaml_variable
+          provenance: false

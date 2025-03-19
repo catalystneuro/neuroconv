@@ -1,5 +1,5 @@
-import sys
 import inspect
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -29,7 +29,7 @@ html_static_path = ["_static"]
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'favicon.ico'
+html_favicon = "_static/favicon.ico"
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
 # html_css_files = [
@@ -53,14 +53,19 @@ html_theme_options = {
             "icon": "fa-brands fa-github",
             "type": "fontawesome",
         },
-    ]
+    ],
 }
 
 linkcheck_anchors = False
+linkcheck_ignore = [
+    "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
+    r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
+]
 
 # --------------------------------------------------
 # Extension configuration
 # --------------------------------------------------
+
 
 # Napoleon
 napoleon_google_docstring = False
@@ -68,20 +73,23 @@ napoleon_numpy_docstring = True
 napoleon_use_param = False
 napoleon_use_ivar = True
 napoleon_include_init_with_doc = False
-napoleon_include_private_with_doc = True
+napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = True
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
 autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
 autodata_content = "both"
+
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
-    "private-members": True,
+    "private-members": False,
     "show-inheritance": False,
     "toctree": True,
+    'undoc-members': True,
 }
+
 add_module_names = False
 
 
@@ -104,11 +112,11 @@ intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
     "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
+    "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
 }
 
 # To shorten external links
 extlinks = {
-    "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/%s", ""),
     "format-request-form": ("https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement"
                             "%2Cdata+interfaces&template=format_request.yml&title=%5BNew+Format%5D%3A+", "")
 }

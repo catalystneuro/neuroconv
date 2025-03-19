@@ -52,12 +52,12 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         ),
         param(
             buffer_shape=(0, 10, 10),
-            expected_error_msg=f"Some dimensions of buffer_shape ((0, 10, 10)) are less than zero!",
+            expected_error_msg="Some dimensions of buffer_shape ((0, 10, 10)) are less than zero!",
             case_name="buffer_shape_less_than_zero",
         ),
         param(
             chunk_shape=(0, 10, 10),
-            expected_error_msg=f"Some dimensions of chunk_shape ((0, 10, 10)) are less than zero!",
+            expected_error_msg="Some dimensions of chunk_shape ((0, 10, 10)) are less than zero!",
             case_name="chunk_shape_less_than_zero",
         ),
         param(

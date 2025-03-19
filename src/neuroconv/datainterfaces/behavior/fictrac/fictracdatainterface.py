@@ -5,28 +5,28 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-from hdmf.backends.hdf5.h5_utils import H5DataIO
+from pydantic import FilePath, validate_call
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
-from ....utils import FilePathType, calculate_regular_series_rate
+from ....utils import calculate_regular_series_rate
 
 
 class FicTracDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for FicTrac datasets."""
 
     display_name = "FicTrac"
-    help = "Interface for FicTrac .dat files."
-
-    keywords = [
+    keywords = (
         "fictrack",
         "visual tracking",
         "fictive path",
         "spherical treadmill",
         "visual fixation",
-    ]
+    )
+    associated_suffixes = (".dat",)
+    info = "Interface for FicTrac .dat files."
 
     timestamps_column = 21
     # Columns in the .dat binary file with the data. The full description of the header can be found in:
@@ -147,26 +147,33 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         },
     }
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .dat file (the output of fictrac)"
+        return source_schema
+
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         radius: Optional[float] = None,
-        configuration_file_path: Optional[FilePathType] = None,
-        verbose: bool = True,
+        configuration_file_path: Optional[FilePath] = None,
+        verbose: bool = False,
     ):
         """
         Interface for writing FicTrac files to nwb.
 
         Parameters
         ----------
-        file_path : a string or a path
+        file_path : FilePath
             Path to the .dat file (the output of fictrac)
         radius : float, optional
             The radius of the ball in meters. If provided the radius is stored as a conversion factor
             and the units are set to meters. If not provided the units are set to radians.
-        configuration_file_path : a string or a path, optional
+        configuration_file_path : FilePath, optional
             Path to the .txt file with the configuration metadata. Usually called config.txt
-        verbose : bool, default: True
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
         self.file_path = Path(file_path)
@@ -202,18 +209,15 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        compression: Optional[str] = "gzip",
-        compression_opts: Optional[int] = None,
     ):
         """
         Parameters
         ----------
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        metadata: dict, optional
+            metadata info for constructing the nwb file.
         """
-
         import pandas as pd
 
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
@@ -247,8 +251,6 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
-            if compression:
-                data = H5DataIO(data, compression=compression, compression_opts=compression_opts)
             if self.radius is not None:
                 spatial_series_kwargs["conversion"] = self.radius
                 units = "meters"
@@ -269,7 +271,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         # Add the container to the processing module
         processing_module = get_module(nwbfile=nwbfile, name="behavior")
-        processing_module.add_data_interface(position_container)
+        processing_module.add(position_container)
 
     def get_original_timestamps(self):
         """
@@ -277,19 +279,18 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         This function addresses two specific issues with timestamps in FicTrac data:
 
-        1. Resetting Initial Timestamp:
-        In some instances, FicTrac replaces the initial timestamp (0) with the system time. This commonly occurs
-        when the data source is a video file, and OpenCV reports the first timestamp as 0. Since OpenCV also
-        uses 0 as a marker for invalid values, FicTrac defaults to system time in that case. This leads to
-        inconsistent timestamps like [system_time, t1, t2, t3, ...]. The function corrects this by resetting the
-        first timestamp back to 0 when a negative difference is detected between the first two timestamps.
-
-        2. Re-centering Unix Epoch Time:
-        If timestamps are in Unix epoch time format (time since 1970-01-01 00:00:00 UTC), this function re-centers
-        the time series by subtracting the first timestamp. This adjustment ensures that timestamps represent the
-        elapsed time since the start of the experiment rather than the Unix epoch. This case appears when one of the
-        sources of data in FicTrac (such as PGR or Basler) lacks a timestamp extraction method. FicTrac
-        then falls back to using the system time, which is in Unix epoch format.
+        1. Resetting Initial Timestamp
+           In some instances, FicTrac replaces the initial timestamp (0) with the system time. This commonly occurs
+           when the data source is a video file, and OpenCV reports the first timestamp as 0. Since OpenCV also
+           uses 0 as a marker for invalid values, FicTrac defaults to system time in that case. This leads to
+           inconsistent timestamps like [system_time, t1, t2, t3, ...]. The function corrects this by resetting the
+           first timestamp back to 0 when a negative difference is detected between the first two timestamps.
+        2. Re-centering Unix Epoch Time
+           If timestamps are in Unix epoch time format (time since 1970-01-01 00:00:00 UTC), this function re-centers
+           the time series by subtracting the first timestamp. This adjustment ensures that timestamps represent the
+           elapsed time since the start of the experiment rather than the Unix epoch. This case appears when one of the
+           sources of data in FicTrac (such as PGR or Basler) lacks a timestamp extraction method. FicTrac
+           then falls back to using the system time, which is in Unix epoch format.
 
         Returns
         -------
@@ -345,8 +346,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
 
 def extract_session_start_time(
-    file_path: FilePathType,
-    configuration_file_path: Optional[FilePathType] = None,
+    file_path: FilePath,
+    configuration_file_path: Optional[FilePath] = None,
 ) -> Union[datetime, None]:
     """
     Extract the session start time from a FicTrac data file or its configuration file.
@@ -365,9 +366,9 @@ def extract_session_start_time(
 
     Parameters
     ----------
-    file_path : FilePathType
+    file_path : FilePath
         Path to the FicTrac data file.
-    configuration_file_path : Optional[FilePathType]
+    configuration_file_path : FilePath, optional
         Path to the FicTrac configuration file. If omitted, the function defaults to searching for
         "fictrac_config.txt" in the same directory as the data file.
 
@@ -400,13 +401,13 @@ def extract_session_start_time(
     return None
 
 
-def parse_fictrac_config(file_path: FilePathType) -> dict:
+def parse_fictrac_config(file_path: FilePath) -> dict:
     """
     Parse a FicTrac configuration file and return a dictionary of its parameters.
 
     Parameters
     ----------
-    file_path : str, Path
+    file_path : FilePath
         Path to the configuration file in txt format.
 
     Returns

@@ -2,22 +2,36 @@
 
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Literal, Tuple, Union
+from typing import Any, Literal, Union
 
 import h5py
 import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
-from hdmf.data_utils import GenericDataChunkIterator
-from hdmf.utils import get_data_shape
-from pydantic import BaseModel, Field, root_validator
+from hdmf.build.builders import (
+    BaseBuilder,
+)
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    InstanceOf,
+    PositiveInt,
+    model_validator,
+)
 from pynwb import NWBFile
+from pynwb.ecephys import ElectricalSeries
+from typing_extensions import Self
 
-from ...hdmf import SliceableDataChunkIterator
+from neuroconv.tools.hdmf import get_full_data_shape
+from neuroconv.utils.str_utils import human_readable_size
+
+from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
+from ...hdmf import GenericDataChunkIterator, SliceableDataChunkIterator
 
 
-def _find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
+def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
     """
     Method for determining the location of a neurodata object within an in-memory NWBFile object.
 
@@ -31,12 +45,21 @@ def _find_location_in_memory_nwbfile(current_location: str, neurodata_object: Co
             if isinstance(parent_field_value, dict) and neurodata_object.name in parent_field_value:
                 return parent_field_name + "/" + neurodata_object.name + "/" + current_location
         return neurodata_object.name + "/" + current_location
-    return _find_location_in_memory_nwbfile(
+    return _recursively_find_location_in_memory_nwbfile(
         current_location=neurodata_object.name + "/" + current_location, neurodata_object=parent
     )
 
 
-def _infer_dtype_of_list(list_: List[Union[int, float, list]]) -> np.dtype:
+def _find_location_in_memory_nwbfile(neurodata_object: Container, field_name: str) -> str:
+    """
+    More readable call for the recursive location finder for a field of a neurodata object in an in-memory NWBFile.
+
+    The recursive method forms from the buttom-up using the initial 'current_location' of the field itself.
+    """
+    return _recursively_find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
+
+
+def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
     """
     Attempt to infer the dtype of values in an arbitrarily sized and nested list.
 
@@ -67,102 +90,54 @@ def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
     return data_type
 
 
-class DatasetInfo(BaseModel):
-    """A data model to represent immutable aspects of an object that will become a HDF5 or Zarr dataset on write."""
-
-    # TODO: When using Pydantic v2, replace with
-    # model_config = ConfigDict(allow_mutation=False)
-    class Config:  # noqa: D106
-        allow_mutation = False
-        arbitrary_types_allowed = True
-
-    object_id: str = Field(description="The UUID of the neurodata object containing the dataset.")
-    location: str = Field(  # TODO: in v2, use init_var=False or assign as a property
-        description="The relative location of the this dataset within the in-memory NWBFile."
-    )
-    dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.")
-    dtype: np.dtype = Field(  # TODO: When using Pydantic v2, replace np.dtype with InstanceOf[np.dtype]
-        description="The data type of elements of this dataset."
-    )
-    full_shape: Tuple[int, ...] = Field(description="The maximum shape of the entire dataset.")
-
-    def __hash__(self):
-        """To allow instances of this class to be used as keys in dictionaries."""
-        return hash((type(self),) + tuple(self.__dict__.values()))
-
-    def __str__(self) -> str:
-        """
-        Not overriding __repr__ as this is intended to render only when wrapped in print().
-
-        Reason being two-fold; a standard `repr` is intended to be slightly more machine-readable / a more basic
-        representation of the true object state. But then also because an iterable of these objects, such as a
-        `List[DataSetInfo]`, would print out the nested representations, which only look good when using the basic
-        `repr` (that is, this fancy string print-out does not look good when nested in another container).
-        """
-        source_size_in_gb = math.prod(self.full_shape) * self.dtype.itemsize / 1e9
-
-        string = (
-            f"\n{self.location}"
-            f"\n{'-' * len(self.location)}"
-            f"\n  dtype : {self.dtype}"
-            f"\n  full shape of source array : {self.full_shape}"
-            f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
-        )
-        return string
-
-    def __init__(self, **values):
-        location = values["location"]
-
-        # For more efficient / explicit reference downstream, instead of reparsing from location multiple times
-        dataset_name = location.split("/")[-1]
-        values.update(dataset_name=dataset_name)
-        super().__init__(**values)
-
-    @classmethod
-    def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> "DatasetInfo":
-        location = _find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
-        candidate_dataset = getattr(neurodata_object, field_name)
-
-        full_shape = get_data_shape(data=candidate_dataset)
-        dtype = _infer_dtype(dataset=candidate_dataset)
-
-        return cls(
-            object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
-            location=location,
-            full_shape=full_shape,
-            dtype=dtype,
-        )
-
-
 class DatasetIOConfiguration(BaseModel, ABC):
     """A data model for configuring options about an object that will become a HDF5 or Zarr Dataset in the file."""
 
-    # TODO: When using Pydantic v2, remove
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
-    dataset_info: DatasetInfo = Field(description="The immutable information about this dataset.")
-    chunk_shape: Tuple[int, ...] = Field(  # When using Pydantic v2.0, specify PositiveInt
+    # Immutable fields about the dataset
+    object_id: str = Field(description="The UUID of the neurodata object containing the dataset.", frozen=True)
+    location_in_file: str = Field(
+        description=(
+            "The location of the this dataset within the in-memory NWBFile relative to the top-level root, "
+            "e.g. 'acquisition/ElectricalSeries/data'."
+        ),
+        frozen=True,
+    )
+    dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.", frozen=True)
+    dtype: InstanceOf[np.dtype] = Field(description="The data type of elements of this dataset.", frozen=True)
+    full_shape: tuple[int, ...] = Field(description="The maximum shape of the entire dataset.", frozen=True)
+
+    # User specifiable fields
+    chunk_shape: Union[tuple[PositiveInt, ...], None] = Field(
         description=(
             "The specified shape to use when chunking the dataset. "
             "For optimized streaming speeds, a total size of around 10 MB is recommended."
-        )
+        ),
     )
-    buffer_shape: Tuple[int, ...] = Field(
+    buffer_shape: Union[tuple[int, ...], None] = Field(
         description=(
             "The specified shape to use when iteratively loading data into memory while writing the dataset. "
             "For optimized writing speeds and minimal RAM usage, a total size of around 1 GB is recommended."
-        )
+        ),
     )
-    # TODO: When using Pydantic v2, wrap h5py._hl.filters.FilterRefBase and numcodecs.abc.Codec with InstanceOf
-    compression_method: Union[str, h5py._hl.filters.FilterRefBase, numcodecs.abc.Codec, None] = Field(
-        default="gzip",
+    compression_method: Union[
+        str, InstanceOf[h5py._hl.filters.FilterRefBase], InstanceOf[numcodecs.abc.Codec], None
+    ] = Field(
         description="The specified compression method to apply to this dataset. Set to `None` to disable compression.",
     )
-    compression_options: Union[Dict[str, Any], None] = Field(
+    compression_options: Union[dict[str, Any], None] = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
+
+    @abstractmethod
+    def get_data_io_kwargs(self) -> dict[str, Any]:
+        """
+        Fetch the properly structured dictionary of input arguments.
+
+        Should be passed directly as dynamic keyword arguments (**kwargs) into a H5DataIO or ZarrDataIO.
+        """
+        raise NotImplementedError
 
     def __str__(self) -> str:
         """
@@ -170,26 +145,25 @@ class DatasetIOConfiguration(BaseModel, ABC):
 
         Reason being two-fold; a standard `repr` is intended to be slightly more machine-readable / a more basic
         representation of the true object state. But then also because an iterable of these objects, such as a
-        `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
+        `list[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
-        source_size_in_gb = math.prod(self.dataset_info.full_shape) * self.dataset_info.dtype.itemsize / 1e9
-        maximum_ram_usage_per_iteration_in_gb = math.prod(self.buffer_shape) * self.dataset_info.dtype.itemsize / 1e9
-        disk_space_usage_per_chunk_in_mb = math.prod(self.chunk_shape) * self.dataset_info.dtype.itemsize / 1e6
+        size_in_bytes = math.prod(self.full_shape) * self.dtype.itemsize
+        maximum_ram_usage_per_iteration_in_bytes = math.prod(self.buffer_shape) * self.dtype.itemsize
+        disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
 
         string = (
-            f"\n{self.dataset_info.location}"
-            f"\n{'-' * len(self.dataset_info.location)}"
-            f"\n  dtype : {self.dataset_info.dtype}"
-            f"\n  full shape of source array : {self.dataset_info.full_shape}"
-            f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
-            # TODO: add nicer auto-selection/rendering of units and amount for source data size
+            f"\n{self.location_in_file}"
+            f"\n{'-' * len(self.location_in_file)}"
+            f"\n  dtype : {self.dtype}"
+            f"\n  full shape of source array : {self.full_shape}"
+            f"\n  full size of source array : {human_readable_size(size_in_bytes)}"
             "\n"
             f"\n  buffer shape : {self.buffer_shape}"
-            f"\n  expected RAM usage : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
+            f"\n  expected RAM usage : {human_readable_size(maximum_ram_usage_per_iteration_in_bytes)}"
             "\n"
             f"\n  chunk shape : {self.chunk_shape}"
-            f"\n  disk space usage per chunk : {disk_space_usage_per_chunk_in_mb:0.2f} MB"
+            f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
             "\n"
         )
         if self.compression_method is not None:
@@ -202,42 +176,48 @@ class DatasetIOConfiguration(BaseModel, ABC):
 
         return string
 
-    @root_validator
-    def validate_all_shapes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    @model_validator(mode="before")
+    def validate_all_shapes(cls, values: dict[str, Any]) -> dict[str, Any]:
+        location_in_file = values["location_in_file"]
+        dataset_name = values["dataset_name"]
+
+        assert (
+            dataset_name == location_in_file.split("/")[-1]
+        ), f"The `dataset_name` ({dataset_name}) does not match the end of the `location_in_file` ({location_in_file})!"
+
         chunk_shape = values["chunk_shape"]
         buffer_shape = values["buffer_shape"]
-        full_shape = values["dataset_info"].full_shape
-        location = values["dataset_info"].location  # For more identifiable error messages.
+        full_shape = values["full_shape"]
 
         if len(chunk_shape) != len(buffer_shape):
             raise ValueError(
-                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location}'!"
+                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location_in_file}'!"
             )
         if len(buffer_shape) != len(full_shape):
             raise ValueError(
-                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location}'!"
+                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"
             )
 
         if any(chunk_axis <= 0 for chunk_axis in chunk_shape):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} are less than or equal to zero for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
         if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
             raise ValueError(
                 f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
 
         if any(chunk_axis > buffer_axis for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=} for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
         if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
             raise ValueError(
                 f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
 
         if any(
@@ -247,40 +227,118 @@ class DatasetIOConfiguration(BaseModel, ABC):
         ):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
-                f"location '{location}'!"
+                f"location '{location_in_file}'!"
             )
 
         return values
 
-    @abstractmethod
-    def get_data_io_kwargs(self) -> Dict[str, Any]:
-        """
-        Fetch the properly structured dictionary of input arguments.
-
-        Should be passed directly as dynamic keyword arguments (**kwargs) into a H5DataIO or ZarrDataIO.
-        """
-        raise NotImplementedError
+    # Pydantic models have several API calls for retrieving the schema - override all of them to work
+    @classmethod
+    def schema(cls, **kwargs) -> dict[str, Any]:
+        return cls.model_json_schema(**kwargs)
 
     @classmethod
-    def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> "DatasetIOConfiguration":
-        candidate_dataset = getattr(neurodata_object, field_name)
+    def schema_json(cls, **kwargs) -> dict[str, Any]:
+        return cls.model_json_schema(**kwargs)
 
-        dataset_info = DatasetInfo.from_neurodata_object(neurodata_object=neurodata_object, field_name=field_name)
+    @classmethod
+    def model_json_schema(cls, **kwargs) -> dict[str, Any]:
+        assert "mode" not in kwargs, "The 'mode' of this method is fixed to be 'validation' and cannot be changed."
+        assert "schema_generator" not in kwargs, "The 'schema_generator' of this method cannot be changed."
+        return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
-        dtype = dataset_info.dtype
-        full_shape = dataset_info.full_shape
+    @classmethod
+    def from_neurodata_object(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+        builder: Union[BaseBuilder, None] = None,
+    ) -> Self:
+        """
+        Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
+
+        Parameters
+        ----------
+        neurodata_object : hdmf.Container
+            The neurodata object containing the field that will become a dataset when written to disk.
+        dataset_name : "data" or "timestamps"
+            The name of the field that will become a dataset when written to disk.
+            Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
+            and `timestamps`, each of which can be configured separately.
+        builder : hdmf.build.builders.BaseBuilder, optional
+            The builder object that would be used to construct the NWBFile object. If None, the dataset is assumed to
+            NOT have a compound dtype.
+        """
+        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
+        candidate_dataset = getattr(neurodata_object, dataset_name)
+        full_shape = get_full_data_shape(dataset=candidate_dataset, location_in_file=location_in_file, builder=builder)
+        dtype = _infer_dtype(dataset=candidate_dataset)
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
-        elif dtype != "unknown":
+            compression_method = "gzip"
+
+        elif isinstance(neurodata_object, ElectricalSeries) and dataset_name == "data":
+            from ....tools.spikeinterface import get_electrical_series_chunk_shape
+
+            number_of_frames = candidate_dataset.shape[0]
+            number_of_channels = candidate_dataset.shape[1]
+            dtype = candidate_dataset.dtype
+
+            chunk_shape = get_electrical_series_chunk_shape(
+                number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
+            )
+
+            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                buffer_gb=1.0,
+                chunk_shape=chunk_shape,
+                maxshape=full_shape,
+                dtype=dtype,
+            )
+            compression_method = "gzip"
+        elif dtype != np.dtype("object"):
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
                 chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
             )
             buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
                 buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
             )
-        else:
-            pass
+            compression_method = "gzip"
+        elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
+            # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
+            all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset[:].flat])
+            if all_elements_are_strings:
+                dtype = np.array([element for element in candidate_dataset[:].flat]).dtype
+                chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
+                    chunk_mb=10.0, maxshape=full_shape, dtype=dtype
+                )
+                buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+                    buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=dtype
+                )
+                compression_method = "gzip"
+            else:
+                raise NotImplementedError(
+                    f"Unable to create a `DatasetIOConfiguration` for the dataset at '{location_in_file}'"
+                    f"for neurodata object '{neurodata_object}' of type '{type(neurodata_object)}'!"
+                )
+                # TODO: Add support for compound objects with non-string elements
+                # chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
+                # buffer_shape = full_shape
+                # compression_method = None
+                # warnings.warn(
+                #     f"Default chunking and compression options for compound objects are not optimized. "
+                #     f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
+                # )
 
-        return cls(dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape)
+        return cls(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            location_in_file=location_in_file,
+            dataset_name=dataset_name,
+            full_shape=full_shape,
+            dtype=dtype,
+            chunk_shape=chunk_shape,
+            buffer_shape=buffer_shape,
+            compression_method=compression_method,
+        )

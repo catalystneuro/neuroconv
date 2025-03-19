@@ -17,13 +17,17 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     ExtractorModuleName: Optional[str] = None
     ExtractorName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor").
     Extractor = None  # Class loads dynamically on first call to .get_extractor()
-    help: Optional[str] = None  # Help string for the extractor. If defined, this is used for the help message of GUIDE.
-    display_name: Optional[str] = (
-        None  # Display name for the extractor. If defined, this is used for the display name of GUIDE.
-    )
 
     @classmethod
     def get_extractor(cls):
+        """
+        Get the extractor class for this interface.
+
+        Returns
+        -------
+        type
+            The extractor class that will be used to read the data.
+        """
         if cls.Extractor is not None:
             return cls.Extractor
         extractor_module = get_package(package_name=cls.ExtractorModuleName)
@@ -33,3 +37,13 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
         )
         cls.Extractor = extractor
         return extractor
+
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        self.extractor = self.get_extractor()
+        self.extractor_kwargs = self._source_data_to_extractor_kwargs(source_data)
+        self._extractor_instance = self.extractor(**self.extractor_kwargs)
+
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """This functions maps the source_data to kwargs required to initialize the Extractor."""
+        return source_data

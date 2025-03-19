@@ -3,8 +3,9 @@ from pathlib import Path
 from platform import system
 from typing import Optional
 
+from pydantic import DirectoryPath, FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.types import FilePathType, FolderPathType
 
 
 class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no cover
@@ -14,14 +15,15 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
     Using the :py:class:`~spikeinterface.extractors.MaxwellRecordingExtractor`.
     """
 
-    help = "Interface for MaxOne recording data."
     display_name = "MaxOne Recording"
+    associated_suffixes = (".raw", ".h5")
+    info = "Interface for MaxOne recording data."
 
     ExtractorName = "MaxwellRecordingExtractor"
 
     @staticmethod
     def auto_install_maxwell_hdf5_compression_plugin(
-        hdf5_plugin_path: Optional[FolderPathType] = None, download_plugin: bool = True
+        hdf5_plugin_path: Optional[DirectoryPath] = None, download_plugin: bool = True
     ) -> None:
         """
         If you do not yet have the Maxwell compression plugin installed, this function will automatically install it.
@@ -42,10 +44,10 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
 
     def __init__(
         self,
-        file_path: FilePathType,
-        hdf5_plugin_path: Optional[FolderPathType] = None,
+        file_path: FilePath,
+        hdf5_plugin_path: Optional[DirectoryPath] = None,
         download_plugin: bool = True,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ) -> None:
         """

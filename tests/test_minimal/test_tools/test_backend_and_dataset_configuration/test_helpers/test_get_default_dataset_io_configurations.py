@@ -39,10 +39,10 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
 
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.object_id == time_series.object_id
-    assert dataset_configuration.dataset_info.location == "acquisition/TestTimeSeries/data"
-    assert dataset_configuration.dataset_info.full_shape == array.shape
-    assert dataset_configuration.dataset_info.dtype == array.dtype
+    assert dataset_configuration.object_id == time_series.object_id
+    assert dataset_configuration.location_in_file == "acquisition/TestTimeSeries/data"
+    assert dataset_configuration.full_shape == array.shape
+    assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
     assert dataset_configuration.compression_method == "gzip"
@@ -54,9 +54,32 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Literal["hdf5", "zarr"]):
+    # Test that ElectricalSeries is chunked appropriately even if data is passed as an array
+    # See https://github.com/catalystneuro/neuroconv/issues/1099
+    from pynwb.testing.mock.ecephys import mock_ElectricalSeries
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    data = np.ones((10_000, 128))
+
+    nwbfile = mock_NWBFile()
+
+    es = mock_ElectricalSeries(data=data, name="ElectricalSeries")
+    nwbfile.add_acquisition(es)
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+
+    assert len(dataset_configurations) == 1
+
+    electrical_series_configuration = dataset_configurations[0]
+
+    exppected_chunk_for_channels = 64
+    assert electrical_series_configuration.chunk_shape[1] == exppected_chunk_for_channels
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
-    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0)
+    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external")
     nwbfile.add_acquisition(image_series)
 
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
@@ -81,10 +104,10 @@ def test_configuration_on_dynamic_table(iterator: callable, backend: Literal["hd
 
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.object_id == column.object_id
-    assert dataset_configuration.dataset_info.location == "acquisition/TestDynamicTable/TestColumn/data"
-    assert dataset_configuration.dataset_info.full_shape == array.shape
-    assert dataset_configuration.dataset_info.dtype == array.dtype
+    assert dataset_configuration.object_id == column.object_id
+    assert dataset_configuration.location_in_file == "acquisition/TestDynamicTable/TestColumn/data"
+    assert dataset_configuration.full_shape == array.shape
+    assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
     assert dataset_configuration.compression_method == "gzip"
@@ -117,11 +140,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.location == "units/spike_times/data"
+        if dataset_configuration.location_in_file == "units/spike_times/data"
     )
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.full_shape == (5,)
-    assert dataset_configuration.dataset_info.dtype == np.dtype("float64")
+    assert dataset_configuration.full_shape == (5,)
+    assert dataset_configuration.dtype == np.dtype("float64")
     assert dataset_configuration.chunk_shape == (5,)
     assert dataset_configuration.buffer_shape == (5,)
     assert dataset_configuration.compression_method == "gzip"
@@ -134,11 +157,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.location == "units/spike_times_index/data"
+        if dataset_configuration.location_in_file == "units/spike_times_index/data"
     )
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.full_shape == (2,)
-    assert dataset_configuration.dataset_info.dtype == np.dtype("uint8")
+    assert dataset_configuration.full_shape == (2,)
+    assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (2,)
     assert dataset_configuration.buffer_shape == (2,)
     assert dataset_configuration.compression_method == "gzip"
@@ -151,11 +174,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.location == "units/waveforms/data"
+        if dataset_configuration.location_in_file == "units/waveforms/data"
     )
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.full_shape == (12, 3)
-    assert dataset_configuration.dataset_info.dtype == np.dtype("int32")
+    assert dataset_configuration.full_shape == (12, 3)
+    assert dataset_configuration.dtype == np.dtype("int32")
     assert dataset_configuration.chunk_shape == (12, 3)
     assert dataset_configuration.buffer_shape == (12, 3)
     assert dataset_configuration.compression_method == "gzip"
@@ -168,11 +191,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.location == "units/waveforms_index/data"
+        if dataset_configuration.location_in_file == "units/waveforms_index/data"
     )
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.full_shape == (4,)
-    assert dataset_configuration.dataset_info.dtype == np.dtype("uint8")
+    assert dataset_configuration.full_shape == (4,)
+    assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (4,)
     assert dataset_configuration.buffer_shape == (4,)
     assert dataset_configuration.compression_method == "gzip"
@@ -185,11 +208,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.location == "units/waveforms_index_index/data"
+        if dataset_configuration.location_in_file == "units/waveforms_index_index/data"
     )
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.full_shape == (2,)
-    assert dataset_configuration.dataset_info.dtype == np.dtype("uint8")
+    assert dataset_configuration.full_shape == (2,)
+    assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (2,)
     assert dataset_configuration.buffer_shape == (2,)
     assert dataset_configuration.compression_method == "gzip"
@@ -218,12 +241,10 @@ def test_configuration_on_compass_direction(iterator: callable, backend: Literal
 
     dataset_configuration = dataset_configurations[0]
     assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert dataset_configuration.dataset_info.object_id == spatial_series.object_id
-    assert (
-        dataset_configuration.dataset_info.location == "processing/behavior/TestCompassDirection/TestSpatialSeries/data"
-    )
-    assert dataset_configuration.dataset_info.full_shape == array.shape
-    assert dataset_configuration.dataset_info.dtype == array.dtype
+    assert dataset_configuration.object_id == spatial_series.object_id
+    assert dataset_configuration.location_in_file == "processing/behavior/TestCompassDirection/TestSpatialSeries/data"
+    assert dataset_configuration.full_shape == array.shape
+    assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
     assert dataset_configuration.compression_method == "gzip"
@@ -266,13 +287,13 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     data_dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.dataset_name == "data"
+        if dataset_configuration.dataset_name == "data"
     )
     assert isinstance(data_dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert data_dataset_configuration.dataset_info.object_id == labeled_events.object_id
-    assert data_dataset_configuration.dataset_info.location == "processing/behavior/TestLabeledEvents/data"
-    assert data_dataset_configuration.dataset_info.full_shape == data.shape
-    assert data_dataset_configuration.dataset_info.dtype == data.dtype
+    assert data_dataset_configuration.object_id == labeled_events.object_id
+    assert data_dataset_configuration.location_in_file == "processing/behavior/TestLabeledEvents/data"
+    assert data_dataset_configuration.full_shape == data.shape
+    assert data_dataset_configuration.dtype == data.dtype
     assert data_dataset_configuration.chunk_shape == data.shape
     assert data_dataset_configuration.buffer_shape == data.shape
     assert data_dataset_configuration.compression_method == "gzip"
@@ -285,13 +306,13 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     timestamps_dataset_configuration = next(
         dataset_configuration
         for dataset_configuration in dataset_configurations
-        if dataset_configuration.dataset_info.dataset_name == "timestamps"
+        if dataset_configuration.dataset_name == "timestamps"
     )
     assert isinstance(timestamps_dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
-    assert timestamps_dataset_configuration.dataset_info.object_id == labeled_events.object_id
-    assert timestamps_dataset_configuration.dataset_info.location == "processing/behavior/TestLabeledEvents/timestamps"
-    assert timestamps_dataset_configuration.dataset_info.full_shape == timestamps.shape
-    assert timestamps_dataset_configuration.dataset_info.dtype == timestamps.dtype
+    assert timestamps_dataset_configuration.object_id == labeled_events.object_id
+    assert timestamps_dataset_configuration.location_in_file == "processing/behavior/TestLabeledEvents/timestamps"
+    assert timestamps_dataset_configuration.full_shape == timestamps.shape
+    assert timestamps_dataset_configuration.dtype == timestamps.dtype
     assert timestamps_dataset_configuration.chunk_shape == timestamps.shape
     assert timestamps_dataset_configuration.buffer_shape == timestamps.shape
     assert timestamps_dataset_configuration.compression_method == "gzip"

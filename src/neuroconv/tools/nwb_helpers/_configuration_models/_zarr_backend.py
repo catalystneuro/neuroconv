@@ -1,6 +1,6 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import ClassVar, Dict, Literal, Type
+from typing import ClassVar, Literal, Type
 
 import psutil
 from hdmf_zarr import ZarrDataIO
@@ -14,13 +14,10 @@ class ZarrBackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
 
     backend: ClassVar[Literal["zarr"]] = "zarr"
-    # Field( # TODO: in pydantic v2 use property instead of class attribute
-    #     default="zarr", description="The name of the backend used to configure the NWBFile."
-    # )
-    data_io_class: Type[ZarrDataIO] = Field(  # TODO: in pydantic v2 use property instead of class attribute
-        default=ZarrDataIO, description="The DataIO class that is specific to Zarr."
-    )
-    dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = Field(
+    pretty_backend_name: ClassVar[Literal["Zarr"]] = "Zarr"
+    data_io_class: ClassVar[Type[ZarrDataIO]] = ZarrDataIO
+
+    dataset_configurations: dict[str, ZarrDatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations to their ZarrDatasetConfiguration specification that contains all "
             "information for writing the datasets to disk using the Zarr backend."

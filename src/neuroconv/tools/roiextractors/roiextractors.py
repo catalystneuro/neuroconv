@@ -1,15 +1,15 @@
 import math
+import warnings
 from collections import defaultdict
 from copy import deepcopy
 from typing import Literal, Optional
-from warnings import warn
 
 import numpy as np
 import psutil
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 # from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.base import Images
 from pynwb.device import Device
@@ -36,13 +36,13 @@ from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
-    OptionalFilePathType,
     calculate_regular_series_rate,
     dict_deep_update,
 )
+from ...utils.str_utils import human_readable_size
 
 
-def get_default_ophys_metadata() -> DeepDict:
+def _get_default_ophys_metadata() -> DeepDict:
     """Fill default metadata for Device and ImagingPlane."""
     metadata = get_default_nwbfile_metadata()
 
@@ -74,9 +74,9 @@ def get_default_ophys_metadata() -> DeepDict:
     return metadata
 
 
-def get_default_segmentation_metadata() -> DeepDict:
+def _get_default_segmentation_metadata() -> DeepDict:
     """Fill default metadata for segmentation."""
-    metadata = get_default_ophys_metadata()
+    metadata = _get_default_ophys_metadata()
 
     default_fluorescence_roi_response_series = dict(
         name="RoiResponseSeries", description="Array of raw fluorescence traces.", unit="n.a."
@@ -86,6 +86,9 @@ def get_default_segmentation_metadata() -> DeepDict:
         name="Fluorescence",
         PlaneSegmentation=dict(
             raw=default_fluorescence_roi_response_series,
+        ),
+        BackgroundPlaneSegmentation=dict(
+            neuropil=dict(name="neuropil", description="Array of neuropil traces.", unit="n.a."),
         ),
     )
 
@@ -109,7 +112,12 @@ def get_default_segmentation_metadata() -> DeepDict:
                 name="PlaneSegmentation",
                 description="Segmented ROIs",
                 imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
-            )
+            ),
+            dict(
+                name="BackgroundPlaneSegmentation",
+                description="Segmented Background Components",
+                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
+            ),
         ],
     )
 
@@ -143,9 +151,17 @@ def get_nwb_imaging_metadata(
     Parameters
     ----------
     imgextractor : ImagingExtractor
+        The imaging extractor to get metadata from.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to create metadata for.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, and photon series
+        specific to the imaging data.
     """
-    metadata = get_default_ophys_metadata()
+    metadata = _get_default_ophys_metadata()
 
     channel_name_list = imgextractor.get_channel_names() or (
         ["OpticalChannel"]
@@ -180,15 +196,15 @@ def get_nwb_imaging_metadata(
     return metadata
 
 
-def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: Optional[dict] = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
     The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
     This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
     """
-    metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    metadata_copy = {} if metadata is None else deepcopy(metadata)
+    default_metadata = _get_default_ophys_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
     device_metadata = metadata_copy["Ophys"]["Device"]
 
@@ -231,11 +247,10 @@ def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata
     return imaging_plane
 
 
-def add_imaging_plane(
+def add_imaging_plane_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
     imaging_plane_name: Optional[str] = None,
-    imaging_plane_index: Optional[int] = None,
 ) -> NWBFile:
     """
     Adds the imaging plane specified by the metadata to the nwb file.
@@ -249,24 +264,18 @@ def add_imaging_plane(
         The metadata in the nwb conversion tools format.
     imaging_plane_name: str
         The name of the imaging plane to be added.
+
     Returns
     -------
     NWBFile
         The nwbfile passed as an input with the imaging plane added.
     """
-    if imaging_plane_index is not None:
-        warn(
-            message="Keyword argument 'imaging_plane_index' is deprecated and will be removed on or after Dec 1st, 2023. "
-            "Use 'imaging_plane_name' to specify which imaging plane to add by its name.",
-            category=DeprecationWarning,
-        )
-        imaging_plane_name = metadata["Ophys"]["ImagingPlane"][imaging_plane_index]["name"]
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
-    add_devices(nwbfile=nwbfile, metadata=metadata_copy)
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
     default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
     imaging_plane_name = imaging_plane_name or default_imaging_plane_name
@@ -294,15 +303,17 @@ def add_imaging_plane(
     return nwbfile
 
 
-def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     Adds the image segmentation specified by the metadata to the nwb file.
+
     Parameters
     ----------
     nwbfile : NWBFile
         The nwbfile to add the image segmentation to.
     metadata: dict
         The metadata to create the image segmentation from.
+
     Returns
     -------
     NWBFile
@@ -310,7 +321,7 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_segmentation_metadata()
+    default_metadata = _get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
@@ -325,16 +336,16 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     return nwbfile
 
 
-def add_photon_series(
+def add_photon_series_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
-    metadata: dict,
+    metadata: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
-    two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
     Auxiliary static method for nwbextractor.
@@ -359,6 +370,14 @@ def add_photon_series(
     parent_container: {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
         When 'processing/ophys' is chosen, the photon series is added to ``nwbfile.processing['ophys']``.
+    iterator_type: str, default: 'v2'
+        The type of iterator to use when adding the photon series to the NWB file.
+    iterator_options: dict, optional
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Returns
     -------
@@ -366,15 +385,9 @@ def add_photon_series(
         The NWBFile passed as an input with the photon series added.
     """
 
-    if two_photon_series_index:
-        warn(
-            "Keyword argument 'two_photon_series_index' is deprecated and it will be removed on 2024-04-16. Use 'photon_series_index' instead."
-        )
-        photon_series_index = two_photon_series_index
-
     iterator_options = iterator_options or dict()
 
-    metadata_copy = deepcopy(metadata)
+    metadata_copy = {} if metadata is None else deepcopy(metadata)
     assert photon_series_type in [
         "OnePhotonSeries",
         "TwoPhotonSeries",
@@ -382,10 +395,11 @@ def add_photon_series(
     metadata_copy = dict_deep_update(
         get_nwb_imaging_metadata(imaging, photon_series_type=photon_series_type), metadata_copy, append_list=False
     )
-    if photon_series_type == "TwoPhotonSeries":
-        assert (
-            "OnePhotonSeries" not in metadata_copy["Ophys"]
-        ), "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified."
+
+    if photon_series_type == "TwoPhotonSeries" and "OnePhotonSeries" in metadata_copy["Ophys"]:
+        warnings.warn(
+            "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
+        )
 
     assert parent_container in [
         "acquisition",
@@ -405,7 +419,7 @@ def add_photon_series(
 
     # Add the image plane to nwb
     imaging_plane_name = photon_series_metadata["imaging_plane"]
-    add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
     photon_series_kwargs = deepcopy(photon_series_metadata)
     photon_series_kwargs.update(imaging_plane=imaging_plane)
@@ -416,23 +430,29 @@ def add_photon_series(
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
-    data = H5DataIO(data=frames_to_iterator, compression=True)
-    photon_series_kwargs.update(data=data)
+    photon_series_kwargs.update(data=frames_to_iterator)
 
     # Add dimension
     photon_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
-    if imaging.has_time_vector():
+    if always_write_timestamps:
         timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-        estimated_rate = calculate_regular_series_rate(series=timestamps)
-        if estimated_rate:
-            photon_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
-        else:
-            photon_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+        photon_series_kwargs.update(timestamps=timestamps)
     else:
-        rate = float(imaging.get_sampling_frequency())
-        photon_series_kwargs.update(rate=rate)
+        imaging_has_timestamps = imaging.has_time_vector()
+        if imaging_has_timestamps:
+            timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+            estimated_rate = calculate_regular_series_rate(series=timestamps)
+            starting_time = timestamps[0]
+        else:
+            estimated_rate = float(imaging.get_sampling_frequency())
+            starting_time = 0.0
+
+        if estimated_rate:
+            photon_series_kwargs.update(rate=estimated_rate, starting_time=starting_time)
+        else:
+            photon_series_kwargs.update(timestamps=timestamps)
 
     # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
     photon_series = dict(
@@ -451,7 +471,7 @@ def add_photon_series(
     return nwbfile
 
 
-def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
+def _check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     """
     Raise an error if the full traces of an imaging extractor are larger than available memory.
 
@@ -473,8 +493,9 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
     if traces_size_in_bytes > available_memory_in_bytes:
         message = (
-            f"Memory error, full TwoPhotonSeries data is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
-            f"({round(available_memory_in_bytes/1e9, 2)} GB are available! Please use iterator_type='v2'."
+            f"Memory error, full TwoPhotonSeries data is {human_readable_size(traces_size_in_bytes, binary=True)} but "
+            f"only {human_readable_size(available_memory_in_bytes, binary=True)} are available! "
+            "Please use iterator_type='v2'."
         )
         raise MemoryError(message)
 
@@ -517,7 +538,7 @@ def _imaging_frames_to_hdmf_iterator(
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
-        check_if_imaging_fits_into_memory(imaging=imaging)
+        _check_if_imaging_fits_into_memory(imaging=imaging)
         return imaging.get_video().transpose((0, 2, 1))
 
     if iterator_type == "v1":
@@ -528,7 +549,7 @@ def _imaging_frames_to_hdmf_iterator(
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
-def add_imaging(
+def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
@@ -537,9 +558,44 @@ def add_imaging(
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
-):
-    add_devices(nwbfile=nwbfile, metadata=metadata)
-    add_photon_series(
+    always_write_timestamps: bool = False,
+) -> NWBFile:
+    """
+    Add imaging data from an ImagingExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The extractor object containing the imaging data.
+    nwbfile : NWBFile
+        The NWB file where the imaging data will be added.
+    metadata : dict, optional
+        Metadata for the NWBFile, by default None.
+    photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+        The type of photon series to be added, by default "TwoPhotonSeries".
+    photon_series_index : int, optional
+        The index of the photon series in the provided imaging data, by default 0.
+    iterator_type : str, optional
+        The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
+    iterator_options : dict, optional
+        Additional options for controlling the iteration process, by default None.
+    parent_container : {"acquisition", "processing/ophys"}, optional
+        Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
+        under the "processing/ophys" module, by default "acquisition".
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
+
+    Returns
+    -------
+    NWBFile
+        The NWB file with the imaging data added
+
+    """
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    nwbfile = add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -548,20 +604,22 @@ def add_imaging(
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
+        always_write_timestamps=always_write_timestamps,
     )
 
+    return nwbfile
 
-def write_imaging(
+
+def write_imaging_to_nwbfile(
     imaging: ImagingExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
     iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-    buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
     Primary method for writing an ImagingExtractor object to an NWBFile.
@@ -570,13 +628,15 @@ def write_imaging(
     ----------
     imaging: ImagingExtractor
         The imaging extractor object to be written to nwb
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -607,11 +667,6 @@ def write_imaging(
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     iterator_options = iterator_options or dict()
-    if buffer_size:
-        warn(
-            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
-            "Specify as a key in the new 'iterator_options' dictionary instead."
-        )
 
     if metadata is None:
         metadata = dict()
@@ -621,7 +676,7 @@ def write_imaging(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        add_imaging(
+        add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -638,9 +693,16 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 
     Parameters
     ----------
-    sgmextractor: SegmentationExtractor
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get metadata from.
+
+    Returns
+    -------
+    dict
+        Dictionary containing metadata for devices, imaging planes, image segmentation,
+        and fluorescence data specific to the segmentation.
     """
-    metadata = get_default_segmentation_metadata()
+    metadata = _get_default_segmentation_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
@@ -669,17 +731,15 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     return metadata
 
 
-def add_plane_segmentation(
+def add_plane_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_name: Optional[str] = None,
-    plane_segmentation_index: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -704,49 +764,100 @@ def add_plane_segmentation(
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
         faster write speeds.
-    mask_type : {'image', 'pixel', 'voxel'}, optional
-        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
-        Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
+    mask_type : str, default: 'image'
+        There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+        * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+          by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+          of pixels in each ROI.
+        * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+          of voxels in each ROI.
+
+        Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
-        Defaults to 'image'.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
-    compression_options : dict, optional
-        The options to use when compressing the image masks of the segmentation extractor.
 
     Returns
     -------
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    assert mask_type in ["image", "pixel", "voxel", None], (
-        "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', "
-        f"or None (to not write any masks)! Received '{mask_type}'."
+
+    default_plane_segmentation_index = 0
+    roi_ids = segmentation_extractor.get_roi_ids()
+    if include_roi_acceptance:
+        accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
+        rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
+    else:
+        accepted_ids, rejected_ids = None, None
+    if mask_type == "image":
+        image_or_pixel_masks = segmentation_extractor.get_roi_image_masks()
+    elif mask_type == "pixel" or mask_type == "voxel":
+        image_or_pixel_masks = segmentation_extractor.get_roi_pixel_masks()
+    elif mask_type is None:
+        image_or_pixel_masks = None
+    else:
+        raise AssertionError(
+            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', "
+            f"or None (to not write any masks)! Received '{mask_type}'."
+        )
+    if include_roi_centroids:
+        tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+        roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :].T
+    else:
+        roi_locations = None
+
+    nwbfile = _add_plane_segmentation(
+        background_or_roi_ids=roi_ids,
+        image_or_pixel_masks=image_or_pixel_masks,
+        accepted_ids=accepted_ids,
+        rejected_ids=rejected_ids,
+        roi_locations=roi_locations,
+        default_plane_segmentation_index=default_plane_segmentation_index,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
+        include_roi_centroids=include_roi_centroids,
+        include_roi_acceptance=include_roi_acceptance,
+        mask_type=mask_type,
+        iterator_options=iterator_options,
     )
+    return nwbfile
+
+
+def _add_plane_segmentation(
+    background_or_roi_ids: list,
+    image_or_pixel_masks: np.ndarray,
+    default_plane_segmentation_index: int,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    plane_segmentation_name: Optional[str] = None,
+    include_roi_centroids: bool = False,
+    roi_locations: Optional[np.ndarray] = None,
+    include_roi_acceptance: bool = False,
+    accepted_ids: Optional[list] = None,
+    rejected_ids: Optional[list] = None,
+    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
+    iterator_options: Optional[dict] = None,
+) -> NWBFile:
 
     iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_segmentation_metadata()
+    default_metadata = _get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
     plane_segmentation_name = (
-        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+        plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
+            "name"
+        ]
     )
-    if plane_segmentation_index:
-        warn(
-            "Keyword argument 'plane_segmentation_index' is deprecated and it will be removed on 2024-04-16. Use 'plane_segmentation_name' instead."
-        )
-        plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]["name"]
+
     plane_segmentation_metadata = next(
         (
             plane_segmentation_metadata
@@ -761,8 +872,8 @@ def add_plane_segmentation(
         )
 
     imaging_plane_name = plane_segmentation_metadata["imaging_plane"]
-    add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
-    add_image_segmentation(nwbfile=nwbfile, metadata=metadata_copy)
+    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+    add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
     ophys = get_module(nwbfile, "ophys")
     image_segmentation_name = image_segmentation_metadata["name"]
@@ -770,11 +881,7 @@ def add_plane_segmentation(
 
     # Check if the plane segmentation already exists in the image segmentation
     if plane_segmentation_name not in image_segmentation.plane_segmentations:
-        roi_ids = segmentation_extractor.get_roi_ids()
-
-        if include_roi_acceptance:
-            accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
-            rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
+        roi_ids = background_or_roi_ids
 
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
         plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
@@ -786,10 +893,10 @@ def add_plane_segmentation(
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
-                data=H5DataIO(segmentation_extractor.get_roi_image_masks().T, **compression_options),
+                data=image_or_pixel_masks.T,
             )
         elif mask_type == "pixel" or mask_type == "voxel":
-            pixel_masks = segmentation_extractor.get_roi_pixel_masks()
+            pixel_masks = image_or_pixel_masks
             num_pixel_dims = pixel_masks[0].shape[1]
 
             assert num_pixel_dims in [3, 4], (
@@ -797,13 +904,13 @@ def add_plane_segmentation(
                 "Please open a ticket with https://github.com/catalystneuro/roiextractors/issues"
             )
             if mask_type == "pixel" and num_pixel_dims == 4:
-                warn(
+                warnings.warn(
                     "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
                     "Using mask_type='voxel' instead."
                 )
                 mask_type = "voxel"
             if mask_type == "voxel" and num_pixel_dims == 3:
-                warn(
+                warnings.warn(
                     "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
                     "Using mask_type='pixel' instead."
                 )
@@ -817,38 +924,107 @@ def add_plane_segmentation(
 
         if include_roi_centroids:
             # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
-            tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
-            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :].T
             plane_segmentation.add_column(
                 name="ROICentroids",
                 description="The x, y, (z) centroids of each ROI.",
-                data=H5DataIO(roi_locations, **compression_options),
+                data=roi_locations,
             )
 
         if include_roi_acceptance:
             plane_segmentation.add_column(
                 name="Accepted",
                 description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-                data=H5DataIO(accepted_ids, **compression_options),
+                data=accepted_ids,
             )
             plane_segmentation.add_column(
                 name="Rejected",
                 description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-                data=H5DataIO(rejected_ids, **compression_options),
+                data=rejected_ids,
             )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
 
-def add_fluorescence_traces(
+def add_background_plane_segmentation_to_nwbfile(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    background_plane_segmentation_name: Optional[str] = None,
+    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
+) -> NWBFile:
+    """
+    Add background plane segmentation data from a SegmentationExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The extractor object containing background segmentation data.
+    nwbfile : NWBFile
+        The NWB file to which the background plane segmentation will be added.
+    metadata : dict, optional
+        Metadata for the NWBFile, by default None.
+    background_plane_segmentation_name : str, optional
+        The name of the background PlaneSegmentation object to be added, by default None.
+    mask_type : str, optional
+        Type of mask to use for segmentation; options are "image", "pixel", or "voxel", by default "image".
+    iterator_options : dict, optional
+        Options for iterating over the segmentation data, by default None.
+    compression_options : dict, optional
+        Deprecated: options for compression; will be removed after 2024-10-01, by default None.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile with the added background plane segmentation data.
+    """
+    # TODO: remove completely after 10/1/2024
+    if compression_options is not None:
+        warnings.warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
+    default_plane_segmentation_index = 1
+    background_ids = segmentation_extractor.get_background_ids()
+    if mask_type == "image":
+        image_or_pixel_masks = segmentation_extractor.get_background_image_masks()
+    elif mask_type == "pixel" or mask_type == "voxel":
+        image_or_pixel_masks = segmentation_extractor.get_background_pixel_masks()
+    elif mask_type is None:
+        image_or_pixel_masks = None
+    else:
+        raise AssertionError(
+            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', "
+            f"or None (to not write any masks)! Received '{mask_type}'."
+        )
+    nwbfile = _add_plane_segmentation(
+        background_or_roi_ids=background_ids,
+        image_or_pixel_masks=image_or_pixel_masks,
+        default_plane_segmentation_index=default_plane_segmentation_index,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        plane_segmentation_name=background_plane_segmentation_name,
+        mask_type=mask_type,
+        iterator_options=iterator_options,
+    )
+    return nwbfile
+
+
+def add_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_name: Optional[str] = None,
-    plane_index: Optional[int] = None,  # TODO: to be removed
+    include_background_segmentation: bool = False,
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -865,31 +1041,75 @@ def add_fluorescence_traces(
         The metadata for the fluorescence traces.
     plane_segmentation_name : str, optional
         The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
+    include_background_segmentation : bool, default: False
+        Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
+        neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
     iterator_options : dict, optional
-    compression_options : dict, optional
 
     Returns
     -------
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
+    # TODO: remove completely after 10/1/2024
+    if compression_options is not None:
+        warnings.warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
+    default_plane_segmentation_index = 0
+
+    traces_to_add = segmentation_extractor.get_traces_dict()
+    # Filter empty data and background traces
+    traces_to_add = {
+        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
+    }
+    if include_background_segmentation:
+        traces_to_add.pop("neuropil")
+    if not traces_to_add:
+        return nwbfile
+
+    roi_ids = segmentation_extractor.get_roi_ids()
+    nwbfile = _add_fluorescence_traces_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        traces_to_add=traces_to_add,
+        background_or_roi_ids=roi_ids,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        default_plane_segmentation_index=default_plane_segmentation_index,
+        plane_segmentation_name=plane_segmentation_name,
+        iterator_options=iterator_options,
+    )
+    return nwbfile
+
+
+def _add_fluorescence_traces_to_nwbfile(
+    segmentation_extractor: SegmentationExtractor,
+    traces_to_add: dict,
+    background_or_roi_ids: list,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    default_plane_segmentation_index: int,
+    plane_segmentation_name: Optional[str] = None,
+    iterator_options: Optional[dict] = None,
+):
     iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_segmentation_metadata()
+    default_metadata = _get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-    if plane_index:
-        warn(
-            "Keyword argument 'plane_index' is deprecated and it will be removed on 2024-04-16. Use 'plane_segmentation_name' instead."
-        )
-        plane_segmentation_name = metadata_copy["Ophys"]["ImageSegmentation"]["plane_segmentations"][plane_index][
+    plane_segmentation_name = (
+        plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
             "name"
         ]
-    plane_segmentation_name = (
-        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     )
     # df/F metadata
     df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
@@ -899,25 +1119,10 @@ def add_fluorescence_traces(
     fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
     fluorescence_name = fluorescence_metadata["name"]
 
-    # Get traces from the segmentation extractor
-    traces_to_add = segmentation_extractor.get_traces_dict()
-
-    # Filter empty data
-    traces_to_add = {
-        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
-    }
-    # Filter all zero data
-    # traces_to_add = {
-    #     trace_name: trace for trace_name, trace in traces_to_add.items() if any(x != 0 for x in np.ravel(trace))
-    # }
-
-    # Early return if there is nothing to add
-    if not traces_to_add:
-        return nwbfile
-
     # Create a reference for ROIs from the plane segmentation
     roi_table_region = _create_roi_table_region(
         segmentation_extractor=segmentation_extractor,
+        background_or_roi_ids=background_or_roi_ids,
         nwbfile=nwbfile,
         metadata=metadata_copy,
         plane_segmentation_name=plane_segmentation_name,
@@ -932,7 +1137,7 @@ def add_fluorescence_traces(
         if estimated_rate:
             roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            roi_response_series_kwargs.update(timestamps=timestamps, rate=None)
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         roi_response_series_kwargs.update(rate=rate)
@@ -973,7 +1178,7 @@ def add_fluorescence_traces(
 
         # Build the roi response series
         roi_response_series_kwargs.update(
-            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
+            data=SliceableDataChunkIterator(trace, **iterator_options),
             rois=roi_table_region,
             **trace_metadata,
         )
@@ -987,10 +1192,10 @@ def add_fluorescence_traces(
 
 def _create_roi_table_region(
     segmentation_extractor: SegmentationExtractor,
+    background_or_roi_ids: list,
     nwbfile: NWBFile,
     metadata: dict,
     plane_segmentation_name: Optional[str] = None,
-    plane_index: Optional[int] = None,
 ):
     """Private method to create ROI table region.
 
@@ -1007,13 +1212,7 @@ def _create_roi_table_region(
     """
     image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
 
-    if plane_index:
-        warn(
-            "Keyword argument 'plane_index' is deprecated and it will be removed on 2024-04-16. Use 'plane_segmentation_name' instead."
-        )
-        plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][plane_index]["name"]
-
-    add_plane_segmentation(
+    add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -1032,7 +1231,7 @@ def _create_roi_table_region(
 
     imaging_plane_name = plane_segmentation.imaging_plane.name
     roi_table_region = plane_segmentation.create_roi_table_region(
-        region=[id_list.index(id) for id in segmentation_extractor.get_roi_ids()],
+        region=[id_list.index(id) for id in background_or_roi_ids],
         description=f"The ROIs for {imaging_plane_name}.",
     )
 
@@ -1058,12 +1257,78 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
     return data_interface
 
 
-def add_summary_images(
+def add_background_fluorescence_traces_to_nwbfile(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    background_plane_segmentation_name: Optional[str] = None,
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
+) -> NWBFile:
+    """
+    Adds the fluorescence traces specified by the metadata to the nwb file.
+    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"].
+    The df/F traces that are added are the one located in metadata["Ophys"]["DfOverF"].
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the traces from.
+    nwbfile : NWBFile
+        The nwbfile to add the fluorescence traces to.
+    metadata : dict
+        The metadata for the fluorescence traces.
+    plane_segmentation_name : str, optional
+        The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
+    iterator_options : dict, optional
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the fluorescence traces added.
+    """
+    # TODO: remove completely after 10/1/2024
+    if compression_options is not None:
+        warnings.warn(
+            message=(
+                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
+                "Please use the `configure_backend` tool function for this purpose."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
+    default_plane_segmentation_index = 1
+
+    traces_to_add = segmentation_extractor.get_traces_dict()
+    # Filter empty data and background traces
+    traces_to_add = {
+        trace_name: trace
+        for trace_name, trace in traces_to_add.items()
+        if trace is not None and trace.size != 0 and trace_name == "neuropil"
+    }
+    if not traces_to_add:
+        return nwbfile
+
+    background_ids = segmentation_extractor.get_background_ids()
+    nwbfile = _add_fluorescence_traces_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        traces_to_add=traces_to_add,
+        background_or_roi_ids=background_ids,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        default_plane_segmentation_index=default_plane_segmentation_index,
+        plane_segmentation_name=background_plane_segmentation_name,
+        iterator_options=iterator_options,
+    )
+    return nwbfile
+
+
+def add_summary_images_to_nwbfile(
     nwbfile: NWBFile,
     segmentation_extractor: SegmentationExtractor,
     metadata: Optional[dict] = None,
     plane_segmentation_name: Optional[str] = None,
-    images_set_name: Optional[str] = None,  # TODO: to be removed
 ) -> NWBFile:
     """
     Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
@@ -1084,23 +1349,14 @@ def add_summary_images(
     NWBFile
         The nwbfile passed as an input with the summary images added.
     """
-    if metadata is None:
-        metadata = dict()
+    metadata = metadata or dict()
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_segmentation_metadata()
+    default_metadata = _get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
-
-    if images_set_name is not None:
-        warn(
-            "Keyword argument 'images_set_name' is deprecated it will be removed on 2024-04-16."
-            "Specify the name of the Images container in metadata['Ophys']['SegmentationImages'] instead."
-        )
-        segmentation_images_metadata["name"] = images_set_name
-
     images_container_name = segmentation_images_metadata["name"]
 
     images_dict = segmentation_extractor.get_images_dict()
@@ -1135,24 +1391,56 @@ def add_summary_images(
     return nwbfile
 
 
-def add_segmentation(
+def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
     plane_segmentation_name: Optional[str] = None,
-    plane_num: Optional[int] = None,  # TODO: to be removed
+    background_plane_segmentation_name: Optional[str] = None,
+    include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
-):
-    # Add device:
-    add_devices(nwbfile=nwbfile, metadata=metadata)
+) -> NWBFile:
+    """
+    Add segmentation data from a SegmentationExtractor object to an NWBFile.
 
-    # `add_imaging_plane` is also called from `add_plane_segmentation` so no need to call it explicitly here
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The extractor object containing segmentation data.
+    nwbfile : NWBFile
+        The NWB file where the segmentation data will be added.
+    metadata : dict, optional
+        Metadata for the NWBFile, by default None.
+    plane_segmentation_name : str, optional
+        The name of the PlaneSegmentation object to be added, by default None.
+    background_plane_segmentation_name : str, optional
+        The name of the background PlaneSegmentation, if any, by default None.
+    include_background_segmentation : bool, optional
+        If True, includes background plane segmentation, by default False.
+    include_roi_centroids : bool, optional
+        If True, includes the centroids of the regions of interest (ROIs), by default True.
+    include_roi_acceptance : bool, optional
+        If True, includes the acceptance status of ROIs, by default True.
+    mask_type : str, optional
+        Type of mask to use for segmentation; can be either "image" or "pixel", by default "image".
+    iterator_options : dict, optional
+        Options for iterating over the data, by default None.
+
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile with the added segmentation data.
+    """
+
+    # Add device:
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
     # Add PlaneSegmentation:
-    add_plane_segmentation(
+    add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -1161,40 +1449,59 @@ def add_segmentation(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
-        compression_options=compression_options,
     )
+    if include_background_segmentation:
+        add_background_plane_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            background_plane_segmentation_name=background_plane_segmentation_name,
+            mask_type=mask_type,
+            iterator_options=iterator_options,
+        )
 
     # Add fluorescence traces:
-    add_fluorescence_traces(
+    add_fluorescence_traces_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
+        include_background_segmentation=include_background_segmentation,
         iterator_options=iterator_options,
-        compression_options=compression_options,
     )
+
+    if include_background_segmentation:
+        add_background_fluorescence_traces_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            background_plane_segmentation_name=background_plane_segmentation_name,
+            iterator_options=iterator_options,
+        )
 
     # Adding summary images (mean and correlation)
-    add_summary_images(
+    add_summary_images_to_nwbfile(
         nwbfile=nwbfile,
         segmentation_extractor=segmentation_extractor,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
     )
 
+    return nwbfile
 
-def write_segmentation(
+
+def write_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
+    include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.
@@ -1203,13 +1510,15 @@ def write_segmentation(
     ----------
     segmentation_extractor: SegmentationExtractor
         The segmentation extractor object to be written to nwb
-    nwbfile_path: FilePathType
+    nwbfile_path: FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
-        E.g., calling
+        E.g., calling::
+
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
@@ -1219,38 +1528,37 @@ def write_segmentation(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-    buffer_size : int, default: 10
-        The buffer size in GB.
-    plane_num : int, default: 0
-        The plane number to be extracted.
+    include_background_segmentation : bool, default: False
+        Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
+        neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
-        Defaults to True.
+        faster write speeds.
     include_roi_acceptance : bool, default: True
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
-            faster write speeds.
-        Defaults to True.
-    mask_type : str, optional
-        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
-        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+        faster write speeds.
+    mask_type : str, default: 'image'
+        There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
+
+        * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+          by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+          of pixels in each ROI.
+        * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+          of voxels in each ROI.
+
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
-        Defaults to 'image'.
+    iterator_options: dict, optional
+        A dictionary with options for the internal iterators that process the data.
     """
     assert (
         nwbfile_path is None or nwbfile is None
     ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
 
     iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
@@ -1285,16 +1593,16 @@ def write_segmentation(
         for plane_no_loop, (segmentation_extractor, metadata) in enumerate(
             zip(segmentation_extractors, metadata_base_list)
         ):
-            add_segmentation(
+            add_segmentation_to_nwbfile(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 plane_num=plane_no_loop,
+                include_background_segmentation=include_background_segmentation,
                 include_roi_centroids=include_roi_centroids,
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 iterator_options=iterator_options,
-                compression_options=compression_options,
             )
 
     return nwbfile_out

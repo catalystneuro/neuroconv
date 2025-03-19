@@ -1,102 +1,91 @@
-from datetime import time
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_package
-from ....utils import FilePathType
-
-
-def write_subject_to_nwb(
-    nwbfile: NWBFile,
-    h5file: FilePathType,
-    individual_name: str,
-    config_file: FilePathType,
-    timestamps: Optional[Union[List, np.ndarray]] = None,
-):
-    """
-    Given, subject name, write h5file to an existing nwbfile.
-
-    Parameters
-    ----------
-    nwbfile : pynwb.NWBFile
-        The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    h5file : str or path
-        Path to the DeepLabCut .h5 output file.
-    individual_name : str
-        Name of the subject (whose pose is predicted) for single-animal DLC project.
-        For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str or path
-        Path to a project config.yaml file
-    timestamps : list, np.ndarray or None, default: None
-        Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
-    Returns
-    -------
-    nwbfile : pynwb.NWBFile
-        nwbfile with pes written in the behavior module
-    """
-    dlc2nwb = get_package(package_name="dlc2nwb")
-
-    scorer, df, video, paf_graph, dlc_timestamps, _ = dlc2nwb.utils._get_pes_args(config_file, h5file, individual_name)
-    if timestamps is None:
-        timestamps = dlc_timestamps
-
-    df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
-    return dlc2nwb.utils._write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
-    )
 
 
 class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
     display_name = "DeepLabCut"
-
-    keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
+    keywords = ("DLC", "DeepLabCut", "pose estimation", "behavior")
+    associated_suffixes = (".h5", ".csv")
+    info = "Interface for handling data from DeepLabCut."
 
     _timestamps = None
 
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the file output by dlc (.h5 or .csv)."
+        source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file."
+        return source_schema
+
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        config_file_path: FilePathType,
+        file_path: FilePath,
+        config_file_path: Optional[FilePath] = None,
         subject_name: str = "ind1",
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
-        Interface for writing DLC's h5 files to nwb using dlc2nwb.
+        Interface for writing DLC's output files to nwb using dlc2nwb.
 
         Parameters
         ----------
-        file_path : FilePathType
-            path to the h5 file output by dlc.
-        config_file_path : FilePathType
-            path to .yml config file
+        file_path : FilePath
+            Path to the file output by dlc (.h5 or .csv).
+        config_file_path : FilePath, optional
+            Path to .yml config file
         subject_name : str, default: "ind1"
-            the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
+            The name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
         verbose: bool, default: True
-            controls verbosity.
+            Controls verbosity.
         """
-        dlc2nwb = get_package(package_name="dlc2nwb")
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        from importlib.metadata import version
+
+        import ndx_pose  # noqa: F401
+        from packaging import version as version_parse
+
+        ndx_pose_version = version("ndx-pose")
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.0"):
+            raise ImportError(
+                "DeepLabCut interface requires ndx-pose version 0.2.0 or later. "
+                f"Found version {ndx_pose_version}. Please upgrade: "
+                "pip install 'ndx-pose>=0.2.0'"
+            )
+
+        from ._dlc_utils import _read_config
 
         file_path = Path(file_path)
-        if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
-            raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+        suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
+        if not "DLC" in file_path.stem or not suffix_is_valid:
+            raise IOError("The file passed in is not a valid DeepLabCut output data file.")
 
-        self._config_file = dlc2nwb.utils.read_config(config_file_path)
+        self.config_dict = dict()
+        if config_file_path is not None:
+            self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
+        self.pose_estimation_container_kwargs = dict()
+
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["NWBFile"].update(
-            session_description=self._config_file["Task"],
-            experimenter=[self._config_file["scorer"]],
-        )
+
+        if self.config_dict:
+            metadata["NWBFile"].update(
+                session_description=self.config_dict["Task"],
+                experimenter=[self.config_dict["scorer"]],
+            )
+
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
@@ -110,22 +99,22 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )
 
-    def set_aligned_timestamps(self, aligned_timestamps: Union[List, np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: Union[list, np.ndarray]):
         """
         Set aligned timestamps vector for DLC data with user defined timestamps
 
         Parameters
         ----------
-        timestamps : list, np.ndarray
-            alternative timestamps vector.
+        aligned_timestamps : list, np.ndarray
+            A timestamps vector.
         """
-
-        self._timestamps = np.array(aligned_timestamps)
+        self._timestamps = np.asarray(aligned_timestamps)
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        container_name: str = "PoseEstimationDeepLabCut",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -136,12 +125,19 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-        """
+        container_name: str, default: "PoseEstimationDeepLabCut"
+            name of the PoseEstimation container in the nwb
 
-        write_subject_to_nwb(
+        """
+        from ._dlc_utils import _add_subject_to_nwbfile
+
+        self.pose_estimation_container_kwargs["name"] = container_name
+
+        _add_subject_to_nwbfile(
             nwbfile=nwbfile,
-            h5file=str(self.source_data["file_path"]),
+            file_path=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
-            config_file=str(self.source_data["config_file_path"]),
+            config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,
+            pose_estimation_container_kwargs=self.pose_estimation_container_kwargs,
         )

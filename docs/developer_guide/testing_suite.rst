@@ -39,12 +39,9 @@ Minimal
 
 These test internal functionality using only minimal dependencies or pre-downloaded data.
 
-Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`_ and
-`tests/test_internals <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_internals>`_
+Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`
 
-These can be run using only ``pip install -e neuroconv[test]`` and calling ``pytest tests/test_minimal`` and
-``pytest tests/test_internal``.
-
+These can be run using only ``pip install -e neuroconv[test]`` and calling ``pytest tests/test_minimal``
 
 
 Modality
@@ -61,6 +58,7 @@ These can be run in isolation using ``pip install -e neuroconv[test,<modality>]`
 ``pytest tests/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``ecephys``, ``text``, or ``behavior``.
 
 
+.. _example_data:
 
 Testing On Example Data
 -----------------------
@@ -88,15 +86,9 @@ For behavioral data
     datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
 
-Update existing test data
-"""""""""""""""""""""""""
-If you have downloaded these data repositories previously and want to update them, ``cd`` into the directory you want
-to update and run
 
-.. code:: bash
-
-    datalad update --how=ff-only --reobtain-data
-
+Running the data tests
+""""""""""""""""""""""
 
 Once the data is downloaded to your system, you must manually modify the testing config file
 (`example <https://github.com/catalystneuro/neuroconv/blob/main/base_gin_test_config.json>`_). This file should be
@@ -114,5 +106,16 @@ Sub-folders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tre
 These can be run in total using ``pip install -e neuroconv[test,full]`` and calling ``pytest tests/test_on_data`` or
 in isolation by installing the required ``<modality>`` as in the previous section and calling
 ``pytest tests/test_on_data/test_gin_<modality>``.
+
+
+
+Update existing test data
+"""""""""""""""""""""""""
+If you have downloaded these data repositories previously and want to update them, ``cd`` into the directory you want
+to update and run
+
+.. code:: bash
+
+    datalad update --how=ff-only --reobtain-data
 
 To update GIN data, run ``datalad update --how=ff-only --reobtain-data`` within the repository you would like to update.

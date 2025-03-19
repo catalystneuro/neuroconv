@@ -1,40 +1,48 @@
-from typing import Tuple
+import importlib.util
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
-    FilePathType,
+    get_json_schema_from_method_signature,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
 )
-
-try:
-    from ndx_dandi_icephys import DandiIcephysMetadata
-
-    HAVE_NDX_DANDI_ICEPHYS = True
-except ImportError:
-    DandiIcephysMetadata = None
-    HAVE_NDX_DANDI_ICEPHYS = False
 
 
 class BaseIcephysInterface(BaseExtractorInterface):
     """Primary class for all intracellular NeoInterfaces."""
 
+    keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
+
     ExtractorModuleName = "neo"
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=[])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
         return source_schema
 
-    def __init__(self, file_paths: list):
+    @validate_call
+    def __init__(self, file_paths: list[FilePath]):
+        # Check if the ndx_dandi_icephys module is available
+        dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
+        if dandi_icephys_spec is not None:
+            from ndx_dandi_icephys import DandiIcephysMetadata
+
+            self.DandiIcephysMetadata = DandiIcephysMetadata
+
+            self.HAVE_NDX_DANDI_ICEPHYS = True
+        else:
+            self.DandiIcephysMetadata = None
+            self.HAVE_NDX_DANDI_ICEPHYS = False
+
         from ...tools.neo import get_number_of_electrodes, get_number_of_segments
 
-        super().__init__(file_paths=file_paths)
+        self.source_data = dict()
+        self.source_data["file_paths"] = file_paths
 
         self.readers_list = list()
         for f in file_paths:
@@ -48,8 +56,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
-        if DandiIcephysMetadata:
-            metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)
+        if self.DandiIcephysMetadata is not None:
+            metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(self.DandiIcephysMetadata)
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
@@ -86,7 +94,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict = None,
         icephys_experiment_type: str = "voltage_clamp",
-        skip_electrodes: Tuple[int] = (),
+        skip_electrodes: tuple[int] = (),
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.
@@ -108,11 +116,11 @@ class BaseIcephysInterface(BaseExtractorInterface):
             nwbfile = make_nwbfile_from_metadata(metadata)
 
         if (
-            HAVE_NDX_DANDI_ICEPHYS
+            self.HAVE_NDX_DANDI_ICEPHYS
             and "ndx-dandi-icephys" in metadata
             and "DandiIcephysMetadata" not in nwbfile.lab_meta_data
         ):
-            nwbfile.add_lab_meta_data(DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
+            nwbfile.add_lab_meta_data(self.DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
 
         for i, reader in enumerate(self.readers_list):
             add_neo_to_nwb(

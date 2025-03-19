@@ -1,36 +1,42 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import load_dict_from_file
-from ...utils.types import FilePathType
 
 
 class TimeIntervalsInterface(BaseDataInterface):
     """Abstract Interface for time intervals."""
 
+    keywords = ("table", "trials", "epochs", "time intervals")
+
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         read_kwargs: Optional[dict] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
+        Initialize the TimeIntervalsInterface.
+
         Parameters
         ----------
         file_path : FilePath
+            The path to the file containing time intervals data.
         read_kwargs : dict, optional
-        verbose : bool, default: True
+            Additional arguments for reading the file, by default None.
+        verbose : bool, default: False
         """
         read_kwargs = read_kwargs or dict()
         super().__init__(file_path=file_path)
         self.verbose = verbose
-
         self._read_kwargs = read_kwargs
         self.dataframe = self._read_file(file_path, **read_kwargs)
         self.time_intervals = None
@@ -47,22 +53,74 @@ class TimeIntervalsInterface(BaseDataInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
+        """
+        Get the metadata schema for the time intervals.
+
+        Returns
+        -------
+        dict
+            The schema dictionary for time intervals metadata.
+        """
         fpath = Path(__file__).parent.parent.parent / "schemas" / "timeintervals_schema.json"
         return load_dict_from_file(fpath)
 
     def get_original_timestamps(self, column: str) -> np.ndarray:
+        """
+        Get the original timestamps for a given column.
+
+        Parameters
+        ----------
+        column : str
+            The name of the column containing timestamps.
+
+        Returns
+        -------
+        np.ndarray
+            The original timestamps from the specified column.
+
+        Raises
+        ------
+        ValueError
+            If the column name does not end with '_time'.
+        """
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
         return self._read_file(**self.source_data, **self._read_kwargs)[column].values
 
     def get_timestamps(self, column: str) -> np.ndarray:
+        """
+        Get the current timestamps for a given column.
+
+        Parameters
+        ----------
+        column : str
+            The name of the column containing timestamps.
+
+        Returns
+        -------
+        np.ndarray
+            The current timestamps from the specified column.
+
+        Raises
+        ------
+        ValueError
+            If the column name does not end with '_time'.
+        """
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
         return self.dataframe[column].values
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
+        """
+        Align the starting time by shifting all timestamps by the given value.
+
+        Parameters
+        ----------
+        aligned_starting_time : float
+            The aligned starting time to shift all timestamps by.
+        """
         timing_columns = [column for column in self.dataframe.columns if column.endswith("_time")]
 
         for column in timing_columns:
@@ -71,6 +129,23 @@ class TimeIntervalsInterface(BaseDataInterface):
     def set_aligned_timestamps(
         self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False
     ):
+        """
+        Set aligned timestamps for the given column and optionally interpolate other columns.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The aligned timestamps to set for the given column.
+        column : str
+            The name of the column to update with the aligned timestamps.
+        interpolate_other_columns : bool, optional
+            If True, interpolate the timestamps in other columns, by default False.
+
+        Raises
+        ------
+        ValueError
+            If the column name does not end with '_time'.
+        """
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
@@ -93,6 +168,18 @@ class TimeIntervalsInterface(BaseDataInterface):
             )
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray, column: str):
+        """
+        Align timestamps using linear interpolation.
+
+        Parameters
+        ----------
+        unaligned_timestamps : np.ndarray
+            The original unaligned timestamps that map to the aligned timestamps.
+        aligned_timestamps : np.ndarray
+            The target aligned timestamps corresponding to the unaligned timestamps.
+        column : str
+            The name of the column containing the timestamps to be aligned.
+        """
         current_timestamps = self.get_timestamps(column=column)
         assert (
             current_timestamps[1] >= unaligned_timestamps[0]
@@ -118,8 +205,8 @@ class TimeIntervalsInterface(BaseDataInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         tag: str = "trials",
-        column_name_mapping: Dict[str, str] = None,
-        column_descriptions: Dict[str, str] = None,
+        column_name_mapping: dict[str, str] = None,
+        column_descriptions: dict[str, str] = None,
     ) -> NWBFile:
         """
         Run the NWB conversion for the instantiated data interface.
@@ -150,5 +237,5 @@ class TimeIntervalsInterface(BaseDataInterface):
         return nwbfile
 
     @abstractmethod
-    def _read_file(self, file_path: FilePathType, **read_kwargs):
+    def _read_file(self, file_path: FilePath, **read_kwargs):
         pass
