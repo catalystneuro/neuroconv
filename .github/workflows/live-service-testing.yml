@@ -1,5 +1,5 @@
 name: Live service testing
-on:
+on: # test
   workflow_dispatch:
   workflow_call:
     inputs:
