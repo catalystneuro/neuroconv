@@ -28,7 +28,7 @@ def test_converter():
         nwbfile_path = str(test_dir / "extension_test.nwb")
 
         class NdxEventsInterface(BaseTemporalAlignmentInterface):
-            def __init__(self):
+            def __init__(self, verbose: bool = False):
                 self._timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
                 self._original_timestamps = np.array(self._timestamps)
 
