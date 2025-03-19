@@ -12,7 +12,7 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
-from ....utils import get_schema_from_method_signature
+from ....utils import get_json_schema_from_method_signature
 
 
 class AxonaRecordingInterface(BaseRecordingExtractorInterface):
@@ -36,7 +36,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return extractor_kwargs
 
-    def __init__(self, file_path: FilePath, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
@@ -186,7 +186,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        return get_schema_from_method_signature(cls.__init__)
+        return get_json_schema_from_method_signature(cls.__init__)
 
     def __init__(self, file_path: str):
         """

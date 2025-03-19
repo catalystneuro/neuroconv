@@ -171,7 +171,9 @@ def submit_aws_batch_job(
     job_dependencies = job_dependencies or []
     container_overrides = dict()
     if environment_variables is not None:
-        container_overrides["environment"] = [{key: value} for key, value in environment_variables.items()]
+        container_overrides["environment"] = [
+            {"name": key, "value": value} for key, value in environment_variables.items()
+        ]
     if commands is not None:
         container_overrides["command"] = commands
 
@@ -294,7 +296,7 @@ def _ensure_compute_environment_exists(
         The AWS Batch client to use for the job.
     max_retries : int, default: 12
         If the compute environment does not already exist, then this is the maximum number of times to synchronously
-        check for its successful creation before erroring.
+        check for its successful creation before raising an error.
         This is essential for a clean setup of the entire pipeline, or else later steps might error because they tried
         to launch before the compute environment was ready.
     """
@@ -462,11 +464,14 @@ def _create_or_get_efs_id(
         if tag["Key"] == "Name" and tag["Value"] == efs_volume_name
     ]
 
-    if len(matching_efs_volumes) > 1:
+    if len(matching_efs_volumes) == 1:
         efs_volume = matching_efs_volumes[0]
         efs_id = efs_volume["FileSystemId"]
 
         return efs_id
+    elif len(matching_efs_volumes) > 1:
+        message = f"Multiple EFS volumes with the name '{efs_volume_name}' were found!\n\n{matching_efs_volumes=}\n"
+        raise ValueError(message)
 
     # Existing volume not found - must create a fresh one and set mount targets on it
     efs_volume = efs_client.create_file_system(
@@ -504,7 +509,7 @@ def _create_or_get_efs_id(
     return efs_id
 
 
-def _generate_job_definition_name(
+def generate_job_definition_name(
     *,
     docker_image: str,
     minimum_worker_ram_in_gib: int,
@@ -513,9 +518,7 @@ def _generate_job_definition_name(
 ) -> str:  # pragma: no cover
     """
     Generate a job definition name for the AWS Batch job.
-
     Note that Docker images don't strictly require a tag to be pulled or used - 'latest' is always used by default.
-
     Parameters
     ----------
     docker_image : str
@@ -527,11 +530,13 @@ def _generate_job_definition_name(
     minimum_worker_cpus : int
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
+    efs_id : Optional[str]
+        The ID of the EFS filesystem to mount, if any.
     """
-    docker_tags = docker_image.split(":")[1:]
-    docker_tag = docker_tags[0] if len(docker_tags) > 1 else None
-    parsed_docker_image_name = docker_image.replace(":", "-")  # AWS Batch does not allow colons in job definition names
-
+    # AWS Batch does not allow colons, slashes, or periods in job definition names
+    parsed_docker_image_name = str(docker_image)
+    for disallowed_character in [":", "/", r"/", "."]:
+        parsed_docker_image_name = parsed_docker_image_name.replace(disallowed_character, "-")
     job_definition_name = f"neuroconv_batch"
     job_definition_name += f"_{parsed_docker_image_name}-image"
     job_definition_name += f"_{minimum_worker_ram_in_gib}-GiB-RAM"
@@ -540,8 +545,6 @@ def _generate_job_definition_name(
         job_definition_name += f"_{efs_id}"
     if docker_tag is None or docker_tag == "latest":
         date = datetime.now().strftime("%Y-%m-%d")
-        job_definition_name += f"_created-on-{date}"
-
     return job_definition_name
 
 
@@ -639,9 +642,9 @@ def _ensure_job_definition_exists_and_get_arn(
                 },
             },
         ]
-        mountPoints = [{"containerPath": "/mnt/efs/", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
+        mountPoints = [{"containerPath": "/mnt/efs", "readOnly": False, "sourceVolume": "neuroconv_batch_efs_mounted"}]
 
-    # batch_client.register_job_definition() is not synchronous and so we need to wait a bit afterwards
+    # batch_client.register_job_definition is not synchronous and so we need to wait a bit afterwards
     batch_client.register_job_definition(
         jobDefinitionName=job_definition_name,
         type="container",

@@ -1,4 +1,3 @@
-import importlib
 import pickle
 import warnings
 from pathlib import Path
@@ -10,6 +9,8 @@ import yaml
 from pydantic import FilePath
 from pynwb import NWBFile
 from ruamel.yaml import YAML
+
+from ....tools import get_module
 
 
 def _read_config(config_file_path: FilePath) -> dict:
@@ -93,7 +94,7 @@ def _get_cv2_timestamps(file_path: Union[Path, str]):
     return timestamps
 
 
-def _get_movie_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=True):
+def _get_video_timestamps(movie_file, VARIABILITYBOUND=1000, infer_timestamps=True):
     """
     Return numpy array of the timestamps for a video.
 
@@ -251,21 +252,6 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
     return video_file_path, image_shape
 
 
-def _get_pes_args(
-    *,
-    h5file: Path,
-    individual_name: str,
-):
-    h5file = Path(h5file)
-
-    _, scorer = h5file.stem.split("DLC")
-    scorer = "DLC" + scorer
-
-    df = _ensure_individuals_in_header(pd.read_hdf(h5file), individual_name)
-
-    return scorer, df
-
-
 def _write_pes_to_nwbfile(
     nwbfile,
     animal,
@@ -278,13 +264,44 @@ def _write_pes_to_nwbfile(
     exclude_nans,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ):
-
-    from ndx_pose import PoseEstimation, PoseEstimationSeries
+    """
+    Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
+    """
+    from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+    from pynwb.file import Subject
 
     pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
+    pose_estimation_name = pose_estimation_container_kwargs.get("name", "PoseEstimationDeepLabCut")
+
+    # Create a subject if it doesn't exist
+    if nwbfile.subject is None:
+        subject = Subject(subject_id=animal)
+        nwbfile.subject = subject
+    else:
+        subject = nwbfile.subject
+
+    # Create skeleton from the keypoints
+    keypoints = df_animal.columns.get_level_values("bodyparts").unique()
+    animal = animal if animal else ""
+    subject = subject if animal == subject.subject_id else None
+    skeleton_name = f"Skeleton{pose_estimation_name}_{animal.capitalize()}"
+    skeleton = Skeleton(
+        name=skeleton_name,
+        nodes=list(keypoints),
+        edges=np.array(paf_graph) if paf_graph else None,  # Convert paf_graph to numpy array
+        subject=subject,
+    )
+
+    behavior_processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
+    if "Skeletons" not in behavior_processing_module.data_interfaces:
+        skeletons = Skeletons(skeletons=[skeleton])
+        behavior_processing_module.add(skeletons)
+    else:
+        skeletons = behavior_processing_module["Skeletons"]
+        skeletons.add_skeletons(skeleton)
 
     pose_estimation_series = []
-    for keypoint in df_animal.columns.get_level_values("bodyparts").unique():
+    for keypoint in keypoints:
         data = df_animal.xs(keypoint, level="bodyparts", axis=1).to_numpy()
 
         if exclude_nans:
@@ -294,68 +311,66 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
+        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
         pes = PoseEstimationSeries(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
-            timestamps=timestamps_cleaned,
+            timestamps=timestamps,
             confidence=data[:, 2],
             confidence_definition="Softmax output of the deep neural network.",
         )
         pose_estimation_series.append(pes)
 
-    deeplabcut_version = None
-    is_deeplabcut_installed = importlib.util.find_spec(name="deeplabcut") is not None
-    if is_deeplabcut_installed:
-        deeplabcut_version = importlib.metadata.version(distribution_name="deeplabcut")
+    camera_name = pose_estimation_name
+    if camera_name not in nwbfile.devices:
+        camera = nwbfile.create_device(
+            name=camera_name,
+            description="Camera used for behavioral recording and pose estimation.",
+        )
+    else:
+        camera = nwbfile.devices[camera_name]
 
-    # TODO, taken from the original implementation, improve it if the video is passed
+    # Create PoseEstimation container with updated arguments
     dimensions = [list(map(int, image_shape.split(",")))[1::2]]
+    dimensions = np.array(dimensions, dtype="uint32")
     pose_estimation_default_kwargs = dict(
         pose_estimation_series=pose_estimation_series,
         description="2D keypoint coordinates estimated using DeepLabCut.",
-        original_videos=[video_file_path],
+        original_videos=[video_file_path] if video_file_path else None,
         dimensions=dimensions,
+        devices=[camera],
         scorer=scorer,
         source_software="DeepLabCut",
-        source_software_version=deeplabcut_version,
-        nodes=[pes.name for pes in pose_estimation_series],
-        edges=paf_graph if paf_graph else None,
-        **pose_estimation_container_kwargs,
+        skeleton=skeleton,
     )
     pose_estimation_default_kwargs.update(pose_estimation_container_kwargs)
     pose_estimation_container = PoseEstimation(**pose_estimation_default_kwargs)
 
-    if "behavior" in nwbfile.processing:  # TODO: replace with get_module
-        behavior_processing_module = nwbfile.processing["behavior"]
-    else:
-        behavior_processing_module = nwbfile.create_processing_module(
-            name="behavior", description="processed behavioral data"
-        )
     behavior_processing_module.add(pose_estimation_container)
 
     return nwbfile
 
 
-def add_subject_to_nwbfile(
+def _add_subject_to_nwbfile(
     nwbfile: NWBFile,
-    h5file: FilePath,
+    file_path: FilePath,
     individual_name: str,
     config_file: Optional[FilePath] = None,
     timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """
-    Given the subject name, add the DLC .h5 file to an in-memory NWBFile object.
+    Given the subject name, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.
 
     Parameters
     ----------
     nwbfile : pynwb.NWBFile
         The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    h5file : str or path
-        Path to the DeepLabCut .h5 output file.
+    file_path : str or path
+        Path to the DeepLabCut .h5 or .csv output file.
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
@@ -371,18 +386,18 @@ def add_subject_to_nwbfile(
     nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
-    h5file = Path(h5file)
+    file_path = Path(file_path)
 
-    if "DLC" not in h5file.name or not h5file.suffix == ".h5":
-        raise IOError("The file passed in is not a DeepLabCut h5 data file.")
-
-    video_name, scorer = h5file.stem.split("DLC")
+    video_name, scorer = file_path.stem.split("DLC")
     scorer = "DLC" + scorer
 
     # TODO probably could be read directly with h5py
     # This requires pytables
-    data_frame_from_hdf5 = pd.read_hdf(h5file)
-    df = _ensure_individuals_in_header(data_frame_from_hdf5, individual_name)
+    if ".h5" in file_path.suffixes:
+        df = pd.read_hdf(file_path)
+    elif ".csv" in file_path.suffixes:
+        df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
+    df = _ensure_individuals_in_header(df, individual_name)
 
     # Note the video here is a tuple of the video path and the image shape
     if config_file is not None:
@@ -400,11 +415,11 @@ def add_subject_to_nwbfile(
         if video_file_path is None:
             timestamps = df.index.tolist()  # setting timestamps to dummy
         else:
-            timestamps = _get_movie_timestamps(video_file_path, infer_timestamps=True)
+            timestamps = _get_video_timestamps(video_file_path, infer_timestamps=True)
 
     # Fetch the corresponding metadata pickle file, we extract the edges graph from here
     # TODO: This is the original implementation way to extract the file name but looks very brittle. Improve it
-    filename = str(h5file.parent / h5file.stem)
+    filename = str(file_path.parent / file_path.stem)
     for i, c in enumerate(filename[::-1]):
         if c.isnumeric():
             break

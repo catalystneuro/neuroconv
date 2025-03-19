@@ -20,6 +20,19 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys legacy folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to directory containing OpenEphys legacy files.
+
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+        """
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
@@ -27,7 +40,16 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
+        """
+        Compile input schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the OpenEphys legacy recording interface source data,
+            containing folder path and other configuration parameters. The schema
+            inherits from the base recording extractor interface schema.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -41,7 +63,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -57,7 +79,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The name of the recording stream.
         block_index : int, optional, default: None
             The index of the block to extract from the data.
-        verbose : bool, default: True
+        verbose : bool, default: Falseee
         es_key : str, default: "ElectricalSeries"
         """
         available_streams = self.get_stream_names(folder_path=folder_path)

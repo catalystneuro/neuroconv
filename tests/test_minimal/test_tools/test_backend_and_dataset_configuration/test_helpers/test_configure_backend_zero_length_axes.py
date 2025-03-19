@@ -86,7 +86,7 @@ def test_time_series_skip_zero_length_axis(
     #     elif backend == "zarr":
     #         assert written_data.compressor == numcodecs.GZip(level=1)
     #
-    #     assert_array_equal(x=integer_array, y=written_data[:])
+    #     assert_array_equal(integer_array, written_data[:])
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -114,7 +114,7 @@ def test_dynamic_table_skip_zero_length_axis(
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestDynamicTable/TestColumn/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb")
     NWB_IO = BACKEND_NWB_IO[backend]
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
@@ -130,4 +130,4 @@ def test_dynamic_table_skip_zero_length_axis(
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(x=integer_array, y=written_data[:])
+        assert_array_equal(integer_array, written_data[:])

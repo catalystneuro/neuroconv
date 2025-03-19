@@ -68,6 +68,7 @@ class TestImportStructure(TestCase):
             "get_package_version",
             "is_package_installed",
             "deploy_process",
+            "data_transfers",
             "LocalPathExpander",
             "get_module",
         ]
@@ -88,6 +89,7 @@ class TestImportStructure(TestCase):
             "icephys",
             "ophys",
             "text",
+            "image",
             # Exposed attributes
             "interface_list",
             "interfaces_by_category",

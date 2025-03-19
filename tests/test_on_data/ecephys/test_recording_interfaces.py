@@ -8,6 +8,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from packaging import version
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
@@ -25,6 +26,8 @@ from neuroconv.datainterfaces import (
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysRecordingInterface,
+    Plexon2RecordingInterface,
+    PlexonLFPInterface,
     PlexonRecordingInterface,
     Spike2RecordingInterface,
     SpikeGadgetsRecordingInterface,
@@ -258,8 +261,6 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 
     def test_devices_written_correctly(self, setup_interface):
 
-        from pynwb.testing.mock.file import mock_NWBFile
-
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -267,6 +268,29 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         len(nwbfile.devices) == 1
 
         nwbfile.devices["Intan"].description == "RHD Recording System"
+
+    def test_not_adding_extra_devices_when_recording_has_groups(self, setup_interface):
+        # Test that no extra-devices are added when the recording has groups
+
+        nwbfile = mock_NWBFile()
+        recording = self.interface.recording_extractor
+        num_channels = recording.get_num_channels()
+        channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
+        channel_groups[::2] = 1  # Every other channel is in group 1, the rest are in group 0
+        recording.set_channel_groups(groups=channel_groups)
+
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        assert len(nwbfile.devices) == 1
+
+        nwbfile = mock_NWBFile()
+        recording = self.interface.recording_extractor
+        num_channels = recording.get_num_channels()
+        group_names = np.full(shape=num_channels, fill_value="A", dtype="str")
+        group_names[::2] = "B"  # Every other channel group is named B, the rest are named A
+        recording.set_property("group_name", group_names)
+
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        assert len(nwbfile.devices) == 1
 
 
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
@@ -519,6 +543,26 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
+class TestOpenEphysBinaryRecordingInterfaceNonNeuralDatExcluded(RecordingExtractorInterfaceTestMixin):
+    """Test that non-neural channels are not written as ElectricalSeries"""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "neural_and_non_neural_data_mixed"),
+        stream_name="Rhythm_FPGA-100.0",
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_non_neural_channels_not_added(self, setup_interface):
+        interface, test_name = setup_interface
+        nwbfile = interface.create_nwbfile()
+
+        written_channels = nwbfile.acquisition["ElectricalSeries"].electrodes["channel_name"].data
+        # Note the absence of "ADC1" and "ADC2"
+        assert all("ADC" not in channel for channel in written_channels)
+        assert np.array_equal(written_channels, np.asarray(["CH1", "CH2", "CH3", "CH4"]))
+
+
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysLegacyRecordingInterface
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
@@ -641,16 +685,14 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(
-            ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
-        )
+        folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.ap"
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "0", '
             '"probe_type_description": "NP1.0", '
@@ -678,7 +720,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
-            name="NeuropixelImec0",
+            name="NeuropixelsImec0",
             description="{"
             '"probe_type": "1030", '
             '"probe_type_description": "NP1.0 NHP", '
@@ -723,3 +765,33 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
+
+
+class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = PlexonLFPInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
+    )
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+
+def is_macos():
+    import platform
+
+    return platform.system() == "Darwin"
+
+
+@pytest.mark.skipif(
+    is_macos(),
+    reason="Test skipped on macOS.",
+)
+class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = Plexon2RecordingInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
