@@ -55,13 +55,34 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
 
 
 def get_number_of_electrodes(neo_reader) -> int:
-    """Get number of electrodes from Neo reader."""
+    """
+    Get number of electrodes from Neo reader.
+
+    Returns
+    -------
+    int
+        The total number of electrodes in the recording.
+    """
     # TODO - take in account the case with multiple streams.
     return len(neo_reader.header["signal_channels"])
 
 
 def get_number_of_segments(neo_reader, block: int = 0) -> int:
-    """Get number of segments from Neo reader."""
+    """
+    Get number of segments from Neo reader.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+        The Neo reader object.
+    block : int, default: 0
+        Block index.
+
+    Returns
+    -------
+    int
+        The number of segments in the specified block.
+    """
     return neo_reader.header["nb_segment"][block]
 
 
@@ -72,10 +93,23 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
     Parameters
     ----------
     neo_reader : neo.io.baseio
+        The Neo reader object.
     segment : int, optional
-        Defaults to 0.
+        Segment index. Defaults to 0.
     cmd_channel : int, optional
         ABF command channel (0 to 7). Defaults to 0.
+
+    Returns
+    -------
+    tuple[list, str, str]
+        A tuple containing:
+        - list: The command trace data
+        - str: The title of the command trace
+        - str: The units of the command trace
+
+    Notes
+    -----
+    This function only works for AxonIO interface.
     """
     try:
         traces, titles, units = neo_reader.read_raw_protocol()
@@ -92,11 +126,14 @@ def get_conversion_from_unit(unit: str) -> float:
 
     Parameters
     ----------
-    unit (str): Unit as string. E.g. pA, mV, uV, etc...
+    unit : str
+        Unit as string. E.g. pA, mV, uV, etc...
 
     Returns
     -------
-    float: conversion to Ampere or Volt
+    float
+        The conversion factor to convert to Ampere or Volt.
+        For example, for 'pA' returns 1e-12 to convert to Ampere.
     """
     if unit in ["pA", "pV"]:
         conversion = 1e-12
@@ -120,9 +157,15 @@ def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
 
     Parameters
     ----------
-    neo_reader: Neo reader object
-    metadata: dict, optional
+    neo_reader : neo.io.baseio
+        Neo reader object
+    metadata : dict, optional
         Metadata info for constructing the nwb file.
+
+    Returns
+    -------
+    dict
+        Default metadata dictionary containing NWBFile and Icephys device information.
     """
     metadata = dict(
         NWBFile=dict(
@@ -214,7 +257,6 @@ def add_icephys_recordings(
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: str = "not described",
     skip_electrodes: tuple[int] = (),
-    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -230,16 +272,6 @@ def add_icephys_recordings(
     skip_electrodes : tuple, default: ()
         Electrode IDs to skip.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression is not None:
-        warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     n_segments = get_number_of_segments(neo_reader, block=0)
 
@@ -380,7 +412,6 @@ def add_neo_to_nwb(
     neo_reader,
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
-    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
     skip_electrodes: tuple[int] = (),
@@ -409,15 +440,6 @@ def add_neo_to_nwb(
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     # TODO: remove completely after 10/1/2024
-    if compression is not None:
-        warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
@@ -443,7 +465,6 @@ def write_neo_to_nwb(
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,
-    compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
     skip_electrodes: Optional[tuple] = (),
@@ -499,9 +520,6 @@ def write_neo_to_nwb(
 
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
@@ -517,17 +535,6 @@ def write_neo_to_nwb(
     ), "'write_neo_to_nwb' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
-
-    # TODO: remove completely after 10/1/2024
-    if compression is not None:
-        warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
 
     if metadata is None:
         metadata = get_nwb_metadata(neo_reader=neo_reader)

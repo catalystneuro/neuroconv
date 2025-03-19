@@ -27,6 +27,24 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+        """
+        Get the names of available recording streams in the OpenEphys folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to OpenEphys directory (.continuous or .dat files).
+
+        Returns
+        -------
+        list of str
+            The names of the available recording streams.
+
+        Raises
+        ------
+        AssertionError
+            If the data is neither in 'legacy' (.continuous) nor 'binary' (.dat) format.
+        """
         if any(Path(folder_path).rglob("*.continuous")):
             return OpenEphysLegacyRecordingInterface.get_stream_names(folder_path=folder_path)
         elif any(Path(folder_path).rglob("*.dat")):
@@ -39,7 +57,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -58,7 +76,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
             When channel stream is not available the name of the stream must be specified.
         block_index : int, optional, default: None
             The index of the block to extract from the data.
-        verbose : bool, default: True
+        verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
         super().__new__(cls)

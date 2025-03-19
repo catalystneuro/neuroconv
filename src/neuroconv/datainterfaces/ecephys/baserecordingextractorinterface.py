@@ -20,11 +20,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "spikeinterface.extractors"
 
-    def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
+    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
         Parameters
         ----------
-        verbose : bool, default: True
+        verbose : bool, default: False
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
             The key of this ElectricalSeries in the metadata dictionary.
@@ -48,7 +48,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
-        """Compile metadata schema for the RecordingExtractor."""
+        """
+        Compile metadata schema for the RecordingExtractor.
+
+        Returns
+        -------
+        dict
+            The metadata schema dictionary containing definitions for Device, ElectrodeGroup,
+            Electrodes, and optionally ElectricalSeries.
+        """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
@@ -88,7 +96,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        channel_groups_array = self.recording_extractor.get_channel_groups()
+        from ...tools.spikeinterface.spikeinterface import _get_group_name
+
+        channel_groups_array = _get_group_name(recording=self.recording_extractor)
         unique_channel_groups = set(channel_groups_array) if channel_groups_array is not None else ["ElectrodeGroup"]
         electrode_metadata = [
             dict(name=str(group_id), description="no description", location="unknown", device="DeviceEcephys")
@@ -106,6 +116,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
 
         return metadata
+
+    @property
+    def channel_ids(self):
+        "Gets the channel ids of the data."
+        return self.recording_extractor.get_channel_ids()
 
     def get_original_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
         """
@@ -248,8 +263,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Returns
         -------
-        has_probe : bool
-            True if the recording extractor has probe information.
+        bool
+            True if the recording extractor has probe information, False otherwise.
         """
         return self.recording_extractor.has_probe()
 
@@ -272,6 +287,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         Parameters
         ----------
         stub_test : bool, default: False
+            If True, only a subset of frames will be included.
+
+        Returns
+        -------
+        spikeinterface.core.BaseRecording
+            The subsetted recording extractor.
         """
         from spikeinterface.core.segmentutils import AppendSegmentRecording
 
@@ -308,8 +329,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        compression: Optional[str] = None,  # TODO: remove completely after 10/1/2024
-        compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
         always_write_timestamps: bool = False,
@@ -377,8 +396,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             recording = self.recording_extractor
 
-        if metadata is None:
-            metadata = self.get_metadata()
+        metadata = metadata or self.get_metadata()
 
         add_recording_to_nwbfile(
             recording=recording,
@@ -388,8 +406,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,

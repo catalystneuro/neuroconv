@@ -109,7 +109,20 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str) -> dict:
-        """Auto-populates ecephys metadata from the xml_file_path."""
+        """
+        Auto-populates ecephys metadata from the xml_file_path.
+
+        Parameters
+        ----------
+        xml_file_path : str
+            Path to the XML file containing device and electrode configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for ElectrodeGroup and Electrodes.
+            Includes group names, descriptions, and electrode properties.
+        """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
@@ -128,7 +141,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         gain: Optional[float] = None,
         xml_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
         """
@@ -136,13 +149,13 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .dat file.
         gain : Optional[float], optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : FilePathType, optional
+        xml_file_path : FilePath, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
@@ -205,22 +218,25 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePath,
         gain: Optional[float] = None,
         xml_file_path: Optional[FilePath] = None,
+        verbose: bool = False,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : FilePath
             Path to .lfp or .eeg file.
         gain : float, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePathType, optional
+        xml_file_path : OptionalFilePath, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        verbose : bool, default: False
+            If True, enables verbose mode for detailed logging.
         """
         get_package(package_name="lxml")
 
@@ -271,7 +287,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list[int]] = None,
         xml_file_path: Optional[FilePath] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).
@@ -285,7 +301,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         exclude_shanks : list of integers, optional
             List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
             final integer of all the .res.%i and .clu.%i pairs.
-        xml_file_path : FilePathType, optional
+        xml_file_path : FilePath, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
