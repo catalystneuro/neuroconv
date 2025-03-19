@@ -1,6 +1,5 @@
 """Primary class for converting MoSeq Extraction data."""
 
-from datetime import datetime
 
 import h5py
 import numpy as np
@@ -13,7 +12,6 @@ from ndx_depth_moseq import (
 from pynwb import NWBFile, TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from pynwb.image import GrayscaleImage, ImageMaskSeries
-from pytz import timezone
 
 from .....basedatainterface import BaseDataInterface
 from .....tools import nwb_helpers
