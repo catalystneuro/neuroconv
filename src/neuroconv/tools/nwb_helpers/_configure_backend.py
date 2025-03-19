@@ -54,7 +54,7 @@ def configure_backend(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
         # Special ndx-events v0.2.0 types
-        elif is_ndx_events_installed and (get_package_version("ndx-events") == version.parse("0.2.0")):
+        elif is_ndx_events_installed and (get_package_version("ndx-events") <= version.parse("0.2.1")):
             # Temporarily skipping LabeledEvents
             if isinstance(neurodata_object, ndx_events.LabeledEvents):
                 continue
