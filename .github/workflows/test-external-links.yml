@@ -1,19 +1,31 @@
 name: Testing External Links
-on: pull_request
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    # Synchronize, open and reopened are the default types for pull request
+    # We add ready_for_review to trigger the check for changelog and full tests when ready for review is clicked
+  merge_group:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
+    if: ${{ github.event.pull_request.draft == false }}
     name: Testing External Links
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.11"
       - name: Install package for API docs
-        run: pip install -e .[docs]
+        run: pip install .[docs]
       - name: Test External Links
         run: sphinx-build -b linkcheck ./docs ./docs/_build/

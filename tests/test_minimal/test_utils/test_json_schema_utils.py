@@ -1,15 +1,17 @@
-import os
 import json
-from pathlib import Path
-from typing import Union
+import os
 from copy import deepcopy
 
+import numpy as np
+from pynwb.ophys import ImagingPlane, TwoPhotonSeries
+
 from neuroconv.utils import (
-    get_schema_from_method_signature,
     dict_deep_update,
     fill_defaults,
+    get_schema_from_hdmf_class,
     load_dict_from_file,
 )
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
 def compare_dicts(a: dict, b: dict):
@@ -31,34 +33,6 @@ def sort_item(item):
         return {k: sort_item(item[k]) for k in sorted(item)}
     else:
         return item
-
-
-def test_get_schema_from_method_signature():
-    class A:
-        def __init__(self, a: int, b: float, c: Union[Path, str], d: bool, e: str = "hi"):
-            pass
-
-    schema = get_schema_from_method_signature(A.__init__)
-
-    correct_schema = dict(
-        additionalProperties=False,
-        properties=dict(
-            a=dict(type="number"),
-            b=dict(type="number"),
-            c=dict(type="string"),
-            d=dict(type="boolean"),
-            e=dict(default="hi", type="string"),
-        ),
-        required=[
-            "a",
-            "b",
-            "c",
-            "d",
-        ],
-        type="object",
-    )
-
-    compare_dicts(schema, correct_schema)
 
 
 def test_dict_deep_update_1():
@@ -133,7 +107,6 @@ def test_dict_deep_update_4():
 
 
 def test_fill_defaults():
-
     schema = dict(
         additionalProperties=False,
         properties=dict(
@@ -214,3 +187,22 @@ def test_load_metadata_from_file():
 
     m2 = load_dict_from_file(file_path=json_file_path)
     compare_dicts_2(m0, m2)
+
+
+def test_get_schema_from_ImagingPlane_array_type():
+    imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
+    assert "origin_coords" in imaging_plane_schema["properties"]
+    assert "grid_spacing" in imaging_plane_schema["properties"]
+
+
+def test_get_schema_from_TwoPhotonSeries_array_type():
+    two_photon_series_schema = get_schema_from_hdmf_class(TwoPhotonSeries)
+    assert "data" not in two_photon_series_schema["properties"]
+    assert "timestamps" not in two_photon_series_schema["properties"]
+    assert "external_file" not in two_photon_series_schema["properties"]
+
+
+def test_np_array_encoding():
+    np_array = np.array([1, 2, 3])
+    encoded = json.dumps(np_array, cls=_NWBMetaDataEncoder)
+    assert encoded == "[1, 2, 3]"

@@ -1,20 +1,43 @@
+from typing import Literal, Optional
+
+from pydantic import ConfigDict, FilePath, validate_call
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, FloatType, ArrayType
+from ....utils import ArrayType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
-    """Data Interface for Hdf5ImagingExtractor."""
+    """Interface for HDF5 imaging data."""
 
+    display_name = "HDF5 Imaging"
+    associated_suffixes = (".h5", ".hdf5")
+    info = "Interface for HDF5 imaging data."
+
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         mov_field: str = "mov",
-        sampling_frequency: FloatType = None,
-        start_time: FloatType = None,
-        metadata: dict = None,
-        channel_names: ArrayType = None,
-        verbose: bool = True,
+        sampling_frequency: Optional[float] = None,
+        start_time: Optional[float] = None,
+        metadata: Optional[dict] = None,
+        channel_names: Optional[ArrayType] = None,
+        verbose: bool = False,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):
+        """
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to .h5 or .hdf5 file.
+        mov_field : str, default: 'mov'
+        sampling_frequency : float, optional
+        start_time : float, optional
+        metadata : dict, optional
+        channel_names : list of str, optional
+        verbose : bool, default: False
+        """
         super().__init__(
             file_path=file_path,
             mov_field=mov_field,
@@ -23,4 +46,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             metadata=metadata,
             channel_names=channel_names,
             verbose=verbose,
+            photon_series_type=photon_series_type,
         )

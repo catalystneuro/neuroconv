@@ -2,38 +2,92 @@ name: Deploy tests
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    # Synchronize, open and reopened are the default types for pull request
+    # We add ready_for_review to trigger the check for changelog and full tests when ready for review is clicked
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  cancel-previous-runs:
+  load_python_and_os_versions:
     runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - uses: actions/checkout@v4
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
 
   assess-file-changes:
-    uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@main
+    uses: ./.github/workflows/assess-file-changes.yml
+
+  detect-changelog-updates:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && github.event.pull_request.draft == false }}
+    name: Auto-detecting CHANGELOG.md updates
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
+        run: echo "CHANGELOG.md has been updated."
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
+        run: |
+          echo "CHANGELOG.md has not been updated."
+          0
 
   run-tests:
-    needs: assess-file-changes
+    needs: [assess-file-changes, load_python_and_os_versions]
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: catalystneuro/neuroconv/.github/workflows/testing.yml@main
+    uses: ./.github/workflows/testing.yml
     secrets:
-      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
-  run-dev-tests:
-    needs: assess-file-changes
-    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: catalystneuro/neuroconv/.github/workflows/dev-testing.yml@main
-    secrets:
-      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
-
-  run-doctest:
-    needs: assess-file-changes
+  # If the conversion gallery is the only thing that changed, run doctests only
+  run-doctests-only:
+    needs: [assess-file-changes, load_python_and_os_versions]
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
-    uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@main
+    uses: ./.github/workflows/doctests.yml
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+
+
+  run-live-service-tests:
+    needs: [assess-file-changes, load_python_and_os_versions]
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: ./.github/workflows/live-service-testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+
+
+  check-final-status:
+    name: All tests passing
+    if: always()
+    needs:
+      - run-tests
+      - run-doctests-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether all jobs succeeded or at least one failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          allowed-skips: run-tests, run-doctests-only
+          jobs: ${{ toJSON(needs) }}

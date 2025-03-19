@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "base_metafile.schema.json",
+  "title": "Base schema for the metafile",
+  "description": "Base schema for the metafile",
+  "version": "0.1.0",
+  "type": "object",
+  "required": ["NWBFile"],
+  "properties": {
+    "NWBFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_start_time"],
+      "properties": {
+        "keywords": {
+          "description": "Terms to search over",
+          "type": "array",
+          "items": {
+            "title": "keyword",
+            "type": "string"
+          }
+        },
+        "experiment_description": {
+          "type": "string",
+          "description": "general description of the experiment"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "lab-specific ID for the session"
+        },
+        "experimenter": {
+          "description": "Name of person/people who performed experiment",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "experimenter"
+          }
+        },
+        "identifier": {
+          "type": "string",
+          "description": "A unique text identifier for the file. If one is not provided it will be randomly assigned"
+        },
+        "institution": {
+          "type": "string",
+          "description": "Institution(s) where experiment is performed"
+        },
+        "lab": {
+          "type": "string",
+          "description": "Lab where experiment was performed"
+        },
+        "session_description": {
+          "type": "string",
+          "description": "A description of the session where this data was generated"
+        },
+        "session_start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The start date and time of the recording session"
+        },
+        "surgery": {
+          "type": "string",
+          "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+        },
+        "pharmacology": {
+          "type": "string",
+          "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), painkiller(s), etc., plus dosage, concentration, etc."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Experimental protocol, if applicable. E.g., include IACUC protocol"
+        },
+        "related_publications": {
+          "type": "array",
+          "items": {
+            "title": "related publication",
+            "type": "string"
+          }
+        },
+        "slices": {
+          "type": "string",
+          "description": "Description of slices, including information about preparation thickness, orientation, temperature and bath solution."
+        },
+        "source_script": {
+          "type": "string",
+          "description": "Script file used to create this NWB file."
+        },
+        "source_script_file_name": {
+          "type": "string",
+          "description": "Script file used to create this NWB file."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the experiment."
+        },
+        "virus": {
+          "type": "string",
+          "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."
+        },
+        "data_collection": {
+          "type": "string",
+          "description": "Notes about data collection and analysis."
+        },
+        "stimulus_notes": {
+          "type": "string",
+          "description": "Notes about stimuli, such as how and where presented."
+        }
+      }
+    },
+    "Subject": {
+      "type": "object",
+      "required": [
+        "subject_id",
+        "sex",
+        "species"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "age": {
+          "type": "string",
+          "description": "The age of the subject. The ISO 8601 Duration format is recommended, e.g., 'P90D' for 90 days old, 'P2W' for 2 weeks old, 'P18Y' for 18 years old.",
+          "pattern": "^P((\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?))|(\\d+W)?$"
+        },
+        "age__reference": {
+          "type": "string",
+          "enum": ["birth", "gestational"],
+          "description": "Age is with reference to this event. Can be 'birth' or 'gestational'.",
+          "default": "birth"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of subject and where subject came from (e.g., breeder, if animal)."
+        },
+        "genotype": {
+          "type": "string",
+          "description": "Genetic strain. If absent, assume Wild Type (WT)"
+        },
+        "sex": {
+          "type": "string",
+          "enum": [
+            "M",
+            "F",
+            "U",
+            "O",
+            "XX",
+            "XO"
+          ]
+        },
+        "species": {
+          "type": "string",
+          "description": "Species of subject. Use latin name.",
+          "pattern": "^[A-Z][a-z]+ [a-z]+|http://purl.obolibrary.org/obo/NCBITaxon_[0-9]+"
+        },
+        "subject_id": {
+          "type": "string",
+          "description": "ID of animal/person used/participating in experiment (lab convention)"
+        },
+        "weight": {
+          "type": "string",
+          "description": "Weight at time of experiment, at time of surgery and at other important times."
+        },
+        "date_of_birth": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date of birth of subject. Can be supplied instead of 'age'."
+        },
+        "strain": {
+          "type": "string",
+          "description": "The strain of the subject, e.g., 'C57BL/6J'"
+        }
+      }
+    }
+  }
+}

@@ -1,25 +1,26 @@
 import os
-import dateutil
 from pathlib import Path
 from typing import Union
 
+import dateutil
 import numpy as np
+from pydantic import FilePath
 from pynwb.behavior import Position, SpatialSeries
 
-from ....utils import FilePathType
 
-
-def get_eeg_sampling_frequency(file_path: FilePathType):
+def get_eeg_sampling_frequency(file_path: FilePath) -> float:
     """
     Read sampling frequency from .eegX or .egfX file header.
-    Parameters:
-    -----------
+
+    Parameters
+    ----------
     file_path : Path or str
         Full file_path of Axona `.eegX` or `.egfX` file.
-    Returns:
-    --------
-    Fs : float
-        Sampling frequency
+
+    Returns
+    -------
+    float
+        The sampling frequency in Hz extracted from the file header's sample_rate field.
     """
     Fs_entry = parse_generic_header(file_path, ["sample_rate"])
     Fs = float(Fs_entry.get("sample_rate").split(" ")[0])
@@ -28,13 +29,13 @@ def get_eeg_sampling_frequency(file_path: FilePathType):
 
 
 # Helper functions for AxonaLFPDataInterface
-def read_eeg_file_lfp_data(file_path: FilePathType):
+def read_eeg_file_lfp_data(file_path: FilePath) -> np.memmap:
     """
     Read LFP data from Axona `.eegX` or `.egfX` file.
 
     Parameters:
     -------
-    file_path (Path or Str):
+    file_path : FilePath
         Full file_path of Axona `.eegX` or `.egfX` file.
 
     Returns:
@@ -62,21 +63,22 @@ def read_eeg_file_lfp_data(file_path: FilePathType):
     return eeg_data
 
 
-def get_all_file_paths(file_path: FilePathType):
+def get_all_file_paths(file_path: FilePath) -> list:
     """
     Read LFP file_paths of `.eeg` or `.egf` files in file_path's directory.
     E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be
     appended to the output.
 
-    Parameters:
-    -----------
-    file_path : path-like
+    Parameters
+    ----------
+    file_path : FilePath
         Full file_path of either .egg or .egf file
 
-    Returns:
-    --------
-    path_list : list
-        List of file_paths
+    Returns
+    -------
+    list
+        List of file paths for all .eeg or .egf files found in the same directory
+        as the input file path.
     """
 
     suffix = Path(file_path).suffix[0:4]
@@ -87,16 +89,18 @@ def get_all_file_paths(file_path: FilePathType):
     return path_list
 
 
-def read_all_eeg_file_lfp_data(file_path: FilePathType):
+def read_all_eeg_file_lfp_data(file_path: FilePath) -> np.ndarray:
     """
     Read LFP data from all Axona `.eeg` or `.egf` files in file_path's directory.
     E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be conactenated
-    to a single np.array (chans x nobs). For .egf files substitude the file suffix.
-    Parameters:
-    -------
-    file_path (Path or Str):
+    to a single np.array (chans x nobs). For .egf files substitute the file suffix.
+
+    Parameters
+    ---------
+    file_path FilePath
         Full file_path of Axona `.eeg` or `.egf` file.
-    Returns:
+
+    Returns
     -------
     np.array (chans x obs)
     """
@@ -107,7 +111,6 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType):
     eeg_memmaps = list()
     sampling_rates = set()
     for fname in file_path_list:
-
         sampling_rates.add(get_eeg_sampling_frequency(parent_path / fname))
 
         eeg_memmaps.append(read_eeg_file_lfp_data(parent_path / fname))
@@ -119,22 +122,27 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType):
 
 
 # Helper functions for AxonaPositionDataInterface
-def parse_generic_header(file_path: FilePathType, params: Union[list, set]):
+def parse_generic_header(file_path: FilePath, params: Union[list, set]) -> dict:
     """
     Given a binary file with phrases and line breaks, enters the
     first word of a phrase as dictionary key and the following
     string (without linebreaks) as value. Returns the dictionary.
 
-    INPUT
-    file_path (str): .set file path and name.
-    params (list or set): parameter names to search for.
+    Parameters
+    ----------
+    file_path : FilePath
+        Full file_path of Axona `.eeg` or `.egf` file.
+    params : list or set
+        Parameter names to search for.
 
-    OUTPUT
-    header (dict): dictionary with keys being the parameters that
-                   were found & values being strings of the data.
+    Returns
+    -------
+    header : dict
+        keys are the parameters that were found & values are strings of the data.
 
-    EXAMPLE
-    parse_generic_header('myset_file.set', ['experimenter', 'trial_time'])
+    Examples
+    --------
+    >> parse_generic_header('myset_file.set', ['experimenter', 'trial_time'])
     """
     header = dict()
     if params is not None:
@@ -151,7 +159,7 @@ def parse_generic_header(file_path: FilePathType, params: Union[list, set]):
     return header
 
 
-def read_axona_iso_datetime(set_file: FilePathType):
+def read_axona_iso_datetime(set_file: FilePath) -> str:
     """
     Creates datetime object (y, m, d, h, m, s) from .set file header
     and converts it to ISO 8601 format
@@ -165,18 +173,20 @@ def read_axona_iso_datetime(set_file: FilePathType):
     return dateutil.parser.parse(date_string + " " + time_string).isoformat()
 
 
-def get_header_bstring(file: FilePathType):
+def get_header_bstring(file: FilePath) -> bytes:
     """
     Scan file for the occurrence of 'data_start' and return the header
     as byte string
 
     Parameters
     ----------
-    file (str or path): file to be loaded
+    file (str or path) : file to be loaded
 
     Returns
     -------
-    str: header byte content
+    bytes
+        The header content as bytes, including everything from the start of the file
+        up to and including the 'data_start' marker.
     """
     header = b""
     with open(file, "rb") as f:
@@ -189,22 +199,22 @@ def get_header_bstring(file: FilePathType):
     return header
 
 
-def read_bin_file_position_data(bin_file_path: FilePathType):
+def read_bin_file_position_data(bin_file_path: FilePath) -> np.ndarray:
     """
     Read position data from Axona `.bin` file (if present).
 
-    Parameters:
-    -------
-    bin_file_path (Path or Str):
+    Parameters
+    ----------
+    bin_file_path : FilePath
         Full file_path of Axona file with any extension.
 
-    Returns:
+    Returns
     -------
-    np.array
+    np.ndarray
         Columns are time (ms), X, Y, x, y, PX, px, tot_px, unused
 
-    Notes:
-    ------
+    Notes
+    -----
     To obtain the correct column order we pairwise flip the 8 int16 columns
     described in the file format manual. In addition, note that `.bin` data is
     little endian (read right to left), as opposed to `.pos` file data, which is
@@ -280,18 +290,18 @@ def read_bin_file_position_data(bin_file_path: FilePathType):
     return pos_data
 
 
-def read_pos_file_position_data(pos_file_path: FilePathType):
+def read_pos_file_position_data(pos_file_path: FilePath) -> np.ndarray:
     """
     Read position data from Axona `.pos` file.
 
-    Parameters:
-    -------
-    pos_file_path (Path or Str):
+    Parameters
+    ----------
+    pos_file_path: FilePath
         Full file_path of Axona file with any extension.
 
-    Returns:
+    Returns
     -------
-    np.array
+    np.ndarray
         Columns are time (ms), X, Y, x, y, PX, px, tot_px, unused
     """
 
@@ -350,21 +360,25 @@ def read_pos_file_position_data(pos_file_path: FilePathType):
     return pos_data
 
 
-def get_position_object(file_path: FilePathType):
+def get_position_object(file_path: FilePath) -> Position:
     """
     Read position data from .bin or .pos file and convert to
     pynwb.behavior.SpatialSeries objects. If possible it should always
     be preferred to read position data from the `.bin` file to ensure
     samples are locked to ecephys time courses.
 
-    Parameters:
+    Parameters
     ----------
-    file_path (Path or Str):
+    file_path : Path or str
         Full file_path of Axona file with any extension.
 
-    Returns:
+    Returns
     -------
-    position (pynwb.behavior.Position)
+    pynwb.behavior.Position
+        Position object containing multiple SpatialSeries, one for each position
+        channel (time, X, Y, x, y, PX, px, px_total, unused). Each series contains
+        timestamps and corresponding position data. The timestamps are in milliseconds
+        and are aligned to the start of raw acquisition if reading from a .bin file.
     """
     position = Position()
 
@@ -386,8 +400,7 @@ def get_position_object(file_path: FilePathType):
         position_data = read_pos_file_position_data(file_path)
     position_timestamps = position_data[:, 0]
 
-    for ichan in range(0, position_data.shape[1]):
-
+    for ichan in range(position_data.shape[1]):
         spatial_series = SpatialSeries(
             name=position_channel_names[ichan],
             timestamps=position_timestamps,

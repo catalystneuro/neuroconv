@@ -1,107 +1,140 @@
-"""Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
+"""DataInterfaces for SpikeGLX."""
+
+import warnings
 from pathlib import Path
 from typing import Optional
-import json
 
-from pynwb.ecephys import ElectricalSeries
+import numpy as np
+from pydantic import DirectoryPath, FilePath, validate_call
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 from .spikeglx_utils import (
-    get_session_start_time,
-    _fetch_metadata_dic_for_spikextractors_spikelgx_object,
-    _assert_single_shank_for_spike_extractors,
+    add_recording_extractor_properties,
     fetch_stream_id_for_spikelgx_file,
+    get_device_metadata,
+    get_session_start_time,
 )
-
-
-def add_recording_extractor_properties(recording_extractor):
-    """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
-
-    probe = recording_extractor.get_probe()
-    channel_ids = recording_extractor.get_channel_ids()
-
-    if probe.get_shank_count() > 1:
-        group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
-        shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
-    else:
-        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
-        group_name = ["s0"] * len(channel_ids)
-
-    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
-    recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
-
-    contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
-    recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import get_json_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
+    """
+    Primary SpikeGLX interface for converting raw SpikeGLX data using a :py:class:`~spikeinterface.extractors.SpikeGLXRecordingExtractor`.
+    """
+
+    display_name = "SpikeGLX Recording"
+    keywords = BaseRecordingExtractorInterface.keywords + ("Neuropixels",)
+    associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
+    info = "Interface for SpikeGLX recording data."
+
+    ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
+    def get_source_schema(cls) -> dict:
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
+        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
+    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs["folder_path"] = self.folder_path
+        extractor_kwargs["all_annotations"] = True
+        extractor_kwargs["stream_id"] = self.stream_id
+        return extractor_kwargs
+
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        stub_test: Optional[bool] = False,
-        spikeextractors_backend: Optional[bool] = False,
-        verbose: bool = True,
+        file_path: Optional[FilePath] = None,
+        verbose: bool = False,
+        es_key: Optional[str] = None,
+        folder_path: Optional[DirectoryPath] = None,
+        stream_id: Optional[str] = None,
     ):
-        from probeinterface import read_spikeglx
+        """
+        Parameters
+        ----------
+        folder_path: DirectoryPath
+            Folder path containing the binary files of the SpikeGLX recording.
+        stream_id: str, optional
+            Stream ID of the SpikeGLX recording.
+            Examples are 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
+        file_path : FilePath
+            Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
+        verbose : bool, default: False
+            Whether to output verbose text.
+        es_key : str, the key to access the metadata of the ElectricalSeries.
+        """
 
-        self.stub_test = stub_test
-        self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
+        if stream_id == "nidq":
+            raise ValueError(
+                "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
+            )
 
-        if spikeextractors_backend:
-            from spikeextractors import SpikeGLXRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
+        if file_path is not None:
+            warnings.warn(
+                "file_path is deprecated and will be removed by the end of 2025. "
+                "The first argument of this interface will be `folder_path` afterwards. "
+                "Use folder_path and stream_id instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
-            self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose)
-            _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+        if file_path is not None and stream_id is None:
+            self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
+            self.folder_path = Path(file_path).parent
         else:
-            file_path = Path(file_path)
-            folder_path = file_path.parent
-            super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
-            self.source_data["file_path"] = str(file_path)
-            self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+            self.stream_id = stream_id
+            self.folder_path = Path(folder_path)
 
-        # Mount the probe
-        meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
-        probe = read_spikeglx(meta_filename)
-        self.recording_extractor.set_probe(probe, in_place=True)
+        super().__init__(
+            folder_path=folder_path,
+            verbose=verbose,
+            es_key=es_key,
+        )
+
+        signal_info_key = (0, self.stream_id)  # Key format is (segment_index, stream_id)
+        self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
+        self.meta = self._signals_info_dict["meta"]
+
+        if es_key is None:
+            stream_kind = self._signals_info_dict["stream_kind"]  # ap or lf
+            stream_kind_caps = stream_kind.upper()
+            device = self._signals_info_dict["device"].capitalize()  # imec0, imec1, etc.
+
+            electrical_series_name = f"ElectricalSeries{stream_kind_caps}"
+
+            # Add imec{probe_index} to the electrical series name when there are multiple probes
+            # or undefined, `typeImEnabled` is present in the meta of all the production probes
+            self.probes_enabled_in_run = int(self.meta.get("typeImEnabled", 0))
+            if self.probes_enabled_in_run != 1:
+                electrical_series_name += f"{device}"
+
+            self.es_key = electrical_series_name
+
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
-
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Device metadata
-        device = self.get_device_metadata()
+        device = get_device_metadata(self.meta)
+
+        # Should follow pattern 'Imec0', 'Imec1', etc.
+        probe_name = self._signals_info_dict["device"].capitalize()
+        device["name"] = f"Neuropixels{probe_name}"
 
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
         electrode_groups = [
             dict(
                 name=group_name,
-                description=f"a group representing shank {group_name}",
+                description=f"A group representing probe/shank '{group_name}'.",
                 location="unknown",
                 device=device["name"],
             )
@@ -111,75 +144,34 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
-            dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
             dict(name="contact_shapes", description="The shape of the electrode"),
+            dict(name="contact_ids", description="The id of the contact on the electrode"),
+            dict(
+                name="inter_sample_shift",
+                description=(
+                    "Array of relative phase shifts for each channel, with values ranging from 0 to 1, "
+                    "representing the fractional delay within the sampling period due to sequential ADC."
+                ),
+            ),
         ]
 
-        metadata["Ecephys"]["ElectricalSeriesRaw"] = dict(
-            name="ElectricalSeriesRaw", description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
-        )
-        return metadata
-
-    def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesRaw", stub_test=False)
-        return conversion_options
-
-    def get_device_metadata(self) -> dict:
-        """Returns a device with description including the metadat as described here
-        # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
-
-        Returns
-        -------
-        dict
-            a dict containing the metadata necessary for creating the device
-        """
-
-        meta = self.meta
-        metadata_dict = dict()
-        if "imDatPrb_type" in self.meta:
-            probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
-            probe_type = str(meta["imDatPrb_type"])
-            probe_type_description = probe_type_to_probe_description[probe_type]
-            metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
-
-        if "imDatFx_pn" in self.meta:
-            metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
-
-        if "imDatBsc_pn" in self.meta:
-            metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
-
-        description_string = "no description"
-        if metadata_dict:
-            description_string = json.dumps(metadata_dict)
-        device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
-
-        return device
-
-
-class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
-    """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-
-        del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeriesRaw"]
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
-
-    def get_metadata(self):
-        metadata = super().get_metadata()
-        del metadata["Ecephys"]["ElectricalSeriesRaw"]
-        metadata["Ecephys"].update(
-            ElectricalSeriesLFP=dict(
-                name="ElectricalSeriesLFP", description="LFP traces for the processed (lf) SpikeGLX data."
+        if self.recording_extractor.get_probe().get_shank_count() > 1:
+            metadata["Ecephys"]["Electrodes"].append(
+                dict(name="shank_ids", description="The shank id of the electrode")
             )
-        )
 
         return metadata
 
-    def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLFP", stub_test=False)
-        return conversion_options
+    def get_original_timestamps(self) -> np.ndarray:
+        new_recording = self.get_extractor()(
+            folder_path=self.folder_path,
+            stream_id=self.stream_id,
+        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "TimeIntervals": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "properties": {
+            "table_name": {
+              "type": "string"
+            },
+            "table_description": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

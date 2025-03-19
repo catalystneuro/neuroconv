@@ -1,89 +1,143 @@
-"""Authors: Saksham Sharda, Cody Baker, Ben Dichter, Heberto Mayorquin."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional, Union
 
+import numpy as np
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
-from ....basedatainterface import BaseDataInterface
-from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....tools import get_package
-from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
+from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 
 
-class DeepLabCutInterface(BaseDataInterface):
+class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
+    display_name = "DeepLabCut"
+    keywords = ("DLC", "DeepLabCut", "pose estimation", "behavior")
+    associated_suffixes = (".h5", ".csv")
+    info = "Interface for handling data from DeepLabCut."
+
+    _timestamps = None
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the file output by dlc (.h5 or .csv)."
+        source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file."
+        return source_schema
+
+    @validate_call
     def __init__(
         self,
-        file_path: FilePathType,
-        config_file_path: FilePathType,
+        file_path: FilePath,
+        config_file_path: Optional[FilePath] = None,
         subject_name: str = "ind1",
-        verbose: bool = True,
+        verbose: bool = False,
     ):
         """
-        Interface for writing DLC's h5 files to nwb using dlc2nwb.
+        Interface for writing DLC's output files to nwb using dlc2nwb.
 
         Parameters
         ----------
-        file_path: FilePathType
-            path to the h5 file output by dlc.
-        config_file_path: FilePathType
-            path to .yml config file
-        subject_name: str
-            the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
-        verbose: bool
-            controls verbosity. ``True`` by default.
+        file_path : FilePath
+            Path to the file output by dlc (.h5 or .csv).
+        config_file_path : FilePath, optional
+            Path to .yml config file
+        subject_name : str, default: "ind1"
+            The name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
+        verbose: bool, default: True
+            Controls verbosity.
         """
-        dlc2nwb = get_package(package_name="dlc2nwb")
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        from importlib.metadata import version
+
+        import ndx_pose  # noqa: F401
+        from packaging import version as version_parse
+
+        ndx_pose_version = version("ndx-pose")
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.0"):
+            raise ImportError(
+                "DeepLabCut interface requires ndx-pose version 0.2.0 or later. "
+                f"Found version {ndx_pose_version}. Please upgrade: "
+                "pip install 'ndx-pose>=0.2.0'"
+            )
+
+        from ._dlc_utils import _read_config
 
         file_path = Path(file_path)
-        if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
-            raise IOError("The file passed in is not a DeepLabCut h5 data file.")
+        suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
+        if not "DLC" in file_path.stem or not suffix_is_valid:
+            raise IOError("The file passed in is not a valid DeepLabCut output data file.")
 
-        self._config_file = dlc2nwb.utils.auxiliaryfunctions.read_config(config_file_path)
+        self.config_dict = dict()
+        if config_file_path is not None:
+            self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
+        self.pose_estimation_container_kwargs = dict()
+
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
-        metadata = dict(
-            NWBFile=dict(session_description=self._config_file["Task"], experimenter=[self._config_file["scorer"]]),
-        )
+        metadata = super().get_metadata()
+
+        if self.config_dict:
+            metadata["NWBFile"].update(
+                session_description=self.config_dict["Task"],
+                experimenter=[self.config_dict["scorer"]],
+            )
+
         return metadata
 
-    def run_conversion(
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def set_aligned_timestamps(self, aligned_timestamps: Union[list, np.ndarray]):
+        """
+        Set aligned timestamps vector for DLC data with user defined timestamps
+
+        Parameters
+        ----------
+        aligned_timestamps : list, np.ndarray
+            A timestamps vector.
+        """
+        self._timestamps = np.asarray(aligned_timestamps)
+
+    def add_to_nwbfile(
         self,
-        nwbfile_path: OptionalFilePathType = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
+        container_name: str = "PoseEstimationDeepLabCut",
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to this location.
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        container_name: str, default: "PoseEstimationDeepLabCut"
+            name of the PoseEstimation container in the nwb
+
         """
-        dlc2nwb = get_package(package_name="dlc2nwb")
+        from ._dlc_utils import _add_subject_to_nwbfile
 
-        base_metadata = self.get_metadata()
-        metadata = dict_deep_update(base_metadata, metadata)
+        self.pose_estimation_container_kwargs["name"] = container_name
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            dlc2nwb.utils.write_subject_to_nwb(
-                nwbfile=nwbfile_out,
-                h5file=str(self.source_data["file_path"]),
-                individual_name=self.subject_name,
-                config_file=str(self.source_data["config_file_path"]),
-            )
+        _add_subject_to_nwbfile(
+            nwbfile=nwbfile,
+            file_path=str(self.source_data["file_path"]),
+            individual_name=self.subject_name,
+            config_file=self.source_data["config_file_path"],
+            timestamps=self._timestamps,
+            pose_estimation_container_kwargs=self.pose_estimation_container_kwargs,
+        )

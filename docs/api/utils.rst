@@ -1,10 +1,6 @@
 Utils
 =====
 
-Globbing
---------
-.. automodule:: neuroconv.utils.globbing
-
 Dictionaries
 ------------
 .. automodule:: neuroconv.utils.dict
@@ -12,6 +8,8 @@ Dictionaries
 JSON Schema
 -----------
 .. automodule:: neuroconv.utils.json_schema
+    :members:
+    :exclude-members: NWBMetaDataEncoder
 
 Common Reused Types
 -------------------

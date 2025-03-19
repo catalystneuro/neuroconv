@@ -1,0 +1,5 @@
+# TODO: make this neuroconv:latest once optional installations are working again
+FROM ghcr.io/catalystneuro/neuroconv:dev
+LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
+LABEL org.opencontainers.image.description="A docker image for the most recent official release of the NeuroConv package. Modified to take in environment variables for the YAML conversion specification and other command line arguments."
+CMD printf "$NEUROCONV_YAML" > ./run.yml && neuroconv run.yml --data-folder-path "$NEUROCONV_DATA_PATH" --output-folder-path "$NEUROCONV_OUTPUT_PATH" --overwrite

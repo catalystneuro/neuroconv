@@ -1,0 +1,189 @@
+name: Daily workflows
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *" # Daily at 8PM PST, 11PM EST, 5AM CET to avoid working hours
+
+jobs:
+  load_python_and_os_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
+
+  build-and-upload-docker-image-dev:
+    uses: ./.github/workflows/build_and_upload_docker_image_dev.yml
+    secrets:
+      DOCKER_UPLOADER_USERNAME: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
+      DOCKER_UPLOADER_PASSWORD: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
+
+  run-daily-tests:
+    needs: load_python_and_os_versions
+    uses: ./.github/workflows/testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+
+  run-daily-dev-tests:
+    needs: load_python_and_os_versions
+    uses: ./.github/workflows/dev-testing.yml
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+    with:
+      python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+
+  run-daily-live-service-testing:
+    needs: load_python_and_os_versions
+    uses: ./.github/workflows/live-service-testing.yml
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+    with:
+      python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+
+  run-daily-neuroconv-docker-testing:
+    uses: ./.github/workflows/neuroconv_docker_testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+
+  run-daily-rclone-docker-testing:
+    uses: ./.github/workflows/rclone_docker_testing.yml
+    secrets:
+      RCLONE_DRIVE_ACCESS_TOKEN: ${{ secrets.RCLONE_DRIVE_ACCESS_TOKEN }}
+      RCLONE_DRIVE_REFRESH_TOKEN: ${{ secrets.RCLONE_DRIVE_REFRESH_TOKEN }}
+      RCLONE_EXPIRY_TOKEN: ${{ secrets.RCLONE_EXPIRY_TOKEN }}
+
+  run-daily-doc-link-checks:
+    uses: ./.github/workflows/test-external-links.yml
+
+  notify-build-and-upload-docker-image-dev:
+    runs-on: ubuntu-latest
+    needs: [build-and-upload-docker-image-dev]
+    if: ${{ always() && needs.build-and-upload-docker-image-dev.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily Docker Image Build and Upload Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily build and upload of the Docker image failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
+
+  notify-test-failure:
+    runs-on: ubuntu-latest
+    needs: [run-daily-tests]
+    if: ${{ always() && needs.run-daily-tests.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily Test Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
+
+  notify-dev-test-failure:
+    runs-on: ubuntu-latest
+    needs: [run-daily-dev-tests]
+    if: ${{ always() && needs.run-daily-dev-tests.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily Dev Test Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily dev test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
+
+  notify-live-service-test-failure:
+    runs-on: ubuntu-latest
+    needs: [run-daily-live-service-testing]
+    if: ${{ always() && needs.run-daily-live-service-testing.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily Live Service Test Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily live service test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
+
+  notify-neuroconv-docker-test-failure:
+    runs-on: ubuntu-latest
+    needs: [run-daily-neuroconv-docker-testing]
+    if: ${{ always() && needs.run-daily-neuroconv-docker-testing.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily NeuroConv Docker Test Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily neuroconv docker test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
+
+  notify-rclone-docker-test-failure:
+    runs-on: ubuntu-latest
+    needs: [run-daily-rclone-docker-testing]
+    if: ${{ always() && needs.run-daily-rclone-docker-testing.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily Rclone Docker Test Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily rclone docker test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
+
+  notify-link-check-failure:
+    runs-on: ubuntu-latest
+    needs: [run-daily-doc-link-checks]
+    if: ${{ always() && needs.run-daily-doc-link-checks.result == 'failure' }}
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: NeuroConv Daily Doc Link Check Failure
+          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
+          from: NeuroConv
+          body: "The daily check for working links in the documentation failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"

@@ -1,11 +1,15 @@
+from pydantic import FilePath
+
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils import FilePathType
 
 
 class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
-    """Data interface for constrained nonnegative matrix factorization (CNMFE) segmentation extractor."""
+    """Data interface for constrained non-negative matrix factorization (CNMFE) segmentation extractor."""
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    display_name = "CNMFE Segmentation"
+    associated_suffixes = (".mat",)
+    info = "Interface for constrained non-negative matrix factorization (CNMFE) segmentation."
 
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         super().__init__(file_path=file_path)
         self.verbose = verbose

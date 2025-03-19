@@ -1,17 +1,18 @@
-"""Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
-import warnings
 import json
+import warnings
+from collections import defaultdict
 from copy import deepcopy
+from ctypes import Union
 from pathlib import Path
+from typing import Any, Optional, Union
 
-import yaml
 import numpy as np
+import yaml
+from pydantic import FilePath
 
-from .types import FilePathType
 
-
-class NoDatesSafeLoader(yaml.SafeLoader):
+class _NoDatesSafeLoader(yaml.SafeLoader):
     """Custom override of yaml Loader class for datetime considerations."""
 
     @classmethod
@@ -32,10 +33,10 @@ class NoDatesSafeLoader(yaml.SafeLoader):
             ]
 
 
-NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
+_NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
-def load_dict_from_file(file_path: FilePathType) -> dict:
+def load_dict_from_file(file_path: FilePath) -> dict:
     """Safely load metadata from .yml or .json files."""
     file_path = Path(file_path)
     assert file_path.is_file(), f"{file_path} is not a file."
@@ -43,7 +44,7 @@ def load_dict_from_file(file_path: FilePathType) -> dict:
 
     if file_path.suffix in (".yml", ".yaml"):
         with open(file=file_path, mode="r") as stream:
-            dictionary = yaml.load(stream=stream, Loader=NoDatesSafeLoader)
+            dictionary = yaml.load(stream=stream, Loader=_NoDatesSafeLoader)
     elif file_path.suffix == ".json":
         with open(file=file_path, mode="r") as fp:
             dictionary = json.load(fp=fp)
@@ -60,13 +61,14 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
     Update the list ls with the dict d.
 
     Cases:
+
     1.  If d is a dict and ls a list of dicts and ints/str, then for a given compare key, if for any element of ls
-        (which is a dict) say: ls[3][compare_key] == d[compare_key], then it will dict_deep_update these instead of
+        (which is a dict) say: ``ls[3][compare_key] == d[compare_key]``, then it will dict_deep_update these instead of
         appending d to list ls. Only if compare_key is not present in any of dicts in the list ls, then d is simply
         appended to ls.
-    2.  If d is of immutable types like str, int etc, the ls is either appended with d or not.
-        This depends on the value of remove_repeats. If remove_repeats is False, then ls is always appended with d.
-        If remove_repeats is True, then if value d is present then its not appended else it is.
+    2.  If ``d`` is of immutable types like str, int etc., the ls is either appended with ``d`` or not.
+        This depends on the value of ``remove_repeats``. If ``remove_repeats`` is ``False``, then ls is always appended with d.
+        If ``remove_repeats`` is ``True``, then if value d is present then it is not appended else it is.
 
     Parameters
     ----------
@@ -112,7 +114,7 @@ def dict_deep_update(
     copy: bool = True,
     compare_key: str = "name",
     list_dict_deep_update: bool = True,
-) -> dict:
+) -> collections.abc.Mapping:
     """
     Perform an update to all nested keys of dictionary d(input) from dictionary u(updating dict).
 
@@ -124,7 +126,7 @@ def dict_deep_update(
         dictionary to update from
     append_list: bool
         if the item to update is a list, whether to append the lists or replace the list in d
-        eg. d = dict(key1=[1,2,3]), u = dict(key1=[3,4,5]).
+        e.g. d = dict(key1=[1,2,3]), u = dict(key1=[3,4,5]).
         If True then updated dictionary d=dict(key1=[1,2,3,4,5]) else d=dict(key1=[3,4,5])
     remove_repeats: bool
         for updating list in d[key] with list in u[key]: if true then remove repeats: list(set(ls))
@@ -132,22 +134,23 @@ def dict_deep_update(
         whether to deepcopy the input dict d
     compare_key: str
         the key that is used to compare dicts (and perform update op) and update d[key] when it is a list if dicts.
-        example:
-            >>> d = {
+        example::
+
+            d = {
                 [
                     {"name": "timeseries1", "desc": "desc1 of d", "starting_time": 0.0},
                     {"name": "timeseries2", "desc": "desc2"},
                 ]
             }
-            >>> u = [{"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."}]
-            >>> # if compre_key='name' output is below
-            >>> output = [
+            u = [{"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."}]
+            # if compare_key='name' output is below
+            output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0, "unit": "n.a."},
                 {"name": "timeseries2", "desc": "desc2"},
             ]
-            >>> # else the output is:
-            >>> # dict with the same key will be updated instead of being appended to the list
-            >>> output = [
+            # else the output is:
+            # dict with the same key will be updated instead of being appended to the list
+            output = [
                 {"name": "timeseries1", "desc": "desc1 of d", "starting_time": 0.0},
                 {"name": "timeseries2", "desc": "desc2"},
                 {"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."},
@@ -155,16 +158,17 @@ def dict_deep_update(
 
     list_dict_deep_update: bool
         for back compatibility, if False, this would work as before:
-        example: if True then for the compare_key example, the output would be:
-            >>> output = [
+        example: if True then for the compare_key example, the output would be::
+
+            output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0, "unit": "n.a."},
                 {"name": "timeseries2", "desc": "desc2"},
             ]
-            >>> # if False:
-            >>> output = [
+            # if False:
+            output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0},
                 {"name": "timeseries2", "desc": "desc2"},
-            ]  # unit key is absent since its a replacement
+            ]  # unit key is absent since it is a replacement
     Returns
     -------
     d: dict
@@ -199,3 +203,63 @@ def dict_deep_update(
             dict_to_update[key_to_update] = update_values
 
     return dict_to_update
+
+
+class DeepDict(defaultdict):
+    """A defaultdict of defaultdicts"""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """A defaultdict of defaultdicts"""
+        super().__init__(lambda: DeepDict(), *args, **kwargs)
+        for key, value in self.items():
+            if isinstance(value, dict):
+                self[key] = DeepDict(value)
+
+    def deep_update(self, other: Optional[Union[dict, "DeepDict"]] = None, **kwargs) -> None:
+        """
+        Recursively update the DeepDict with another dictionary or DeepDict.
+
+        Parameters
+        ----------
+        other : dict or DeepDict, optional
+            The dictionary or DeepDict to update the current instance with.
+        **kwargs : Any
+            Additional keyword arguments representing key-value pairs to update the DeepDict.
+
+        Notes
+        -----
+        For any keys that exist in both the current instance and the provided dictionary, the values are merged
+        recursively if both are dictionaries. Otherwise, the value from `other` or `kwargs` will overwrite the
+        existing value.
+        """
+        for key, value in (other or kwargs).items():
+            if key in self and isinstance(self[key], dict) and isinstance(value, dict):
+                self[key].deep_update(value)
+            else:
+                self[key] = value
+
+    def to_dict(self) -> dict:
+        """Turn a DeepDict into a normal dictionary"""
+
+        def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
+            return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
+
+        return _to_dict(self)
+
+    def __deepcopy__(self, memodict={}):
+        """
+
+        Parameters
+        ----------
+        memodict: dict
+            unused
+
+        Returns
+        -------
+        DeepDict
+
+        """
+        return DeepDict(deepcopy(self.to_dict()))
+
+    def __repr__(self) -> str:
+        return "DeepDict: " + dict.__repr__(self.to_dict())

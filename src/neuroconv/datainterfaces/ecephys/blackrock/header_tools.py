@@ -5,7 +5,7 @@ from datetime import datetime
 from struct import calcsize, unpack
 
 
-def processheaders(curr_file, packet_fields):
+def _processheaders(curr_file, packet_fields):
     """
     :param curr_file:      {file} the current BR datafile to be processed
     :param packet_fields : {named tuple} the specific binary fields for the given header
@@ -27,10 +27,10 @@ def processheaders(curr_file, packet_fields):
 
     # unpack the binary data from the header based on the format strings of each field.
     # This returns a list of data, but it's not always correctly formatted (eg, FileSpec
-    # is read as ints 2 and 3 but I want it as '2.3'
+    # is read as ints 2 and 3, but I want it as '2.3'
     packet_unpacked = unpack(packet_format_str, packet_binary)
 
-    # Create a iterator from the data list.  This allows a formatting function
+    # Create an iterator from the data list.  This allows a formatting function
     # to use more than one item from the list if needed, and the next formatting
     # function can pick up on the correct item in the list
     data_iter = iter(packet_unpacked)
@@ -45,11 +45,11 @@ def processheaders(curr_file, packet_fields):
     return packet_formatted
 
 
-def format_filespec(header_list):
+def _format_filespec(header_list):
     return str(next(header_list)) + "." + str(next(header_list))  # eg 2.3
 
 
-def format_timeorigin(header_list):
+def _format_timeorigin(header_list):
     year = next(header_list)
     month = next(header_list)
     _ = next(header_list)
@@ -61,12 +61,12 @@ def format_timeorigin(header_list):
     return datetime(year, month, day, hour, minute, second, millisecond * 1000)
 
 
-def format_stripstring(header_list):
+def _format_stripstring(header_list):
     string = bytes.decode(next(header_list), "latin-1")
     return string.split(STRING_TERMINUS, 1)[0]
 
 
-def format_none(header_list):
+def _format_none(header_list):
     return next(header_list)
 
 
@@ -74,38 +74,38 @@ FieldDef = namedtuple("FieldDef", ["name", "formatStr", "formatFnc"])
 STRING_TERMINUS = "\x00"
 
 
-def parse_nsx_basic_header(nsx_file):
+def _parse_nsx_basic_header(nsx_file):
     nsx_basic_dict = [
-        FieldDef("FileSpec", "2B", format_filespec),  # 2 bytes   - 2 unsigned char
-        FieldDef("BytesInHeader", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("Label", "16s", format_stripstring),  # 16 bytes  - 16 char array
-        FieldDef("Comment", "256s", format_stripstring),  # 256 bytes - 256 char array
-        FieldDef("Period", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("TimeStampResolution", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("TimeOrigin", "8H", format_timeorigin),  # 16 bytes  - 8 uint16
-        FieldDef("ChannelCount", "I", format_none),
+        FieldDef("FileSpec", "2B", _format_filespec),  # 2 bytes   - 2 unsigned char
+        FieldDef("BytesInHeader", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("Label", "16s", _format_stripstring),  # 16 bytes  - 16 char array
+        FieldDef("Comment", "256s", _format_stripstring),  # 256 bytes - 256 char array
+        FieldDef("Period", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("TimeStampResolution", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("TimeOrigin", "8H", _format_timeorigin),  # 16 bytes  - 8 uint16
+        FieldDef("ChannelCount", "I", _format_none),
     ]  # 4 bytes   - uint32
     datafile = open(nsx_file, "rb")
     filetype_id = bytes.decode(datafile.read(8), "latin-1")
     if filetype_id == "NEURALSG":
-        # this wont contain fields that can be added to NWBFile metadata
+        # this won't contain fields that can be added to NWBFile metadata
         return dict()
-    return processheaders(datafile, nsx_basic_dict)
+    return _processheaders(datafile, nsx_basic_dict)
 
 
-def parse_nev_basic_header(nev_file):
+def _parse_nev_basic_header(nev_file):
     nev_basic_dict = [
-        FieldDef("FileTypeID", "8s", format_stripstring),  # 8 bytes   - 8 char array
-        FieldDef("FileSpec", "2B", format_filespec),  # 2 bytes   - 2 unsigned char
-        FieldDef("AddFlags", "H", format_none),  # 2 bytes   - uint16
-        FieldDef("BytesInHeader", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("BytesInDataPackets", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("TimeStampResolution", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("SampleTimeResolution", "I", format_none),  # 4 bytes   - uint32
-        FieldDef("TimeOrigin", "8H", format_timeorigin),  # 16 bytes  - 8 x uint16
-        FieldDef("CreatingApplication", "32s", format_stripstring),  # 32 bytes  - 32 char array
-        FieldDef("Comment", "256s", format_stripstring),  # 256 bytes - 256 char array
-        FieldDef("NumExtendedHeaders", "I", format_none),
+        FieldDef("FileTypeID", "8s", _format_stripstring),  # 8 bytes   - 8 char array
+        FieldDef("FileSpec", "2B", _format_filespec),  # 2 bytes   - 2 unsigned char
+        FieldDef("AddFlags", "H", _format_none),  # 2 bytes   - uint16
+        FieldDef("BytesInHeader", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("BytesInDataPackets", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("TimeStampResolution", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("SampleTimeResolution", "I", _format_none),  # 4 bytes   - uint32
+        FieldDef("TimeOrigin", "8H", _format_timeorigin),  # 16 bytes  - 8 x uint16
+        FieldDef("CreatingApplication", "32s", _format_stripstring),  # 32 bytes  - 32 char array
+        FieldDef("Comment", "256s", _format_stripstring),  # 256 bytes - 256 char array
+        FieldDef("NumExtendedHeaders", "I", _format_none),
     ]
     datafile = open(nev_file, "rb")
-    return processheaders(datafile, nev_basic_dict)
+    return _processheaders(datafile, nev_basic_dict)
