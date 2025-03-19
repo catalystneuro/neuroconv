@@ -1,4 +1,3 @@
-from numbers import Real
 from typing import Optional, Union
 
 import numpy as np
