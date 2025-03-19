@@ -85,7 +85,7 @@ def test_configure_backend_equivalency(
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=2)
 
-        assert_array_equal(x=nwbfile_1.acquisition["TestTimeSeries"].data[:], y=written_data[:])
+        assert_array_equal(nwbfile_1.acquisition["TestTimeSeries"].data[:], written_data[:])
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

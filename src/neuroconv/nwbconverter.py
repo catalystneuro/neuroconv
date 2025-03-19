@@ -1,9 +1,10 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
+import inspect
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Type, Union
 
 from jsonschema import validate
 from pydantic import FilePath, validate_call
@@ -44,7 +45,7 @@ class NWBConverter:
     associated_suffixes: tuple[str] = tuple()
     info: Union[str, None] = None
 
-    data_interface_classes = None
+    data_interface_classes: dict[str, Type[BaseDataInterface]] = {}
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -85,13 +86,37 @@ class NWBConverter:
 
     @validate_call
     def __init__(self, source_data: dict[str, dict], verbose: bool = False):
-        """Validate source_data against source_schema and initialize all data interfaces."""
+        """
+        Initialize an NWBConverter instance by validating the provided source data and
+        dynamically instantiating the data interfaces on the source_data dictionary.
+
+        Parameters
+        ----------
+        source_data : dict[str, dict]
+            A dictionary where keys are interface names and values are the corresponding
+            parameters required to initialize each data interface.
+        verbose : bool, optional
+            If True, enables verbose mode, by default False.
+            This is propagated to the data interfaces.
+
+        """
         self.verbose = verbose
-        self.data_interface_objects = {
-            name: data_interface(**source_data[name])
-            for name, data_interface in self.data_interface_classes.items()
-            if name in source_data
-        }
+
+        # Only initialize interfaces that are present in the source_data dictionary.
+        # This enables the NWBConverter class to flexibly handle multi-session scenarios
+        # by dynamically selecting only the interface names that are present in the source_data.
+        available_interfaces = {name: cls for name, cls in self.data_interface_classes.items() if name in source_data}
+
+        self.data_interface_objects: dict[str, BaseDataInterface] = {}
+        for interface_name, interface_class in available_interfaces.items():
+            interface_kwargs = source_data[interface_name]
+
+            # Pass the verbose argument if the interface's constructor supports it.
+            if "verbose" in inspect.signature(interface_class.__init__).parameters:
+                interface_kwargs["verbose"] = verbose
+
+            interface_instance = interface_class(**interface_kwargs)
+            self.data_interface_objects[interface_name] = interface_instance
 
     def get_metadata_schema(self) -> dict:
         """

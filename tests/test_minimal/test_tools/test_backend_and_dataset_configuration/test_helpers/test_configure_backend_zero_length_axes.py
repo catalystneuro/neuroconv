@@ -86,7 +86,7 @@ def test_time_series_skip_zero_length_axis(
     #     elif backend == "zarr":
     #         assert written_data.compressor == numcodecs.GZip(level=1)
     #
-    #     assert_array_equal(x=integer_array, y=written_data[:])
+    #     assert_array_equal(integer_array, written_data[:])
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -130,4 +130,4 @@ def test_dynamic_table_skip_zero_length_axis(
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(x=integer_array, y=written_data[:])
+        assert_array_equal(integer_array, written_data[:])
