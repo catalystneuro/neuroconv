@@ -3,11 +3,10 @@ from pathlib import Path
 from typing import Union
 from warnings import warn
 
-from lxml import etree
 from pydantic import DirectoryPath
 
 
-def _get_session_start_time(element: etree.Element) -> Union[datetime, None]:
+def _get_session_start_time(element: "lxml.etree.Element") -> Union[datetime, None]:
     """
     Get the session start time from the settings.xml file.
     Returns the session start time as a datetime object.
@@ -27,7 +26,7 @@ def _get_session_start_time(element: etree.Element) -> Union[datetime, None]:
     return session_start_time
 
 
-def _read_settings_xml(folder_path: DirectoryPath) -> etree.Element:
+def _read_settings_xml(folder_path: DirectoryPath) -> "lxml.etree.Element":
     """
     Read the settings.xml file from an OpenEphys binary recording folder.
     Returns the root element of the XML tree.
@@ -47,5 +46,7 @@ def _read_settings_xml(folder_path: DirectoryPath) -> etree.Element:
             "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
         )
     xml_file_path = xml_file_paths[0]
+    from lxml import etree
+
     tree = etree.parse(str(xml_file_path))
     return tree.getroot()
