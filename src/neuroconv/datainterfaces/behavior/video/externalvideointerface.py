@@ -14,7 +14,7 @@ from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_cl
 
 
 class ExternalVideoInterface(BaseDataInterface):
-    """Data interface for writing videos as ImageSeries."""
+    """Data interface for writing videos as external_file ImageSeries."""
 
     display_name = "Video"
     keywords = ("movie", "natural behavior", "tracking")
@@ -31,20 +31,25 @@ class ExternalVideoInterface(BaseDataInterface):
         video_name: str = "Video1",
     ):
         """
-        Create the interface for writing videos as ImageSeries.
+        Initialize the interface.
+
+        This interface handles multiple video segments and writes them as an ImageSeries with a link to external_file.
+        For writing videos internally with just an ImageSeries object, use the InternalVideoInterface.
 
         Parameters
         ----------
         file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
+        verbose : bool, optional
+            If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
             Defaults to "Video1".
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
-            containing metadata for a set of video segments:
+            containing metadata for a single video stream comprised of potentially multiple segments:
 
             ```
             metadata["Behavior"]["Video"] = [
@@ -54,7 +59,8 @@ class ExternalVideoInterface(BaseDataInterface):
             ]
             ```
 
-            Where each entry corresponds to a separate VideoInterface and ImageSeries.
+            Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
+            metadata["Behavior"]["Video"] is shared with the InternalVideoInterface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose

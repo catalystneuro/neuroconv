@@ -20,7 +20,7 @@ from ....utils.str_utils import human_readable_size
 
 
 class InternalVideoInterface(BaseDataInterface):
-    """Data interface for writing videos as ImageSeries."""
+    """Data interface for writing videos as internally represented ImageSeries."""
 
     display_name = "Video"
     keywords = ("movie", "natural behavior", "tracking")
@@ -37,37 +37,35 @@ class InternalVideoInterface(BaseDataInterface):
         video_name: str = "Video1",
     ):
         """
-        Create the interface for writing videos as ImageSeries.
+        Initialize the interface.
+
+        This interface handles a single video file and writes it as an internally represented ImageSeries. For writing
+        videos as external files, use the ExternalVideoInterface.
 
         Parameters
         ----------
-        file_paths : list of FilePaths
-            Many video storage formats segment a sequence of videos over the course of the experiment.
-            Pass the file paths for this videos as a list in sorted, consecutive order.
-        metadata_key_name : str, optional
-            The key used to identify this video data within the overall experiment metadata.
-            Defaults to "Videos".
+        file_path : FilePath
+            The path to the video file.
+        verbose : bool, optional
+            If True, display verbose output. Defaults to False.
+        video_name : str, optional
+            The name of this video as it will appear in the ImageSeries.
+            Defaults to "Video1".
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
-            containing metadata for a specific video segment:
+            containing metadata for a single video:
 
             ```
-            metadata["Behavior"][metadata_key_name] = [
-                {video1_metadata},
-                {video2_metadata},
+            metadata["Behavior"]["Video"] = [
+                dict(name="Video1", description="description 1.", unit="Frames", **video1_metadata),
+                dict(name="Video2", description="description 2.", unit="Frames", **video2_metadata),
                 ...
             ]
             ```
 
-            If other video interfaces exist, they would follow a similar structure:
-
-            ```
-            metadata["Behavior"]["other_video_key_name"] = [
-                {other_video1_metadata},
-                {other_video2_metadata},
-                ...
-            ]
+            Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
+            metadata["Behavior"]["Video"] is shared with the ExternalVideoInterface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
