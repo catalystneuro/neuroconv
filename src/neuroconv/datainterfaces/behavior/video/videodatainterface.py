@@ -1,22 +1,18 @@
-import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-import psutil
-from hdmf.data_utils import DataChunkIterator
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
-from tqdm import tqdm
 
+from .externalvideointerface import ExternalVideoInterface
+from .internalvideointerface import InternalVideoInterface
 from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....tools.nwb_helpers import get_module
 from ....utils import get_base_schema, get_schema_from_hdmf_class
-from ....utils.str_utils import human_readable_size
 
 
 class VideoInterface(BaseDataInterface):
@@ -275,6 +271,9 @@ class VideoInterface(BaseDataInterface):
         :py:class:`~pynwb.file.NWBFile`. Data is written in the :py:class:`~pynwb.image.ImageSeries` container as
         RGB. [times, x, y, 3-RGB].
 
+        This method acts as a router, delegating the actual conversion to either InternalVideoInterface or
+        ExternalVideoInterface based on the external_mode parameter.
+
         Parameters
         ----------
         nwbfile : NWBFile, optional
@@ -322,7 +321,6 @@ class VideoInterface(BaseDataInterface):
             The default description is the same as used by the conversion_tools.get_module function.
         """
         metadata = metadata or dict()
-
         file_paths = self.source_data["file_paths"]
 
         # Be sure to copy metadata at this step to avoid mutating in-place
@@ -341,111 +339,67 @@ class VideoInterface(BaseDataInterface):
         if any_duplicated_video_names:
             raise ValueError("There are duplicated file names in the metadata!")
 
-        # Iterate over unique videos
-        stub_frames = 10
-        timing_type = self.get_timing_type()
+        # Transform metadata from list format to nested dictionary format
+        metadata_reformatted = deepcopy(metadata)
+        video_name = videos_metadata[0].pop("name")
+        metadata_reformatted["Behavior"][self.metadata_key_name] = {video_name: videos_metadata[0]}
+
+        parent_container = "acquisition" if module_name is None else "processing/behavior"
+        if parent_container == "processing/behavior":
+            assert module_name == "behavior", f"module_name must be 'behavior' or None but got {module_name}."
+
+        # Create the appropriate interface based on external_mode parameter
         if external_mode:
-            image_series_kwargs = videos_metadata[0]
-            if self._number_of_files > 1 and starting_frames is None:
-                raise TypeError(
-                    "Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
-                )
-            elif starting_frames is not None and len(starting_frames) != self._number_of_files:
-                raise ValueError(
-                    f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
-                    f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
-                )
-            elif starting_frames is not None:
-                image_series_kwargs.update(starting_frame=starting_frames)
+            # Use ExternalVideoInterface for external_mode=True
+            # First convert metadata from old structure to the structure expected by ExternalVideoInterface
+            external_interface = ExternalVideoInterface(
+                file_paths=file_paths,
+                verbose=self.verbose,
+                video_name=video_name,
+            )
 
-            image_series_kwargs.update(format="external", external_file=file_paths)
+            # Copy timing information
+            if self._timestamps is not None:
+                external_interface.set_aligned_timestamps(self._timestamps)
+            elif self._segment_starting_times is not None:
+                external_interface.set_aligned_segment_starting_times(self._segment_starting_times)
 
-            if timing_type == "starting_time and rate":
-                starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
-                with VideoCaptureContext(file_path=str(file_paths[0])) as video:
-                    rate = video.get_video_fps()
-                image_series_kwargs.update(starting_time=starting_time, rate=rate)
-            elif timing_type == "timestamps":
-                image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
-            else:
-                raise ValueError(f"Unrecognized timing_type: {timing_type}")
-        else:
-            for file_index, (image_series_kwargs, file) in enumerate(zip(videos_metadata, file_paths)):
-                if self._number_of_files > 1:
-                    raise NotImplementedError(
-                        "Multiple file_paths with external_mode=False is not yet supported! "
-                        "Please initialize a separate VideoInterface for each file."
-                    )
+            # Call ExternalVideoInterface's add_to_nwbfile method
+            return external_interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata_reformatted,
+                starting_frames=starting_frames,
+                parent_container=parent_container,
+                module_description=module_description,
+            )
 
-                uncompressed_estimate = Path(file).stat().st_size * 70
-                available_memory = psutil.virtual_memory().available
-                if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
-                    warnings.warn(
-                        f"Not enough memory (estimated {human_readable_size(uncompressed_estimate)}) to load video file"
-                        f"as array ({human_readable_size(available_memory)} available)! Forcing chunk_data to True."
-                    )
-                    chunk_data = True
-                with VideoCaptureContext(str(file)) as video_capture_ob:
-                    if stub_test:
-                        video_capture_ob.frame_count = stub_frames
-                    total_frames = video_capture_ob.get_video_frame_count()
-                    frame_shape = video_capture_ob.get_frame_shape()
+        # Use InternalVideoInterface for external_mode=False
+        # Validate that we only have one file (required by InternalVideoInterface)
+        if self._number_of_files > 1:
+            raise NotImplementedError(
+                "Multiple file_paths with external_mode=False is not yet supported! "
+                "Please initialize a separate VideoInterface for each file."
+            )
 
-                maxshape = (total_frames, *frame_shape)
-                tqdm_pos, tqdm_mininterval = (0, 10)
+        # Create InternalVideoInterface
+        internal_interface = InternalVideoInterface(
+            file_path=file_paths[0],
+            verbose=self.verbose,
+            video_name=video_name,
+        )
 
-                if chunk_data:
-                    chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
-                    video_capture_ob = VideoCaptureContext(str(file))
-                    if stub_test:
-                        video_capture_ob.frame_count = stub_frames
-                    iterable = DataChunkIterator(
-                        data=tqdm(
-                            iterable=video_capture_ob,
-                            desc=f"Copying video data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
-                        ),
-                        iter_axis=0,  # nwb standard is time as zero axis
-                        maxshape=maxshape,
-                    )
+        # Copy timing information
+        if self._timestamps is not None:
+            internal_interface.set_aligned_timestamps(self._timestamps[0])
+        elif self._segment_starting_times is not None:
+            internal_interface.set_aligned_starting_time(self._segment_starting_times[0])
 
-                else:
-                    # Load the video
-                    chunks = None
-                    video = np.zeros(shape=maxshape, dtype="uint8")
-                    with VideoCaptureContext(str(file)) as video_capture_ob:
-                        if stub_test:
-                            video_capture_ob.frame_count = stub_frames
-                        with tqdm(
-                            desc=f"Reading video data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
-                        ) as pbar:
-                            for n, frame in enumerate(video_capture_ob):
-                                video[n, :, :, :] = frame
-                                pbar.update(1)
-                    iterable = video
-
-                image_series_kwargs.update(data=iterable)
-
-                if timing_type == "starting_time and rate":
-                    starting_time = (
-                        self._segment_starting_times[file_index] if self._segment_starting_times is not None else 0.0
-                    )
-                    with VideoCaptureContext(file_path=str(file)) as video:
-                        rate = video.get_video_fps()
-                    image_series_kwargs.update(starting_time=starting_time, rate=rate)
-                elif timing_type == "timestamps":
-                    image_series_kwargs.update(timestamps=self._timestamps[file_index])
-
-        # Attach image series
-        image_series = ImageSeries(**image_series_kwargs)
-        if module_name is None:
-            nwbfile.add_acquisition(image_series)
-        else:
-            get_module(nwbfile=nwbfile, name=module_name, description=module_description).add(image_series)
-
-        return nwbfile
+        # Call InternalVideoInterface's add_to_nwbfile method
+        return internal_interface.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata_reformatted,
+            stub_test=stub_test,
+            chunk_data=chunk_data,
+            parent_container=parent_container,
+            module_description=module_description,
+        )

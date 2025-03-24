@@ -220,7 +220,7 @@ class TestInternalVideoInterface(TestVideoInterface):
         return VideoTestNWBConverter(source_data=source_data)
 
     def test_save_video_to_custom_module(self):
-        module_name = "TestModule"
+        module_name = "behavior"
         module_description = "This is a test module."
         conversion_opts = dict(
             Video1=dict(
