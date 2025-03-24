@@ -167,20 +167,19 @@ class TestMixedVideoInterfaces(TestCase):
         internal_interface = self.nwb_converter.data_interface_objects["InternalVideo"]
         internal_interface.set_aligned_starting_time(aligned_starting_time=self.aligned_starting_time)
 
-        # Define a custom module
-        module_name = "MixedVideoModule"
+        # Define a custom module description
         module_description = "Module containing both internal and external videos"
 
-        # Run conversion with custom module
+        # Run conversion with processing/behavior parent container
         conversion_options = dict(
             InternalVideo=dict(
                 stub_test=True,
-                module_name=module_name,
+                parent_container="processing/behavior",
                 module_description=module_description,
             ),
             ExternalVideo=dict(
                 starting_frames=[0, 4],
-                module_name=module_name,
+                parent_container="processing/behavior",
                 module_description=module_description,
             ),
         )
@@ -196,13 +195,13 @@ class TestMixedVideoInterfaces(TestCase):
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
 
-            # Check that the module exists
-            assert module_name in nwbfile.processing
-            assert module_description == nwbfile.processing[module_name].description
+            # Check that the behavior module exists
+            assert "behavior" in nwbfile.processing
+            assert module_description == nwbfile.processing["behavior"].description
 
             # Check that both videos are in the module
-            assert "Internal Video" in nwbfile.processing[module_name].data_interfaces
-            assert "External Video" in nwbfile.processing[module_name].data_interfaces
+            assert "Internal Video" in nwbfile.processing["behavior"].data_interfaces
+            assert "External Video" in nwbfile.processing["behavior"].data_interfaces
 
     def test_mixed_video_interfaces_custom_metadata(self):
         """Test adding both video types with custom metadata."""
