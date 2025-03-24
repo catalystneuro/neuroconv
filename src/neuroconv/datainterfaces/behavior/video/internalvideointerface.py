@@ -260,6 +260,12 @@ class InternalVideoInterface(BaseDataInterface):
             it will be created with this description. The default description is the same as used by the
             conversion_tools.get_module function.
         """
+        if not chunk_data:
+            warnings.warn(
+                "Support for writing video data as a single array (chunk_data=False) is deprecated and will be removed on or after September 2025.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         metadata = metadata or dict()
 
         file_path = Path(self.source_data["file_path"])
