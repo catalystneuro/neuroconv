@@ -252,7 +252,7 @@ class ExternalVideoInterface(BaseDataInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         starting_frames: Optional[list[int]] = None,
-        module_name: Optional[str] = None,
+        parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: Optional[str] = None,
     ):
         """
@@ -287,11 +287,13 @@ class ExternalVideoInterface(BaseDataInterface):
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified.
-        module_name: str, optional
-            Name of the processing module to add the ImageSeries object to. Default behavior is to add as acquisition.
+        parent_container: {'acquisition', 'processing/behavior'}
+            The container where the ImageSeries is added, default is nwbfile.acquisition.
+            When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
         module_description: str, optional
-            If the processing module specified by module_name does not exist, it will be created with this description.
-            The default description is the same as used by the conversion_tools.get_module function.
+            If parent_container is 'processing/behavior', and the module does not exist,
+            it will be created with this description. The default description is the same as used by the
+            conversion_tools.get_module function.
         """
         metadata = metadata or dict()
 
@@ -328,9 +330,13 @@ class ExternalVideoInterface(BaseDataInterface):
 
         # Attach image series
         image_series = ImageSeries(**image_series_kwargs)
-        if module_name is None:
+        if parent_container == "acquisition":
             nwbfile.add_acquisition(image_series)
+        elif parent_container == "processing/behavior":
+            get_module(nwbfile=nwbfile, name="behavior", description=module_description).add(image_series)
         else:
-            get_module(nwbfile=nwbfile, name=module_name, description=module_description).add(image_series)
+            raise ValueError(
+                f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
+            )
 
         return nwbfile
