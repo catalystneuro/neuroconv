@@ -34,7 +34,7 @@ class InternalVideoInterface(BaseDataInterface):
         file_path: FilePath,
         verbose: bool = False,
         *,
-        video_name: str = "Video1",
+        video_name: str = "InternalVideo",
     ):
         """
         Initialize the interface.
@@ -50,7 +50,7 @@ class InternalVideoInterface(BaseDataInterface):
             If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
-            Defaults to "Video1".
+            Defaults to "InternalVideo".
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
@@ -58,8 +58,8 @@ class InternalVideoInterface(BaseDataInterface):
 
             ```
             metadata["Behavior"]["Video"] = [
-                dict(name="Video1", description="description 1.", unit="Frames", **video1_metadata),
-                dict(name="Video2", description="description 2.", unit="Frames", **video2_metadata),
+                dict(name="InternalVideo1", description="description 1.", unit="Frames", **video1_metadata),
+                dict(name="InternalVideo2", description="description 2.", unit="Frames", **video2_metadata),
                 ...
             ]
             ```

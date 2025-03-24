@@ -28,7 +28,7 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
-        video_name: str = "Video1",
+        video_name: str = "ExternalVideo",
     ):
         """
         Initialize the interface.
@@ -45,7 +45,7 @@ class ExternalVideoInterface(BaseDataInterface):
             If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
-            Defaults to "Video1".
+            Defaults to "ExternalVideo".
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
@@ -53,8 +53,8 @@ class ExternalVideoInterface(BaseDataInterface):
 
             ```
             metadata["Behavior"]["Video"] = [
-                dict(name="Video1", description="description 1.", unit="Frames", **video1_metadata),
-                dict(name="Video2", description="description 2.", unit="Frames", **video2_metadata),
+                dict(name="ExternalVideo1", description="description 1.", unit="Frames", **video1_metadata),
+                dict(name="ExternalVideo2", description="description 2.", unit="Frames", **video2_metadata),
                 ...
             ]
             ```
