@@ -38,6 +38,7 @@ Run the conversion
     >>> from neuroconv.datainterfaces import ExternalVideoInterface
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
 
+    >>> LOCAL_PATH = Path(".") # Path to neuroconv
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
     >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "video_metadata.yaml"
     >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, video_name="MyExternalVideo")
@@ -81,6 +82,7 @@ Run the conversion
     >>> from neuroconv.datainterfaces import InternalVideoInterface
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
 
+    >>> LOCAL_PATH = Path(".") # Path to neuroconv
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
     >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "video_metadata.yaml"
     >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, video_name="MyInternalVideo")
