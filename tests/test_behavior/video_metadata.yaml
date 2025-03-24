@@ -1,0 +1,8 @@
+Behavior:
+  Video:
+    MyInternalVideo:
+      description: "My description of the video data"
+      unit: "Frames"
+    MyExternalVideo:
+      description: "My description of the video data"
+      unit: "Frames"
