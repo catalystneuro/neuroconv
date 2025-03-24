@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal, Optional
@@ -65,6 +66,12 @@ class VideoInterface(BaseDataInterface):
                 ...
             ]
         """
+        warnings.warn(
+            "The VideoInterface is deprecated and will be removed on or after September 2025. "
+            "Please use the ExternalVideoInterface or InternalVideoInterface instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)
