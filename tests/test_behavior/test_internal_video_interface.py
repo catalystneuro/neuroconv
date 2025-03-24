@@ -95,15 +95,14 @@ class TestInternalVideoInterface(TestCase):
 
     def test_save_video_to_custom_module(self):
         """Test that videos can be added to a custom module."""
-        module_name = "TestModule"
         module_description = "This is a test module."
         conversion_opts = dict(
             Video1=dict(
-                module_name=module_name,
+                parent_container="processing/behavior",
                 module_description=module_description,
             ),
             Video2=dict(
-                module_name=module_name,
+                parent_container="processing/behavior",
                 module_description=module_description,
             ),
         )
@@ -115,10 +114,10 @@ class TestInternalVideoInterface(TestCase):
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            assert module_name in nwbfile.processing
-            assert module_description == nwbfile.processing[module_name].description
-            assert "Video test1" in nwbfile.processing[module_name].data_interfaces
-            assert "Video test2" in nwbfile.processing[module_name].data_interfaces
+            assert "behavior" in nwbfile.processing
+            assert module_description == nwbfile.processing["behavior"].description
+            assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
+            assert "Video test2" in nwbfile.processing["behavior"].data_interfaces
 
     def test_video_chunking(self):
         """Test that video chunking works correctly."""
