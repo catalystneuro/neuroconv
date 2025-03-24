@@ -74,22 +74,25 @@ class ExternalVideoInterface(BaseDataInterface):
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
-        exclude = ["format", "conversion", "starting_time", "rate"]
+        exclude = ["format", "conversion", "starting_time", "rate", "name"]
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
+            if key in image_series_metadata_schema["required"]:
+                image_series_metadata_schema["required"].remove(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("Video")
-        metadata_schema["properties"]["Behavior"]["properties"]["Video"] = dict(
-            type="array",
-            minItems=1,
-            items=image_series_metadata_schema,
-        )
+        metadata_schema["properties"]["Behavior"]["properties"]["Video"] = {
+            "type": "object",
+            "properties": {self.video_name: image_series_metadata_schema},
+            "required": [self.video_name],
+            "additionalProperties": True,
+        }
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
         video_metadata = {
-            "Behavior": {"Video": [dict(name=self.video_name, description="Video recorded by camera.", unit="Frames")]}
+            "Behavior": {"Video": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}}
         }
         return dict_deep_update(metadata, video_metadata)
 
@@ -265,25 +268,24 @@ class ExternalVideoInterface(BaseDataInterface):
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
-            Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths.
-            If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same :py:class:`~pynwb.image.ImageSeries` container.
+            Dictionary of metadata information such as name and description of the video. The key must correspond to
+            the video_name specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
                     Behavior=dict(
-                        Videos=[
-                            dict(name="Video1", description="This is the first video.."),
-                            dict(name="SecondVideo", description="Video #2 details..."),
-                            ...
-                        ]
+                        Video=dict(
+                            ExternalVideo=dict(
+                                description="Description of the video..",
+                                unit="Frames",
+                                ...,
+                            ),
+                        )
                     )
                 )
 
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            Each dictionary in the list corresponds to a single VideoInterface and ImageSeries.
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified.
@@ -303,7 +305,8 @@ class ExternalVideoInterface(BaseDataInterface):
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("Video", None)
         if videos_metadata is None:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["Video"])
-        image_series_kwargs = next(meta for meta in videos_metadata if meta["name"] == self.video_name)
+        image_series_kwargs = metadata["Behavior"]["Video"][self.video_name]
+        image_series_kwargs["name"] = self.video_name
 
         timing_type = self.get_timing_type()
         if self._number_of_files > 1 and starting_frames is None:

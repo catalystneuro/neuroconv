@@ -284,7 +284,7 @@ class TestExternalVideoInterface(TestCase):
         """Test adding to NWBFile with custom metadata."""
         metadata = deepcopy(self.metadata)
         custom_metadata = {
-            "Behavior": {"Video": [{"name": "Video test1", "description": "Custom description", "unit": "CustomUnit"}]}
+            "Behavior": {"Video": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
         }
         metadata = dict_deep_update(metadata, custom_metadata)
 

@@ -53,15 +53,15 @@ class InternalVideoInterface(BaseDataInterface):
             Defaults to "InternalVideo".
 
             This key is essential when multiple video streams are present in a single experiment.
-            The associated metadata should be a list of dictionaries, with each dictionary
-            containing metadata for a single video:
+            The associated metadata should be a nested dictionary structure, where each key
+            corresponds to a video name, and each value is a dictionary containing metadata for that video:
 
             ```
-            metadata["Behavior"]["Video"] = [
-                dict(name="InternalVideo1", description="description 1.", unit="Frames", **video1_metadata),
-                dict(name="InternalVideo2", description="description 2.", unit="Frames", **video2_metadata),
+            metadata["Behavior"]["Video"] = {
+                "InternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
+                "InternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
                 ...
-            ]
+            }
             ```
 
             Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
@@ -78,22 +78,25 @@ class InternalVideoInterface(BaseDataInterface):
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
-        exclude = ["format", "conversion", "starting_time", "rate"]
+        exclude = ["format", "conversion", "starting_time", "rate", "name"]
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
+            if key in image_series_metadata_schema["required"]:
+                image_series_metadata_schema["required"].remove(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("Video")
-        metadata_schema["properties"]["Behavior"]["properties"]["Video"] = dict(
-            type="array",
-            minItems=1,
-            items=image_series_metadata_schema,
-        )
+        metadata_schema["properties"]["Behavior"]["properties"]["Video"] = {
+            "type": "object",
+            "properties": {self.video_name: image_series_metadata_schema},
+            "required": [self.video_name],
+            "additionalProperties": True,
+        }
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
         video_metadata = {
-            "Behavior": {"Video": [dict(name=self.video_name, description="Video recorded by camera.", unit="Frames")]}
+            "Behavior": {"Video": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}}
         }
         return dict_deep_update(metadata, video_metadata)
 
@@ -233,11 +236,13 @@ class InternalVideoInterface(BaseDataInterface):
 
                 metadata = dict(
                     Behavior=dict(
-                        Videos=[
-                            dict(name="Video1", description="This is the first video.."),
-                            dict(name="SecondVideo", description="Video #2 details..."),
-                            ...
-                        ]
+                        Video=dict(
+                            InternalVideo=dict(
+                                description="Description of the video..",
+                                unit="Frames",
+                                ...,
+                            ),
+                        )
                     )
                 )
 
@@ -274,7 +279,8 @@ class InternalVideoInterface(BaseDataInterface):
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("Video", None)
         if videos_metadata is None:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["Video"])
-        image_series_kwargs = next(meta for meta in videos_metadata if meta["name"] == self.video_name)
+        image_series_kwargs = videos_metadata[self.video_name]
+        image_series_kwargs["name"] = self.video_name
 
         stub_frames = 10
         timing_type = self.get_timing_type()

@@ -221,18 +221,16 @@ class TestMixedVideoInterfaces(TestCase):
         metadata = deepcopy(self.metadata)
         custom_metadata = {
             "Behavior": {
-                "Video": [
-                    {
-                        "name": "Internal Video",
+                "Video": {
+                    "Internal Video": {
                         "description": "Internal video with custom description",
                         "unit": "InternalUnit",
                     },
-                    {
-                        "name": "External Video",
+                    "External Video": {
                         "description": "External video with custom description",
                         "unit": "ExternalUnit",
                     },
-                ]
+                }
             }
         }
         metadata = dict_deep_update(metadata, custom_metadata)
