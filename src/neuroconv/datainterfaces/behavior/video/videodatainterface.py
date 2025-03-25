@@ -349,7 +349,7 @@ class VideoInterface(BaseDataInterface):
         # Transform metadata from list format to nested dictionary format
         metadata_reformatted = deepcopy(metadata)
         video_name = videos_metadata[0].pop("name")
-        metadata_reformatted["Behavior"][self.metadata_key_name] = {video_name: videos_metadata[0]}
+        metadata_reformatted["Behavior"]["Video"] = {video_name: videos_metadata[0]}
 
         parent_container = "acquisition" if module_name is None else "processing/behavior"
         if parent_container == "processing/behavior":
