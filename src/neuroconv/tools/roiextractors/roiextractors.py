@@ -43,7 +43,13 @@ from ...utils.str_utils import human_readable_size
 
 
 def _get_default_ophys_metadata() -> DeepDict:
-    """Fill default metadata for Device and ImagingPlane."""
+    """Fill default metadata for Device and ImagingPlane.
+
+    Returns
+    -------
+    DeepDict
+        Default metadata dictionary for ophys with Device and ImagingPlane information.
+    """
     metadata = get_default_nwbfile_metadata()
 
     default_device = dict(name="Microscope")
@@ -75,7 +81,14 @@ def _get_default_ophys_metadata() -> DeepDict:
 
 
 def _get_default_segmentation_metadata() -> DeepDict:
-    """Fill default metadata for segmentation."""
+    """Fill default metadata for segmentation.
+
+    Returns
+    -------
+    DeepDict
+        Default metadata dictionary for segmentation with ImageSegmentation, Fluorescence,
+        DfOverF, and SegmentationImages information.
+    """
     metadata = _get_default_ophys_metadata()
 
     default_fluorescence_roi_response_series = dict(
@@ -152,6 +165,11 @@ def get_nwb_imaging_metadata(
     ----------
     imgextractor : ImagingExtractor
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+
+    Returns
+    -------
+    dict
+        NWB-specific metadata dictionary derived from the ImagingExtractor.
     """
     metadata = _get_default_ophys_metadata()
 
@@ -870,6 +888,12 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     Parameters
     ----------
     sgmextractor: SegmentationExtractor
+        The segmentation extractor to get metadata from.
+
+    Returns
+    -------
+    dict
+        NWB-specific metadata dictionary derived from the SegmentationExtractor.
     """
     metadata = _get_default_segmentation_metadata()
     # Optical Channel name:

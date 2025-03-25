@@ -12,6 +12,15 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the KiloSort sorting extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the KiloSort sorting interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -38,6 +47,19 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)
 
     def get_metadata(self):
+        """
+        Get metadata for the KiloSort sorting.
+
+        Retrieves metadata from the KiloSort sorting and adds unit properties
+        specific to KiloSort, such as spike counts, firing rates, depths,
+        amplitudes, contamination percentages, and labels.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the KiloSort sorting,
+            including Ecephys section with UnitProperties specific to KiloSort.
+        """
         metadata = super().get_metadata()
         # See Kilosort save_to_phy() docstring for more info on these fields: https://github.com/MouseLand/Kilosort/blob/main/kilosort/io.py
         # Or see phy documentation: https://github.com/cortex-lab/phy/blob/master/phy/apps/base.py

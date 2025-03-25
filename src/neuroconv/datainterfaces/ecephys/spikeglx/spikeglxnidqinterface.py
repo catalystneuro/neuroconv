@@ -27,6 +27,14 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source data needed for this interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the source data requirements.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
@@ -118,6 +126,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self.meta = self._signals_info_dict["meta"]
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for this SpikeGLX NIDQ interface.
+
+        Extracts session start time from the meta information and adds
+        device metadata for the NIDQ board.
+
+        Returns
+        -------
+        dict
+            A dictionary containing metadata for the NIDQ recording.
+        """
         metadata = super().get_metadata()
 
         session_start_time = get_session_start_time(self.meta)
@@ -136,7 +155,14 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         return metadata
 
     def get_channel_names(self) -> list[str]:
-        """Return a list of channel names as set in the recording extractor."""
+        """
+        Return a list of channel names as set in the recording extractor.
+
+        Returns
+        -------
+        list[str]
+            List of channel names/IDs from the SpikeGLX recording.
+        """
         return list(self.recording_extractor.get_channel_ids())
 
     def add_to_nwbfile(

@@ -47,7 +47,17 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         import ndx_fiber_photometry  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the TDTFiberPhotometryInterface."""
+        """
+        Get metadata for the TDTFiberPhotometryInterface.
+
+        Extracts session start time from the TDT data and adds it to the metadata.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the TDT fiber photometry data,
+            including session start time.
+        """
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
@@ -56,7 +66,15 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        """Get the metadata schema for the TDTFiberPhotometryInterface."""
+        """
+        Get the metadata schema for the TDTFiberPhotometryInterface.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the metadata requirements
+            for TDT fiber photometry data.
+        """
         metadata_schema = super().get_metadata_schema()
         return metadata_schema
 

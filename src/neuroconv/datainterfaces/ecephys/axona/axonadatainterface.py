@@ -26,11 +26,34 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Axona recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Axona recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the Axona extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the Axona extractor,
+            with all_annotations set to True.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["all_annotations"] = True
 
@@ -56,6 +79,18 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_channel_groups(tetrode_id)
 
     def extract_nwb_file_metadata(self) -> dict:
+        """
+        Extract NWBFile metadata from the Axona recording.
+
+        Extracts session start time, description, and experimenter information
+        from the Axona recording file headers.
+
+        Returns
+        -------
+        dict
+            Dictionary containing NWBFile metadata extracted from the Axona recording,
+            including session_start_time, session_description, and experimenter.
+        """
         raw_annotations = self.recording_extractor.neo_reader.raw_annotations
         session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
@@ -73,6 +108,17 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         return nwbfile_metadata
 
     def extract_ecephys_metadata(self) -> dict:
+        """
+        Extract Ecephys metadata from the Axona recording.
+
+        Extracts device and electrode group information from the Axona recording.
+
+        Returns
+        -------
+        dict
+            Dictionary containing Ecephys metadata extracted from the Axona recording,
+            including Device and ElectrodeGroup information.
+        """
         unique_elec_group_names = set(self.recording_extractor.get_channel_groups())
         sw_version = self.metadata_in_set_file["sw_version"]
         description = f"Axona DacqUSB, sw_version={sw_version}"
@@ -99,6 +145,19 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         return ecephys_metadata
 
     def get_metadata(self):
+        """
+        Get metadata for the Axona recording.
+
+        Retrieves and organizes metadata from the Axona recording,
+        including NWBFile and Ecephys metadata extracted from the recording.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Axona recording,
+            including NWBFile and Ecephys sections with information
+            extracted from the recording.
+        """
         metadata = super().get_metadata()
 
         nwbfile_metadata = self.extract_nwb_file_metadata()
@@ -119,6 +178,15 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Axona unit recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Axona unit recording interface, including file_path and noise_std.
+        """
         return dict(
             required=["file_path"],
             properties=dict(
@@ -151,6 +219,15 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Axona LFP extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Axona LFP interface, including file_path.
+        """
         return dict(
             required=["file_path"],
             properties=dict(file_path=dict(type="string")),
@@ -159,7 +236,20 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
         )
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the Axona LFP extractor.
 
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the Axona LFP extractor,
+            including traces_list and sampling_frequency.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs.pop("file_path")
         extractor_kwargs["traces_list"] = self.traces_list
@@ -186,6 +276,15 @@ class AxonaPositionDataInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Axona position data interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Axona position data interface, derived from the __init__ method signature.
+        """
         return get_json_schema_from_method_signature(cls.__init__)
 
     def __init__(self, file_path: str):

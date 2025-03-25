@@ -18,7 +18,21 @@ from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
 
 def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
-    """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
+    """
+    Get the I/O mode from different NWB I/O objects.
+
+    NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path.
+
+    Parameters
+    ----------
+    io : Union[NWBHDF5IO, NWBZarrIO]
+        The NWB I/O object to get the mode from.
+
+    Returns
+    -------
+    str
+        The I/O mode string (e.g., "r", "a", "w", "r+").
+    """
     if isinstance(io, NWBHDF5IO):
         return io.mode
     elif isinstance(io, NWBZarrIO):
@@ -34,6 +48,20 @@ def _is_dataset_written_to_file(
     Determine if the neurodata object is already written to the file on disk.
 
     This object should then be skipped by the `get_io_datasets` function when working in append mode.
+
+    Parameters
+    ----------
+    candidate_dataset : Union[h5py.Dataset, zarr.Array]
+        The dataset to check if it's already written to the file.
+    backend : {'hdf5', 'zarr'}
+        The backend format type being used.
+    existing_file : Union[h5py.File, zarr.Group, None]
+        The existing file object to check against, or None if there is no existing file.
+
+    Returns
+    -------
+    bool
+        True if the dataset is already written to the file, False otherwise.
     """
     if existing_file is None:
         return False

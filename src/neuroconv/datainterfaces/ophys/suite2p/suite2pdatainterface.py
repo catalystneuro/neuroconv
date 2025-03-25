@@ -50,7 +50,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Suite2p segmentation interface."""
+        """
+        Get the source schema for the Suite2p segmentation interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Suite2p segmentation interface.
+        """
         schema = super().get_source_schema()
         schema["properties"]["folder_path"][
             "description"
@@ -63,12 +71,38 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @classmethod
     def get_available_planes(cls, folder_path: DirectoryPath) -> dict:
+        """
+        Get the available planes in the Suite2p segmentation data.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing Suite2p segmentation data.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping plane names to their folder paths.
+        """
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_planes(folder_path=folder_path)
 
     @classmethod
     def get_available_channels(cls, folder_path: DirectoryPath) -> dict:
+        """
+        Get the available channels in the Suite2p segmentation data.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to the folder containing Suite2p segmentation data.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping channel names to their indices.
+        """
         from roiextractors import Suite2pSegmentationExtractor
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
@@ -114,7 +148,18 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.verbose = verbose
 
     def get_metadata(self) -> DeepDict:
-        """get metadata for the Suite2p segmentation data"""
+        """
+        Get metadata for the Suite2p segmentation data.
+
+        Retrieves base metadata and updates it with Suite2p-specific
+        information, including plane segmentation naming.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the Suite2p segmentation data,
+            with updated plane segmentation names and related references.
+        """
         metadata = super().get_metadata()
 
         # No need to update the metadata links for the default plane segmentation name

@@ -16,7 +16,15 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Bruker TIFF imaging data."""
+        """
+        Get the source schema for the Bruker TIFF multi-plane imaging data.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Bruker TIFF multi-plane imaging interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -84,7 +92,12 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
     def _determine_position_current(self) -> list[float]:
         """
-        Returns y, x, and z position values. The unit of values is in the microscope reference frame.
+        Determine the current position values from the Bruker TIFF metadata.
+
+        Returns
+        -------
+        list[float]
+            List containing y, x, and z position values in the microscope reference frame.
         """
         from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (
             _parse_xml,
@@ -135,7 +148,18 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
-        """get metadata for the Bruker TIFF imaging data."""
+        """
+        Get metadata for the Bruker TIFF multi-plane imaging data.
+
+        Extracts and organizes metadata from the Bruker TIFF files, including
+        session start time, device information, imaging plane details, and
+        two-photon series configuration.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the Bruker TIFF multi-plane imaging data.
+        """
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
@@ -202,7 +226,15 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        """Get the source schema for the Bruker TIFF imaging data."""
+        """
+        Get the source schema for the Bruker TIFF single-plane imaging data.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Bruker TIFF single-plane imaging interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
@@ -257,7 +289,12 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
     def _determine_position_current(self) -> list[float]:
         """
-        Returns y, x, and z position values. The unit of values is in the microscope reference frame.
+        Determine the current position values from the Bruker TIFF metadata.
+
+        Returns
+        -------
+        list[float]
+            List containing y, x, and optionally z position values in the microscope reference frame.
         """
         stream_name = self.imaging_extractor.stream_name
         frames_per_stream = [
@@ -296,7 +333,18 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         return position_values
 
     def get_metadata(self) -> DeepDict:
-        """get metadata for the Bruker TIFF imaging data."""
+        """
+        Get metadata for the Bruker TIFF single-plane imaging data.
+
+        Extracts and organizes metadata from the Bruker TIFF files, including
+        session start time, device information, imaging plane details, and
+        two-photon series configuration.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata for the Bruker TIFF single-plane imaging data.
+        """
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata

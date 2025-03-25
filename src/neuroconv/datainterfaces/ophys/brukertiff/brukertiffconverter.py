@@ -24,6 +24,15 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
+        """
+        Get the source schema for the Bruker TIFF multi-plane converter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Bruker TIFF multi-plane converter.
+        """
         source_schema = get_json_schema_from_method_signature(cls)
         source_schema["properties"]["folder_path"][
             "description"
@@ -31,7 +40,15 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         return source_schema
 
     def get_conversion_options_schema(self):
-        """get the conversion options schema."""
+        """
+        Get the conversion options schema for the Bruker TIFF multi-plane converter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the conversion options
+            for the Bruker TIFF multi-plane converter.
+        """
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 
@@ -171,10 +188,27 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
+        """
+        Get the source schema for the Bruker TIFF single-plane converter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Bruker TIFF single-plane converter.
+        """
         return get_json_schema_from_method_signature(cls)
 
     def get_conversion_options_schema(self):
-        """Get the conversion options schema."""
+        """
+        Get the conversion options schema for the Bruker TIFF single-plane converter.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the conversion options
+            for the Bruker TIFF single-plane converter.
+        """
         interface_name = list(self.data_interface_objects.keys())[0]
         return self.data_interface_objects[interface_name].get_conversion_options_schema()
 

@@ -43,6 +43,15 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         super().__init__(file_path=file_path)
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the original unaltered timestamps from the NVT file.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps extracted from the NVT file, converted from
+            microseconds to seconds and zeroed to the first timestamp.
+        """
         data = read_data(self.file_path)
 
         times = data["TimeStamp"] / 1000000  # Neuralynx stores times in microseconds
@@ -51,12 +60,41 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         return times
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns aligned timestamps if they have been set, otherwise returns original timestamps.
+
+        Returns
+        -------
+        np.ndarray
+            Array of timestamps for the NVT data.
+        """
         return self._timestamps
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
+        """
+        Replace timestamps with those aligned to the common session start time.
+
+        Parameters
+        ----------
+        aligned_timestamps : np.ndarray
+            The synchronized timestamps for data in this interface.
+        """
         self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for this Neuralynx NVT interface.
+
+        Extracts session start time from the NVT header and adds
+        position and angle metadata for the NVT data.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the NVT data.
+        """
         metadata = super().get_metadata()
 
         metadata["NWBFile"].update(session_start_time=self.header["TimeCreated"])
@@ -69,6 +107,17 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
+        """
+        Get the metadata schema for this Neuralynx NVT interface.
+
+        Creates a schema with requirements for position and angle data
+        specific to the NVT file.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the metadata requirements.
+        """
         metadata_schema = super().get_metadata_schema()
 
         if "Behavior" not in metadata_schema["properties"]:

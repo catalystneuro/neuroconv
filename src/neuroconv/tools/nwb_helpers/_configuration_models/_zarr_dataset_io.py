@@ -111,6 +111,15 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         return values
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
+        """
+        Get the keyword arguments for Zarr dataset I/O configuration.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing the configured chunks, filters, and compressor settings
+            for Zarr dataset I/O.
+        """
         filters = None
         if self.filter_methods:
             filters = list()

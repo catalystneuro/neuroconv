@@ -23,7 +23,15 @@ class LightningPoseConverter(NWBConverter):
     info = "Interface for handling multiple streams of lightning pose data."
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source data needed for this converter.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the source data requirements.
+        """
         return get_json_schema_from_method_signature(cls)
 
     @validate_call
@@ -71,6 +79,14 @@ class LightningPoseConverter(NWBConverter):
             self.data_interface_objects.update(dict(LabeledVideo=VideoInterface(file_paths=[labeled_video_file_path])))
 
     def get_conversion_options_schema(self) -> dict:
+        """
+        Get the schema for the conversion options for this converter.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the conversion options.
+        """
         conversion_options_schema = get_json_schema_from_method_signature(
             method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
         )
@@ -78,6 +94,17 @@ class LightningPoseConverter(NWBConverter):
         return conversion_options_schema
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for this Lightning Pose converter.
+
+        Combines metadata from pose estimation and video interfaces, and updates
+        video names and descriptions.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the Lightning Pose data and videos.
+        """
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()

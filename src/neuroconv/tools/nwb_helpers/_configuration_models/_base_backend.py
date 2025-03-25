@@ -57,6 +57,20 @@ class BackendConfiguration(BaseModel):
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to create a backend configuration for.
+
+        Returns
+        -------
+        Self
+            A new instance of the backend configuration class with default dataset configurations
+            for all datasets in the NWBFile.
+        """
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
             default_dataset_configuration.location_in_file: default_dataset_configuration

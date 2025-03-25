@@ -18,6 +18,15 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the SpikeGadgets recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the SpikeGadgets recording interface.
+        """
         source_schema = get_json_schema_from_method_signature(cls, exclude=["source_data"])
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         return source_schema

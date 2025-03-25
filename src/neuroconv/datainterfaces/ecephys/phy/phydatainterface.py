@@ -17,6 +17,15 @@ class PhySortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Phy sorting extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Phy sorting interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["exclude_cluster_groups"]["items"] = dict(type="string")
         source_schema["properties"]["folder_path"][
@@ -45,6 +54,19 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
 
     def get_metadata(self):
+        """
+        Get metadata for the Phy sorting.
+
+        Retrieves metadata from the Phy sorting and adds unit properties
+        specific to Phy, such as spike counts, firing rates, depths,
+        amplitudes, contamination percentages, and labels.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Phy sorting,
+            including Ecephys section with UnitProperties specific to Phy.
+        """
         metadata = super().get_metadata()
         # See Kilosort save_to_phy() docstring for more info on these fields: https://github.com/MouseLand/Kilosort/blob/main/kilosort/io.py
         # Or see phy documentation: https://github.com/cortex-lab/phy/blob/master/phy/apps/base.py

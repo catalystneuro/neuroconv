@@ -21,12 +21,33 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the EDF recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the EDF recording interface.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the EDF extractor.
 
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the EDF extractor.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs.pop("channels_to_skip")
         extractor_kwargs["all_annotations"] = True
@@ -72,6 +93,15 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channels_to_skip)
 
     def extract_nwb_file_metadata(self) -> dict:
+        """
+        Extract NWBFile metadata from the EDF header.
+
+        Returns
+        -------
+        dict
+            Dictionary containing NWBFile metadata extracted from the EDF header,
+            including session_start_time and experimenter if available.
+        """
         nwbfile_metadata = dict(
             session_start_time=self.edf_header["startdate"],
             experimenter=self.edf_header["technician"],
@@ -83,6 +113,15 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return nwbfile_metadata
 
     def extract_subject_metadata(self) -> dict:
+        """
+        Extract subject metadata from the EDF header.
+
+        Returns
+        -------
+        dict
+            Dictionary containing subject metadata extracted from the EDF header,
+            including subject_id and date_of_birth if available.
+        """
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
             date_of_birth=self.edf_header["birthdate"],
@@ -94,6 +133,19 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return subject_metadata
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the EDF recording.
+
+        Retrieves and organizes metadata from the EDF recording,
+        including NWBFile and Subject metadata extracted from the EDF header.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the EDF recording,
+            including NWBFile and Subject sections with information
+            extracted from the EDF header.
+        """
         metadata = super().get_metadata()
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)

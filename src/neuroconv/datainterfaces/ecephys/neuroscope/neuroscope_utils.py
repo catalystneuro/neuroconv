@@ -11,20 +11,58 @@ def get_xml_file_path(data_file_path: str) -> str:
     Infer the xml_file_path from the data_file_path (.dat or .eeg).
 
     Assumes the two are in the same folder and follow the session_id naming convention.
+
+    Parameters
+    ----------
+    data_file_path : str
+        Path to the data file (.dat or .eeg)
+
+    Returns
+    -------
+    str
+        Path to the corresponding XML file
     """
     session_path = Path(data_file_path).parent
     return str(session_path / f"{session_path.stem}.xml")
 
 
 def get_xml(xml_file_path: str):
-    """Auxiliary function for retrieving root of xml."""
+    """
+    Auxiliary function for retrieving root of xml.
+
+    Parameters
+    ----------
+    xml_file_path : str
+        Path to the XML file
+
+    Returns
+    -------
+    lxml.etree._Element
+        Root element of the XML tree
+    """
     etree = get_package(package_name="lxml.etree")
 
     return etree.parse(xml_file_path).getroot()
 
 
 def safe_find(root, key: str, findall: bool = False):
-    """Auxiliary function for safe retrieval of single key from next level of lxml tree."""
+    """
+    Auxiliary function for safe retrieval of single key from next level of lxml tree.
+
+    Parameters
+    ----------
+    root : lxml.etree._Element or None
+        Root element to search in
+    key : str
+        XML element name to find
+    findall : bool, default: False
+        If True, find all matching elements; if False, find only the first
+
+    Returns
+    -------
+    lxml.etree._Element or list of lxml.etree._Element or None
+        Found element(s) or None if root is None or element not found
+    """
     if root is not None:
         if findall:
             return root.findall(key)
@@ -33,7 +71,21 @@ def safe_find(root, key: str, findall: bool = False):
 
 
 def safe_nested_find(root, keys: list):
-    """Auxiliary function for safe retrieval of keys at multiple depths in lxml tree."""
+    """
+    Auxiliary function for safe retrieval of keys at multiple depths in lxml tree.
+
+    Parameters
+    ----------
+    root : lxml.etree._Element or None
+        Root element to search in
+    keys : list
+        List of XML element names to find, in order of nesting
+
+    Returns
+    -------
+    lxml.etree._Element or None
+        Found element or None if root is None or any element in the path not found
+    """
     for key in keys:
         root = safe_find(root, key)
     if root is not None:
@@ -87,9 +139,16 @@ def get_channel_groups(xml_file_path: str) -> list:
 
     These are all the channels that are connected to the probe.
 
+    Parameters
+    ----------
+    xml_file_path : str
+        Path to the XML file containing the necessary data
+
     Returns
     -------
-        List reflecting the group structure of the channels.
+    list
+        List of lists, where each inner list contains the channel IDs for a group.
+        For example: [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     """
     root = get_xml(xml_file_path)
     channel_groups = [
@@ -103,9 +162,16 @@ def get_session_start_time(xml_file_path: str) -> datetime:
     """
     Auxiliary function for retrieving the session start time from the xml file.
 
+    Parameters
+    ----------
+    xml_file_path : str
+        Path to the XML file containing the necessary data
+
     Returns
     -------
-        datetime object describing the start time
+    datetime
+        Datetime object describing the session start time,
+        or None if the date element is not found in the XML file
     """
     root = get_xml(xml_file_path)
     date_elem = safe_nested_find(root, ["generalInfo", "date"])

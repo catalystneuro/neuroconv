@@ -73,7 +73,29 @@ def get_base_schema(
     properties: Optional[dict] = None,
     **kwargs,
 ) -> dict:
-    """Return the base schema used for all other schemas."""
+    """
+    Return the base schema used for all other schemas.
+
+    Parameters
+    ----------
+    tag : str, optional
+        Tag to identify the schema.
+    root : bool, default: False
+        Whether this schema is a root schema.
+    id_ : str, optional
+        ID for the schema.
+    required : list of str, optional
+        List of required properties.
+    properties : dict, optional
+        Dictionary of properties.
+    **kwargs
+        Additional keyword arguments to include in the schema.
+
+    Returns
+    -------
+    dict
+        A JSON schema dictionary with the base structure.
+    """
     base_schema = dict(
         required=required or [],
         properties=properties or {},
@@ -241,7 +263,19 @@ def _is_member(types, target_types):
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    """Get metadata schema from hdmf class."""
+    """
+    Get metadata schema from hdmf class.
+
+    Parameters
+    ----------
+    hdmf_class : class
+        The HDMF class to generate a schema from.
+
+    Returns
+    -------
+    dict
+        A JSON schema dictionary representing the metadata structure for the HDMF class.
+    """
     schema = get_base_schema()
     schema["tag"] = hdmf_class.__module__ + "." + hdmf_class.__name__
 
@@ -309,11 +343,12 @@ def get_schema_from_hdmf_class(hdmf_class):
 
 def get_metadata_schema_for_icephys() -> dict:
     """
-    Returns the metadata schema for icephys data.
+    Get the metadata schema for intracellular electrophysiology (icephys) data.
 
-    Returns:
-        dict: The metadata schema for icephys data.
-
+    Returns
+    -------
+    dict
+        A JSON schema dictionary representing the metadata structure for icephys data.
     """
     schema = get_base_schema(tag="Icephys")
     schema["required"] = ["Device", "Electrodes"]

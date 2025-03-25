@@ -90,6 +90,17 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         self.timestamps_dict = {}
 
     def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for this MedPC interface.
+
+        Reads the MedPC file and extracts metadata based on the provided session conditions
+        and metadata mapping.
+
+        Returns
+        -------
+        DeepDict
+            A dictionary containing metadata for the MedPC data.
+        """
         metadata = super().get_metadata()
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
@@ -103,6 +114,16 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
+        """
+        Get the metadata schema for this MedPC interface.
+
+        Creates a schema based on the metadata mapping provided during initialization.
+
+        Returns
+        -------
+        dict
+            The JSON schema dictionary describing the metadata requirements.
+        """
         metadata_schema = super().get_metadata_schema()
         medpc_name_to_info_dict = self.source_data["metadata_medpc_name_to_info_dict"]
         metadata_schema["properties"]["MedPC"] = {

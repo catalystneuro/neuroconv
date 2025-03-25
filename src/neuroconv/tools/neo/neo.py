@@ -55,13 +55,39 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
 
 
 def get_number_of_electrodes(neo_reader) -> int:
-    """Get number of electrodes from Neo reader."""
+    """
+    Get number of electrodes from Neo reader.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+        Neo reader object.
+
+    Returns
+    -------
+    int
+        Number of electrodes.
+    """
     # TODO - take in account the case with multiple streams.
     return len(neo_reader.header["signal_channels"])
 
 
 def get_number_of_segments(neo_reader, block: int = 0) -> int:
-    """Get number of segments from Neo reader."""
+    """
+    Get number of segments from Neo reader.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+        Neo reader object.
+    block : int, optional
+        Block id. Defaults to 0.
+
+    Returns
+    -------
+    int
+        Number of segments.
+    """
     return neo_reader.header["nb_segment"][block]
 
 
@@ -72,10 +98,16 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
     Parameters
     ----------
     neo_reader : neo.io.baseio
+        Neo reader object.
     segment : int, optional
-        Defaults to 0.
+        Segment index. Defaults to 0.
     cmd_channel : int, optional
         ABF command channel (0 to 7). Defaults to 0.
+
+    Returns
+    -------
+    tuple[list, str, str]
+        A tuple containing (traces, title, unit) for the specified command channel.
     """
     try:
         traces, titles, units = neo_reader.read_raw_protocol()
@@ -121,8 +153,14 @@ def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
     Parameters
     ----------
     neo_reader: Neo reader object
+        Neo reader object.
     metadata: dict, optional
         Metadata info for constructing the nwb file.
+
+    Returns
+    -------
+    dict
+        Default metadata dictionary with NWBFile and Icephys device information.
     """
     metadata = dict(
         NWBFile=dict(

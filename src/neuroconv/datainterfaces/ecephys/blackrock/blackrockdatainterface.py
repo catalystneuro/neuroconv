@@ -19,6 +19,15 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
+        """
+        Compile input schema for the Blackrock recording extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Blackrock recording interface.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
         source_schema["properties"]["file_path"][
             "description"
@@ -26,6 +35,20 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data to keyword arguments for the Blackrock extractor.
+
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing keyword arguments for the Blackrock extractor,
+            with stream_id set to the class's stream_id.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["stream_id"] = self.stream_id
 
@@ -65,6 +88,19 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Blackrock recording.
+
+        Retrieves metadata from the Blackrock recording and adds session
+        start time and description from the recording headers.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Blackrock recording,
+            including NWBFile section with session_start_time and
+            session_description extracted from the NSx file header.
+        """
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
@@ -85,6 +121,15 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Compile input schema for the Blackrock sorting extractor.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Blackrock sorting interface.
+        """
         metadata_schema = get_json_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
@@ -106,6 +151,19 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the Blackrock sorting.
+
+        Retrieves metadata from the Blackrock sorting and adds session
+        start time and description from the NEV file header.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the Blackrock sorting,
+            including NWBFile section with session_start_time and
+            session_description extracted from the NEV file header.
+        """
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])

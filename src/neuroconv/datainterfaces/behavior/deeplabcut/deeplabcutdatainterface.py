@@ -20,6 +20,14 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the schema for the source data needed for this interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements.
+        """
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the file output by dlc (.h5 or .csv)."
         source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file."
@@ -77,7 +85,18 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        """
+        Get metadata for this DeepLabCut interface.
+
+        Extracts session description and experimenter information from the config file
+        if available and adds it to the metadata.
+
+        Returns
+        -------
+        dict
+            A dictionary containing metadata for the DeepLabCut data.
+        """
         metadata = super().get_metadata()
 
         if self.config_dict:
@@ -89,12 +108,38 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
+
+        Returns
+        -------
+        np.ndarray
+            The timestamps for the data stream.
+
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented for DeepLabCut interface.
+        """
         raise NotImplementedError(
             "Unable to retrieve the original unaltered timestamps for this interface! "
             "Define the `get_original_timestamps` method for this interface."
         )
 
     def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        np.ndarray
+            The timestamps for the data stream.
+
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented for DeepLabCut interface.
+        """
         raise NotImplementedError(
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )

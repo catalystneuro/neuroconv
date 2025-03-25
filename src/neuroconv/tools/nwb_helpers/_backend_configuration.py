@@ -13,7 +13,21 @@ BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendCon
 def get_default_backend_configuration(
     nwbfile: NWBFile, backend: Literal["hdf5", "zarr"]
 ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
-    """Fill a default backend configuration to serve as a starting point for further customization."""
+    """
+    Fill a default backend configuration to serve as a starting point for further customization.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to create a backend configuration for.
+    backend : {'hdf5', 'zarr'}
+        The backend type to configure.
+
+    Returns
+    -------
+    Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+        A backend configuration object with default settings based on the specified backend type.
+    """
 
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
     return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile)

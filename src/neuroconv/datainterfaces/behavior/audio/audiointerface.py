@@ -66,6 +66,14 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         self._segment_starting_times = None
 
     def get_metadata_schema(self) -> dict:
+        """
+        Retrieve JSON schema for metadata specific to audio interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the metadata, customized for audio data.
+        """
         metadata_schema = super().get_metadata_schema()
 
         time_series_metadata_schema_path = (
@@ -89,6 +97,14 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return metadata_schema
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for this audio interface.
+
+        Returns
+        -------
+        dict
+            A dictionary containing metadata for the audio files.
+        """
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [
@@ -105,12 +121,51 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
+
+        Returns
+        -------
+        np.ndarray
+            The timestamps for the data stream.
+
+        Raises
+        ------
+        NotImplementedError
+            The AudioInterface does not yet support timestamps.
+        """
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def get_timestamps(self) -> Optional[np.ndarray]:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        Optional[np.ndarray]
+            The timestamps for the data stream, if available.
+
+        Raises
+        ------
+        NotImplementedError
+            The AudioInterface does not yet support timestamps.
+        """
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
+        """
+        Replace all timestamps for this interface with those aligned to the common session start time.
+
+        Parameters
+        ----------
+        aligned_timestamps : list of np.ndarray
+            The synchronized timestamps for data in this interface.
+
+        Raises
+        ------
+        NotImplementedError
+            The AudioInterface does not yet support timestamps.
+        """
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -160,6 +215,21 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         self._segment_starting_times = aligned_segment_starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+        """
+        Align timestamps by interpolation.
+
+        Parameters
+        ----------
+        unaligned_timestamps : np.ndarray
+            The timestamps to be aligned.
+        aligned_timestamps : np.ndarray
+            The reference timestamps to align to.
+
+        Raises
+        ------
+        NotImplementedError
+            The AudioInterface does not yet support timestamps.
+        """
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def add_to_nwbfile(

@@ -77,7 +77,15 @@ class VideoInterface(BaseDataInterface):
         self.metadata_key_name = metadata_key_name
         super().__init__(file_paths=file_paths)
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
+        """
+        Retrieve JSON schema for metadata specific to this interface.
+
+        Returns
+        -------
+        dict
+            The JSON schema for the metadata, customized for video data.
+        """
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
@@ -93,7 +101,15 @@ class VideoInterface(BaseDataInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        """
+        Get metadata for this video interface.
+
+        Returns
+        -------
+        dict
+            A dictionary containing metadata for the video files.
+        """
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [

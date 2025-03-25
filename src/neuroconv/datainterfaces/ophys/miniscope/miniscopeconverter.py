@@ -19,6 +19,15 @@ class MiniscopeConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
+        """
+        Get the schema for the source data.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the Miniscope converter.
+        """
         source_schema = get_json_schema_from_method_signature(cls)
         source_schema["properties"]["folder_path"]["description"] = "The path to the main Miniscope folder."
         return source_schema
@@ -61,7 +70,15 @@ class MiniscopeConverter(NWBConverter):
         )
 
     def get_conversion_options_schema(self) -> dict:
-        """get the conversion options schema."""
+        """
+        Get the schema for the conversion options.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the conversion options
+            for the Miniscope converter, delegated from the MiniscopeImaging interface.
+        """
         return self.data_interface_objects["MiniscopeImaging"].get_conversion_options_schema()
 
     def add_to_nwbfile(

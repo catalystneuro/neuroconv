@@ -31,12 +31,33 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
+        """
+        Get the source schema for the SpikeGLX recording interface.
+
+        Returns
+        -------
+        dict
+            The schema dictionary describing the source data requirements
+            for the SpikeGLX recording interface.
+        """
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+        """
+        Convert source data dictionary to keyword arguments for the extractor.
 
+        Parameters
+        ----------
+        source_data : dict
+            Dictionary containing the source data parameters.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the keyword arguments for the SpikeGLX extractor.
+        """
         extractor_kwargs = source_data.copy()
         extractor_kwargs["folder_path"] = self.folder_path
         extractor_kwargs["all_annotations"] = True
@@ -117,6 +138,20 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the SpikeGLX recording.
+
+        Retrieves and organizes metadata from the SpikeGLX recording,
+        including session start time, device information, electrode groups,
+        and electrode properties.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the SpikeGLX recording,
+            including NWBFile, Ecephys.Device, Ecephys.ElectrodeGroup,
+            and Ecephys.Electrodes sections.
+        """
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
@@ -164,6 +199,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """
+        Get the original timestamps for the SpikeGLX recording.
+
+        Returns
+        -------
+        np.ndarray or list
+            If the recording has only one segment, returns a numpy array of timestamps.
+            If the recording has multiple segments, returns a list of numpy arrays,
+            where each array contains the timestamps for one segment.
+        """
         new_recording = self.get_extractor()(
             folder_path=self.folder_path,
             stream_id=self.stream_id,

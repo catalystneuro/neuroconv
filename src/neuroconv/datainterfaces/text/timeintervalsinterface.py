@@ -42,6 +42,15 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.time_intervals = None
 
     def get_metadata(self) -> dict:
+        """
+        Get metadata for the time intervals.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata for the time intervals,
+            including a TimeIntervals section with trials information.
+        """
         metadata = super().get_metadata()
         metadata["TimeIntervals"] = dict(
             trials=dict(
