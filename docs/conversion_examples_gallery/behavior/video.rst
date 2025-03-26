@@ -71,7 +71,7 @@ To follow this convention use the
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
 
-If using an older version of neuroconv (<=0.7), you can use the :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface` class.
+If using an older version of neuroconv (<0.8), you can use the :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface` class.
 
 .. code-block:: python
 
