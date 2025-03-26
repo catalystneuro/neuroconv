@@ -368,7 +368,7 @@ def _resolve_backend(
 
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
-    output_filepath: Optional[FilePath],
+    output_filepath: Optional[FilePath] = None,
     nwbfile_path: Optional[FilePath] = None,
     backend: Optional[Literal["hdf5"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,

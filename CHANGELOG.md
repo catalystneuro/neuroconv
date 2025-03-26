@@ -1,7 +1,7 @@
 # v0.7.2 (Upcoming)
 
 ## Deprecations and Changes
-* `output_filepath` deprecated on `configure_and_write_nwbfile` use `nwbfile_path` instead [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
+* `output_filepath` deprecated on `configure_and_write_nwbfile` use `nwbfile_path` instead [PR #1270](https://github.com/catalystneuro/neuroconv/pull/1270)
 
 ## Bug Fixes
 * Fixed a check in `_configure_backend` on neurodata_object ndx_events.Events to work only when ndx-events==0.2.0 is used. [PR #998](https://github.com/catalystneuro/neuroconv/pull/998)
