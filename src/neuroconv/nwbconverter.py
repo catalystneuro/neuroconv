@@ -315,7 +315,7 @@ class NWBConverter:
 
             configure_and_write_nwbfile(
                 nwbfile=nwbfile,
-                output_filepath=nwbfile_path,
+                nwbfile_path=nwbfile_path,
                 backend=backend,
                 backend_configuration=backend_configuration,
             )
