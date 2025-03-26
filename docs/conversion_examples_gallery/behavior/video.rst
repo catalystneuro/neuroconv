@@ -9,7 +9,10 @@ Install NeuroConv with the additional dependencies necessary for reading multime
 
 This interface can handle conversions from avi, mov, mp4, wmv, flv and most `FFmpeg <https://ffmpeg.org/>_` supported formats to NWB.
 
-If linking to a list of external files (recommended), use the
+When storing videos of natural behavior, it is recommended to store this data as an external file with a link pointing
+from the ImageSeries in NWB to the external file
+(see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>_`).
+To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterface.ExternalVideoInterface` class.
 
 Specify the metadata (optional)
