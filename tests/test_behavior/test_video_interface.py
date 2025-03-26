@@ -9,68 +9,6 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces import VideoInterface
 
 
-# Common fixtures for all tests
-@pytest.fixture
-def cv2():
-    """Import and return cv2 or skip the test if not installed."""
-    return pytest.importorskip("cv2")
-
-
-@pytest.fixture
-def test_dir(tmp_path):
-    """Create and return a test directory using pytest's tmp_path fixture."""
-    return tmp_path
-
-
-@pytest.fixture
-def video_files(cv2, test_dir):
-    """Create test video files and return their paths."""
-    video_file1 = str(test_dir / "test1.avi")
-    video_file2 = str(test_dir / "test2.avi")
-    video_file3 = str(test_dir / "test3.avi")
-    number_of_frames = 30
-    number_of_rows = 640
-    number_of_columns = 480
-    frameSize = (number_of_columns, number_of_rows)  # This is give in x,y images coordinates (x is columns)
-    fps = 25
-    # Standard code for specifying image formats
-    fourcc_specification = ("M", "J", "P", "G")
-    # Utility to transform the four code specification to OpenCV specification
-    fourcc = cv2.VideoWriter_fourcc(*fourcc_specification)
-
-    writer1 = cv2.VideoWriter(
-        filename=video_file1,
-        fourcc=fourcc,
-        fps=fps,
-        frameSize=frameSize,
-    )
-    writer2 = cv2.VideoWriter(
-        filename=video_file2,
-        fourcc=fourcc,
-        fps=fps,
-        frameSize=frameSize,
-    )
-    writer3 = cv2.VideoWriter(
-        filename=video_file3,
-        fourcc=fourcc,
-        fps=fps,
-        frameSize=frameSize,
-    )
-
-    for frame in range(number_of_frames):
-        writer1.write(np.random.randint(0, 255, (number_of_rows, number_of_columns, 3)).astype("uint8"))
-        writer2.write(np.random.randint(0, 255, (number_of_rows, number_of_columns, 3)).astype("uint8"))
-        writer3.write(np.random.randint(0, 255, (number_of_rows, number_of_columns, 3)).astype("uint8"))
-
-    writer1.release()
-    writer2.release()
-    writer3.release()
-
-    yield [video_file1, video_file2, video_file3]
-
-    # Cleanup is handled by pytest's tmp_path, no need for manual cleanup
-
-
 @pytest.fixture
 def nwb_converter(video_files):
     """Create and return a test NWBConverter instance for external interface tests."""
@@ -103,9 +41,9 @@ def metadata(nwb_converter):
 
 
 @pytest.fixture
-def nwbfile_path(test_dir):
+def nwbfile_path(tmp_path_session):
     """Return path for the test NWB file."""
-    return test_dir / "video_test.nwb"
+    return tmp_path_session / "video_test.nwb"
 
 
 @pytest.fixture
