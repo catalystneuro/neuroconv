@@ -56,7 +56,9 @@ Run the conversion
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
-If storing data directly in NWB, use the
+When storing videos of neural data, lossy compression should not be used and it is best to store within the NWB file
+(see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>_`).
+To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface` class.
 
 Specify the metadata (optional)
