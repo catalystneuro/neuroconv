@@ -393,6 +393,12 @@ def configure_and_write_nwbfile(
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
 
     """
+
+    if nwbfile_path is not None and output_filepath is not None:
+        raise ValueError(
+            "Both 'output_filepath' and 'nwbfile_path' were specified! " "Please specify only `nwbfile_path`."
+        )
+
     if output_filepath is not None:
         warnings.warn(
             "The 'output_filepath' parameter is deprecated in or after September 2025. " "Use 'nwbfile_path' instead.",
@@ -401,10 +407,8 @@ def configure_and_write_nwbfile(
         )
         nwbfile_path = output_filepath
 
-    if nwbfile_path is not None and output_filepath is not None:
-        raise ValueError(
-            "Both 'output_filepath' and 'nwbfile_path' were specified! " "Please specify only `nwbfile_path`."
-        )
+    if nwbfile_path is None:
+        raise ValueError("The 'nwbfile_path' parameter must be specified.")
 
     backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
 
