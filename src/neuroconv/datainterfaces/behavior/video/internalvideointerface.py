@@ -267,6 +267,10 @@ class InternalVideoInterface(BaseDataInterface):
             it will be created with this description. The default description is the same as used by the
             conversion_tools.get_module function.
         """
+        if parent_container not in {"acquisition", "processing/behavior"}:
+            raise ValueError(
+                f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
+            )
         if not chunk_data:
             warnings.warn(
                 "Support for writing video data as a single array (chunk_data=False) is deprecated and will be removed on or after September 2025.",
@@ -355,9 +359,5 @@ class InternalVideoInterface(BaseDataInterface):
             nwbfile.add_acquisition(image_series)
         elif parent_container == "processing/behavior":
             get_module(nwbfile=nwbfile, name="behavior", description=module_description).add(image_series)
-        else:
-            raise ValueError(
-                f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
-            )
 
         return nwbfile

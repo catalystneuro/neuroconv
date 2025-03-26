@@ -299,6 +299,10 @@ class ExternalVideoInterface(BaseDataInterface):
             it will be created with this description. The default description is the same as used by the
             conversion_tools.get_module function.
         """
+        if parent_container not in {"acquisition", "processing/behavior"}:
+            raise ValueError(
+                f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
+            )
         metadata = metadata or dict()
 
         file_paths = self.source_data["file_paths"]
@@ -339,9 +343,5 @@ class ExternalVideoInterface(BaseDataInterface):
             nwbfile.add_acquisition(image_series)
         elif parent_container == "processing/behavior":
             get_module(nwbfile=nwbfile, name="behavior", description=module_description).add(image_series)
-        else:
-            raise ValueError(
-                f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
-            )
 
         return nwbfile
