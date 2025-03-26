@@ -15,22 +15,6 @@ from the ImageSeries in NWB to the external file
 To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterface.ExternalVideoInterface` class.
 
-Specify the metadata (optional)
-~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: yaml
-
-    # video_metadata.yaml
-    Behavior:
-      Video:
-        MyExternalVideo:
-          description: "My description of the video data"
-          unit: "Frames"
-          ...
-
-
-Run the conversion
-~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -61,22 +45,6 @@ When storing videos of neural data, lossy compression should not be used and it 
 To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface` class.
 
-Specify the metadata (optional)
-~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: yaml
-
-    # video_metadata.yaml
-    Behavior:
-      Video:
-        MyInternalVideo:
-          description: "My description of the video data"
-          unit: "Frames"
-          ...
-
-
-Run the conversion
-~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
