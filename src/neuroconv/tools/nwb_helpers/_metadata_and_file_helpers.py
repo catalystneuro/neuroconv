@@ -370,7 +370,7 @@ def configure_and_write_nwbfile(
     nwbfile: NWBFile,
     output_filepath: Optional[FilePath] = None,
     nwbfile_path: Optional[FilePath] = None,
-    backend: Optional[Literal["hdf5"]] = None,
+    backend: Optional[Literal["hdf5", "zarr"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
 ) -> None:
     """
