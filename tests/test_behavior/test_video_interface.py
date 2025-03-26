@@ -1,10 +1,10 @@
 import shutil
 import tempfile
-import unittest
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pytest
 from dateutil.tz import gettz
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
@@ -12,17 +12,11 @@ from pynwb import NWBHDF5IO
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import VideoInterface
 
-try:
-    import cv2
 
-    skip_test = False
-except ImportError:
-    skip_test = True
-
-
-@unittest.skipIf(skip_test, "cv2 not installed")
 class TestVideoInterface(TestCase):
     def setUp(self) -> None:
+        # Skip test if cv2 is not installed
+        self.cv2 = pytest.importorskip("cv2")
         self.test_dir = Path(tempfile.mkdtemp())
         self.video_files = self.create_videos()
         self.nwb_converter = self.create_video_converter()
@@ -47,21 +41,21 @@ class TestVideoInterface(TestCase):
         # Standard code for specifying image formats
         fourcc_specification = ("M", "J", "P", "G")
         # Utility to transform the four code specification to OpenCV specification
-        fourcc = cv2.VideoWriter_fourcc(*fourcc_specification)
+        fourcc = self.cv2.VideoWriter_fourcc(*fourcc_specification)
 
-        writer1 = cv2.VideoWriter(
+        writer1 = self.cv2.VideoWriter(
             filename=video_file1,
             fourcc=fourcc,
             fps=fps,
             frameSize=frameSize,
         )
-        writer2 = cv2.VideoWriter(
+        writer2 = self.cv2.VideoWriter(
             filename=video_file2,
             fourcc=fourcc,
             fps=fps,
             frameSize=frameSize,
         )
-        writer3 = cv2.VideoWriter(
+        writer3 = self.cv2.VideoWriter(
             filename=video_file3,
             fourcc=fourcc,
             fps=fps,
@@ -99,7 +93,6 @@ class TestVideoInterface(TestCase):
         return VideoTestNWBConverter(source_data=source_data)
 
 
-@unittest.skipIf(skip_test, "cv2 not installed")
 class TestExternalVideoInterface(TestVideoInterface):
     def test_video_external_mode_multiple_file_paths_error(self):
         conversion_opts = dict(
@@ -198,7 +191,6 @@ class TestExternalVideoInterface(TestVideoInterface):
             )
 
 
-@unittest.skipIf(skip_test, "cv2 not installed")
 class TestInternalVideoInterface(TestVideoInterface):
     def create_video_converter(self):
         class VideoTestNWBConverter(NWBConverter):

@@ -1,11 +1,11 @@
 import shutil
 import tempfile
-import unittest
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pytest
 from dateutil.tz import gettz
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
@@ -16,17 +16,11 @@ from neuroconv.datainterfaces.behavior.video.internalvideointerface import (
 )
 from neuroconv.utils import dict_deep_update
 
-try:
-    import cv2
 
-    skip_test = False
-except ImportError:
-    skip_test = True
-
-
-@unittest.skipIf(skip_test, "cv2 not installed")
 class TestInternalVideoInterface(TestCase):
     def setUp(self) -> None:
+        # Skip test if cv2 is not installed
+        self.cv2 = pytest.importorskip("cv2")
         self.test_dir = Path(tempfile.mkdtemp())
         self.video_files = self.create_videos()
         self.nwb_converter = self.create_video_converter()
@@ -50,15 +44,15 @@ class TestInternalVideoInterface(TestCase):
         # Standard code for specifying image formats
         fourcc_specification = ("M", "J", "P", "G")
         # Utility to transform the four code specification to OpenCV specification
-        fourcc = cv2.VideoWriter_fourcc(*fourcc_specification)
+        fourcc = self.cv2.VideoWriter_fourcc(*fourcc_specification)
 
-        writer1 = cv2.VideoWriter(
+        writer1 = self.cv2.VideoWriter(
             filename=video_file1,
             fourcc=fourcc,
             fps=fps,
             frameSize=frameSize,
         )
-        writer2 = cv2.VideoWriter(
+        writer2 = self.cv2.VideoWriter(
             filename=video_file2,
             fourcc=fourcc,
             fps=fps,
