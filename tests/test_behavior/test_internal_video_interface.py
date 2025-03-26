@@ -275,7 +275,7 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
-        "Behavior": {"Video": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
+        "Behavior": {"InternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
