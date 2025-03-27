@@ -216,7 +216,7 @@ class InternalVideoInterface(BaseDataInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        chunk_data: bool = True,
+        buffer_data: bool = True,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: Optional[str] = None,
     ):
@@ -253,7 +253,7 @@ class InternalVideoInterface(BaseDataInterface):
             Each dictionary in the list corresponds to a single VideoInterface and ImageSeries.
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
-        chunk_data : bool, default: True
+        buffer_data : bool, default: True
             If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
@@ -271,12 +271,6 @@ class InternalVideoInterface(BaseDataInterface):
             raise ValueError(
                 f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
             )
-        if not chunk_data:
-            warnings.warn(
-                "Support for writing video data as a single array (chunk_data=False) is deprecated and will be removed on or after September 2025.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         metadata = metadata or dict()
 
         file_path = Path(self.source_data["file_path"])
@@ -293,12 +287,12 @@ class InternalVideoInterface(BaseDataInterface):
 
         uncompressed_estimate = file_path.stat().st_size * 70
         available_memory = psutil.virtual_memory().available
-        if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
+        if not buffer_data and not stub_test and uncompressed_estimate >= available_memory:
             warnings.warn(
                 f"Not enough memory (estimated {human_readable_size(uncompressed_estimate)}) to load video file"
-                f"as array ({human_readable_size(available_memory)} available)! Forcing chunk_data to True."
+                f"as array ({human_readable_size(available_memory)} available)! Forcing buffer_data to True."
             )
-            chunk_data = True
+            buffer_data = True
         with VideoCaptureContext(str(file_path)) as video_capture_ob:
             if stub_test:
                 video_capture_ob.frame_count = stub_frames
@@ -308,7 +302,7 @@ class InternalVideoInterface(BaseDataInterface):
         maxshape = (total_frames, *frame_shape)
         tqdm_pos, tqdm_mininterval = (0, 10)
 
-        if chunk_data:
+        if buffer_data:
             chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
             video_capture_ob = VideoCaptureContext(str(file_path))
             if stub_test:

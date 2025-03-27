@@ -86,8 +86,8 @@ def test_save_video_to_custom_module(nwb_converter, nwbfile_path, metadata):
 def test_video_chunking(nwb_converter, nwbfile_path, metadata):
     """Test that video chunking works correctly."""
     conversion_options = dict(
-        Video1=dict(stub_test=True, chunk_data=True),
-        Video2=dict(stub_test=True, chunk_data=False),
+        Video1=dict(stub_test=True, buffer_data=True),
+        Video2=dict(stub_test=True, buffer_data=False),
     )
     nwb_converter.run_conversion(
         nwbfile_path=nwbfile_path,
