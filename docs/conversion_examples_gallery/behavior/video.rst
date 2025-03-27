@@ -86,3 +86,75 @@ If using an older version of neuroconv (<0.8), you can use the :py:class:`~neuro
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+
+Specifying Metadata
+~~~~~~~~~~~~~~~~~~~
+
+The examples above show how to convert video data without specifying any metadata, in which case the metadata will be
+automatically generated with default values. To ensure that the NWB file is properly annotated, specify the metadata
+using the formats described below.
+
+For :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterface.ExternalVideoInterface`,
+use the following structure:
+
+.. code-block:: yaml
+    # video_metadata.yaml
+    Behavior:
+      ExternalVideo:
+        MyExternalVideo:
+          description: "My description of the video data"
+          unit: "Frames"
+          ...
+
+
+This metadata can then be easily incorporated into the conversion by updating the metadata dictionary.
+
+.. code-block:: python
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import ExternalVideoInterface
+    >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
+    >>> LOCAL_PATH = Path(".") # Path to neuroconv
+    >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
+    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "video_metadata.yaml"
+    >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, video_name="MyExternalVideo")
+    >>> metadata = interface.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> editable_metadata = load_dict_from_file(editable_metadata_path)
+    >>> metadata = dict_deep_update(metadata, editable_metadata)
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+
+Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface`:
+
+.. code-block:: yaml
+    # video_metadata.yaml
+    Behavior:
+      InternalVideo:
+        MyInternalVideo:
+          description: "My description of the video data"
+          unit: "Frames"
+          ...
+
+.. code-block:: python
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import InternalVideoInterface
+    >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
+    >>> LOCAL_PATH = Path(".") # Path to neuroconv
+    >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
+    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "video_metadata.yaml"
+    >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, video_name="MyInternalVideo")
+    >>> metadata = interface.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> editable_metadata = load_dict_from_file(editable_metadata_path)
+    >>> metadata = dict_deep_update(metadata, editable_metadata)
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
