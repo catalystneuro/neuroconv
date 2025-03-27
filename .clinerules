@@ -1,5 +1,6 @@
 * When developing a new feature or fixing a bug, always write corresponding tests and run the tests to ensure the feature worked
 * When adding tests, first read through the existing tests and try to fit new tests in the existing testing infrastructure
+* When working with tests, use pytest if possible instead of unittest or hdmf.testing.TestCase
 * If a new feature requires a new dependency, make sure to add it in the pyproject.toml
 * To enable dependencies that are specific to certain Interface or Converter classes, import these additional dependencies within the class using `tools.get_package` instead of importing them at the top of the file.
 * Always make a contribution to the CHANGELOG file summarizing any changes

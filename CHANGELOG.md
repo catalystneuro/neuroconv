@@ -1,6 +1,7 @@
 # v0.7.2 (Upcoming)
 
 ## Deprecations and Changes
+* Split VideoInterface (now deprecated) into ExternalVideoInterface and InternalVideoInterface [PR #1251](https://github.com/catalystneuro/neuroconv/pull/1251)
 * `output_filepath` deprecated on `configure_and_write_nwbfile` use `nwbfile_path` instead [PR #1270](https://github.com/catalystneuro/neuroconv/pull/1270)
 
 ## Bug Fixes

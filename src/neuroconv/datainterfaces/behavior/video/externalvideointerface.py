@@ -1,6 +1,4 @@
-import warnings
 from copy import deepcopy
-from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -8,22 +6,21 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 
-from .externalvideointerface import ExternalVideoInterface
-from .internalvideointerface import InternalVideoInterface
 from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....tools.nwb_helpers import get_module
+from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_class
 
 
-class VideoInterface(BaseDataInterface):
-    """Data interface for writing videos as ImageSeries."""
+class ExternalVideoInterface(BaseDataInterface):
+    """Data interface for writing videos as external_file ImageSeries."""
 
     display_name = "Video"
-    keywords = ("movie", "natural behavior", "tracking")
+    keywords = ("video", "behavior")
     associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
-    info = "Interface for handling standard video file formats."
+    info = "Interface for handling standard video file formats and writing them as ImageSeries with external_files."
 
     @validate_call
     def __init__(
@@ -31,82 +28,75 @@ class VideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
-        metadata_key_name: str = "Videos",
+        video_name: str = "ExternalVideo",
     ):
         """
-        Create the interface for writing videos as ImageSeries.
+        Initialize the interface.
+
+        This interface handles multiple video segments and writes them as an ImageSeries with a link to external_file.
+        For writing videos internally with just an ImageSeries object, use the InternalVideoInterface.
 
         Parameters
         ----------
         file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
-        metadata_key_name : str, optional
-            The key used to identify this video data within the overall experiment metadata.
-            Defaults to "Videos".
+        verbose : bool, optional
+            If True, display verbose output. Defaults to False.
+        video_name : str, optional
+            The name of this video as it will appear in the ImageSeries.
+            Defaults to "ExternalVideo".
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
-            containing metadata for a specific video segment:
+            containing metadata for a single video stream comprised of potentially multiple segments:
 
             ```
-            metadata["Behavior"][metadata_key_name] = [
-                {video1_metadata},
-                {video2_metadata},
+            metadata["Behavior"]["ExternalVideo"] = {
+                "ExternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
+                "ExternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
                 ...
-            ]
+            }
             ```
 
-            If other video interfaces exist, they would follow a similar structure:
-
-            ```
-            metadata["Behavior"]["other_video_key_name"] = [
-                {other_video1_metadata},
-                {other_video2_metadata},
-                ...
-            ]
+            Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
+            metadata["Behavior"]["ExternalVideo"] is specific to the ExternalVideoInterface.
         """
-        warnings.warn(
-            "The VideoInterface is deprecated and will be removed on or after September 2025. "
-            "Please use the ExternalVideoInterface or InternalVideoInterface instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
         self._segment_starting_times = None
-        self.metadata_key_name = metadata_key_name
+        self.video_name = video_name
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
-        exclude = ["format", "conversion", "starting_time", "rate"]
+        exclude = ["format", "conversion", "starting_time", "rate", "name"]
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
+            if key in image_series_metadata_schema["required"]:
+                image_series_metadata_schema["required"].remove(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["required"].append(self.metadata_key_name)
-        metadata_schema["properties"]["Behavior"]["properties"][self.metadata_key_name] = dict(
-            type="array",
-            minItems=1,
-            items=image_series_metadata_schema,
-        )
+        metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideo")
+        metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideo"] = {
+            "type": "object",
+            "properties": {self.video_name: image_series_metadata_schema},
+            "required": [self.video_name],
+            "additionalProperties": True,
+        }
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        behavior_metadata = {
-            self.metadata_key_name: [
-                dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
-                for file_path in self.source_data["file_paths"]
-            ]
+        video_metadata = {
+            "Behavior": {
+                "ExternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+            }
         }
-        metadata["Behavior"] = behavior_metadata
-
-        return metadata
+        return dict_deep_update(metadata, video_metadata)
 
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
@@ -266,152 +256,92 @@ class VideoInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        stub_test: bool = False,
-        external_mode: bool = True,
         starting_frames: Optional[list[int]] = None,
-        chunk_data: bool = True,
-        module_name: Optional[str] = None,
+        parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: Optional[str] = None,
     ):
         """
-        Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
-        :py:class:`~pynwb.file.NWBFile`. Data is written in the :py:class:`~pynwb.image.ImageSeries` container as
-        RGB. [times, x, y, 3-RGB].
-
-        This method acts as a router, delegating the actual conversion to either InternalVideoInterface or
-        ExternalVideoInterface based on the external_mode parameter.
+        Convert the video data file(s) to :py:class:`~pynwb.image.ImageSeries` and write them in the
+        :py:class:`~pynwb.file.NWBFile`. Data is written in a single :py:class:`~pynwb.image.ImageSeries` container with
+        a path to each external file.
 
         Parameters
         ----------
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
-            Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths.
-            If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same :py:class:`~pynwb.image.ImageSeries` container.
+            Dictionary of metadata information such as name and description of the video. The key must correspond to
+            the video_name specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
                     Behavior=dict(
-                        Videos=[
-                            dict(name="Video1", description="This is the first video.."),
-                            dict(name="SecondVideo", description="Video #2 details..."),
-                            ...
-                        ]
+                        ExternalVideo=dict(
+                            ExternalVideo=dict(
+                                description="Description of the video..",
+                                unit="Frames",
+                                ...,
+                            ),
+                        )
                     )
                 )
 
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            The list for the 'Videos' key should correspond one to the video files in the file_paths list.
-            If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
-            Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
-        stub_test : bool, default: False
-            If ``True``, truncates the write operation for fast testing.
-        external_mode : bool, default: True
-            :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external video files.
-            If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
         starting_frames : list, optional
             List of start frames for each video written using external mode.
-            Required if more than one path is specified per ImageSeries in external mode.
-        chunk_data : bool, default: True
-            If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
-            reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
-            True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
-            of 70 (from compression experiments). Based on experiments for a ~30 FPS system of ~400 x ~600 color
-            frames, the equivalent uncompressed RAM usage is around 2GB per minute of video. The default is True.
-        module_name: str, optional
-            Name of the processing module to add the ImageSeries object to. Default behavior is to add as acquisition.
+            Required if more than one path is specified.
+        parent_container: {'acquisition', 'processing/behavior'}
+            The container where the ImageSeries is added, default is nwbfile.acquisition.
+            When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
         module_description: str, optional
-            If the processing module specified by module_name does not exist, it will be created with this description.
-            The default description is the same as used by the conversion_tools.get_module function.
+            If parent_container is 'processing/behavior', and the module does not exist,
+            it will be created with this description. The default description is the same as used by the
+            conversion_tools.get_module function.
         """
+        if parent_container not in {"acquisition", "processing/behavior"}:
+            raise ValueError(
+                f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
+            )
         metadata = metadata or dict()
+
         file_paths = self.source_data["file_paths"]
 
         # Be sure to copy metadata at this step to avoid mutating in-place
-        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get(self.metadata_key_name, None)
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideo", None)
         if videos_metadata is None:
-            videos_metadata = deepcopy(self.get_metadata()["Behavior"][self.metadata_key_name])
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideo"])
+        image_series_kwargs = metadata["Behavior"]["ExternalVideo"][self.video_name]
+        image_series_kwargs["name"] = self.video_name
 
-        assert len(videos_metadata) == self._number_of_files, (
-            "Incomplete metadata "
-            f"(number of metadata in video {len(videos_metadata)})"
-            f"is not equal to the number of file_paths {self._number_of_files}"
-        )
+        timing_type = self.get_timing_type()
+        if self._number_of_files > 1 and starting_frames is None:
+            raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
+        elif starting_frames is not None and len(starting_frames) != self._number_of_files:
+            raise ValueError(
+                f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
+                f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
+            )
+        elif starting_frames is not None:
+            image_series_kwargs.update(starting_frame=starting_frames)
 
-        videos_name_list = [video["name"] for video in videos_metadata]
-        any_duplicated_video_names = len(set(videos_name_list)) < len(videos_name_list)
-        if any_duplicated_video_names:
-            raise ValueError("There are duplicated file names in the metadata!")
+        image_series_kwargs.update(format="external", external_file=file_paths)
 
-        # Transform metadata from list format to nested dictionary format
-        metadata_reformatted = deepcopy(metadata)
-        video_name = videos_metadata[0].pop("name")
-
-        # Use appropriate metadata key based on external_mode
-        if external_mode:
-            metadata_reformatted["Behavior"]["ExternalVideo"] = {video_name: videos_metadata[0]}
+        if timing_type == "starting_time and rate":
+            starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
+            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                rate = video.get_video_fps()
+            image_series_kwargs.update(starting_time=starting_time, rate=rate)
+        elif timing_type == "timestamps":
+            image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
         else:
-            metadata_reformatted["Behavior"]["InternalVideo"] = {video_name: videos_metadata[0]}
+            raise ValueError(f"Unrecognized timing_type: {timing_type}")
 
-        parent_container = "acquisition" if module_name is None else "processing/behavior"
-        if parent_container == "processing/behavior":
-            assert module_name == "behavior", f"module_name must be 'behavior' or None but got {module_name}."
+        # Attach image series
+        image_series = ImageSeries(**image_series_kwargs)
+        if parent_container == "acquisition":
+            nwbfile.add_acquisition(image_series)
+        elif parent_container == "processing/behavior":
+            get_module(nwbfile=nwbfile, name="behavior", description=module_description).add(image_series)
 
-        # Create the appropriate interface based on external_mode parameter
-        if external_mode:
-            # Use ExternalVideoInterface for external_mode=True
-            # First convert metadata from old structure to the structure expected by ExternalVideoInterface
-            external_interface = ExternalVideoInterface(
-                file_paths=file_paths,
-                verbose=self.verbose,
-                video_name=video_name,
-            )
-
-            # Copy timing information
-            if self._timestamps is not None:
-                external_interface.set_aligned_timestamps(self._timestamps)
-            elif self._segment_starting_times is not None:
-                external_interface.set_aligned_segment_starting_times(self._segment_starting_times)
-
-            # Call ExternalVideoInterface's add_to_nwbfile method
-            return external_interface.add_to_nwbfile(
-                nwbfile=nwbfile,
-                metadata=metadata_reformatted,
-                starting_frames=starting_frames,
-                parent_container=parent_container,
-                module_description=module_description,
-            )
-
-        # Use InternalVideoInterface for external_mode=False
-        # Validate that we only have one file (required by InternalVideoInterface)
-        if self._number_of_files > 1:
-            raise NotImplementedError(
-                "Multiple file_paths with external_mode=False is not supported! "
-                "Please initialize a separate VideoInterface for each file."
-            )
-
-        # Create InternalVideoInterface
-        internal_interface = InternalVideoInterface(
-            file_path=file_paths[0],
-            verbose=self.verbose,
-            video_name=video_name,
-        )
-
-        # Copy timing information
-        if self._timestamps is not None:
-            internal_interface.set_aligned_timestamps(self._timestamps[0])
-        elif self._segment_starting_times is not None:
-            internal_interface.set_aligned_starting_time(self._segment_starting_times[0])
-
-        # Call InternalVideoInterface's add_to_nwbfile method
-        return internal_interface.add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata_reformatted,
-            stub_test=stub_test,
-            buffer_data=chunk_data,
-            parent_container=parent_container,
-            module_description=module_description,
-        )
+        return nwbfile
