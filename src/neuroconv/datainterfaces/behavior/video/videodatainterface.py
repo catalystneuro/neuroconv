@@ -389,7 +389,7 @@ class VideoInterface(BaseDataInterface):
         # Validate that we only have one file (required by InternalVideoInterface)
         if self._number_of_files > 1:
             raise NotImplementedError(
-                "Multiple file_paths with external_mode=False is not yet supported! "
+                "Multiple file_paths with external_mode=False is not supported! "
                 "Please initialize a separate VideoInterface for each file."
             )
 
