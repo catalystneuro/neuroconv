@@ -4,20 +4,15 @@ import pytest
 
 # Common fixtures for all video tests
 @pytest.fixture(scope="session")
-def cv2():
-    """Import and return cv2 or skip the test if not installed."""
-    return pytest.importorskip("cv2")
-
-
-@pytest.fixture(scope="session")
 def tmp_path_session(tmp_path_factory):
     """Create a session-scoped temporary directory."""
     return tmp_path_factory.mktemp("session")
 
 
 @pytest.fixture(scope="session")
-def video_files(cv2, tmp_path_session):
+def video_files(tmp_path_session):
     """Create test video files and return their paths."""
+    cv2 = pytest.importorskip("cv2")
     video_file1 = str(tmp_path_session / "test1.avi")
     video_file2 = str(tmp_path_session / "test2.avi")
     video_file3 = str(tmp_path_session / "test3.avi")
