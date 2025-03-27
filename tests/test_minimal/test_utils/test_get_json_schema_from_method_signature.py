@@ -240,7 +240,10 @@ def test_fix_to_358():
     test_conversion_options_schema = get_json_schema_from_method_signature(method=Test358.add_to_nwbfile)
     expected_conversion_options_schema = {
         "properties": {
-            "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
+            "metadata": {
+                "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                "default": None,
+            },
             "tag": {"default": "trials", "type": "string"},
             "column_name_mapping": {
                 "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
