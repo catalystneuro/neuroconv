@@ -209,8 +209,8 @@ def test_save_video_to_custom_module_internal(internal_nwb_converter, nwbfile_pa
 def test_video_chunking_internal(internal_nwb_converter, nwbfile_path, internal_metadata):
     """Test that video chunking works correctly."""
     conversion_options = dict(
-        Video1=dict(external_mode=False, stub_test=True, buffer_data=False),
-        Video2=dict(external_mode=False, stub_test=True, buffer_data=False),
+        Video1=dict(external_mode=False, stub_test=True, chunk_data=False),
+        Video2=dict(external_mode=False, stub_test=True, chunk_data=False),
     )
     internal_nwb_converter.run_conversion(
         nwbfile_path=nwbfile_path,

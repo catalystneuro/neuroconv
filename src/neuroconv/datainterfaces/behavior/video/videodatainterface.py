@@ -269,7 +269,7 @@ class VideoInterface(BaseDataInterface):
         stub_test: bool = False,
         external_mode: bool = True,
         starting_frames: Optional[list[int]] = None,
-        buffer_data: bool = True,
+        chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
     ):
@@ -315,7 +315,7 @@ class VideoInterface(BaseDataInterface):
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified per ImageSeries in external mode.
-        buffer_data : bool, default: True
+        chunk_data : bool, default: True
             If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
@@ -411,7 +411,7 @@ class VideoInterface(BaseDataInterface):
             nwbfile=nwbfile,
             metadata=metadata_reformatted,
             stub_test=stub_test,
-            buffer_data=buffer_data,
+            buffer_data=chunk_data,
             parent_container=parent_container,
             module_description=module_description,
         )
