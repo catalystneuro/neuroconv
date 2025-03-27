@@ -99,7 +99,7 @@ For :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterfa
 use the following structure:
 
 .. code-block:: yaml
-    # video_metadata.yaml
+    # external_video_metadata.yaml
     Behavior:
       ExternalVideo:
         MyExternalVideo:
@@ -118,7 +118,7 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "video_metadata.yaml"
+    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "external_video_metadata.yaml"
     >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, video_name="MyExternalVideo")
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -132,7 +132,7 @@ This metadata can then be easily incorporated into the conversion by updating th
 Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface`:
 
 .. code-block:: yaml
-    # video_metadata.yaml
+    # internal_video_metadata.yaml
     Behavior:
       InternalVideo:
         MyInternalVideo:
@@ -148,7 +148,7 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "video_metadata.yaml"
+    >>> editable_metadata_path = LOCAL_PATH / "tests" / "test_behavior" / "internal_video_metadata.yaml"
     >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, video_name="MyInternalVideo")
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
