@@ -179,7 +179,7 @@ class BaseDataInterface(ABC):
         overwrite: bool = False,
         backend: Optional[Literal["hdf5", "zarr"]] = None,
         backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
-        appending_to_in_disk_nwbfile: bool = False,
+        append_on_disk_nwbfile: bool = False,
         **conversion_options,
     ):
         """
