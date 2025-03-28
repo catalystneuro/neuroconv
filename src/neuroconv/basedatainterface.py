@@ -205,7 +205,7 @@ class BaseDataInterface(ABC):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
-        appending_to_in_disk_nwbfile : bool, default: False
+        append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
         """

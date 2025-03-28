@@ -259,7 +259,7 @@ class NWBConverter:
         backend: Optional[Literal["hdf5", "zarr"]] = None,
         backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
         conversion_options: Optional[dict] = None,
-        appending_to_in_disk_nwbfile: bool = False,
+        append_on_disk_nwbfile: bool = False,
     ) -> None:
         """
         Run the NWB conversion over all the instantiated data interfaces.
@@ -288,7 +288,7 @@ class NWBConverter:
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
-        appending_to_in_disk_nwbfile : bool, default: False
+        append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
         """
