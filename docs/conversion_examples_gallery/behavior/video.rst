@@ -99,6 +99,7 @@ For :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterfa
 use the following structure:
 
 .. code-block:: yaml
+
     # external_video_metadata.yaml
     Behavior:
       ExternalVideo:
@@ -111,6 +112,7 @@ use the following structure:
 This metadata can then be easily incorporated into the conversion by updating the metadata dictionary.
 
 .. code-block:: python
+
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
@@ -132,6 +134,7 @@ This metadata can then be easily incorporated into the conversion by updating th
 Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface`:
 
 .. code-block:: yaml
+
     # internal_video_metadata.yaml
     Behavior:
       InternalVideo:
@@ -141,6 +144,7 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
           ...
 
 .. code-block:: python
+
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
