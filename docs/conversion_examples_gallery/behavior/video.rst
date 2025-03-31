@@ -7,11 +7,11 @@ Install NeuroConv with the additional dependencies necessary for reading multime
 
     pip install "neuroconv[video]"
 
-This interface can handle conversions from avi, mov, mp4, wmv, flv and most `FFmpeg <https://ffmpeg.org/>_` supported formats to NWB.
+This interface can handle conversions from avi, mov, mp4, wmv, flv and most `FFmpeg <https://ffmpeg.org/>`_ supported formats to NWB.
 
 When storing videos of natural behavior, it is recommended to store this data as an external file with a link pointing
 from the ImageSeries in NWB to the external file
-(see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>_`).
+(see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_).
 To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterface.ExternalVideoInterface` class.
 
@@ -38,7 +38,7 @@ To follow this convention use the
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 When storing videos of neural data, lossy compression should not be used and it is best to store within the NWB file
-(see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>_`).
+(see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_).
 To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface` class.
 
