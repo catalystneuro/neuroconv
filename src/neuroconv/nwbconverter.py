@@ -301,7 +301,7 @@ class NWBConverter:
                 f"The file at {nwbfile_path} already exists. Set overwrite=True to overwrite the existing file."
             )
 
-        if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
+        if append_on_disk_nwbfile and appending_to_in_memory_nwbfile:
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
@@ -310,11 +310,11 @@ class NWBConverter:
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
+        self.validate_metadata(metadata=metadata, append_mode=append_on_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)
         self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
-        if not appending_to_in_disk_nwbfile:
+        if not append_on_disk_nwbfile:
 
             if appending_to_in_memory_nwbfile:
                 self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)

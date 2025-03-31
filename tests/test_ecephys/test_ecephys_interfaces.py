@@ -175,7 +175,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 nwbfile=nwbfile,
                 nwbfile_path=nwbfile_path,
                 overwrite=True,
-                appending_to_in_disk_nwbfile=True,
+                append_on_disk_nwbfile=True,
             )
 
         converter = ConverterPipe(data_interfaces=[self.interface])
@@ -184,7 +184,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 nwbfile=nwbfile,
                 nwbfile_path=nwbfile_path,
                 overwrite=True,
-                appending_to_in_disk_nwbfile=True,
+                append_on_disk_nwbfile=True,
             )
 
 
