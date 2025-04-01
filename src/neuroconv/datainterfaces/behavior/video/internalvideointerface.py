@@ -8,6 +8,7 @@ import psutil
 from hdmf.data_utils import DataChunkIterator
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
+from pynwb.device import Device
 from pynwb.image import ImageSeries
 from tqdm import tqdm
 
@@ -35,6 +36,7 @@ class InternalVideoInterface(BaseDataInterface):
         verbose: bool = False,
         *,
         video_name: str = "InternalVideo",
+        device_name: str = "InternalVideoCamera",
     ):
         """
         Initialize the interface.
@@ -66,12 +68,25 @@ class InternalVideoInterface(BaseDataInterface):
 
             Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
             metadata["Behavior"]["InternalVideo"] is specific to the InternalVideoInterface.
+        device_name : str, optional
+            The name of the device that will be created and linked to the ImageSeries.
+            Defaults to "InternalVideoCamera".
+
+            This parameter allows linking the video to a device (camera) that was used to capture it.
+            The device metadata can be customized through:
+
+            ```
+            metadata["Behavior"]["InternalVideoDevices"] = {
+                "InternalVideoCamera": dict(description="Camera description.", manufacturer="Camera manufacturer", **device_metadata),
+            }
+            ```
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._timestamps = None
         self._starting_time = None
         self.video_name = video_name
+        self.device_name = device_name
         super().__init__(file_path=file_path)
 
     def get_metadata_schema(self):
@@ -83,6 +98,8 @@ class InternalVideoInterface(BaseDataInterface):
             image_series_metadata_schema["properties"].pop(key)
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
+        device_metadata_schema = get_schema_from_hdmf_class(Device)
+        device_metadata_schema["required"].remove("name")
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("InternalVideo")
         metadata_schema["properties"]["Behavior"]["properties"]["InternalVideo"] = {
@@ -91,13 +108,21 @@ class InternalVideoInterface(BaseDataInterface):
             "required": [self.video_name],
             "additionalProperties": True,
         }
+        metadata_schema["properties"]["Behavior"]["required"].append("InternalVideoDevices")
+        metadata_schema["properties"]["Behavior"]["properties"]["InternalVideoDevices"] = {
+            "type": "object",
+            "properties": {self.device_name: device_metadata_schema},
+            "required": [self.device_name],
+            "additionalProperties": True,
+        }
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
-                "InternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+                "InternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")},
+                "InternalVideoDevices": {self.device_name: dict(description="Video camera used for recording.")},
             }
         }
         return dict_deep_update(metadata, video_metadata)
@@ -230,10 +255,9 @@ class InternalVideoInterface(BaseDataInterface):
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
-            Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths.
-            If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same :py:class:`~pynwb.image.ImageSeries` container.
+            Dictionary of metadata information such as name and description of the video, as well as
+            device information for the camera that captured the video. The keys must correspond to
+            the video_name and device_name specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
@@ -244,13 +268,25 @@ class InternalVideoInterface(BaseDataInterface):
                                 unit="Frames",
                                 ...,
                             ),
-                        )
+                        ),
+                        InternalVideoDevices=dict(
+                            InternalVideoCamera=dict(
+                                description="Description of the camera device.",
+                                manufacturer="Camera manufacturer",
+                                ...,
+                            ),
+                        ),
                     )
                 )
 
-            and may contain most keywords normally accepted by an ImageSeries
+            The InternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            Each dictionary in the list corresponds to a single VideoInterface and ImageSeries.
+
+            The InternalVideoDevices section may contain most keywords normally accepted by a Device
+            (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
+
+            The device will be created and linked to the ImageSeries, establishing a connection between
+            the video data and the camera that captured it.
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         buffer_data : bool, default: True
@@ -281,6 +317,18 @@ class InternalVideoInterface(BaseDataInterface):
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideo"])
         image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
+
+        devices_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideoDevices", None)
+        if devices_metadata is None:
+            devices_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideoDevices"])
+        device_kwargs = devices_metadata[self.device_name]
+        device_kwargs["name"] = self.device_name
+        if self.device_name in nwbfile.devices:
+            device = nwbfile.devices[self.device_name]
+        else:
+            device = Device(**device_kwargs)
+            nwbfile.add_device(device)
+        image_series_kwargs["device"] = device
 
         stub_frames = 10
         timing_type = self.get_timing_type()

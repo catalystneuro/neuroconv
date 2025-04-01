@@ -27,10 +27,12 @@ def nwb_converter(video_files):
         Video1=dict(
             file_path=video_files[0],
             video_name="Video test1",
+            device_name="Camera1",
         ),
         Video2=dict(
             file_path=video_files[1],
             video_name="Video test2",
+            device_name="Camera2",
         ),
     )
     return VideoTestNWBConverter(source_data=source_data)
@@ -223,7 +225,10 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
-        "Behavior": {"InternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
+        "Behavior": {
+            "InternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}},
+            "InternalVideoDevices": {"Camera1": {"description": "Custom device description"}},
+        }
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
@@ -239,3 +244,30 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         nwbfile = io.read()
         assert nwbfile.acquisition["Video test1"].description == "Custom description"
         assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+        assert nwbfile.devices["Camera1"].description == "Custom device description"
+
+
+def test_device_propagation(nwb_converter, nwbfile_path, metadata):
+    """Test that devices are properly created and linked to videos."""
+    # Run conversion with multiple cameras
+    conversion_options = dict(
+        Video1=dict(stub_test=True),
+        Video2=dict(stub_test=True),
+    )
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify device creation and linking
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check devices exist
+        assert "Camera1" in nwbfile.devices
+        assert "Camera2" in nwbfile.devices
+
+        # Check videos are linked to correct devices
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Camera1"]
+        assert nwbfile.acquisition["Video test2"].device == nwbfile.devices["Camera2"]
