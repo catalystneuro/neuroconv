@@ -4,6 +4,7 @@ from typing import Literal, Optional
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
+from pynwb.device import Device
 from pynwb.image import ImageSeries
 
 from .video_utils import VideoCaptureContext
@@ -29,6 +30,7 @@ class ExternalVideoInterface(BaseDataInterface):
         verbose: bool = False,
         *,
         video_name: str = "ExternalVideo",
+        device_name: str = "ExternalVideoCamera",
     ):
         """
         Initialize the interface.
@@ -68,6 +70,7 @@ class ExternalVideoInterface(BaseDataInterface):
         self._timestamps = None
         self._segment_starting_times = None
         self.video_name = video_name
+        self.device_name = device_name
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -79,6 +82,8 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_metadata_schema["properties"].pop(key)
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
+        device_metadata_schema = get_schema_from_hdmf_class(Device)
+        device_metadata_schema["required"].remove("name")
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideo")
         metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideo"] = {
@@ -87,13 +92,21 @@ class ExternalVideoInterface(BaseDataInterface):
             "required": [self.video_name],
             "additionalProperties": True,
         }
+        metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideoDevices")
+        metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideoDevices"] = {
+            "type": "object",
+            "properties": {self.device_name: device_metadata_schema},
+            "required": [self.device_name],
+            "additionalProperties": True,
+        }
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
-                "ExternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+                "ExternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")},
+                "ExternalVideoDevices": {self.device_name: dict(description="Video camera used for recording.")},
             }
         }
         return dict_deep_update(metadata, video_metadata)
@@ -311,8 +324,20 @@ class ExternalVideoInterface(BaseDataInterface):
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideo", None)
         if videos_metadata is None:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideo"])
-        image_series_kwargs = metadata["Behavior"]["ExternalVideo"][self.video_name]
+        image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
+
+        devices_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideoDevices", None)
+        if devices_metadata is None:
+            devices_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideoDevices"])
+        device_kwargs = devices_metadata[self.device_name]
+        device_kwargs["name"] = self.device_name
+        if self.device_name in nwbfile.devices:
+            device = nwbfile.devices[self.device_name]
+        else:
+            device = Device(**device_kwargs)
+            nwbfile.add_device(device)
+        image_series_kwargs["device"] = device
 
         timing_type = self.get_timing_type()
         if self._number_of_files > 1 and starting_frames is None:
