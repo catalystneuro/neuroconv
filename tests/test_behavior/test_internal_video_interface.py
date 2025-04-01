@@ -13,6 +13,15 @@ from neuroconv.datainterfaces.behavior.video.internalvideointerface import (
 from neuroconv.utils import dict_deep_update
 
 
+def test_initialization_without_metadata(video_files):
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    nwbfile = mock_NWBFile()
+    interface = InternalVideoInterface(file_paths=[video_files[0]])
+
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+
 @pytest.fixture
 def nwb_converter(video_files):
     """Create and return a test NWBConverter instance."""
