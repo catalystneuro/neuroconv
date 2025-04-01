@@ -63,6 +63,18 @@ class ExternalVideoInterface(BaseDataInterface):
 
             Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
             metadata["Behavior"]["ExternalVideo"] is specific to the ExternalVideoInterface.
+        device_name : str, optional
+            The name of the device that will be created and linked to the ImageSeries.
+            Defaults to "ExternalVideoCamera".
+
+            This parameter allows linking the video to a device (camera) that was used to capture it.
+            The device metadata can be customized through:
+
+            ```
+            metadata["Behavior"]["ExternalVideoDevices"] = {
+                "ExternalVideoCamera": dict(description="Camera description.", manufacturer="Camera manufacturer", **device_metadata),
+            }
+            ```
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
@@ -283,8 +295,9 @@ class ExternalVideoInterface(BaseDataInterface):
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
-            Dictionary of metadata information such as name and description of the video. The key must correspond to
-            the video_name specified in the constructor.
+            Dictionary of metadata information such as name and description of the video, as well as
+            device information for the camera that captured the video. The keys must correspond to
+            the video_name and device_name specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
@@ -295,12 +308,25 @@ class ExternalVideoInterface(BaseDataInterface):
                                 unit="Frames",
                                 ...,
                             ),
-                        )
+                        ),
+                        ExternalVideoDevices=dict(
+                            ExternalVideoCamera=dict(
+                                description="Description of the camera device.",
+                                manufacturer="Camera manufacturer",
+                                ...,
+                            ),
+                        ),
                     )
                 )
 
-            and may contain most keywords normally accepted by an ImageSeries
+            The ExternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
+
+            The ExternalVideoDevices section may contain most keywords normally accepted by a Device
+            (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
+
+            The device will be created and linked to the ImageSeries, establishing a connection between
+            the video data and the camera that captured it.
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified.
