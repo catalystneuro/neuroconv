@@ -352,9 +352,9 @@ class VideoInterface(BaseDataInterface):
 
         # Use appropriate metadata key based on external_mode
         if external_mode:
-            metadata_reformatted["Behavior"]["ExternalVideo"] = {video_name: videos_metadata[0]}
+            metadata_reformatted["Behavior"]["ExternalVideos"] = {video_name: videos_metadata[0]}
         else:
-            metadata_reformatted["Behavior"]["InternalVideo"] = {video_name: videos_metadata[0]}
+            metadata_reformatted["Behavior"]["InternalVideos"] = {video_name: videos_metadata[0]}
 
         parent_container = "acquisition" if module_name is None else "processing/behavior"
         if parent_container == "processing/behavior":
