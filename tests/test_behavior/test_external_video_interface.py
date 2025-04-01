@@ -27,10 +27,12 @@ def nwb_converter(video_files):
         Video1=dict(
             file_paths=video_files[0:2],
             video_name="Video test1",
+            device_name="Camera1",
         ),
         Video2=dict(
             file_paths=[video_files[2]],
             video_name="Video test3",
+            device_name="Camera2",
         ),
     )
     return VideoTestNWBConverter(source_data=source_data)
@@ -245,7 +247,10 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
-        "Behavior": {"ExternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
+        "Behavior": {
+            "ExternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}},
+            "ExternalVideoDevices": {"Camera1": {"description": "Custom device description"}},
+        }
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
@@ -265,3 +270,33 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         nwbfile = io.read()
         assert nwbfile.acquisition["Video test1"].description == "Custom description"
         assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+        assert nwbfile.devices["Camera1"].description == "Custom device description"
+
+
+def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that devices are properly created and linked to videos."""
+    # Setup interface with timing information to allow conversion
+    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    # Run conversion with multiple cameras
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify device creation and linking
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check devices exist
+        assert "Camera1" in nwbfile.devices
+        assert "Camera2" in nwbfile.devices
+
+        # Check videos are linked to correct devices
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Camera1"]
+        assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Camera2"]
