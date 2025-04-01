@@ -10,7 +10,12 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
-from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_class
+from ....utils import (
+    calculate_regular_series_rate,
+    dict_deep_update,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class ExternalVideoInterface(BaseDataInterface):
@@ -122,37 +127,6 @@ class ExternalVideoInterface(BaseDataInterface):
                 timestamps.append(video.get_video_timestamps(max_frames=max_frames))
         return timestamps
 
-    def get_timing_type(self) -> Literal["starting_time and rate", "timestamps"]:
-        """
-        Determine the type of timing used by this interface.
-
-        Returns
-        -------
-        Literal["starting_time and rate", "timestamps"]
-            The type of timing that has been set explicitly according to alignment.
-
-            If only timestamps have been set, then only those will be used.
-            If only starting times have been set, then only those will be used.
-
-            If timestamps were set, and then starting times were set, the timestamps will take precedence
-            as they will then be shifted by the corresponding starting times.
-
-            If neither has been set, and there is only one video in the file_paths,
-            it is assumed the video is regularly sampled and pre-aligned with
-            a starting_time of 0.0 relative to the session start time.
-        """
-        if self._timestamps is not None:
-            return "timestamps"
-        elif self._segment_starting_times is not None:
-            return "starting_time and rate"
-        elif self._timestamps is None and self._segment_starting_times is None and self._number_of_files == 1:
-            return "starting_time and rate"  # default behavior assumes data is pre-aligned; starting_times = [0.0]
-        else:
-            raise ValueError(
-                f"No timing information is specified and there are {self._number_of_files} total video files! "
-                "Please specify the temporal alignment of each video."
-            )
-
     def get_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
@@ -259,6 +233,7 @@ class ExternalVideoInterface(BaseDataInterface):
         starting_frames: Optional[list[int]] = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: Optional[str] = None,
+        always_write_timestamps: bool = False,
     ):
         """
         Convert the video data file(s) to :py:class:`~pynwb.image.ImageSeries` and write them in the
@@ -298,6 +273,11 @@ class ExternalVideoInterface(BaseDataInterface):
             If parent_container is 'processing/behavior', and the module does not exist,
             it will be created with this description. The default description is the same as used by the
             conversion_tools.get_module function.
+        always_write_timestamps: bool, default: False
+            Set to True to always write timestamps.
+            By default (False), the function checks if timestamps are available, and if not, uses starting_time and rate.
+            If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
+            to be retrieved from the video file.
         """
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
@@ -314,7 +294,29 @@ class ExternalVideoInterface(BaseDataInterface):
         image_series_kwargs = metadata["Behavior"]["ExternalVideo"][self.video_name]
         image_series_kwargs["name"] = self.video_name
 
-        timing_type = self.get_timing_type()
+        if always_write_timestamps:
+            timestamps = self._timestamps if self._timestamps is not None else self.get_timestamps()
+            image_series_kwargs.update(timestamps=np.concatenate(timestamps))
+        elif self._timestamps is not None:
+            # Check if timestamps are regular
+            timestamps = np.concatenate(self._timestamps)
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
+                starting_time = timestamps[0]
+                image_series_kwargs.update(starting_time=starting_time, rate=rate)
+            else:
+                image_series_kwargs.update(timestamps=timestamps)
+        else:
+            if self._number_of_files > 1 and self._segment_starting_times is None:
+                raise ValueError(
+                    f"No timing information is specified and there are {self._number_of_files} total video files! "
+                    "Please specify the temporal alignment of each video."
+                )
+            starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
+            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                rate = video.get_video_fps()
+            image_series_kwargs.update(starting_time=starting_time, rate=rate)
+
         if self._number_of_files > 1 and starting_frames is None:
             raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
         elif starting_frames is not None and len(starting_frames) != self._number_of_files:
@@ -326,16 +328,6 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_kwargs.update(starting_frame=starting_frames)
 
         image_series_kwargs.update(format="external", external_file=file_paths)
-
-        if timing_type == "starting_time and rate":
-            starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
-            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
-                rate = video.get_video_fps()
-            image_series_kwargs.update(starting_time=starting_time, rate=rate)
-        elif timing_type == "timestamps":
-            image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
-        else:
-            raise ValueError(f"Unrecognized timing_type: {timing_type}")
 
         # Attach image series
         image_series = ImageSeries(**image_series_kwargs)

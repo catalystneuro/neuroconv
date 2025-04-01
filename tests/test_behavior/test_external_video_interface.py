@@ -145,6 +145,29 @@ def test_starting_frames_value_error(nwb_converter, nwbfile_path, metadata):
         )
 
 
+def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that always_write_timestamps forces the use of timestamps even when timestamps are regular."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+
+    # Run conversion with always_write_timestamps=True
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4], always_write_timestamps=True))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify that timestamps were written
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check that timestamps exist in the ImageSeries
+        assert nwbfile.acquisition["Video test1"].timestamps is not None
+        # Verify timestamps are not None and have the expected length
+        assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
+
+
 def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that videos can be added to a custom module."""
     timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
@@ -177,27 +200,6 @@ def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_st
         assert module_description == nwbfile.processing["behavior"].description
         assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
         assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
-
-
-def test_get_timing_type_with_timestamps(nwb_converter):
-    """Test that get_timing_type returns 'timestamps' when timestamps are set."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
-    assert interface.get_timing_type() == "timestamps"
-
-
-def test_get_timing_type_with_segment_starting_times(nwb_converter):
-    """Test that get_timing_type returns 'starting_time and rate' when segment_starting_times are set."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
-    assert interface.get_timing_type() == "starting_time and rate"
-
-
-def test_get_timing_type_single_file_default(video_files):
-    """Test that get_timing_type returns 'starting_time and rate' by default for a single file."""
-    # Create a new interface with a single file
-    interface = ExternalVideoInterface(file_paths=[video_files[0]], video_name="SingleVideo")
-    assert interface.get_timing_type() == "starting_time and rate"
 
 
 def test_set_aligned_timestamps_after_segment_starting_times_error(nwb_converter):

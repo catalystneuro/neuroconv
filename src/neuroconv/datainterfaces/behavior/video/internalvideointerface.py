@@ -219,6 +219,7 @@ class InternalVideoInterface(BaseDataInterface):
         buffer_data: bool = True,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: Optional[str] = None,
+        always_write_timestamps: bool = False,
     ):
         """
         Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
@@ -266,6 +267,11 @@ class InternalVideoInterface(BaseDataInterface):
             If parent_container is 'processing/behavior', and the module does not exist,
             it will be created with this description. The default description is the same as used by the
             conversion_tools.get_module function.
+        always_write_timestamps: bool, default: False
+            Set to True to always write timestamps.
+            By default (False), the function checks if timestamps are available, and if not, uses starting_time and rate.
+            If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
+            to be retrieved from the video file.
         """
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
@@ -339,13 +345,24 @@ class InternalVideoInterface(BaseDataInterface):
 
         image_series_kwargs.update(data=iterable)
 
-        if timing_type == "starting_time and rate":
+        from ....utils import calculate_regular_series_rate
+
+        if always_write_timestamps:
+            timestamps = self._timestamps if self._timestamps is not None else self.get_timestamps()
+            image_series_kwargs.update(timestamps=timestamps)
+        elif self._timestamps is not None:
+            # Check if timestamps are regular
+            rate = calculate_regular_series_rate(series=self._timestamps)
+            if rate is not None:
+                starting_time = self._timestamps[0]
+                image_series_kwargs.update(starting_time=starting_time, rate=rate)
+            else:
+                image_series_kwargs.update(timestamps=self._timestamps)
+        else:
             starting_time = self._starting_time if self._starting_time is not None else 0.0
             with VideoCaptureContext(file_path=str(file_path)) as video:
                 rate = video.get_video_fps()
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
-        elif timing_type == "timestamps":
-            image_series_kwargs.update(timestamps=self._timestamps)
 
         # Attach image series
         image_series = ImageSeries(**image_series_kwargs)
