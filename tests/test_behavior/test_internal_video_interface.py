@@ -17,7 +17,7 @@ def test_initialization_without_metadata(video_files):
     from pynwb.testing.mock.file import mock_NWBFile
 
     nwbfile = mock_NWBFile()
-    interface = InternalVideoInterface(file_paths=[video_files[0]])
+    interface = InternalVideoInterface(file_path=video_files[0])
 
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
