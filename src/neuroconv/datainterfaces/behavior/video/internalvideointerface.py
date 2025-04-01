@@ -125,30 +125,6 @@ class InternalVideoInterface(BaseDataInterface):
             # method is simply returning range(length) / fps 100% of the time for any given format
             return video.get_video_timestamps(max_frames=max_frames)
 
-    def get_timing_type(self) -> Literal["starting_time and rate", "timestamps"]:
-        """
-        Determine the type of timing used by this interface.
-
-        Returns
-        -------
-        Literal["starting_time and rate", "timestamps"]
-            The type of timing that has been set explicitly according to alignment.
-
-            If only timestamps have been set, then only those will be used.
-            If only starting times have been set, then only those will be used.
-
-            If timestamps were set, and then starting times were set, the timestamps will take precedence
-            as they will then be shifted by the corresponding starting times.
-
-            If neither has been set, and there is only one video in the file_paths,
-            it is assumed the video is regularly sampled and pre-aligned with
-            a starting_time of 0.0 relative to the session start time.
-        """
-        if self._timestamps is not None:
-            return "timestamps"
-        else:
-            return "starting_time and rate"  # default behavior assumes data is pre-aligned; starting_times = [0.0]
-
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         """
         Retrieve the timestamps for the data in this interface.
@@ -201,11 +177,10 @@ class InternalVideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        timing_type = self.get_timing_type()
-        if timing_type == "timestamps":
+        if self._timestamps is not None:
             aligned_timestamps = self.get_timestamps(stub_test=stub_test) + aligned_starting_time
             self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-        elif timing_type == "starting_time and rate":
+        else:
             self._starting_time = aligned_starting_time
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
@@ -289,7 +264,6 @@ class InternalVideoInterface(BaseDataInterface):
         image_series_kwargs["name"] = self.video_name
 
         stub_frames = 10
-        timing_type = self.get_timing_type()
 
         uncompressed_estimate = file_path.stat().st_size * 70
         available_memory = psutil.virtual_memory().available
