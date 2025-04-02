@@ -71,7 +71,7 @@ class ExternalVideoInterface(BaseDataInterface):
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
-        self._segment_starting_times = None
+        self._starting_time = None
         self.video_name = video_name
         super().__init__(file_paths=file_paths)
 
@@ -155,14 +155,13 @@ class ExternalVideoInterface(BaseDataInterface):
         aligned_timestamps : list of numpy.ndarray
             The synchronized timestamps for data in this interface.
         """
-        assert (
-            self._segment_starting_times is None
-        ), "If setting both timestamps and starting times, please set the timestamps first so they can be shifted by the starting times."
         self._timestamps = aligned_timestamps
 
-    def set_aligned_starting_time(self, aligned_starting_time: float, stub_test: bool = False):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         """
-        Align all starting times for all videos in this interface relative to the common session start time.
+        Set the aligned starting time for the ImageSeries in this interface.
+
+        This method will not do anything if the timestamps have already been set.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
@@ -170,25 +169,14 @@ class ExternalVideoInterface(BaseDataInterface):
         ----------
         aligned_starting_time : float
             The common starting time for all segments of temporal data in this interface.
-        stub_test : bool, default: False
-            If timestamps have not been set to this interface, it will attempt to retrieve them
-            using the `.get_original_timestamps` method, which scans through each video;
-            a process which can take some time to complete.
-
-            To limit that scan to a small number of frames, set `stub_test=True`.
         """
         if self._timestamps is not None:
-            aligned_timestamps = [
-                timestamps + aligned_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
-            ]
-            self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-        elif self._segment_starting_times is not None:
-            self._segment_starting_times = [
-                segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
-            ]
-        else:
-            self._segment_starting_times = [np.nan] * self._number_of_files
-            self._segment_starting_times[0] = aligned_starting_time
+            raise ValueError(
+                "The timestamps have already been set for this interface. "
+                "You cannot set the starting time after the timestamps have been set."
+                "Use set_aligned_segment_starting_times instead."
+            )
+        self._starting_time = aligned_starting_time
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
@@ -309,12 +297,12 @@ class ExternalVideoInterface(BaseDataInterface):
             else:
                 image_series_kwargs.update(timestamps=timestamps)
         else:
-            if self._number_of_files > 1 and self._segment_starting_times is None:
+            if self._number_of_files > 1 and self._starting_time is None:
                 raise ValueError(
                     f"No timing information is specified and there are {self._number_of_files} total video files! "
                     "Please specify the temporal alignment of each video."
                 )
-            starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
+            starting_time = self._starting_time if self._starting_time is not None else 0.0
             with VideoCaptureContext(file_path=str(file_paths[0])) as video:
                 rate = video.get_video_fps()
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
