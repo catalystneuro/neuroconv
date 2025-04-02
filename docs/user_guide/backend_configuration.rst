@@ -136,7 +136,7 @@ Then we can use this configuration to write the NWB file:
 
     dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
 
-    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, output_filepath="output.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output.nwb")
 
 
 Interfaces and Converters

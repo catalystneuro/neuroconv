@@ -4,7 +4,7 @@ import json
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Type, Union
 
 import docstring_parser
 import hdmf.data_utils
@@ -70,9 +70,9 @@ def get_base_schema(
     root: bool = False,
     id_: Optional[str] = None,
     required: Optional[list[str]] = None,
-    properties: Optional[dict] = None,
+    properties: Optional[dict[str, Any]] = None,
     **kwargs,
-) -> dict:
+) -> dict[str, Any]:
     """
     Return the base schema used for all other schemas.
 
@@ -122,7 +122,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
+def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -209,14 +209,14 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     return json_schema
 
 
-def _copy_without_title_keys(d: Any, /) -> Optional[dict]:
+def _copy_without_title_keys(d: Any) -> Optional[dict[str, Any]]:
     if not isinstance(d, dict):
         return d
 
     return {key: _copy_without_title_keys(value) for key, value in d.items() if key != "title"}
 
 
-def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
+def fill_defaults(schema: dict[str, Any], defaults: dict[str, Any], overwrite: bool = True) -> None:
     """
     Insert the values of the defaults dict as default values in the schema in place.
 
@@ -241,7 +241,7 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
                     val["default"] = defaults[key]
 
 
-def unroot_schema(schema: dict):
+def unroot_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Modify a json-schema dictionary to make it not root.
 
@@ -253,7 +253,7 @@ def unroot_schema(schema: dict):
     return {k: v for k, v in schema.items() if k in terms}
 
 
-def _is_member(types, target_types):
+def _is_member(types: Union[Type, tuple[Type, ...]], target_types: Union[Type, tuple[Type, ...]]) -> bool:
     if not isinstance(target_types, tuple):
         target_types = (target_types,)
     if not isinstance(types, tuple):
@@ -261,7 +261,7 @@ def _is_member(types, target_types):
     return any(t in target_types for t in types)
 
 
-def get_schema_from_hdmf_class(hdmf_class):
+def get_schema_from_hdmf_class(hdmf_class: Type) -> dict[str, Any]:
     """
     Get metadata schema from hdmf class.
 
@@ -290,6 +290,7 @@ def get_schema_from_hdmf_class(hdmf_class):
     # Temporary solution before this is solved: https://github.com/hdmf-dev/hdmf/issues/475
     if "device" in pynwb_children_fields:
         pynwb_children_fields.remove("device")
+
     docval = hdmf_class.__init__.__docval__
     for docval_arg in docval["args"]:
         arg_name = docval_arg["name"]
@@ -344,7 +345,7 @@ def get_schema_from_hdmf_class(hdmf_class):
     return schema
 
 
-def get_metadata_schema_for_icephys() -> dict:
+def get_metadata_schema_for_icephys() -> dict[str, Any]:
     """
     Returns the metadata schema for icephys data.
 
