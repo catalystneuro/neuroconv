@@ -46,7 +46,7 @@ class ExternalVideoInterface(BaseDataInterface):
             If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
-            Defaults to the name of the first file (without extension) in the list of file_paths.
+            Defaults to f"Video {file_paths[0].stem}" if not provided.
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
