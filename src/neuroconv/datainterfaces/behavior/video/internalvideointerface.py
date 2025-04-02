@@ -123,7 +123,7 @@ class InternalVideoInterface(BaseDataInterface):
             "Behavior": {
                 "InternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")},
                 "InternalVideoDevices": {self.device_name: dict(description="Video camera used for recording.")},
-                "InternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+                "InternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")},
             }
         }
         return dict_deep_update(metadata, video_metadata)
