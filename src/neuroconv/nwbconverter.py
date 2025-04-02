@@ -1,9 +1,10 @@
 """Contains core class definitions for the NWBConverter and ConverterPipe."""
 
+import inspect
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Type, Union
 
 from jsonschema import validate
 from pydantic import FilePath, validate_call
@@ -44,7 +45,7 @@ class NWBConverter:
     associated_suffixes: tuple[str] = tuple()
     info: Union[str, None] = None
 
-    data_interface_classes = None
+    data_interface_classes: dict[str, Type[BaseDataInterface]] = {}
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -85,13 +86,37 @@ class NWBConverter:
 
     @validate_call
     def __init__(self, source_data: dict[str, dict], verbose: bool = False):
-        """Validate source_data against source_schema and initialize all data interfaces."""
+        """
+        Initialize an NWBConverter instance by validating the provided source data and
+        dynamically instantiating the data interfaces on the source_data dictionary.
+
+        Parameters
+        ----------
+        source_data : dict[str, dict]
+            A dictionary where keys are interface names and values are the corresponding
+            parameters required to initialize each data interface.
+        verbose : bool, optional
+            If True, enables verbose mode, by default False.
+            This is propagated to the data interfaces.
+
+        """
         self.verbose = verbose
-        self.data_interface_objects = {
-            name: data_interface(**source_data[name])
-            for name, data_interface in self.data_interface_classes.items()
-            if name in source_data
-        }
+
+        # Only initialize interfaces that are present in the source_data dictionary.
+        # This enables the NWBConverter class to flexibly handle multi-session scenarios
+        # by dynamically selecting only the interface names that are present in the source_data.
+        available_interfaces = {name: cls for name, cls in self.data_interface_classes.items() if name in source_data}
+
+        self.data_interface_objects: dict[str, BaseDataInterface] = {}
+        for interface_name, interface_class in available_interfaces.items():
+            interface_kwargs = source_data[interface_name]
+
+            # Pass the verbose argument if the interface's constructor supports it.
+            if "verbose" in inspect.signature(interface_class.__init__).parameters:
+                interface_kwargs["verbose"] = verbose
+
+            interface_instance = interface_class(**interface_kwargs)
+            self.data_interface_objects[interface_name] = interface_instance
 
     def get_metadata_schema(self) -> dict:
         """
@@ -234,6 +259,7 @@ class NWBConverter:
         backend: Optional[Literal["hdf5", "zarr"]] = None,
         backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
         conversion_options: Optional[dict] = None,
+        append_on_disk_nwbfile: bool = False,
     ) -> None:
         """
         Run the NWB conversion over all the instantiated data interfaces.
@@ -262,13 +288,20 @@ class NWBConverter:
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
+        append_on_disk_nwbfile : bool, default: False
+            Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
+            This is useful for appending data to an existing file without overwriting it.
         """
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
 
-        if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
+        if file_initially_exists and not overwrite:
+            raise ValueError(
+                f"The file at {nwbfile_path} already exists. Set overwrite=True to overwrite the existing file."
+            )
+
+        if append_on_disk_nwbfile and appending_to_in_memory_nwbfile:
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
@@ -277,11 +310,11 @@ class NWBConverter:
         if metadata is None:
             metadata = self.get_metadata()
 
-        self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
+        self.validate_metadata(metadata=metadata, append_mode=append_on_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)
         self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
-        if not appending_to_in_disk_nwbfile:
+        if not append_on_disk_nwbfile:
 
             if appending_to_in_memory_nwbfile:
                 self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
@@ -290,7 +323,7 @@ class NWBConverter:
 
             configure_and_write_nwbfile(
                 nwbfile=nwbfile,
-                output_filepath=nwbfile_path,
+                nwbfile_path=nwbfile_path,
                 backend=backend,
                 backend_configuration=backend_configuration,
             )
