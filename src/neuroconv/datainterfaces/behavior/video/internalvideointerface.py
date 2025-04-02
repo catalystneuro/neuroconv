@@ -36,7 +36,7 @@ class InternalVideoInterface(BaseDataInterface):
         verbose: bool = False,
         *,
         video_name: str = "InternalVideo",
-        device_name: str = "InternalVideoCamera",
+        device_name: Optional[str] = None,
     ):
         """
         Initialize the interface.
@@ -70,7 +70,7 @@ class InternalVideoInterface(BaseDataInterface):
             metadata["Behavior"]["InternalVideos"] is specific to the InternalVideoInterface.
         device_name : str, optional
             The name of the device that will be created and linked to the ImageSeries.
-            Defaults to "InternalVideoCamera".
+            Defaults to f"Video Camera {file_path.stem}".
 
             This parameter allows linking the video to a device (camera) that was used to capture it.
             The device metadata can be customized through:
@@ -86,7 +86,7 @@ class InternalVideoInterface(BaseDataInterface):
         self._timestamps = None
         self._starting_time = None
         self.video_name = video_name
-        self.device_name = device_name
+        self.device_name = device_name if device_name else f"Video Camera {file_path.stem}"
         super().__init__(file_path=file_path)
 
     def get_metadata_schema(self):

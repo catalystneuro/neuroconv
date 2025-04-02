@@ -30,7 +30,7 @@ class ExternalVideoInterface(BaseDataInterface):
         verbose: bool = False,
         *,
         video_name: str = "ExternalVideo",
-        device_name: str = "ExternalVideoCamera",
+        device_name: Optional[str] = None,
     ):
         """
         Initialize the interface.
@@ -65,7 +65,7 @@ class ExternalVideoInterface(BaseDataInterface):
             metadata["Behavior"]["ExternalVideos"] is specific to the ExternalVideoInterface.
         device_name : str, optional
             The name of the device that will be created and linked to the ImageSeries.
-            Defaults to "ExternalVideoCamera".
+            Defaults to f"Video Camera {file_paths[0].stem}".
 
             This parameter allows linking the video to a device (camera) that was used to capture it.
             The device metadata can be customized through:
@@ -82,7 +82,7 @@ class ExternalVideoInterface(BaseDataInterface):
         self._timestamps = None
         self._segment_starting_times = None
         self.video_name = video_name
-        self.device_name = device_name
+        self.device_name = device_name or f"Video Camera {file_paths[0].stem}"
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
