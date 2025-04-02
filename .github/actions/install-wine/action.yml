@@ -21,8 +21,13 @@ runs:
     - name: Install wine on macOS
       if: runner.os == 'macOS'
       run: |
-        # Install Rosetta 2
-        softwareupdate --install-rosetta --agree-to-license
+        # Check if running on Apple Silicon
+        if [[ $(uname -m) == 'arm64' ]]; then
+          echo "Running on Apple Silicon, installing Rosetta 2"
+          softwareupdate --install-rosetta --agree-to-license
+        else
+          echo "Running on Intel Mac, skipping Rosetta 2 installation"
+        fi
 
         # Install XQuartz
         brew install --cask xquartz
