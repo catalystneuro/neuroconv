@@ -4,9 +4,19 @@ import numpy as np
 import pytest
 from dateutil.tz import gettz
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import VideoInterface
+
+
+def test_video_interface_without_metadata(video_files):
+    """Test that the VideoInterface class can be imported."""
+
+    interface = VideoInterface(file_paths=[video_files[0]])
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile)
 
 
 @pytest.fixture
