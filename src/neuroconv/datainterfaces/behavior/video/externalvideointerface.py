@@ -308,7 +308,8 @@ class ExternalVideoInterface(BaseDataInterface):
 
         # Be sure to copy metadata at this step to avoid mutating in-place
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideos", None)
-        if videos_metadata is None:
+        # If no metadata is provided use the default metadata
+        if videos_metadata is None or self.video_name not in videos_metadata:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideos"])
         image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
