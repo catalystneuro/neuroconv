@@ -23,7 +23,7 @@ Once this information is added, you can write the NWB file to disk:
 
 .. code-block:: python
 
-    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+    from neuroconv.tools import configure_and_write_nwbfile
 
     configure_and_write_nwbfile(
         nwbfile, nwbfile_path="path/to/destination.nwb", backend="hdf5"
