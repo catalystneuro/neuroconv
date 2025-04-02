@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -63,6 +64,7 @@ class ExternalVideoInterface(BaseDataInterface):
             metadata["Behavior"]["ExternalVideos"] is specific to the ExternalVideoInterface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
+        file_paths = [Path(file_path) for file_path in file_paths]
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None

@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -27,8 +28,8 @@ def test_adding_two_videos_without_name(video_files):
 
     nwbfile = mock_NWBFile()
 
-    file_path1 = video_files[0]
-    file_path2 = video_files[1]
+    file_path1 = Path(video_files[0])
+    file_path2 = Path(video_files[1])
     interface1 = ExternalVideoInterface(file_paths=[file_path1])
     interface2 = ExternalVideoInterface(file_paths=[file_path2])
 

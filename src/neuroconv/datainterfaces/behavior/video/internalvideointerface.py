@@ -69,6 +69,7 @@ class InternalVideoInterface(BaseDataInterface):
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
+        file_path = Path(file_path)
         self._timestamps = None
         self._starting_time = None
         self.video_name = video_name if video_name else f"Video {Path(file_path).stem}"
