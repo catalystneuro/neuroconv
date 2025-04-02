@@ -187,13 +187,17 @@ class ExternalVideoInterface(BaseDataInterface):
                 segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
             ]
         else:
-            raise ValueError("There are no timestamps or starting times set to shift by a common value!")
+            self._segment_starting_times = [np.nan] * self._number_of_files
+            self._segment_starting_times[0] = aligned_starting_time
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
         Must be in units seconds relative to the common 'session_start_time'.
+
+        If the timestamps have not already been set, this method will set them to the original timestamps and then shift
+        them by the aligned segment starting times.
 
         Parameters
         ----------
@@ -211,17 +215,15 @@ class ExternalVideoInterface(BaseDataInterface):
             f"The length of the 'aligned_segment_starting_times' list ({aligned_segment_starting_times_length}) does not match the "
             "number of video files ({self._number_of_files})!"
         )
-        if self._timestamps is not None:
-            self.set_aligned_timestamps(
-                aligned_timestamps=[
-                    timestamps + segment_starting_time
-                    for timestamps, segment_starting_time in zip(
-                        self.get_timestamps(stub_test=stub_test), aligned_segment_starting_times
-                    )
-                ]
-            )
-        else:
-            self._segment_starting_times = aligned_segment_starting_times
+        self._timestamps = self.get_timestamps(stub_test=stub_test)
+        self.set_aligned_timestamps(
+            aligned_timestamps=[
+                timestamps + segment_starting_time
+                for timestamps, segment_starting_time in zip(
+                    self.get_timestamps(stub_test=stub_test), aligned_segment_starting_times
+                )
+            ]
+        )
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
