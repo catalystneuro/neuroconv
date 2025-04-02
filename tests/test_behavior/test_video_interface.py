@@ -11,7 +11,7 @@ from neuroconv.datainterfaces import VideoInterface
 
 
 def test_video_interface_without_metadata(video_files):
-    """Test that the VideoInterface class can be imported."""
+    """Test that the VideoInterface class can add data to nwbfile without metadata being passed."""
 
     interface = VideoInterface(file_paths=[video_files[0]])
 
