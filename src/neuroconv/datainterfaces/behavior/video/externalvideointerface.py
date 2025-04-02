@@ -52,7 +52,7 @@ class ExternalVideoInterface(BaseDataInterface):
             containing metadata for a single video stream comprised of potentially multiple segments:
 
             ```
-            metadata["Behavior"]["ExternalVideo"] = {
+            metadata["Behavior"]["ExternalVideos"] = {
                 "ExternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
                 "ExternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
                 ...
@@ -60,7 +60,7 @@ class ExternalVideoInterface(BaseDataInterface):
             ```
 
             Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
-            metadata["Behavior"]["ExternalVideo"] is specific to the ExternalVideoInterface.
+            metadata["Behavior"]["ExternalVideos"] is specific to the ExternalVideoInterface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
@@ -80,8 +80,8 @@ class ExternalVideoInterface(BaseDataInterface):
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideo")
-        metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideo"] = {
+        metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideos")
+        metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideos"] = {
             "type": "object",
             "properties": {self.video_name: image_series_metadata_schema},
             "required": [self.video_name],
@@ -93,7 +93,7 @@ class ExternalVideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
-                "ExternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+                "ExternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
             }
         }
         return dict_deep_update(metadata, video_metadata)
@@ -276,10 +276,9 @@ class ExternalVideoInterface(BaseDataInterface):
 
                 metadata = dict(
                     Behavior=dict(
-                        ExternalVideo=dict(
+                        ExternalVideos=dict(
                             ExternalVideo=dict(
                                 description="Description of the video..",
-                                unit="Frames",
                                 ...,
                             ),
                         )
@@ -308,10 +307,10 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths = self.source_data["file_paths"]
 
         # Be sure to copy metadata at this step to avoid mutating in-place
-        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideo", None)
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideos", None)
         if videos_metadata is None:
-            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideo"])
-        image_series_kwargs = videos_metadata[self.video_name]
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideos"])
+        image_series_kwargs = videos_metadata
         image_series_kwargs["name"] = self.video_name
 
         timing_type = self.get_timing_type()
