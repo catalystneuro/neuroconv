@@ -310,7 +310,7 @@ class ExternalVideoInterface(BaseDataInterface):
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideos", None)
         if videos_metadata is None:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideos"])
-        image_series_kwargs = metadata["Behavior"]["ExternalVideos"][self.video_name]
+        image_series_kwargs = videos_metadata
         image_series_kwargs["name"] = self.video_name
 
         timing_type = self.get_timing_type()
