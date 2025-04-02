@@ -13,6 +13,15 @@ from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
 from neuroconv.utils import dict_deep_update
 
 
+def test_initialization_without_metadata(video_files):
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    nwbfile = mock_NWBFile()
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+
 @pytest.fixture
 def nwb_converter(video_files):
     """Create and return a test NWBConverter instance."""
@@ -247,7 +256,7 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
-        "Behavior": {"ExternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
+        "Behavior": {"ExternalVideos": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
