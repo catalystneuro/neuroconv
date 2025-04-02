@@ -331,7 +331,7 @@ def make_or_load_nwbfile(
 
 
 def _resolve_backend(
-    backend: Optional[Literal["hdf5"]] = None,
+    backend: Optional[Literal["hdf5", "zarr"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
 ) -> Literal["hdf5"]:
     """
@@ -339,12 +339,12 @@ def _resolve_backend(
 
     Parameters
     ----------
-    backend: {"hdf5"}, optional
+    backend: {"hdf5", "zarr"}, optional
     backend_configuration: BackendConfiguration, optional
 
     Returns
     -------
-    backend: {"hdf5"}
+    backend: {"hdf5", "zarr"}
 
     """
 
