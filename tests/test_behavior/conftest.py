@@ -13,9 +13,9 @@ def tmp_path_session(tmp_path_factory):
 def video_files(tmp_path_session):
     """Create test video files and return their paths."""
     cv2 = pytest.importorskip("cv2")
-    video_file1 = str(tmp_path_session / "test1.avi")
-    video_file2 = str(tmp_path_session / "test2.avi")
-    video_file3 = str(tmp_path_session / "test3.avi")
+    video_file1 = tmp_path_session / "test1.avi"
+    video_file2 = tmp_path_session / "test2.avi"
+    video_file3 = tmp_path_session / "test3.avi"
     number_of_frames = 30
     number_of_rows = 64
     number_of_columns = 48
