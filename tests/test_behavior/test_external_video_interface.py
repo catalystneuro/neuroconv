@@ -36,12 +36,10 @@ def nwb_converter(video_files):
         Video1=dict(
             file_paths=video_files[0:2],
             video_name="Video test1",
-            device_name="Camera1",
         ),
         Video2=dict(
             file_paths=[video_files[2]],
             video_name="Video test3",
-            device_name="Camera2",
         ),
     )
     return VideoTestNWBConverter(source_data=source_data)
@@ -257,8 +255,10 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
         "Behavior": {
-            "ExternalVideos": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}},
-            "ExternalVideoDevices": {"Camera1": {"description": "Custom device description"}},
+            "ExternalVideos": {
+                "Video test1": {"description": "Custom description", "unit": "CustomUnit", "device": "CustomDevice"}
+            },
+            "ExternalVideoDevices": {"CustomDevice": {"description": "Custom device description"}},
         }
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
@@ -279,7 +279,8 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         nwbfile = io.read()
         assert nwbfile.acquisition["Video test1"].description == "Custom description"
         assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
-        assert nwbfile.devices["Camera1"].description == "Custom device description"
+        assert nwbfile.devices["CustomDevice"].description == "Custom device description"
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
 
 
 def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
@@ -303,9 +304,9 @@ def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segme
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         # Check devices exist
-        assert "Camera1" in nwbfile.devices
-        assert "Camera2" in nwbfile.devices
+        assert "Video test1 Camera Device" in nwbfile.devices
+        assert "Video test3 Camera Device" in nwbfile.devices
 
         # Check videos are linked to correct devices
-        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Camera1"]
-        assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Camera2"]
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
+        assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Video test3 Camera Device"]
