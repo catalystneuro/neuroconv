@@ -59,7 +59,7 @@ class InternalVideoInterface(BaseDataInterface):
             corresponds to a video name, and each value is a dictionary containing metadata for that video:
 
             ```
-            metadata["Behavior"]["InternalVideo"] = {
+            metadata["Behavior"]["InternalVideos"] = {
                 "InternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
                 "InternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
                 ...
@@ -67,7 +67,7 @@ class InternalVideoInterface(BaseDataInterface):
             ```
 
             Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
-            metadata["Behavior"]["InternalVideo"] is specific to the InternalVideoInterface.
+            metadata["Behavior"]["InternalVideos"] is specific to the InternalVideoInterface.
         device_name : str, optional
             The name of the device that will be created and linked to the ImageSeries.
             Defaults to "InternalVideoCamera".
@@ -101,8 +101,8 @@ class InternalVideoInterface(BaseDataInterface):
         device_metadata_schema = get_schema_from_hdmf_class(Device)
         device_metadata_schema["required"].remove("name")
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["required"].append("InternalVideo")
-        metadata_schema["properties"]["Behavior"]["properties"]["InternalVideo"] = {
+        metadata_schema["properties"]["Behavior"]["required"].append("InternalVideos")
+        metadata_schema["properties"]["Behavior"]["properties"]["InternalVideos"] = {
             "type": "object",
             "properties": {self.video_name: image_series_metadata_schema},
             "required": [self.video_name],
@@ -121,8 +121,9 @@ class InternalVideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
-                "InternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")},
+                "InternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")},
                 "InternalVideoDevices": {self.device_name: dict(description="Video camera used for recording.")},
+                "InternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
             }
         }
         return dict_deep_update(metadata, video_metadata)
@@ -262,10 +263,9 @@ class InternalVideoInterface(BaseDataInterface):
 
                 metadata = dict(
                     Behavior=dict(
-                        InternalVideo=dict(
+                        InternalVideos=dict(
                             InternalVideo=dict(
                                 description="Description of the video..",
-                                unit="Frames",
                                 ...,
                             ),
                         ),
@@ -312,9 +312,9 @@ class InternalVideoInterface(BaseDataInterface):
         file_path = Path(self.source_data["file_path"])
 
         # Be sure to copy metadata at this step to avoid mutating in-place
-        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideo", None)
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideos", None)
         if videos_metadata is None:
-            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideo"])
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideos"])
         image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
 
