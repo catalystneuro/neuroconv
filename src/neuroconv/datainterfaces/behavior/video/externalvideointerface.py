@@ -171,12 +171,10 @@ class ExternalVideoInterface(BaseDataInterface):
             The common starting time for all segments of temporal data in this interface.
         """
         if self._timestamps is not None:
-            raise ValueError(
-                "The timestamps have already been set for this interface. "
-                "You cannot set the starting time after the timestamps have been set."
-                "Use set_aligned_segment_starting_times instead."
-            )
-        self._starting_time = aligned_starting_time
+            aligned_segment_starting_times = [aligned_starting_time] * self._number_of_files
+            self.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+        else:
+            self._starting_time = aligned_starting_time
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """

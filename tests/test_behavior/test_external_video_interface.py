@@ -250,16 +250,6 @@ def test_set_aligned_segment_starting_times_alone(nwb_converter):
         np.testing.assert_array_equal(original + starting_time, expected)
 
 
-def test_set_aligned_starting_time_with_timing_info_error(nwb_converter):
-    """Test that set_aligned_starting_time raises an error when no timing info exists."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-
-    interface._timestamps = interface.get_original_timestamps()
-
-    with pytest.raises(ValueError):
-        interface.set_aligned_starting_time(aligned_starting_time=10.0)
-
-
 def test_get_original_timestamps_stub(nwb_converter):
     """Test that get_original_timestamps respects stub_test parameter."""
     interface = nwb_converter.data_interface_objects["Video2"]  # Using Video2 which has a single file
