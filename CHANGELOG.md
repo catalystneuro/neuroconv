@@ -1,7 +1,7 @@
 # v0.7.2 (Upcoming)
 
 ## Deprecations and Changes
-* Split VideoInterface (now deprecated) into ExternalVideoInterface and InternalVideoInterface [PR #1251](https://github.com/catalystneuro/neuroconv/pull/1251) [PR #1256](https://github.com/catalystneuro/neuroconv/pull/1256)
+* Split VideoInterface (now deprecated) into ExternalVideoInterface and InternalVideoInterface [PR #1251](https://github.com/catalystneuro/neuroconv/pull/1251) [PR #1256](https://github.com/catalystneuro/neuroconv/pull/1256) [#1278](https://github.com/catalystneuro/neuroconv/pull/1278)
 * `output_filepath` deprecated on `configure_and_write_nwbfile` use `nwbfile_path` instead [PR #1270](https://github.com/catalystneuro/neuroconv/pull/1270)
 * Temporary set a ceiling on pydantic `<2.11` [PR #1275](https://github.com/catalystneuro/neuroconv/pull/1275)
 
@@ -26,6 +26,7 @@
 * Propagate `verbose` parameter from Converters to Interfaces [#1253](https://github.com/catalystneuro/neuroconv/issues/1253)
 * Replace uses of scipy load_mat and h5storage loadmat with pymat_reader read_mat in `CellExplorerSortingInterface` [#1254](https://github.com/catalystneuro/neuroconv/pull/1254)
 * Added metadata section to video conversion gallery [PR #127](https://github.com/catalystneuro/neuroconv/pull/1276)
+* Added camera device support for ExternalVideoInterface and InternalVideoInterface: [PR #1282](https://github.com/catalystneuro/neuroconv/pull/1282)
 
 # v0.7.1 (March 5, 2025)
 

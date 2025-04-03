@@ -1,16 +1,45 @@
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
 from dateutil.tz import gettz
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
 from neuroconv.utils import dict_deep_update
+
+
+def test_initialization_without_metadata(video_files):
+
+    nwbfile = mock_NWBFile()
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+
+def test_adding_two_videos_without_name(video_files):
+    """Test that two interfaces can be added without the user having to specify a different name for each"""
+
+    nwbfile = mock_NWBFile()
+
+    file_path1 = Path(video_files[0])
+    file_path2 = Path(video_files[1])
+    interface1 = ExternalVideoInterface(file_paths=[file_path1])
+    interface2 = ExternalVideoInterface(file_paths=[file_path2])
+
+    # This should not raise an error
+    interface1.add_to_nwbfile(nwbfile=nwbfile)
+    interface2.add_to_nwbfile(nwbfile=nwbfile)
+
+    assert len(nwbfile.acquisition) == 2
+    assert f"Video {file_path1.stem}" in nwbfile.acquisition
+    assert f"Video {file_path2.stem}" in nwbfile.acquisition
 
 
 @pytest.fixture
@@ -245,7 +274,18 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
-        "Behavior": {"ExternalVideo": {"Video test1": {"description": "Custom description", "unit": "CustomUnit"}}}
+        "Behavior": {
+            "ExternalVideos": {
+                "Video test1": {
+                    "description": "Custom description",
+                    "unit": "CustomUnit",
+                    "device": {
+                        "name": "CustomDevice",
+                        "description": "Custom device description",
+                    },
+                }
+            }
+        }
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
@@ -265,3 +305,80 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         nwbfile = io.read()
         assert nwbfile.acquisition["Video test1"].description == "Custom description"
         assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+        assert nwbfile.devices["CustomDevice"].description == "Custom device description"
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
+
+
+def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that devices are properly created and linked to videos."""
+    # Setup interface with timing information to allow conversion
+    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    # Run conversion with multiple cameras
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify device creation and linking
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check devices exist
+        assert "Video test1 Camera Device" in nwbfile.devices
+        assert "Video test3 Camera Device" in nwbfile.devices
+
+        # Check videos are linked to correct devices
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
+        assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Video test3 Camera Device"]
+
+
+def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that no device is created when the metadata doesn't have a device."""
+    # Setup interface with timing information to allow conversion
+    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    metadata["Behavior"]["ExternalVideos"]["Video test1"].pop("device")  # Remove device from metadata
+
+    # Run conversion with multiple cameras
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+
+        assert "Video test1 Camera Device" not in nwbfile.devices
+        assert nwbfile.acquisition["Video test1"].device is None
+
+
+def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
+    """Test that an error is raised when the device metadata is invalid."""
+    # Setup interface with timing information to allow conversion
+    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+
+    # Modify metadata to have invalid device information
+    metadata["Behavior"]["ExternalVideos"]["Video test1"]["device"] = {"description": "missing required name"}
+
+    from jsonschema import ValidationError
+
+    with pytest.raises(ValidationError):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+        )  # Run conversion with modified metadata
