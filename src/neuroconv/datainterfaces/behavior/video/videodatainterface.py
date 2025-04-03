@@ -348,8 +348,10 @@ class VideoInterface(BaseDataInterface):
 
         # Transform metadata from list format to nested dictionary format
         metadata_reformatted = deepcopy(metadata)
-        video_name = videos_metadata[0].pop("name")
+        if "Behavior" not in metadata_reformatted:
+            metadata_reformatted["Behavior"] = dict()
 
+        video_name = videos_metadata[0].pop("name")
         # Use appropriate metadata key based on external_mode
         if external_mode:
             metadata_reformatted["Behavior"]["ExternalVideos"] = {video_name: videos_metadata[0]}
