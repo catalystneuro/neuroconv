@@ -5,6 +5,7 @@ from typing import Literal, Optional
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
+from pynwb.device import Device
 from pynwb.image import ImageSeries
 
 from .video_utils import VideoCaptureContext
@@ -70,6 +71,7 @@ class ExternalVideoInterface(BaseDataInterface):
         self._timestamps = None
         self._segment_starting_times = None
         self.video_name = video_name if video_name else f"Video {file_paths[0].stem}"
+        self._default_device_name = f"{video_name} Camera Device"
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -81,6 +83,8 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_metadata_schema["properties"].pop(key)
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
+        device_metadata_schema = get_schema_from_hdmf_class(Device)
+        image_series_metadata_schema["properties"]["device"] = device_metadata_schema
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideos")
         metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideos"] = {
@@ -95,7 +99,13 @@ class ExternalVideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
-                "ExternalVideos": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+                "ExternalVideos": {
+                    self.video_name: dict(
+                        description="Video recorded by camera.",
+                        unit="Frames",
+                        device=dict(name=self._default_device_name, description="Video camera used for recording."),
+                    )
+                },
             }
         }
         return dict_deep_update(metadata, video_metadata)
@@ -272,7 +282,8 @@ class ExternalVideoInterface(BaseDataInterface):
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
-            Dictionary of metadata information such as name and description of the video. The key must correspond to
+            Dictionary of metadata information such as name and description of the video, as well as
+            device information for the camera that captured the video. The keys must correspond to
             the video_name specified in the constructor.
             Should be organized as follows::
 
@@ -281,14 +292,21 @@ class ExternalVideoInterface(BaseDataInterface):
                         ExternalVideos=dict(
                             ExternalVideo=dict(
                                 description="Description of the video..",
+                                device=dict(name="Camera name", description="Camera description", ...),
                                 ...,
-                            ),
+                            )
                         )
                     )
                 )
 
-            and may contain most keywords normally accepted by an ImageSeries
+            The ExternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
+
+            The device section may contain most keywords normally accepted by a Device
+            (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
+
+            The device will be created and linked to the ImageSeries, establishing a connection between
+            the video data and the camera that captured it.
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified.
@@ -315,6 +333,15 @@ class ExternalVideoInterface(BaseDataInterface):
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideos"])
         image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
+        device_kwargs = image_series_kwargs.pop("device", None)
+
+        if device_kwargs is not None:
+            if device_kwargs["name"] in nwbfile.devices:
+                device = nwbfile.devices[device_kwargs["name"]]
+            else:
+                device = Device(**device_kwargs)
+                nwbfile.add_device(device)
+            image_series_kwargs["device"] = device
 
         timing_type = self.get_timing_type()
         if self._number_of_files > 1 and starting_frames is None:
