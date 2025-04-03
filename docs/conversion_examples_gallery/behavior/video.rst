@@ -102,11 +102,13 @@ use the following structure:
 
     >>> video_metadata = {
     ...     "Behavior": {
-    ...         "ExternalVideo": {
+    ...         "ExternalVideos": {
     ...             "MyExternalVideo": {  # This should match the video_name used in the interface
     ...                 "description": "My description of the video data",
-    ...                 # ...
-    ...                 # any ImageSeries kwargs can be specified here
+    ...                 "device": {
+    ...                     "name": "MyCamera",
+    ...                     "description": "My description of the camera",
+    ...                 },
     ...             }
     ...         }
     ...     }
@@ -137,11 +139,13 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
 
     >>> video_metadata = {
     ...     "Behavior": {
-    ...         "InternalVideo": {
+    ...         "InternalVideos": {
     ...             "MyInternalVideo": {  # This should match the video_name used in the interface
     ...                 "description": "My description of the video data",
-    ...                 # ...
-    ...                 # any ImageSeries kwargs can be specified here
+    ...                 "device": {
+    ...                     "name": "MyCamera",
+    ...                     "description": "My description of the camera",
+    ...                 },
     ...             }
     ...         }
     ...     }
