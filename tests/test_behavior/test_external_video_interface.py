@@ -118,6 +118,26 @@ def test_external_mode_with_timestamps(
         assert list(module["Video test3"].external_file[:]) == [video_files[2]]
 
 
+def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata, video_files):
+    """Test that external mode works correctly with starting time."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_starting_time(aligned_starting_time=123.0)
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        module = nwbfile.acquisition
+        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
+        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        assert module["Video test1"].starting_time == 123.0
+
+
 def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that irregular timestamps are handled correctly."""
     aligned_timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
@@ -231,28 +251,23 @@ def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_st
         assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
 
 
-def test_set_aligned_timestamps_after_segment_starting_times_error(nwb_converter):
-    """Test that setting timestamps after segment_starting_times raises an error."""
+def test_set_aligned_segment_starting_times_alone(nwb_converter):
+    """Test that setting segment_starting_times without setting aligned timestamps automatically sets the timestamps."""
     interface = nwb_converter.data_interface_objects["Video1"]
 
-    # First set segment_starting_times
+    interface._timestamps = None
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
 
-    # Now try to set timestamps - should raise an assertion error
-    with pytest.raises(AssertionError):
-        interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
-
-
-def test_set_aligned_starting_time_no_timing_info_error(nwb_converter):
-    """Test that set_aligned_starting_time raises an error when no timing info exists."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-
-    # Mock _timestamps and _segment_starting_times to be None
-    interface._timestamps = None
-    interface._segment_starting_times = None
-
-    with pytest.raises(ValueError):
-        interface.set_aligned_starting_time(aligned_starting_time=10.0)
+    original_timestamps = interface.get_original_timestamps()
+    expected_timestamps = [
+        timestamps + starting_time for timestamps, starting_time in zip(original_timestamps, [10.0, 20.0])
+    ]
+    for (
+        original,
+        expected,
+        starting_time,
+    ) in zip(original_timestamps, expected_timestamps, [10.0, 20.0]):
+        np.testing.assert_array_equal(original + starting_time, expected)
 
 
 def test_get_original_timestamps_stub(nwb_converter):
