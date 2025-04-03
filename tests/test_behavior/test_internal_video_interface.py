@@ -1,10 +1,12 @@
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
 from dateutil.tz import gettz
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.video.internalvideointerface import (
@@ -14,12 +16,30 @@ from neuroconv.utils import dict_deep_update
 
 
 def test_initialization_without_metadata(video_files):
-    from pynwb.testing.mock.file import mock_NWBFile
 
     nwbfile = mock_NWBFile()
     interface = InternalVideoInterface(file_path=video_files[0])
 
     interface.add_to_nwbfile(nwbfile=nwbfile)
+
+
+def test_adding_two_videos_without_name(video_files):
+    """Test that two interfaces can be added without the user having to specify a different name for each"""
+
+    nwbfile = mock_NWBFile()
+
+    file_path1 = Path(video_files[0])
+    file_path2 = Path(video_files[1])
+    interface1 = InternalVideoInterface(file_path=file_path1)
+    interface2 = InternalVideoInterface(file_path=file_path2)
+
+    # This should not raise an error
+    interface1.add_to_nwbfile(nwbfile=nwbfile)
+    interface2.add_to_nwbfile(nwbfile=nwbfile)
+
+    assert len(nwbfile.acquisition) == 2
+    assert f"Video {file_path1.stem}" in nwbfile.acquisition
+    assert f"Video {file_path2.stem}" in nwbfile.acquisition
 
 
 @pytest.fixture
