@@ -325,3 +325,18 @@ def test_no_device(nwb_converter, nwbfile_path, metadata):
 
         assert "Video test1 Camera Device" not in nwbfile.devices
         assert nwbfile.acquisition["Video test1"].device is None
+
+
+def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
+    """Test that an error is raised when the device metadata is invalid."""
+    # Modify metadata to have invalid device information
+    metadata["Behavior"]["InternalVideos"]["Video test1"]["device"] = {"description": "missing required name"}
+
+    from jsonschema import ValidationError
+
+    with pytest.raises(ValidationError):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+        )  # Run conversion with modified metadata
