@@ -276,9 +276,15 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     custom_metadata = {
         "Behavior": {
             "ExternalVideos": {
-                "Video test1": {"description": "Custom description", "unit": "CustomUnit", "device": "CustomDevice"}
-            },
-            "ExternalVideoDevices": {"CustomDevice": {"description": "Custom device description"}},
+                "Video test1": {
+                    "description": "Custom description",
+                    "unit": "CustomUnit",
+                    "device": {
+                        "name": "CustomDevice",
+                        "description": "Custom device description",
+                    },
+                }
+            }
         }
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
