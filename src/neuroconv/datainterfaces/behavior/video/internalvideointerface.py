@@ -243,7 +243,7 @@ class InternalVideoInterface(BaseDataInterface):
         metadata : dict, optional
             Dictionary of metadata information such as name and description of the video, as well as
             device information for the camera that captured the video. The keys must correspond to
-            the video_name and device_name specified in the constructor.
+            the video_name specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
@@ -251,23 +251,17 @@ class InternalVideoInterface(BaseDataInterface):
                         InternalVideos=dict(
                             InternalVideo=dict(
                                 description="Description of the video..",
+                                device=dict(name="Camera name", description="Camera description", ...),
                                 ...,
-                            ),
-                        ),
-                        InternalVideoDevices=dict(
-                            InternalVideoCamera=dict(
-                                description="Description of the camera device.",
-                                manufacturer="Camera manufacturer",
-                                ...,
-                            ),
-                        ),
+                            )
+                        )
                     )
                 )
 
             The InternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
 
-            The InternalVideoDevices section may contain most keywords normally accepted by a Device
+            The device section may contain most keywords normally accepted by a Device
             (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
 
             The device will be created and linked to the ImageSeries, establishing a connection between
