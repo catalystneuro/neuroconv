@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -28,7 +29,7 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
-        video_name: str = "ExternalVideo",
+        video_name: Optional[str] = None,
     ):
         """
         Initialize the interface.
@@ -45,7 +46,7 @@ class ExternalVideoInterface(BaseDataInterface):
             If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
-            Defaults to "ExternalVideo".
+            Defaults to f"Video {file_paths[0].stem}" if not provided.
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a list of dictionaries, with each dictionary
@@ -63,11 +64,12 @@ class ExternalVideoInterface(BaseDataInterface):
             metadata["Behavior"]["ExternalVideos"] is specific to the ExternalVideoInterface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
+        file_paths = [Path(file_path) for file_path in file_paths]
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
         self._segment_starting_times = None
-        self.video_name = video_name
+        self.video_name = video_name if video_name else f"Video {file_paths[0].stem}"
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -308,9 +310,10 @@ class ExternalVideoInterface(BaseDataInterface):
 
         # Be sure to copy metadata at this step to avoid mutating in-place
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideos", None)
-        if videos_metadata is None:
+        # If no metadata is provided use the default metadata
+        if videos_metadata is None or self.video_name not in videos_metadata:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideos"])
-        image_series_kwargs = metadata["Behavior"]["ExternalVideos"][self.video_name]
+        image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
 
         timing_type = self.get_timing_type()

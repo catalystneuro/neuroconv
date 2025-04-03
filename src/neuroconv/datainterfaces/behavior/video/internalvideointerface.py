@@ -34,7 +34,7 @@ class InternalVideoInterface(BaseDataInterface):
         file_path: FilePath,
         verbose: bool = False,
         *,
-        video_name: str = "InternalVideo",
+        video_name: Optional[str] = None,
     ):
         """
         Initialize the interface.
@@ -50,7 +50,7 @@ class InternalVideoInterface(BaseDataInterface):
             If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
-            Defaults to "InternalVideo".
+            Defaults to f"Video {file_path.stem}" if not provided.
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a nested dictionary structure, where each key
@@ -69,9 +69,10 @@ class InternalVideoInterface(BaseDataInterface):
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
+        file_path = Path(file_path)
         self._timestamps = None
         self._starting_time = None
-        self.video_name = video_name
+        self.video_name = video_name if video_name else f"Video {Path(file_path).stem}"
         super().__init__(file_path=file_path)
 
     def get_metadata_schema(self):
@@ -276,7 +277,8 @@ class InternalVideoInterface(BaseDataInterface):
 
         # Be sure to copy metadata at this step to avoid mutating in-place
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideos", None)
-        if videos_metadata is None:
+        # If no metadata is provided use the default metadata
+        if videos_metadata is None or self.video_name not in videos_metadata:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideos"])
         image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
