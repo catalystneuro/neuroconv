@@ -307,3 +307,21 @@ def test_device_propagation(nwb_converter, nwbfile_path, metadata):
         # Check videos are linked to correct devices
         assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
         assert nwbfile.acquisition["Video test2"].device == nwbfile.devices["Video test2 Camera Device"]
+
+
+def test_no_device(nwb_converter, nwbfile_path, metadata):
+    """Test that no device is created when the metadata doesn't have a device."""
+    metadata["Behavior"]["InternalVideos"]["Video test1"].pop("device")  # Remove device from metadata
+
+    # Run conversion
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        metadata=metadata,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+
+        assert "Video test1 Camera Device" not in nwbfile.devices
+        assert nwbfile.acquisition["Video test1"].device is None
