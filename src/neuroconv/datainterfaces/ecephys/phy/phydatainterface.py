@@ -1,8 +1,12 @@
-from typing import Optional
+from pathlib import Path
+from typing import Literal, Optional
 
+import numpy as np
 from pydantic import DirectoryPath, validate_call
+from pynwb.file import NWBFile
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils import DeepDict
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):
@@ -24,6 +28,23 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         ] = "Path to the output Phy folder (containing the params.py)."
         return source_schema
 
+    def get_max_channel(self):
+        folder_path = Path(self.source_data["folder_path"])
+
+        templates = np.load(str(folder_path / "templates.npy"))
+        channel_map = np.load(str(folder_path / "channel_map.npy")).T
+        whitening_mat_inv = np.load(str(folder_path / "whitening_mat_inv.npy"))
+        templates_unwh = templates @ whitening_mat_inv
+
+        cluster_ids = self.sorting_extractor.get_property("original_cluster_id")
+        templates = templates_unwh[cluster_ids]
+
+        max_over_time = np.max(templates, axis=1)
+        idx_max_channel = np.argmax(max_over_time, axis=1)
+        max_channel = channel_map[idx_max_channel].ravel()
+
+        return max_channel
+
     @validate_call
     def __init__(
         self,
@@ -43,6 +64,33 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         verbose : bool, default: Falsee
         """
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: Optional[DeepDict] = None,
+        stub_test: bool = False,
+        write_ecephys_metadata: bool = False,
+        write_as: Literal["units", "processing"] = "units",
+        units_name: str = "units",
+        units_description: str = "Imported from Phy",
+        include_max_channel: bool = True,
+    ):
+        if include_max_channel and "max_channel" not in self.sorting_extractor.get_property_keys():
+            max_channels = self.get_max_channel()
+            self.sorting_extractor.set_property("max_channel", max_channels)
+
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=stub_test,
+            write_ecephys_metadata=write_ecephys_metadata,
+            write_as=write_as,
+            units_name=units_name,
+            units_description=units_description,
+        )
+
+        return nwbfile
 
     def get_metadata(self):
         metadata = super().get_metadata()
