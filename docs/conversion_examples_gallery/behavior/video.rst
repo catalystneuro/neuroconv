@@ -131,7 +131,8 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata = dict_deep_update(metadata, video_metadata)
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface`:
 
@@ -164,4 +165,5 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata = dict_deep_update(metadata, video_metadata)
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
