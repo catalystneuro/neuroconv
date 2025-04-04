@@ -173,7 +173,7 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         Set the aligned starting time for the ImageSeries in this interface.
 
-        This method will not do anything if the timestamps have already been set.
+        If the timestamps have already been set, each segment will be shifted by aligned_starting_time.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
@@ -312,7 +312,7 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_kwargs["device"] = device
 
         if always_write_timestamps:
-            timestamps = self._timestamps if self._timestamps is not None else self.get_timestamps()
+            timestamps = self.get_timestamps()
             image_series_kwargs.update(timestamps=np.concatenate(timestamps))
         elif self._timestamps is not None:
             # Check if timestamps are regular

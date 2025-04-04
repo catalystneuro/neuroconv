@@ -347,7 +347,7 @@ class InternalVideoInterface(BaseDataInterface):
         from ....utils import calculate_regular_series_rate
 
         if always_write_timestamps:
-            timestamps = self._timestamps if self._timestamps is not None else self.get_timestamps()
+            timestamps = self.get_timestamps()
             image_series_kwargs.update(timestamps=timestamps)
         elif self._timestamps is not None:
             # Check if timestamps are regular
