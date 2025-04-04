@@ -1,5 +1,0 @@
-Behavior:
-  InternalVideo:
-    MyInternalVideo:
-      description: "My description of the video data"
-      unit: "Frames"
