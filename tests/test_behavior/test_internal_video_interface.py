@@ -152,7 +152,7 @@ def test_video_stub(nwb_converter, nwbfile_path, metadata):
 
 def test_aligned_timestamps(nwb_converter, nwbfile_path, metadata):
     """Test that aligned timestamps are correctly applied."""
-    aligned_timestamps = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+    aligned_timestamps = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 20.0])
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
 
@@ -166,6 +166,31 @@ def test_aligned_timestamps(nwb_converter, nwbfile_path, metadata):
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         np.testing.assert_array_equal(aligned_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
+
+
+def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata):
+    """Test that always_write_timestamps forces the use of timestamps even when timestamps are regular."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    # Set regular timestamps
+    aligned_timestamps = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+    interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+
+    # Run conversion with always_write_timestamps=True
+    conversion_options = dict(Video1=dict(stub_test=True, always_write_timestamps=True))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify that timestamps were written
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check that timestamps exist in the ImageSeries
+        assert nwbfile.acquisition["Video test1"].timestamps is not None
+        # Verify timestamps are not None and have the expected length
+        assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
 
 
 def test_aligned_starting_time(nwb_converter, nwbfile_path, metadata, aligned_starting_time):
@@ -184,26 +209,6 @@ def test_aligned_starting_time(nwb_converter, nwbfile_path, metadata, aligned_st
         nwbfile = io.read()
         # Verify that starting time is applied
         assert nwbfile.acquisition["Video test1"].starting_time == aligned_starting_time
-
-
-def test_get_timing_type_with_timestamps(nwb_converter):
-    """Test that get_timing_type returns 'timestamps' when timestamps are set."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_timestamps(aligned_timestamps=np.array([1.0, 2.0, 3.0]))
-    assert interface.get_timing_type() == "timestamps"
-
-
-def test_get_timing_type_with_starting_time(nwb_converter):
-    """Test that get_timing_type returns 'starting_time and rate' when only starting time is set."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_starting_time(aligned_starting_time=10.0)
-    assert interface.get_timing_type() == "starting_time and rate"
-
-
-def test_get_timing_type_default(nwb_converter):
-    """Test that get_timing_type returns 'starting_time and rate' by default."""
-    interface = nwb_converter.data_interface_objects["Video1"]
-    assert interface.get_timing_type() == "starting_time and rate"
 
 
 def test_timestamp_shifting(nwb_converter):
