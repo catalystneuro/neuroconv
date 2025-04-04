@@ -71,6 +71,7 @@ class TestImportStructure(TestCase):
             "data_transfers",
             "LocalPathExpander",
             "get_module",
+            "configure_and_write_nwbfile",
         ]
         assert sorted(current_structure) == sorted(expected_structure)
 
