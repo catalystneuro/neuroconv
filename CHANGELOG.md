@@ -14,6 +14,7 @@
 * Support roiextractors 0.5.11 [PR #1236](https://github.com/catalystneuro/neuroconv/pull/1236)
 * Added stub_test option to TDTFiberPhotometryInterface [PR #1242](https://github.com/catalystneuro/neuroconv/pull/1242)
 * Added ThorImagingInterface for Thor TIFF files with OME metadata [PR #1238](https://github.com/catalystneuro/neuroconv/pull/1238)
+* Added `always_write_timestamps` parameter to ExternalVideoInterface and InternalVideoInterface to force writing timestamps even when they are regular [#1279](https://github.com/catalystneuro/neuroconv/pull/1279)
 
 ## Improvements
 * Filter out warnings for missing timezone information in continuous integration [PR #1240](https://github.com/catalystneuro/neuroconv/pull/1240)
