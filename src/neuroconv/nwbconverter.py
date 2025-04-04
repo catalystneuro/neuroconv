@@ -2,6 +2,7 @@
 
 import inspect
 import json
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Literal, Optional, Type, Union
@@ -292,6 +293,14 @@ class NWBConverter:
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
         """
+        # Check if the nwbfile_path ends with .nwb and warn if not
+        if nwbfile_path is not None and not str(nwbfile_path).endswith(".nwb"):
+            warnings.warn(
+                f"The output file path '{nwbfile_path}' does not end with '.nwb'. "
+                "It is recommended to use the '.nwb' extension for NWB files.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
