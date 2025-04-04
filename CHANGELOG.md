@@ -7,7 +7,7 @@
 ## Features
 
 ## Improvements
-
+* `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 
 # v0.7.2 (April 4, 2025)
 
@@ -38,7 +38,6 @@
 * Updated GitHub Actions workflows to use Environment Files instead of the deprecated `set-output` command [#1259](https://github.com/catalystneuro/neuroconv/pull/1259)
 * Propagate `verbose` parameter from Converters to Interfaces [#1253](https://github.com/catalystneuro/neuroconv/issues/1253)
 * Replace uses of scipy load_mat and h5storage loadmat with pymat_reader read_mat in `CellExplorerSortingInterface` [#1254](https://github.com/catalystneuro/neuroconv/pull/1254)
-* `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 * Added camera device support for ExternalVideoInterface and InternalVideoInterface: [PR #1282](https://github.com/catalystneuro/neuroconv/pull/1282)
 
 
