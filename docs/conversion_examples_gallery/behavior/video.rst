@@ -122,7 +122,7 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ExternalVideoInterface
-    >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
+    >>> from neuroconv.utils import dict_deep_update
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
     >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, video_name="MyExternalVideo")
     >>> metadata = interface.get_metadata()
@@ -155,7 +155,7 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import InternalVideoInterface
-    >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
+    >>> from neuroconv.utils import dict_deep_update
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
     >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, video_name="MyInternalVideo")
     >>> metadata = interface.get_metadata()
