@@ -34,7 +34,8 @@ To follow this convention use the
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
 
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 When storing videos of neural data, lossy compression should not be used and it is best to store within the NWB file
 (see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>_`).
@@ -60,7 +61,8 @@ To follow this convention use the
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
 
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 
 If using an older version of neuroconv (<0.8), you can use the :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface` class.
@@ -82,4 +84,5 @@ If using an older version of neuroconv (<0.8), you can use the :py:class:`~neuro
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
