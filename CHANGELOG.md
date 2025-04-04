@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
 
 
 # v0.7.2 (April 4, 2025)
