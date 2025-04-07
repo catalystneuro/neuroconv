@@ -21,7 +21,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
-        self.segmentation_extractor = self.get_extractor()(**source_data)
+        self.segmentation_extractor = self._extractor_instance
 
     def get_metadata_schema(self) -> dict:
         """
