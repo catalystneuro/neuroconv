@@ -1,6 +1,7 @@
 # v0.7.3 (Upcoming)
 
 ## Deprecations and Changes
+* Release pydantic ceiling [#1273](https://github.com/catalystneuro/neuroconv/pull/1273)
 
 ## Bug Fixes
 
