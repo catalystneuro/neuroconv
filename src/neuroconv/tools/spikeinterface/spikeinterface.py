@@ -856,25 +856,25 @@ def add_electrical_series_to_nwbfile(
 
     if recording.has_scaleable_traces():
         # Spikeinterface gains and offsets are gains and offsets to micro volts.
-        # The units of the ElectricalSeries should be volts
+        # The units of the ElectricalSeries should be volts so we scale correspondingly.
         micro_to_volts_conversion_factor = 1e-6
-        channel_gains_to_V = recording.get_channel_gains() * micro_to_volts_conversion_factor
-        channel_offsets_to_V = recording.get_channel_offsets() * micro_to_volts_conversion_factor
+        channel_gains_to_volts = recording.get_channel_gains() * micro_to_volts_conversion_factor
+        channel_offsets_to_volts = recording.get_channel_offsets() * micro_to_volts_conversion_factor
 
-        unique_gains = set(channel_gains_to_V)
+        unique_gains = set(channel_gains_to_volts)
         if len(unique_gains) == 1:
-            conversion_to_volts = channel_gains_to_V[0]
+            conversion_to_volts = channel_gains_to_volts[0]
             eseries_kwargs.update(conversion=conversion_to_volts)
         else:
-            eseries_kwargs.update(channel_conversion=channel_gains_to_V)
+            eseries_kwargs.update(channel_conversion=channel_gains_to_volts)
 
-        unique_offset = set(channel_offsets_to_V)
+        unique_offset = set(channel_offsets_to_volts)
         if len(unique_offset) > 1:
             channel_ids = recording.get_channel_ids()
             # This prints a user friendly error where the user is provided with a map from offset to channels
             _report_variable_offset(recording=recording)
 
-        unique_offset = channel_offsets_to_V[0]
+        unique_offset = channel_offsets_to_volts[0]
         eseries_kwargs.update(offset=unique_offset)
     else:
         warning_message = (
