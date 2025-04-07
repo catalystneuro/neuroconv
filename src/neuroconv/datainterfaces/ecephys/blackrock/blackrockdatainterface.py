@@ -90,7 +90,13 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = False):
+    def __init__(
+        self,
+        file_path: FilePath,
+        sampling_frequency: Optional[float] = None,
+        nsx_to_load: Optional[list[int]] = None,
+        verbose: bool = False,
+    ):
         """
         Parameters
         ----------
@@ -100,10 +106,18 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
             used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
             this extractor to be initialized.
+        nsx_to_load : list[int], optional
+            The list of nsx files to load. If not provided, all nsx files will be loaded.
+            If an empty list is provided, no nsx files will be loaded.
         verbose : bool, default: False
             Enables verbosity
         """
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            file_path=file_path,
+            sampling_frequency=sampling_frequency,
+            nsx_to_load=nsx_to_load,
+            verbose=verbose,
+        )
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
