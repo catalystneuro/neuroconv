@@ -52,6 +52,7 @@ dependencies = [
     "docstring-parser",
     "packaging",  # Issue 903
     "referencing",
+    "numcodecs<0.16.0", # For supporting zarr < 3
 ]
 
 
