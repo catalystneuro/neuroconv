@@ -1,6 +1,7 @@
 # v0.7.3 (Upcoming)
 
 ## Deprecations and Changes
+* `write_scaled` behavior on `add_electrical_series_to_nwbfile` is deprecated and will be removed in or after October 2025 [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
 
 ## Bug Fixes
 

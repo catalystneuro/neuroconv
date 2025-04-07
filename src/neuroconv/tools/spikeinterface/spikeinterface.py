@@ -698,11 +698,14 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
-def _report_variable_offset(channel_offsets, channel_ids):
+def _report_variable_offset(recording: BaseRecording) -> None:
     """
     Helper function to report variable offsets per channel IDs.
     Groups the different available offsets per channel IDs and raises a ValueError.
     """
+    channel_offsets = recording.get_channel_offsets()
+    channel_ids = recording.get_channel_ids()
+
     # Group the different offsets per channel IDs
     offset_to_channel_ids = {}
     for offset, channel_id in zip(channel_offsets, channel_ids):
@@ -786,6 +789,15 @@ def add_electrical_series_to_nwbfile(
     whenever possible.
     """
 
+    if write_scaled:
+        warnings.warn(
+            "The 'write_scaled' parameter is deprecated and will be removed in October 2025. "
+            "The function will automatically handle channel conversion and offsets using "
+            "'gain_to_physical_unit' and 'offset_to_physical_unit' properties.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     if starting_time is not None:
         warnings.warn(
             "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
@@ -842,30 +854,35 @@ def add_electrical_series_to_nwbfile(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
-    # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
-    channel_conversion = recording.get_channel_gains()
-    channel_offsets = recording.get_channel_offsets()
+    if recording.has_scaleable_traces():
+        # Spikeinterface gains and offsets are gains and offsets to micro volts.
+        # The units of the ElectricalSeries should be volts
+        micro_to_volts_conversion_factor = 1e-6
+        channel_gains_to_V = recording.get_channel_gains() * micro_to_volts_conversion_factor
+        channel_offsets_to_V = recording.get_channel_offsets() * micro_to_volts_conversion_factor
 
-    unique_channel_conversion = np.unique(channel_conversion)
-    unique_channel_conversion = unique_channel_conversion[0] if len(unique_channel_conversion) == 1 else None
+        unique_gains = set(channel_gains_to_V)
+        if len(unique_gains) == 1:
+            conversion_to_volts = channel_gains_to_V[0]
+            eseries_kwargs.update(conversion=conversion_to_volts)
+        else:
+            eseries_kwargs.update(channel_conversion=channel_gains_to_V)
 
-    unique_offset = np.unique(channel_offsets)
-    if unique_offset.size > 1:
-        channel_ids = recording.get_channel_ids()
-        # This prints a user friendly error where the user is provided with a map from offset to channels
-        _report_variable_offset(channel_offsets, channel_ids)
-    unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
+        unique_offset = set(channel_offsets_to_V)
+        if len(unique_offset) > 1:
+            channel_ids = recording.get_channel_ids()
+            # This prints a user friendly error where the user is provided with a map from offset to channels
+            _report_variable_offset(recording=recording)
 
-    micro_to_volts_conversion_factor = 1e-6
-    if not write_scaled and unique_channel_conversion is None:
-        eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
-        eseries_kwargs.update(channel_conversion=channel_conversion)
-    elif not write_scaled and unique_channel_conversion is not None:
-        eseries_kwargs.update(conversion=unique_channel_conversion * micro_to_volts_conversion_factor)
-
-    if not write_scaled:
-        eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
+        unique_offset = channel_offsets_to_V[0]
+        eseries_kwargs.update(offset=unique_offset)
+    else:
+        warning_message = (
+            "The recording extractor does not have gains and offsets to convert to volts. "
+            "That means that correct units are not guaranteed.  \n"
+            "Set the correct gains and offsets to the recording extractor before writing to NWB."
+        )
+        warnings.warn(warning_message, UserWarning, stacklevel=2)
 
     # Iterator
     ephys_data_iterator = _recording_traces_to_hdmf_iterator(
