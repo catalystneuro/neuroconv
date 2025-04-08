@@ -699,60 +699,6 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
-def _report_variable_gain(recording: BaseRecording) -> None:
-    """
-    Helper function to report variable gains per channel IDs.
-    Groups the different available gains per channel IDs and raises a ValueError.
-    """
-    channel_gains = recording.get_channel_gains()
-    channel_ids = recording.get_channel_ids()
-
-    # Group the different gains per channel IDs
-    gain_to_channel_ids = {}
-    for gain, channel_id in zip(channel_gains, channel_ids):
-        gain = gain.item() if isinstance(gain, np.generic) else gain
-        channel_id = channel_id.item() if isinstance(channel_id, np.generic) else channel_id
-        if gain not in gain_to_channel_ids:
-            gain_to_channel_ids[gain] = []
-        gain_to_channel_ids[gain].append(channel_id)
-
-    # Create a user-friendly message
-    message_lines = ["Recording extractors with heterogeneous gains are not supported."]
-    message_lines.append("Multiple gains were found per channel IDs:")
-    for gain, ids in gain_to_channel_ids.items():
-        message_lines.append(f"  Gain {gain}: Channel IDs {ids}")
-    message = "\n".join(message_lines)
-
-    raise ValueError(message)
-
-
-def _report_variable_units(recording: BaseRecording) -> None:
-    """
-    Helper function to report variable units per channel IDs.
-    Groups the different available units per channel IDs and raises a ValueError.
-    """
-    units = recording.get_property("physical_unit")
-    channel_ids = recording.get_channel_ids()
-
-    # Group the different units per channel IDs
-    unit_to_channel_ids = {}
-    for unit, channel_id in zip(units, channel_ids):
-        unit = unit.item() if isinstance(unit, np.generic) else unit
-        channel_id = channel_id.item() if isinstance(channel_id, np.generic) else channel_id
-        if unit not in unit_to_channel_ids:
-            unit_to_channel_ids[unit] = []
-        unit_to_channel_ids[unit].append(channel_id)
-
-    # Create a user-friendly message
-    message_lines = ["Recording extractors with heterogeneous units are not supported."]
-    message_lines.append("Multiple units were found per channel IDs:")
-    for unit, ids in unit_to_channel_ids.items():
-        message_lines.append(f"  Unit '{unit}': Channel IDs {ids}")
-    message = "\n".join(message_lines)
-
-    raise ValueError(message)
-
-
 def _report_variable_offset(recording: BaseRecording) -> None:
     """
     Helper function to report variable offsets per channel IDs.
