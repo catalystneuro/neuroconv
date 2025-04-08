@@ -277,31 +277,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         # Prepare TimeSeries metadata
         time_series_name = "TimeSeriesNIDQ"
         description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
-
-        # Ensure TimeSeries metadata exists
-        if "TimeSeries" not in metadata:
-            metadata["TimeSeries"] = {}
-
-        # Add or update the TimeSeriesNIDQ entry in metadata
-        if time_series_name not in metadata["TimeSeries"]:
-            metadata["TimeSeries"][time_series_name] = {}
-
-        # Set default values if not already in metadata
-        ts_metadata = metadata["TimeSeries"][time_series_name]
-        if "name" not in ts_metadata:
-            ts_metadata["name"] = time_series_name
-        if "description" not in ts_metadata:
-            ts_metadata["description"] = description
-        if "unit" not in ts_metadata:
-            ts_metadata["unit"] = "a.u."
-
+        metadata["TimeSeries"][time_series_name] = dict(description=description)
         # Use add_time_series_to_nwbfile to add the time series
         add_time_series_to_nwbfile(
             recording=analog_recorder,
             nwbfile=nwbfile,
             metadata=metadata,
             segment_index=segment_index,
-            write_as="raw",
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,

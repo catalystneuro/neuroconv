@@ -1,6 +1,7 @@
 import uuid
 import warnings
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
@@ -778,7 +779,8 @@ def add_time_series_to_nwbfile(
     """
 
     tseries_kwargs = dict(name=time_series_name)
-    metadata = dict() if metadata is None else metadata.copy()
+    metadata = dict() if metadata is None else metadata
+    metadata = deepcopy(metadata)
 
     # Apply metadata if available
     if "TimeSeries" in metadata and time_series_name in metadata["TimeSeries"]:
@@ -803,6 +805,8 @@ def add_time_series_to_nwbfile(
         all_channels_have_same_unit = len(set(units)) == 1 if units is not None else False
         scaling_is_available = gain_to_unit is not None and offset_to_unit is not None
         if all_channels_have_same_unit and scaling_is_available:
+
+            tseries_kwargs.update(unit=units[0])
 
             unique_gains = set(gain_to_unit)
             if len(unique_gains) == 1:
