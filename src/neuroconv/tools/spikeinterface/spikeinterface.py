@@ -699,6 +699,60 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
+def _report_variable_gain(recording: BaseRecording) -> None:
+    """
+    Helper function to report variable gains per channel IDs.
+    Groups the different available gains per channel IDs and raises a ValueError.
+    """
+    channel_gains = recording.get_channel_gains()
+    channel_ids = recording.get_channel_ids()
+
+    # Group the different gains per channel IDs
+    gain_to_channel_ids = {}
+    for gain, channel_id in zip(channel_gains, channel_ids):
+        gain = gain.item() if isinstance(gain, np.generic) else gain
+        channel_id = channel_id.item() if isinstance(channel_id, np.generic) else channel_id
+        if gain not in gain_to_channel_ids:
+            gain_to_channel_ids[gain] = []
+        gain_to_channel_ids[gain].append(channel_id)
+
+    # Create a user-friendly message
+    message_lines = ["Recording extractors with heterogeneous gains are not supported."]
+    message_lines.append("Multiple gains were found per channel IDs:")
+    for gain, ids in gain_to_channel_ids.items():
+        message_lines.append(f"  Gain {gain}: Channel IDs {ids}")
+    message = "\n".join(message_lines)
+
+    raise ValueError(message)
+
+
+def _report_variable_units(recording: BaseRecording) -> None:
+    """
+    Helper function to report variable units per channel IDs.
+    Groups the different available units per channel IDs and raises a ValueError.
+    """
+    units = recording.get_property("physical_unit")
+    channel_ids = recording.get_channel_ids()
+
+    # Group the different units per channel IDs
+    unit_to_channel_ids = {}
+    for unit, channel_id in zip(units, channel_ids):
+        unit = unit.item() if isinstance(unit, np.generic) else unit
+        channel_id = channel_id.item() if isinstance(channel_id, np.generic) else channel_id
+        if unit not in unit_to_channel_ids:
+            unit_to_channel_ids[unit] = []
+        unit_to_channel_ids[unit].append(channel_id)
+
+    # Create a user-friendly message
+    message_lines = ["Recording extractors with heterogeneous units are not supported."]
+    message_lines.append("Multiple units were found per channel IDs:")
+    for unit, ids in unit_to_channel_ids.items():
+        message_lines.append(f"  Unit '{unit}': Channel IDs {ids}")
+    message = "\n".join(message_lines)
+
+    raise ValueError(message)
+
+
 def _report_variable_offset(recording: BaseRecording) -> None:
     """
     Helper function to report variable offsets per channel IDs.
@@ -806,24 +860,26 @@ def add_time_series_to_nwbfile(
         scaling_is_available = gain_to_unit is not None and offset_to_unit is not None
         if all_channels_have_same_unit and scaling_is_available:
 
-            tseries_kwargs.update(unit=units[0])
-
             unique_gains = set(gain_to_unit)
-            if len(unique_gains) == 1:
-                conversion = gain_to_unit[0]
-                tseries_kwargs.update(conversion=conversion)
-            else:
-                tseries_kwargs.update(channel_conversion=gain_to_unit)
+            if len(unique_gains) > 1:
+                _report_variable_gain(recording=recording)
 
             unique_offset = set(offset_to_unit)
             if len(unique_offset) > 1:
                 _report_variable_offset(recording=recording)
+
+            tseries_kwargs.update(unit=units[0], conversion=gain_to_unit[0], offset=offset_to_unit[0])
         else:
             warning_msg = (
                 "The recording extractor has heterogeneous units or is lacking scaling factors. "
-                "The time series will be saved with unit 'n.a.' and the conversion factors will not be set."
-                "Please set the unit in the corresponding metadata or set the  `gain_to_physical_unit`, "
-                "`offset_to_physical_unit` and `physical_unit` as properties of the recording ."
+                "The time series will be saved with unit 'n.a.' and the conversion factors will not be set. "
+                "To fix this issue, either: "
+                "1) Set the unit in the metadata['TimeSeries'][time_series_name]['unit'] field, or "
+                "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
+                "on the recording object with consistent units across all channels. "
+                f"Current units: {units if units is not None else 'None'}, "
+                f"gain available: {gain_to_unit is not None}, "
+                f"offset available: {offset_to_unit is not None}"
             )
             warnings.warn(warning_msg, UserWarning, stacklevel=2)
             tseries_kwargs.update(unit="n.a.")

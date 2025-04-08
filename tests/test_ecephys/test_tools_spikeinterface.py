@@ -1049,6 +1049,76 @@ class TestAddTimeSeries:
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
+    def test_error_with_multiple_gain(self):
+        """Test that an error is raised when a recording has variable gains."""
+        # Generate a mock recording with 5 channels and 1 second duration
+        recording = generate_recording(num_channels=5, durations=[1.0])
+        # Rename channels to specific identifiers for clarity in error messages
+        recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+        # Set different gains for the channels
+        recording.set_channel_gains(gains=[1, 1, 2, 2, 3])
+        recording.set_channel_offsets(offsets=[0, 0, 0, 0, 0])
+        # Set homogeneous units
+        recording.set_property("physical_unit", ["mV"] * 5)
+        recording.set_property("gain_to_physical_unit", [1, 1, 2, 2, 3])
+        recording.set_property("offset_to_physical_unit", [0, 0, 0, 0, 0])
+
+        # Create a mock NWBFile object
+        nwbfile = mock_NWBFile()
+
+        # Expected error message
+        expected_message_lines = [
+            "Recording extractors with heterogeneous gains are not supported.",
+            "Multiple gains were found per channel IDs:",
+            "  Gain 1: Channel IDs ['a', 'b']",
+            "  Gain 2: Channel IDs ['c', 'd']",
+            "  Gain 3: Channel IDs ['e']",
+        ]
+        expected_message = "\n".join(expected_message_lines)
+
+        # Use re.escape to escape any special regex characters in the expected message
+        expected_message_regex = re.escape(expected_message)
+
+        # Attempt to add time series to the NWB file
+        # Expecting a ValueError due to multiple gains, matching the expected message
+        with pytest.raises(ValueError, match=expected_message_regex):
+            add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+    def test_error_with_multiple_units(self):
+        """Test that an error is raised when a recording has heterogeneous units."""
+        # Generate a mock recording with 5 channels and 1 second duration
+        recording = generate_recording(num_channels=5, durations=[1.0])
+        # Rename channels to specific identifiers for clarity in error messages
+        recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+        # Set homogeneous gains and offsets
+        recording.set_channel_gains(gains=[1, 1, 1, 1, 1])
+        recording.set_channel_offsets(offsets=[0, 0, 0, 0, 0])
+        # Set different units for the channels
+        recording.set_property("physical_unit", ["mV", "mV", "V", "V", "uV"])
+        recording.set_property("gain_to_physical_unit", [1, 1, 1, 1, 1])
+        recording.set_property("offset_to_physical_unit", [0, 0, 0, 0, 0])
+
+        # Create a mock NWBFile object
+        nwbfile = mock_NWBFile()
+
+        # Expected error message
+        expected_message_lines = [
+            "Recording extractors with heterogeneous units are not supported.",
+            "Multiple units were found per channel IDs:",
+            "  Unit 'mV': Channel IDs ['a', 'b']",
+            "  Unit 'V': Channel IDs ['c', 'd']",
+            "  Unit 'uV': Channel IDs ['e']",
+        ]
+        expected_message = "\n".join(expected_message_lines)
+
+        # Use re.escape to escape any special regex characters in the expected message
+        expected_message_regex = re.escape(expected_message)
+
+        # Attempt to add time series to the NWB file
+        # Expecting a ValueError due to multiple units, matching the expected message
+        with pytest.raises(ValueError, match=expected_message_regex):
+            add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
     def test_metadata_priority(self):
         """Test that metadata takes priority over recording properties."""
         # Create a recording object for testing
@@ -1157,6 +1227,149 @@ class TestAddTimeSeries:
         assert time_series.description == "Very custom description"
         assert time_series.unit == "custom_unit"
         assert time_series.comments == "This is a custom time series"
+
+    def test_homogeneous_units_with_scaling(self):
+        """Test when recording has homogeneous units and scaling factors."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        # Set properties with homogeneous units and scaling factors
+        units = ["mV"] * num_channels
+        gains = [2.0] * num_channels
+        offsets = [0.5] * num_channels
+
+        recording.set_property("physical_unit", units)
+        recording.set_property("gain_to_physical_unit", gains)
+        recording.set_property("offset_to_physical_unit", offsets)
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        # Verify the time series has the correct unit and conversion
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.unit == "mV"
+        assert time_series.conversion == 2.0
+
+    def test_heterogeneous_units_warning(self):
+        """Test warning when recording has heterogeneous units."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        # Set properties with heterogeneous units
+        units = ["mV", "V", "uV"]
+        gains = [2.0] * num_channels
+        offsets = [0.5] * num_channels
+
+        recording.set_property("physical_unit", units)
+        recording.set_property("gain_to_physical_unit", gains)
+        recording.set_property("offset_to_physical_unit", offsets)
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        with pytest.warns(UserWarning, match="heterogeneous units"):
+            add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        # Verify the time series has the default unit
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.unit == "n.a."
+
+    def test_missing_scaling_factors_warning(self):
+        """Test warning when recording is missing scaling factors."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        # Set only units but no scaling factors
+        units = ["mV"] * num_channels
+        recording.set_property("physical_unit", units)
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        with pytest.warns(UserWarning, match="lacking scaling factors"):
+            add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        # Verify the time series has the default unit
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.unit == "n.a."
+
+    def test_metadata_unit_priority(self):
+        """Test that metadata unit takes priority over recording properties."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        # Set properties with homogeneous units and scaling factors
+        units = ["mV"] * num_channels
+        gains = [2.0] * num_channels
+        offsets = [0.5] * num_channels
+
+        recording.set_property("physical_unit", units)
+        recording.set_property("gain_to_physical_unit", gains)
+        recording.set_property("offset_to_physical_unit", offsets)
+
+        # Create metadata with a different unit
+        metadata = {"TimeSeries": {"TimeSeries": {"unit": "custom_unit"}}}
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None)
+
+        # Verify the time series has the unit from metadata
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.unit == "custom_unit"
+
+    def test_variable_gains(self):
+        """Test when recording has variable gains."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        # Set properties with homogeneous units but variable gains
+        units = ["mV"] * num_channels
+        gains = [1.0, 2.0, 3.0]
+        offsets = [0.5] * num_channels
+
+        recording.set_property("physical_unit", units)
+        recording.set_property("gain_to_physical_unit", gains)
+        recording.set_property("offset_to_physical_unit", offsets)
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        # Verify the time series has channel_conversion instead of conversion
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.unit == "mV"
+        assert hasattr(time_series, "channel_conversion")
+        np.testing.assert_array_equal(time_series.channel_conversion, gains)
 
 
 class TestAddElectrodeGroups:
