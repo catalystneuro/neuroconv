@@ -856,18 +856,13 @@ def add_time_series_to_nwbfile(
         gain_to_unit = recording.get_property("gain_to_physical_unit")
         offset_to_unit = recording.get_property("offset_to_physical_unit")
 
-        all_channels_have_same_unit = len(set(units)) == 1 if units is not None else False
-        scaling_is_available = gain_to_unit is not None and offset_to_unit is not None
-        if all_channels_have_same_unit and scaling_is_available:
+        channels_have_same_unit = len(set(units)) == 1 if units is not None else False
+        channels_have_same_gain = len(set(gain_to_unit)) == 1 if gain_to_unit is not None else False
+        channels_have_same_offest = len(set(offset_to_unit)) == 1 if offset_to_unit is not None else False
 
-            unique_gains = set(gain_to_unit)
-            if len(unique_gains) > 1:
-                _report_variable_gain(recording=recording)
+        save_scaling_info = channels_have_same_unit and channels_have_same_gain and channels_have_same_offest
 
-            unique_offset = set(offset_to_unit)
-            if len(unique_offset) > 1:
-                _report_variable_offset(recording=recording)
-
+        if save_scaling_info:
             tseries_kwargs.update(unit=units[0], conversion=gain_to_unit[0], offset=offset_to_unit[0])
         else:
             warning_msg = (
@@ -877,7 +872,7 @@ def add_time_series_to_nwbfile(
                 "1) Set the unit in the metadata['TimeSeries'][time_series_name]['unit'] field, or "
                 "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
                 "on the recording object with consistent units across all channels. "
-                f"Current units: {units if units is not None else 'None'}, "
+                f"Channel units: {units if units is not None else 'None'}, "
                 f"gain available: {gain_to_unit is not None}, "
                 f"offset available: {offset_to_unit is not None}"
             )
