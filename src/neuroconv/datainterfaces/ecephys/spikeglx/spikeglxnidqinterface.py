@@ -268,7 +268,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         analog_recorder = recording.select_channels(channel_ids=self.analog_channel_ids)
         channel_names = analog_recorder.get_property(key="channel_names")
-        segment_index = 0
 
         # Create default metadata if not provided
         if metadata is None:
@@ -283,7 +282,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             recording=analog_recorder,
             nwbfile=nwbfile,
             metadata=metadata,
-            segment_index=segment_index,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
