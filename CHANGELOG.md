@@ -7,6 +7,7 @@
 ## Bug Fixes
 
 ## Features
+* Added a new `add_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#TBD]((https://github.com/catalystneuro/neuroconv/pull/TBD))
 
 ## Improvements
 * `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
