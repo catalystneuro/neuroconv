@@ -1049,38 +1049,6 @@ class TestAddTimeSeries:
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_metadata_priority(self):
-        """Test that metadata takes priority over recording properties."""
-        # Create a recording object for testing
-        num_channels = 3
-        sampling_frequency = 1.0
-        durations = [3.0]
-        recording = generate_recording(
-            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
-        )
-        values = ["recording_unit"] * num_channels
-        recording.set_property("physical_unit", values=values)
-
-        # Create a fresh NWBFile for testing
-        nwbfile = mock_NWBFile()
-
-        metadata = {
-            "TimeSeries": {
-                "TimeSeriesRaw": {"name": "TimeSeriesRaw", "description": "Custom description", "unit": "metadata_unit"}
-            }
-        }
-
-        add_time_series_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            time_series_name="TimeSeriesRaw",
-        )
-
-        time_series = nwbfile.acquisition["TimeSeriesRaw"]
-        assert time_series.unit == "metadata_unit"
-        assert time_series.description == "Custom description"
-
     def test_time_series_name(self):
         """Test that time_series_name is used to look up metadata."""
         # Create a recording object for testing
@@ -1240,6 +1208,38 @@ class TestAddTimeSeries:
         time_series = nwbfile.acquisition["TimeSeries"]
         assert time_series.unit == "n.a."
 
+    def test_metadata_priority(self):
+        """Test that metadata takes priority over recording properties."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+        values = ["recording_unit"] * num_channels
+        recording.set_property("physical_unit", values=values)
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        metadata = {
+            "TimeSeries": {
+                "TimeSeriesRaw": {"name": "TimeSeriesRaw", "description": "Custom description", "unit": "metadata_unit"}
+            }
+        }
+
+        add_time_series_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            time_series_name="TimeSeriesRaw",
+        )
+
+        time_series = nwbfile.acquisition["TimeSeriesRaw"]
+        assert time_series.unit == "metadata_unit"
+        assert time_series.description == "Custom description"
+
     def test_metadata_unit_priority(self):
         """Test that metadata unit takes priority over recording properties."""
         # Create a recording object for testing
@@ -1270,6 +1270,39 @@ class TestAddTimeSeries:
         # Verify the time series has the unit from metadata
         time_series = nwbfile.acquisition["TimeSeries"]
         assert time_series.unit == "custom_unit"
+
+    def test_metadata_conversion_offset_priority(self):
+        """Test that metadata unit, conversion, and offset take priority over recording properties."""
+        # Create a recording object for testing
+        num_channels = 3
+        sampling_frequency = 1.0
+        durations = [3.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        # Set properties with homogeneous units and scaling factors
+        units = ["mV"] * num_channels
+        gains = [2.0] * num_channels
+        offsets = [0.5] * num_channels
+
+        recording.set_property("physical_unit", units)
+        recording.set_property("gain_to_physical_unit", gains)
+        recording.set_property("offset_to_physical_unit", offsets)
+
+        # Create metadata with custom unit, conversion, and offset
+        metadata = {"TimeSeries": {"TimeSeries": {"unit": "custom_unit", "conversion": 3.0, "offset": 1.5}}}
+
+        # Create a fresh NWBFile for testing
+        nwbfile = mock_NWBFile()
+
+        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None)
+
+        # Verify the time series has the values from metadata
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.unit == "custom_unit"
+        assert time_series.conversion == 3.0
+        assert time_series.offset == 1.5
 
 
 class TestAddElectrodeGroups:

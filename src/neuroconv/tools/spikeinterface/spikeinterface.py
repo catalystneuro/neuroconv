@@ -784,7 +784,6 @@ def add_time_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: Optional[dict] = None,
-    segment_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
     always_write_timestamps: bool = False,
@@ -807,13 +806,13 @@ def add_time_series_to_nwbfile(
                 'time_series_name': {
                     'description': 'my_description',
                     'unit': 'my_unit',
+                    "offset": offset_to_unit_value,
+                    "conversion": gain_to_unit_value,
                     'comments': 'comments',
                     ...
                 }
             }
         Where the time_seires_name is used to look up metadata in the metadata dictionary.
-    segment_index : int, default: 0
-        The recording segment to add to the NWBFile.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -830,6 +829,34 @@ def add_time_series_to_nwbfile(
     time_series_name : str, optional
         Name of the TimeSeries to create. If not provided, a default name will be generated based on the write_as parameter.
         This parameter is used to look up metadata in the metadata dictionary if provided.
+    """
+
+    num_segments = recording.get_num_segments()
+    for segment_index in range(num_segments):
+        _add_time_series_segment_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            segment_index=segment_index,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
+            time_series_name=time_series_name,
+        )
+
+
+def _add_time_series_segment_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: Optional[dict] = None,
+    segment_index: int = 0,
+    iterator_type: Optional[str] = "v2",
+    iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
+    time_series_name: str = "TimeSeries",
+):
+    """
+    See `add_time_series_to_nwbfile` for details.
     """
 
     tseries_kwargs = dict(name=time_series_name)
