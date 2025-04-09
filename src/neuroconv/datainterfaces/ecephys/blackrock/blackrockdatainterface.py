@@ -90,7 +90,12 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = False):
+    def __init__(
+        self,
+        file_path: FilePath,
+        sampling_frequency: Optional[float] = None,
+        verbose: bool = False,
+    ):
         """
         Parameters
         ----------
@@ -103,7 +108,11 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         verbose : bool, default: False
             Enables verbosity
         """
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            file_path=file_path,
+            sampling_frequency=sampling_frequency,
+            verbose=verbose,
+        )
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
