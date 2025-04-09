@@ -239,6 +239,9 @@ tdt = [
     "neo>=0.13.3",
     "spikeinterface>=0.102.2",
 ]
+whitematter = [
+    "spikeinterface>=0.102.2",
+]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
@@ -260,6 +263,7 @@ ecephys = [  # Note that this the requirements of the extracts as they are on pi
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
+    "neuroconv[whitematter]",
 ]
 
 ## Icephys
