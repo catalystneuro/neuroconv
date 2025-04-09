@@ -726,7 +726,7 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     raise ValueError(message)
 
 
-def add_time_series_to_nwbfile(
+def add_recording_as_time_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: Optional[dict] = None,
@@ -802,7 +802,7 @@ def _add_time_series_segment_to_nwbfile(
     time_series_name: str = "TimeSeries",
 ):
     """
-    See `add_time_series_to_nwbfile` for details.
+    See `add_recording_as_time_series_to_nwbfile` for details.
     """
 
     tseries_kwargs = dict(name=time_series_name)

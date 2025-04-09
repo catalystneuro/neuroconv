@@ -264,7 +264,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata : Optional[dict], default: None
             Metadata dictionary with TimeSeries information
         """
-        from ....tools.spikeinterface import add_time_series_to_nwbfile
+        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
         analog_recorder = recording.select_channels(channel_ids=self.analog_channel_ids)
         channel_names = analog_recorder.get_property(key="channel_names")
@@ -277,8 +277,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         time_series_name = "TimeSeriesNIDQ"
         description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
         metadata["TimeSeries"][time_series_name] = dict(description=description)
-        # Use add_time_series_to_nwbfile to add the time series
-        add_time_series_to_nwbfile(
+        # Use add_recording_as_time_series_to_nwbfile to add the time series
+        add_recording_as_time_series_to_nwbfile(
             recording=analog_recorder,
             nwbfile=nwbfile,
             metadata=metadata,

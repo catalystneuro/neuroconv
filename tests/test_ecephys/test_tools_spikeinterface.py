@@ -25,9 +25,9 @@ from neuroconv.tools.spikeinterface import (
     add_electrical_series_to_nwbfile,
     add_electrode_groups_to_nwbfile,
     add_electrodes_to_nwbfile,
+    add_recording_as_time_series_to_nwbfile,
     add_recording_to_nwbfile,
     add_sorting_to_nwbfile,
-    add_time_series_to_nwbfile,
     add_units_table_to_nwbfile,
     check_if_recording_traces_fit_into_memory,
     write_recording_to_nwbfile,
@@ -1039,7 +1039,7 @@ class TestAddTimeSeries:
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
-        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
         acquisition_module = nwbfile.acquisition
         assert "TimeSeries" in acquisition_module
@@ -1072,7 +1072,7 @@ class TestAddTimeSeries:
             }
         }
 
-        add_time_series_to_nwbfile(
+        add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -1110,7 +1110,7 @@ class TestAddTimeSeries:
             }
         }
 
-        add_time_series_to_nwbfile(
+        add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -1148,7 +1148,7 @@ class TestAddTimeSeries:
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
-        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
         # Verify the time series has the correct unit and conversion
         time_series = nwbfile.acquisition["TimeSeries"]
@@ -1178,7 +1178,7 @@ class TestAddTimeSeries:
         nwbfile = mock_NWBFile()
 
         with pytest.warns(UserWarning, match="heterogeneous units"):
-            add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+            add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
         # Verify the time series has the default unit
         time_series = nwbfile.acquisition["TimeSeries"]
@@ -1202,7 +1202,7 @@ class TestAddTimeSeries:
         nwbfile = mock_NWBFile()
 
         with pytest.warns(UserWarning, match="lacking scaling factors"):
-            add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+            add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
         # Verify the time series has the default unit
         time_series = nwbfile.acquisition["TimeSeries"]
@@ -1229,7 +1229,7 @@ class TestAddTimeSeries:
             }
         }
 
-        add_time_series_to_nwbfile(
+        add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -1265,7 +1265,9 @@ class TestAddTimeSeries:
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
-        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None)
+        add_recording_as_time_series_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
 
         # Verify the time series has the unit from metadata
         time_series = nwbfile.acquisition["TimeSeries"]
@@ -1296,7 +1298,9 @@ class TestAddTimeSeries:
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
-        add_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None)
+        add_recording_as_time_series_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
 
         # Verify the time series has the values from metadata
         time_series = nwbfile.acquisition["TimeSeries"]
