@@ -12,7 +12,8 @@
 ## Improvements
 * `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 * Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
-* Fixed a bug in the extractor interfaces where segmentation and sorting interfaces were extracted twice [PR #1288](https://github.com/catalystneuro/neuroconv/pull/1288)
+* `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds that instead if detected [#1293](https://github.com/catalystneuro/neuroconv/pull/1293)
+* Fixed a bug in the extractor interfaces where segmentation and sorting interfaces were initialized twice [PR #1288](https://github.com/catalystneuro/neuroconv/pull/1288)
 
 
 # v0.7.2 (April 4, 2025)
