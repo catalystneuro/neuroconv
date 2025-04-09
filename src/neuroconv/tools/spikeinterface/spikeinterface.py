@@ -1,6 +1,7 @@
 import uuid
 import warnings
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
@@ -723,6 +724,170 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     message = "\n".join(message_lines)
 
     raise ValueError(message)
+
+
+def add_recording_as_time_series_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: Optional[dict] = None,
+    iterator_type: Optional[str] = "v2",
+    iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
+    time_series_name: str = "TimeSeries",
+):
+    """
+    Adds traces from recording object as TimeSeries to an NWBFile object.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from spikeinterface
+    nwbfile : NWBFile
+        nwb file to which the recording information is to be added
+    metadata : dict, optional
+        metadata info for constructing the nwb file.
+        Should be of the format::
+
+            metadata['TimeSeries'] = {
+                'time_series_name': {
+                    'description': 'my_description',
+                    'unit': 'my_unit',
+                    "offset": offset_to_unit_value,
+                    "conversion": gain_to_unit_value,
+                    'comments': 'comments',
+                    ...
+                }
+            }
+        Where the time_seires_name is used to look up metadata in the metadata dictionary.
+    iterator_type: {"v2",  None}, default: 'v2'
+        The type of DataChunkIterator to use.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
+    iterator_opts: dict, optional
+        Dictionary of options for the iterator.
+        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
+    time_series_name : str, optional
+        Name of the TimeSeries to create. If not provided, a default name will be generated based on the write_as parameter.
+        This parameter is used to look up metadata in the metadata dictionary if provided.
+    """
+
+    num_segments = recording.get_num_segments()
+    for segment_index in range(num_segments):
+        _add_time_series_segment_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            segment_index=segment_index,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
+            time_series_name=time_series_name,
+        )
+
+
+def _add_time_series_segment_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: Optional[dict] = None,
+    segment_index: int = 0,
+    iterator_type: Optional[str] = "v2",
+    iterator_opts: Optional[dict] = None,
+    always_write_timestamps: bool = False,
+    time_series_name: str = "TimeSeries",
+):
+    """
+    See `add_recording_as_time_series_to_nwbfile` for details.
+    """
+
+    tseries_kwargs = dict(name=time_series_name)
+    metadata = dict() if metadata is None else metadata
+    metadata = deepcopy(metadata)
+
+    # Apply metadata if available
+    if "TimeSeries" in metadata and time_series_name in metadata["TimeSeries"]:
+        metadata_kwargs = metadata["TimeSeries"][time_series_name]
+        tseries_kwargs.update(metadata_kwargs)
+
+    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
+    # 0-pad these names based on the number of segments.
+    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
+    if recording.get_num_segments() > 1:
+        width = int(np.ceil(np.log10((recording.get_num_segments()))))
+        tseries_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # metadata "unit" has priority over recording properties
+    if "unit" not in tseries_kwargs:
+        # Get physical units from recording properties
+        units = recording.get_property("physical_unit")
+        # Get gain and offset from recording properties
+        gain_to_unit = recording.get_property("gain_to_physical_unit")
+        offset_to_unit = recording.get_property("offset_to_physical_unit")
+
+        channels_have_same_unit = len(set(units)) == 1 if units is not None else False
+        channels_have_same_gain = len(set(gain_to_unit)) == 1 if gain_to_unit is not None else False
+        channels_have_same_offest = len(set(offset_to_unit)) == 1 if offset_to_unit is not None else False
+
+        save_scaling_info = channels_have_same_unit and channels_have_same_gain and channels_have_same_offest
+
+        if save_scaling_info:
+            tseries_kwargs.update(unit=units[0], conversion=gain_to_unit[0], offset=offset_to_unit[0])
+        else:
+            warning_msg = (
+                "The recording extractor has heterogeneous units or is lacking scaling factors. "
+                "The time series will be saved with unit 'n.a.' and the conversion factors will not be set. "
+                "To fix this issue, either: "
+                "1) Set the unit in the metadata['TimeSeries'][time_series_name]['unit'] field, or "
+                "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
+                "on the recording object with consistent units across all channels. "
+                f"Channel units: {units if units is not None else 'None'}, "
+                f"gain available: {gain_to_unit is not None}, "
+                f"offset available: {offset_to_unit is not None}"
+            )
+            warnings.warn(warning_msg, UserWarning, stacklevel=2)
+            tseries_kwargs.update(unit="n.a.")
+
+    # Iterator
+    data_iterator = _recording_traces_to_hdmf_iterator(
+        recording=recording,
+        segment_index=segment_index,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_opts,
+    )
+    tseries_kwargs.update(data=data_iterator)
+
+    if always_write_timestamps:
+        timestamps = recording.get_times(segment_index=segment_index)
+        tseries_kwargs.update(timestamps=timestamps)
+    else:
+        # By default we write the rate if the timestamps are regular
+        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
+        if recording_has_timestamps:
+            timestamps = recording.get_times(segment_index=segment_index)
+            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+            recording_t_start = timestamps[0]
+        else:
+            rate = recording.get_sampling_frequency()
+            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+
+        # Set starting time and rate or timestamps
+        if rate:
+            starting_time = float(recording_t_start)
+            # Note that we call the sampling frequency again because the estimated rate might be different from the
+            # sampling frequency of the recording extractor by some epsilon.
+            tseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+        else:
+            tseries_kwargs.update(timestamps=timestamps)
+
+    # Create TimeSeries object and add it to nwbfile
+    time_series = pynwb.base.TimeSeries(**tseries_kwargs)
+
+    nwbfile.add_acquisition(time_series)
 
 
 def add_electrical_series_to_nwbfile(
