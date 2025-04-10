@@ -46,6 +46,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -124,6 +125,7 @@ interface_list = [
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
+    OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     AxonaRecordingInterface,
@@ -201,6 +203,10 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    analog=dict(
+        OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+    ),
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
         Video=VideoInterface,
