@@ -44,7 +44,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
-from .ecephys.openephys.openephysanaloginterface import OpenEphysBinaryAnalogInterface
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
