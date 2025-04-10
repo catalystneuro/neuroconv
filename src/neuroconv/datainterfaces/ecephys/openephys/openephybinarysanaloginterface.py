@@ -163,7 +163,6 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_key=self.time_series_key,
             device_name=self.stream_name,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
