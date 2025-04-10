@@ -171,11 +171,21 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
         )
         with pytest.raises(ValueError, match=expected_error_message):
-            self.interface.run_conversion(nwbfile=nwbfile, nwbfile_path=nwbfile_path, overwrite=False)
+            self.interface.run_conversion(
+                nwbfile=nwbfile,
+                nwbfile_path=nwbfile_path,
+                overwrite=True,
+                append_on_disk_nwbfile=True,
+            )
 
         converter = ConverterPipe(data_interfaces=[self.interface])
         with pytest.raises(ValueError, match=expected_error_message):
-            converter.run_conversion(nwbfile=nwbfile, nwbfile_path=nwbfile_path, overwrite=False)
+            converter.run_conversion(
+                nwbfile=nwbfile,
+                nwbfile_path=nwbfile_path,
+                overwrite=True,
+                append_on_disk_nwbfile=True,
+            )
 
 
 class TestAssertions(TestCase):

@@ -5,14 +5,11 @@ from typing import Literal, Optional
 import numpy as np
 from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
-from pynwb.base import TimeSeries
 
 from .spikeglx_utils import get_session_start_time
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....tools.spikeinterface.spikeinterface import _recording_traces_to_hdmf_iterator
 from ....utils import (
-    calculate_regular_series_rate,
     get_json_schema_from_method_signature,
 )
 
@@ -236,6 +233,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
                 always_write_timestamps=always_write_timestamps,
+                metadata=metadata,
             )
 
         if self.has_digital_channels:
@@ -248,6 +246,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         iterator_type: Optional[str],
         iterator_opts: Optional[dict],
         always_write_timestamps: bool,
+        metadata: Optional[dict] = None,
     ):
         """
         Add analog channels from the NIDQ board to the NWB file.
@@ -264,44 +263,32 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Additional options for the iterator
         always_write_timestamps : bool
             If True, always writes timestamps instead of using sampling rate
+        metadata : Optional[dict], default: None
+            Metadata dictionary with TimeSeries information
         """
+        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
+
         analog_recorder = recording.select_channels(channel_ids=self.analog_channel_ids)
         channel_names = analog_recorder.get_property(key="channel_names")
-        segment_index = 0
-        analog_data_iterator = _recording_traces_to_hdmf_iterator(
+
+        # Create default metadata if not provided
+        if metadata is None:
+            metadata = {}
+
+        # Prepare TimeSeries metadata
+        time_series_name = "TimeSeriesNIDQ"
+        description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
+        metadata["TimeSeries"][time_series_name] = dict(description=description)
+        # Use add_recording_as_time_series_to_nwbfile to add the time series
+        add_recording_as_time_series_to_nwbfile(
             recording=analog_recorder,
-            segment_index=segment_index,
+            nwbfile=nwbfile,
+            metadata=metadata,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
+            time_series_name=time_series_name,
         )
-
-        name = "TimeSeriesNIDQ"
-        description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
-        time_series_kwargs = dict(name=name, data=analog_data_iterator, unit="a.u.", description=description)
-
-        if always_write_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
-            shifted_timestamps = timestamps
-            time_series_kwargs.update(timestamps=shifted_timestamps)
-        else:
-            recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-            if recording_has_timestamps:
-                timestamps = recording.get_times(segment_index=segment_index)
-                rate = calculate_regular_series_rate(series=timestamps)
-                recording_t_start = timestamps[0]
-            else:
-                rate = recording.get_sampling_frequency()
-                recording_t_start = recording._recording_segments[segment_index].t_start or 0
-
-            if rate:
-                starting_time = float(recording_t_start)
-                time_series_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
-            else:
-                shifted_timestamps = timestamps
-                time_series_kwargs.update(timestamps=shifted_timestamps)
-
-        time_series = TimeSeries(**time_series_kwargs)
-        nwbfile.add_acquisition(time_series)
 
     def _add_digital_channels(self, nwbfile: NWBFile):
         """

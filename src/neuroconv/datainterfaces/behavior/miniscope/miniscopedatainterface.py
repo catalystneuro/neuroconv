@@ -25,7 +25,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Initialize reading recordings from the Miniscope behavioral camera.
 
@@ -34,6 +34,8 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         folder_path : DirectoryPath
             The path that points to the main Miniscope folder.
             The movie files are expected to be in sub folders within the main folder.
+        verbose : bool, optional
+            If True, enables verbose mode for detailed logging, by default False.
         """
         from ndx_miniscope.utils import (
             get_recording_start_times,
@@ -44,7 +46,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
 
         natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
 
-        super().__init__(folder_path=folder_path)
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
         folder_path = Path(self.source_data["folder_path"])
         self._behav_avi_file_paths = natsort.natsorted(list(folder_path.glob("*/BehavCam*/*.avi")))

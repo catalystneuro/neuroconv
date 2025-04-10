@@ -21,7 +21,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
     def __init__(self, verbose: bool = False, **source_data):
 
         super().__init__(**source_data)
-        self.sorting_extractor = self.get_extractor()(**source_data)
+        self.sorting_extractor = self._extractor_instance
         self.verbose = verbose
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
