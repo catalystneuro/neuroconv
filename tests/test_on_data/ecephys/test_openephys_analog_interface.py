@@ -33,7 +33,7 @@ def test_openephys_analog_interface(tmp_path):
 
         # Check properties of the TimeSeries
         assert time_series.name == "TimeSeriesOpenEphysAnalog"
-        assert "TimeSeriesOpenEphysAnalog" in time_series.description
+        assert "ADC data acquired with OpenEphys system." in time_series.description
 
         # Check data dimensions
         assert len(time_series.data.shape) == 2  # [time, channels]
