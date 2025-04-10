@@ -28,12 +28,12 @@ def test_openephys_analog_interface(tmp_path):
         nwbfile = io.read()
 
         # Check that the TimeSeries was added to acquisition
-        assert "TimeSeriesAnalog" in nwbfile.acquisition
-        time_series = nwbfile.acquisition["TimeSeriesAnalog"]
+        assert "TimeSeriesOpenEphysAnalog" in nwbfile.acquisition
+        time_series = nwbfile.acquisition["TimeSeriesOpenEphysAnalog"]
 
         # Check properties of the TimeSeries
-        assert time_series.name == "TimeSeriesAnalog"
-        assert "Analog data from OpenEphys" in time_series.description
+        assert time_series.name == "TimeSeriesOpenEphysAnalog"
+        assert "TimeSeriesOpenEphysAnalog" in time_series.description
 
         # Check data dimensions
         assert len(time_series.data.shape) == 2  # [time, channels]

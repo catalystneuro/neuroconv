@@ -273,7 +273,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         # Create default metadata if not provided
         if metadata is None:
-            metadata = {}
+            metadata = self.get_metadata()
 
         # Prepare TimeSeries metadata
         time_series_name = "TimeSeriesNIDQ"

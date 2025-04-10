@@ -2,12 +2,10 @@ from typing import Optional
 
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
-from pynwb.base import TimeSeries
 
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
 from ....basedatainterface import BaseDataInterface
 from ....utils import (
-    calculate_regular_series_rate,
     get_json_schema_from_method_signature,
 )
 
@@ -33,7 +31,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         stream_name: Optional[str] = None,
         block_index: Optional[int] = None,
         verbose: bool = False,
-        time_series_key: str = "TimeSeriesAnalog",
+        time_series_name: str = "TimeSeriesOpenEphysAnalog",
     ):
         """
         Read analog channel data from the OpenEphysBinary recording.
@@ -49,13 +47,15 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
             Controls verbosity.
-        time_series_key : str, default: "TimeSeriesAnalog"
-            The name of the TimeSeries object in the NWBFile.
+        time_series_name : str, default: "TimeSeriesOpenEphysAnalog"
+            The name of the TimeSeries object in the NWBFile and also
+            the key of the associated metadata
         """
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         self.folder_path = folder_path
         self._xml_root = _read_settings_xml(folder_path)
+        self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]
         if len(available_streams) > 1 and stream_name is None:
@@ -95,7 +95,6 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             stream_name=stream_name,
             block_index=block_index,
             verbose=verbose,
-            time_series_key=time_series_key,
         )
 
     def get_metadata(self) -> dict:
@@ -145,18 +144,10 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        from ....tools.spikeinterface.spikeinterface import (
-            _recording_traces_to_hdmf_iterator,
-        )
+        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
         if metadata is None:
             metadata = self.get_metadata()
-
-        # Add devices
-        device_metadata = metadata.get("Devices", [])
-        for device in device_metadata:
-            if device["name"] not in nwbfile.devices:
-                nwbfile.create_device(**device)
 
         if stub_test:
             end_time = self.recording_extractor.get_end_time()
@@ -165,39 +156,17 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         else:
             recording = self.recording_extractor
 
-        channel_names = recording.get_property(key="channel_names")
-        segment_index = 0
-        analog_data_iterator = _recording_traces_to_hdmf_iterator(
+        description = f"ADC data acquired with OpenEphys. Channels are {self.get_channel_names()} in that order."
+        metadata["TimeSeries"][self.time_series_name] = dict(description=description)
+
+        add_recording_as_time_series_to_nwbfile(
             recording=recording,
-            segment_index=segment_index,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            time_series_key=self.time_series_key,
+            device_name=self.stream_name,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
+            time_series_name=self.time_series_name,
         )
-
-        name = self.source_data["time_series_key"]
-        description = f"Analog data from OpenEphys. Channels are {channel_names} in that order."
-        time_series_kwargs = dict(name=name, data=analog_data_iterator, unit="a.u.", description=description)
-
-        if always_write_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
-            shifted_timestamps = timestamps
-            time_series_kwargs.update(timestamps=shifted_timestamps)
-        else:
-            recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-            if recording_has_timestamps:
-                timestamps = recording.get_times(segment_index=segment_index)
-                rate = calculate_regular_series_rate(series=timestamps)
-                recording_t_start = timestamps[0]
-            else:
-                rate = recording.get_sampling_frequency()
-                recording_t_start = recording._recording_segments[segment_index].t_start or 0
-
-            if rate:
-                starting_time = float(recording_t_start)
-                time_series_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
-            else:
-                shifted_timestamps = timestamps
-                time_series_kwargs.update(timestamps=shifted_timestamps)
-
-        time_series = TimeSeries(**time_series_kwargs)
-        nwbfile.add_acquisition(time_series)
