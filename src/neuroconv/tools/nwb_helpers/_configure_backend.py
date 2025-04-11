@@ -66,11 +66,11 @@ def configure_backend(
                 continue
             elif isinstance(neurodata_object, ndx_events.Events):
                 neurodata_object.set_data_io(
-                dataset_name=dataset_name,
-                data_io_class=data_io_class,
-                data_io_kwargs=data_io_kwargs,
-                data_chunk_iterator_class=DataChunkIterator,
-            )
+                    dataset_name=dataset_name,
+                    data_io_class=data_io_class,
+                    data_io_kwargs=data_io_kwargs,
+                    data_chunk_iterator_class=DataChunkIterator,
+                )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue
