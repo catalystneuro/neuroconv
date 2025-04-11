@@ -334,7 +334,7 @@ def make_or_load_nwbfile(
 
 
 def _resolve_backend(
-    backend: Optional[Literal["hdf5"]] = None,
+    backend: Optional[Literal["hdf5", "zarr"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
 ) -> Literal["hdf5"]:
     """
@@ -342,12 +342,12 @@ def _resolve_backend(
 
     Parameters
     ----------
-    backend: {"hdf5"}, optional
+    backend: {"hdf5", "zarr"}, optional
     backend_configuration: BackendConfiguration, optional
 
     Returns
     -------
-    backend: {"hdf5"}
+    backend: {"hdf5", "zarr"}
 
     """
 
@@ -371,8 +371,9 @@ def _resolve_backend(
 
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
-    output_filepath: str,
-    backend: Optional[Literal["hdf5"]] = None,
+    output_filepath: Optional[FilePath] = None,
+    nwbfile_path: Optional[FilePath] = None,
+    backend: Optional[Literal["hdf5", "zarr"]] = None,
     backend_configuration: Optional[BackendConfiguration] = None,
     export: bool = False,
 ) -> None:
@@ -386,8 +387,9 @@ def configure_and_write_nwbfile(
     Parameters
     ----------
     nwbfile: NWBFile
-    output_filepath: str
-    backend: {"hdf5"}, optional
+    output_filepath: Optional[FilePath], optional. Deprecated
+    nwbfile_path: Optional[FilePath], optional
+    backend: {"hdf5", "zarr"}, optional
         The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
         specified backend. If no ``backend`` is specified, the ``backend_configuration`` is used.
     backend_configuration: BackendConfiguration, optional
@@ -397,6 +399,22 @@ def configure_and_write_nwbfile(
         Whether to export the NWB file instead of writing.
 
     """
+
+    if nwbfile_path is not None and output_filepath is not None:
+        raise ValueError(
+            "Both 'output_filepath' and 'nwbfile_path' were specified! " "Please specify only `nwbfile_path`."
+        )
+
+    if output_filepath is not None:
+        warnings.warn(
+            "The 'output_filepath' parameter is deprecated in or after September 2025. " "Use 'nwbfile_path' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        nwbfile_path = output_filepath
+
+    if nwbfile_path is None:
+        raise ValueError("The 'nwbfile_path' parameter must be specified.")
 
     backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
 
