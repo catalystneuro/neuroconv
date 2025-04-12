@@ -37,7 +37,7 @@ def write_nwbfile(nwbfile_path: Path, backend: str = "hdf5"):
 
 def main():
     """Temp"""
-    backend = "zarr"
+    backend = "hdf5"
     if backend == "hdf5":
         nwbfile_path = Path("temp.nwb")
         repacked_nwbfile_path = Path("repacked_temp.nwb")
@@ -58,10 +58,11 @@ def main():
         export_nwbfile_path=str(repacked_nwbfile_path),
         backend=backend,
         backend_configuration_changes=backend_configuration_changes,
-        use_default_backend_configuration=True,
+        use_default_backend_configuration=False,
     )
 
-    with NWBZarrIO(str(repacked_nwbfile_path), mode="r") as io:
+    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    with IO(str(repacked_nwbfile_path), mode="r") as io:
         nwbfile = io.read()
         print(f'{nwbfile.acquisition["test_timeseries"].data.chunks = }')
 
