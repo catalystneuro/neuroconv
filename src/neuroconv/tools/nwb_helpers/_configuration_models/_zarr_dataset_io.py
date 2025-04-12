@@ -6,6 +6,7 @@ import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
+from hdmf.build.builders import BaseBuilder
 from pydantic import Field, InstanceOf, model_validator
 from typing_extensions import Self
 
@@ -140,10 +141,13 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
+        builder: Union[BaseBuilder, None] = None,
         use_default_dataset_io_configuration: bool = True,
     ) -> Self:
         if use_default_dataset_io_configuration:
-            return super().from_neurodata_object(neurodata_object=neurodata_object, dataset_name=dataset_name)
+            return super().from_neurodata_object(
+                neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
+            )
 
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         full_shape = getattr(neurodata_object, dataset_name).shape

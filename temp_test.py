@@ -12,6 +12,7 @@ from neuroconv.tools.nwb_helpers import repack_nwbfile
 
 
 def write_nwbfile(nwbfile_path: Path, backend: str = "hdf5"):
+    """Temp"""
     if nwbfile_path.exists():
         os.remove(nwbfile_path)
     nwbfile = mock_NWBFile()
@@ -35,23 +36,29 @@ def write_nwbfile(nwbfile_path: Path, backend: str = "hdf5"):
 
 
 def main():
-    nwbfile_path = Path("temp.nwb.zarr")
-    repacked_nwbfile_path = Path("repacked_temp.nwb.zarr")
+    """Temp"""
+    backend = "zarr"
+    if backend == "hdf5":
+        nwbfile_path = Path("temp.nwb")
+        repacked_nwbfile_path = Path("repacked_temp.nwb")
+    else:
+        nwbfile_path = Path("temp.nwb.zarr")
+        repacked_nwbfile_path = Path("repacked_temp.nwb.zarr")
     if repacked_nwbfile_path.exists():
         if repacked_nwbfile_path.is_dir():
             shutil.rmtree(repacked_nwbfile_path)
         else:
             os.remove(repacked_nwbfile_path)
     if not nwbfile_path.exists():
-        write_nwbfile(nwbfile_path, backend="zarr")
+        write_nwbfile(nwbfile_path, backend=backend)
 
     backend_configuration_changes = {"acquisition/test_timeseries/data": dict(chunk_shape=(2,))}
     repack_nwbfile(
         nwbfile_path=str(nwbfile_path),
         export_nwbfile_path=str(repacked_nwbfile_path),
-        backend="zarr",
+        backend=backend,
         backend_configuration_changes=backend_configuration_changes,
-        use_default_backend_configuration=False,
+        use_default_backend_configuration=True,
     )
 
     with NWBZarrIO(str(repacked_nwbfile_path), mode="r") as io:

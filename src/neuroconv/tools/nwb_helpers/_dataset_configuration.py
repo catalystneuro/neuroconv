@@ -103,7 +103,7 @@ def get_default_dataset_io_configurations(
 
     known_dataset_fields = ("data", "timestamps")
     manager = get_manager()
-    builder = manager.build(nwbfile)
+    builder = manager.build(nwbfile, export=True)
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
