@@ -471,12 +471,16 @@ def repack_nwbfile(
     """
     backend_configuration_changes = backend_configuration_changes or dict()
     export_backend = export_backend or backend
+    if not use_default_backend_configuration and export_backend is not None and export_backend != backend:
+        raise ValueError(
+            "When 'export_backend' is different from 'backend', the default configuration must be used (use_default_backend_configuration=True)."
+        )
 
     IO = BACKEND_NWB_IO[backend]
     with IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         if use_default_backend_configuration:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
         else:
             backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
         dataset_configurations = backend_configuration.dataset_configurations

@@ -223,3 +223,125 @@ def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, zarr_nwbfile_path, backe
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == filters
+
+
+def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
+    """Test repackaging an NWB file from HDF5 to Zarr."""
+    export_nwbfile_path = tmp_path / "repacked_hdf5_to_zarr.nwb.zarr"
+    default_compressor = GZip(level=1)
+
+    repack_nwbfile(
+        nwbfile_path=Path(hdf5_nwbfile_path),
+        export_nwbfile_path=export_nwbfile_path,
+        backend="hdf5",
+        export_backend="zarr",
+        use_default_backend_configuration=True,
+    )
+
+    assert export_nwbfile_path.exists()
+
+    # Read original HDF5
+    with NWBHDF5IO(hdf5_nwbfile_path, mode="r") as io_hdf5:
+        nwbfile_hdf5 = io_hdf5.read()
+        # Read repacked Zarr
+        with NWBZarrIO(str(export_nwbfile_path), mode="r") as io_zarr:
+            nwbfile_zarr = io_zarr.read()
+
+            # Compare key data
+            np.testing.assert_array_equal(
+                nwbfile_hdf5.acquisition["RawTimeSeries"].data[:], nwbfile_zarr.acquisition["RawTimeSeries"].data[:]
+            )
+            np.testing.assert_array_equal(
+                nwbfile_hdf5.intervals["trials"]["start_time"][:], nwbfile_zarr.intervals["trials"]["start_time"][:]
+            )
+            np.testing.assert_array_equal(
+                nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+                nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+            )
+            # Compare specifically compressed data
+            np.testing.assert_array_equal(
+                nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
+                nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
+            )
+            np.testing.assert_array_equal(
+                nwbfile_hdf5.intervals["trials"]["compressed_start_time"][:],
+                nwbfile_zarr.intervals["trials"]["compressed_start_time"][:],
+            )
+
+            # Check that compression is applied properly in zarr format
+            assert nwbfile_zarr.acquisition["RawTimeSeries"].data.compressor == default_compressor
+            assert nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
+            assert nwbfile_zarr.intervals["trials"].start_time.data.compressor == default_compressor
+            assert nwbfile_zarr.intervals["trials"].compressed_start_time.data.compressor == default_compressor
+            assert nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
+
+
+def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
+    """Test repackaging an NWB file from Zarr to HDF5."""
+    export_nwbfile_path = tmp_path / "repacked_zarr_to_hdf5.nwb.h5"
+
+    repack_nwbfile(
+        nwbfile_path=Path(zarr_nwbfile_path),
+        export_nwbfile_path=export_nwbfile_path,
+        backend="zarr",
+        export_backend="hdf5",
+        use_default_backend_configuration=True,
+    )
+
+    assert export_nwbfile_path.exists()
+
+    # Read original Zarr
+    with NWBZarrIO(zarr_nwbfile_path, mode="r") as io_zarr:
+        nwbfile_zarr = io_zarr.read()
+        # Read repacked HDF5
+        with NWBHDF5IO(str(export_nwbfile_path), mode="r") as io_hdf5:
+            nwbfile_hdf5 = io_hdf5.read()
+
+            # Compare key data
+            np.testing.assert_array_equal(
+                nwbfile_zarr.acquisition["RawTimeSeries"].data[:], nwbfile_hdf5.acquisition["RawTimeSeries"].data[:]
+            )
+            np.testing.assert_array_equal(
+                nwbfile_zarr.intervals["trials"]["start_time"][:], nwbfile_hdf5.intervals["trials"]["start_time"][:]
+            )
+            np.testing.assert_array_equal(
+                nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+                nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+            )
+            # Compare specifically compressed data
+            np.testing.assert_array_equal(
+                nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
+                nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
+            )
+            np.testing.assert_array_equal(
+                nwbfile_zarr.intervals["trials"]["compressed_start_time"][:],
+                nwbfile_hdf5.intervals["trials"]["compressed_start_time"][:],
+            )
+
+            # Check that compression is applied properly in hdf5 format
+            assert nwbfile_hdf5.acquisition["RawTimeSeries"].data.compression_opts == 4
+            assert nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
+            assert nwbfile_hdf5.intervals["trials"].start_time.data.compression_opts == 4
+            assert nwbfile_hdf5.intervals["trials"].compressed_start_time.data.compression_opts == 4
+            assert nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+
+
+def test_repack_nwbfile_invalid_configuration_error(hdf5_nwbfile_path, tmp_path):
+    """Test that an error is raised when trying to change backend without using default config."""
+    # Create a path for the output file with a different backend (HDF5 -> Zarr)
+    export_path = tmp_path / "should_fail.nwb.zarr"
+
+    # Attempt to repack with different export backend but not using default configuration
+    with pytest.raises(
+        ValueError, match="When 'export_backend' is different from 'backend', the default configuration must be used"
+    ):
+        repack_nwbfile(
+            nwbfile_path=Path(hdf5_nwbfile_path),
+            export_nwbfile_path=export_path,
+            backend="hdf5",
+            export_backend="zarr",
+            use_default_backend_configuration=False,
+        )
+
+    # Verify the export file was not created
+    assert not export_path.exists()
