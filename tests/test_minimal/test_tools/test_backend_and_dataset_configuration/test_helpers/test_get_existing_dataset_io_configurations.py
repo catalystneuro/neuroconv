@@ -628,3 +628,78 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
             assert timestamps_dataset_configuration.compression_options is None
             assert timestamps_dataset_configuration.filter_methods == filters
             assert timestamps_dataset_configuration.filter_options is None
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Literal["hdf5", "zarr"]):
+    data = np.array([[1, 2, 3], [4, 5, 6]])
+
+    nwbfile = mock_NWBFile()
+    if backend == "zarr":  # ZarrDataIO compresses by default, so we disable it to test no-compression
+        data = ZarrDataIO(data=data, compressor=False)
+    time_series = mock_TimeSeries(name="TestTimeSeries", data=data)
+    nwbfile.add_acquisition(time_series)
+
+    data = np.array([[1, 2, 3], [4, 5, 6]])
+    if backend == "hdf5":
+        data = H5DataIO(data=data, compression="gzip", compression_opts=2, chunks=(1, 3))
+    elif backend == "zarr":
+        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
+        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
+        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
+        filters = [filter1, filter2]
+        data = ZarrDataIO(data=data, chunks=(1, 3), compressor=compressor, filters=filters)
+    compressed_time_series = mock_TimeSeries(
+        name="CompressedTimeSeries",
+        data=data,
+    )
+    nwbfile.add_acquisition(compressed_time_series)
+
+    nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_timeseries.nwb"
+    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    with IO(str(nwbfile_path), "w") as io:
+        io.write(nwbfile)
+    with IO(str(nwbfile_path), "r") as io:
+        nwbfile = io.read()
+
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
+
+        assert len(dataset_configurations) == 2
+
+        dataset_configuration = dataset_configurations[0]
+        assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+        assert dataset_configuration.object_id == time_series.object_id
+        assert dataset_configuration.location_in_file == "acquisition/TestTimeSeries/data"
+        assert dataset_configuration.full_shape == data.shape
+        assert dataset_configuration.dtype == data.dtype
+        assert dataset_configuration.buffer_shape == data.shape
+        assert dataset_configuration.compression_method is None
+
+        if backend == "hdf5":
+            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.compression_options == dict(compression_opts=None)
+
+        elif backend == "zarr":
+            assert dataset_configuration.chunk_shape == (2, 3)
+            assert dataset_configuration.compression_options is None
+            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filter_options is None
+
+        dataset_configuration = dataset_configurations[1]
+        assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+        assert dataset_configuration.object_id == compressed_time_series.object_id
+        assert dataset_configuration.location_in_file == "acquisition/CompressedTimeSeries/data"
+        assert dataset_configuration.full_shape == data.shape
+        assert dataset_configuration.dtype == data.dtype
+        assert dataset_configuration.chunk_shape == (1, 3)
+        assert dataset_configuration.buffer_shape == data.shape
+
+        if backend == "hdf5":
+            assert dataset_configuration.compression_method == "gzip"
+            assert dataset_configuration.compression_options["compression_opts"] == 2
+
+        elif backend == "zarr":
+            assert dataset_configuration.compression_method == compressor
+            assert dataset_configuration.compression_options is None
+            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filter_options is None
