@@ -345,3 +345,27 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape=buffer_shape,
             compression_method=compression_method,
         )
+
+    @staticmethod
+    def get_kwargs_from_neurodata_object(
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> dict:
+        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
+        full_shape = getattr(neurodata_object, dataset_name).shape
+        dtype = getattr(neurodata_object, dataset_name).dtype
+        chunk_shape = getattr(neurodata_object, dataset_name).chunks
+        buffer_chunk_shape = chunk_shape or full_shape
+        buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+            buffer_gb=0.5, chunk_shape=buffer_chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+        )
+        return dict(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            location_in_file=location_in_file,
+            dataset_name=dataset_name,
+            full_shape=full_shape,
+            dtype=dtype,
+            chunk_shape=chunk_shape,
+            buffer_shape=buffer_shape,
+        )
