@@ -129,7 +129,6 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
-            # metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
             metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
