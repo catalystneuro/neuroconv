@@ -94,6 +94,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         self,
         file_path: FilePath,
         sampling_frequency: Optional[float] = None,
+        nsx_to_load: Optional[int | list | str] = None,
         verbose: bool = False,
     ):
         """
@@ -111,6 +112,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,
+            nsx_to_load=nsx_to_load,
             verbose=verbose,
         )
 
