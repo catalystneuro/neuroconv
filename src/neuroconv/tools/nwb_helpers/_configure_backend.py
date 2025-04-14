@@ -4,7 +4,7 @@ import importlib
 from typing import Union
 
 from hdmf.common import Data
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging import version
 from pynwb import NWBFile, TimeSeries
 
@@ -45,11 +45,18 @@ def configure_backend(
 
         neurodata_object = nwbfile.objects[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
+        data_chunk_iterator_class = (
+            None
+            if isinstance(neurodata_object.fields.get(dataset_name), AbstractDataChunkIterator)
+            else DataChunkIterator
+        )
 
         # Table columns
         if isinstance(neurodata_object, Data):
             neurodata_object.set_data_io(
-                data_io_class=data_io_class, data_io_kwargs=data_io_kwargs, data_chunk_iterator_class=DataChunkIterator
+                data_io_class=data_io_class,
+                data_io_kwargs=data_io_kwargs,
+                data_chunk_iterator_class=data_chunk_iterator_class,
             )
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
@@ -57,7 +64,7 @@ def configure_backend(
                 dataset_name=dataset_name,
                 data_io_class=data_io_class,
                 data_io_kwargs=data_io_kwargs,
-                data_chunk_iterator_class=DataChunkIterator,
+                data_chunk_iterator_class=data_chunk_iterator_class,
             )
         # Special ndx-events v0.2.0 types
         elif is_ndx_events_installed and (get_package_version("ndx-events") <= version.parse("0.2.1")):
@@ -69,7 +76,7 @@ def configure_backend(
                     dataset_name=dataset_name,
                     data_io_class=data_io_class,
                     data_io_kwargs=data_io_kwargs,
-                    data_chunk_iterator_class=DataChunkIterator,
+                    data_chunk_iterator_class=data_chunk_iterator_class,
                 )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
