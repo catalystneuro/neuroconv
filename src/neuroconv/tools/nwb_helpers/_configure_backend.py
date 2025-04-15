@@ -1,9 +1,9 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
 import importlib
+import math
 from typing import Union
 
-import numpy as np
 from hdmf.common import Data
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging import version
@@ -51,7 +51,7 @@ def configure_backend(
             data_chunk_iterator_kwargs = dict()
         else:
             data_chunk_iterator_class = DataChunkIterator
-            data_chunk_iterator_kwargs = dict(buffer_size=np.prod(dataset_configuration.buffer_shape))
+            data_chunk_iterator_kwargs = dict(buffer_size=math.prod(dataset_configuration.buffer_shape))
 
         # Table columns
         if isinstance(neurodata_object, Data):
