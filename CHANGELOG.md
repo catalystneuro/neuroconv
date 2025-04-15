@@ -8,6 +8,7 @@
 
 ## Features
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#1296]((https://github.com/catalystneuro/neuroconv/pull/1296))
+* Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003)
 
 ## Improvements
 * `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
