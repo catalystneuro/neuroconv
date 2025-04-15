@@ -102,7 +102,7 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_external_image_series(tmp_path, backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
-    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0)
+    image_series = ImageSeries(name="TestImageSeries", format="external", external_file=[""], rate=1.0)
     nwbfile.add_acquisition(image_series)
 
     nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_external_image_series.nwb"
