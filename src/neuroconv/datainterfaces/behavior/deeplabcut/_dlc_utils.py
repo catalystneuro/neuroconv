@@ -11,6 +11,7 @@ from pynwb import NWBFile
 from ruamel.yaml import YAML
 
 from ....tools import get_module
+from ....utils.checks import calculate_regular_series_rate
 
 
 def _read_config(config_file_path: FilePath) -> dict:
@@ -311,16 +312,26 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
-        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
-        pes = PoseEstimationSeries(
+        pose_estimation_series_kwargs = dict(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
-            timestamps=timestamps,
             confidence=data[:, 2],
             confidence_definition="Softmax output of the deep neural network.",
+        )
+
+        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
+        rate = calculate_regular_series_rate(timestamps)
+        if rate is None:
+            pose_estimation_series_kwargs["timestamps"] = timestamps
+        else:
+            pose_estimation_series_kwargs["rate"] = rate
+            pose_estimation_series_kwargs["starting_time"] = timestamps[0]
+
+        pes = PoseEstimationSeries(
+            **pose_estimation_series_kwargs,
         )
         pose_estimation_series.append(pes)
 

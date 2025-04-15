@@ -8,6 +8,7 @@ import psutil
 from hdmf.data_utils import DataChunkIterator
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
+from pynwb.device import Device
 from pynwb.image import ImageSeries
 from tqdm import tqdm
 
@@ -34,7 +35,7 @@ class InternalVideoInterface(BaseDataInterface):
         file_path: FilePath,
         verbose: bool = False,
         *,
-        video_name: str = "InternalVideo",
+        video_name: Optional[str] = None,
     ):
         """
         Initialize the interface.
@@ -50,14 +51,14 @@ class InternalVideoInterface(BaseDataInterface):
             If True, display verbose output. Defaults to False.
         video_name : str, optional
             The name of this video as it will appear in the ImageSeries.
-            Defaults to "InternalVideo".
+            Defaults to f"Video {file_path.stem}" if not provided.
 
             This key is essential when multiple video streams are present in a single experiment.
             The associated metadata should be a nested dictionary structure, where each key
             corresponds to a video name, and each value is a dictionary containing metadata for that video:
 
             ```
-            metadata["Behavior"]["InternalVideo"] = {
+            metadata["Behavior"]["InternalVideos"] = {
                 "InternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
                 "InternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
                 ...
@@ -65,13 +66,15 @@ class InternalVideoInterface(BaseDataInterface):
             ```
 
             Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
-            metadata["Behavior"]["InternalVideo"] is specific to the InternalVideoInterface.
+            metadata["Behavior"]["InternalVideos"] is specific to the InternalVideoInterface.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
+        file_path = Path(file_path)
         self._timestamps = None
         self._starting_time = None
-        self.video_name = video_name
+        self.video_name = video_name if video_name else f"Video {Path(file_path).stem}"
+        self._default_device_name = f"{self.video_name} Camera Device"
         super().__init__(file_path=file_path)
 
     def get_metadata_schema(self):
@@ -83,9 +86,11 @@ class InternalVideoInterface(BaseDataInterface):
             image_series_metadata_schema["properties"].pop(key)
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
+        device_metadata_schema = get_schema_from_hdmf_class(Device)
+        image_series_metadata_schema["properties"]["device"] = device_metadata_schema
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["required"].append("InternalVideo")
-        metadata_schema["properties"]["Behavior"]["properties"]["InternalVideo"] = {
+        metadata_schema["properties"]["Behavior"]["required"].append("InternalVideos")
+        metadata_schema["properties"]["Behavior"]["properties"]["InternalVideos"] = {
             "type": "object",
             "properties": {self.video_name: image_series_metadata_schema},
             "required": [self.video_name],
@@ -97,7 +102,13 @@ class InternalVideoInterface(BaseDataInterface):
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
-                "InternalVideo": {self.video_name: dict(description="Video recorded by camera.", unit="Frames")}
+                "InternalVideos": {
+                    self.video_name: dict(
+                        description="Video recorded by camera.",
+                        unit="Frames",
+                        device=dict(name=self._default_device_name, description="Video camera used for recording."),
+                    )
+                }
             }
         }
         return dict_deep_update(metadata, video_metadata)
@@ -124,30 +135,6 @@ class InternalVideoInterface(BaseDataInterface):
             # fps = video.get_video_fps()  # There is some debate about whether the OpenCV timestamp
             # method is simply returning range(length) / fps 100% of the time for any given format
             return video.get_video_timestamps(max_frames=max_frames)
-
-    def get_timing_type(self) -> Literal["starting_time and rate", "timestamps"]:
-        """
-        Determine the type of timing used by this interface.
-
-        Returns
-        -------
-        Literal["starting_time and rate", "timestamps"]
-            The type of timing that has been set explicitly according to alignment.
-
-            If only timestamps have been set, then only those will be used.
-            If only starting times have been set, then only those will be used.
-
-            If timestamps were set, and then starting times were set, the timestamps will take precedence
-            as they will then be shifted by the corresponding starting times.
-
-            If neither has been set, and there is only one video in the file_paths,
-            it is assumed the video is regularly sampled and pre-aligned with
-            a starting_time of 0.0 relative to the session start time.
-        """
-        if self._timestamps is not None:
-            return "timestamps"
-        else:
-            return "starting_time and rate"  # default behavior assumes data is pre-aligned; starting_times = [0.0]
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         """
@@ -201,11 +188,10 @@ class InternalVideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        timing_type = self.get_timing_type()
-        if timing_type == "timestamps":
+        if self._timestamps is not None:
             aligned_timestamps = self.get_timestamps(stub_test=stub_test) + aligned_starting_time
             self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-        elif timing_type == "starting_time and rate":
+        else:
             self._starting_time = aligned_starting_time
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
@@ -219,6 +205,7 @@ class InternalVideoInterface(BaseDataInterface):
         buffer_data: bool = True,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: Optional[str] = None,
+        always_write_timestamps: bool = False,
     ):
         """
         Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
@@ -230,27 +217,31 @@ class InternalVideoInterface(BaseDataInterface):
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
-            Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths.
-            If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same :py:class:`~pynwb.image.ImageSeries` container.
+            Dictionary of metadata information such as name and description of the video, as well as
+            device information for the camera that captured the video. The keys must correspond to
+            the video_name specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
                     Behavior=dict(
-                        InternalVideo=dict(
+                        InternalVideos=dict(
                             InternalVideo=dict(
                                 description="Description of the video..",
-                                unit="Frames",
+                                device=dict(name="Camera name", description="Camera description", ...),
                                 ...,
-                            ),
+                            )
                         )
                     )
                 )
 
-            and may contain most keywords normally accepted by an ImageSeries
+            The InternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            Each dictionary in the list corresponds to a single VideoInterface and ImageSeries.
+
+            The device section may contain most keywords normally accepted by a Device
+            (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
+
+            The device will be created and linked to the ImageSeries, establishing a connection between
+            the video data and the camera that captured it.
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         buffer_data : bool, default: True
@@ -266,6 +257,11 @@ class InternalVideoInterface(BaseDataInterface):
             If parent_container is 'processing/behavior', and the module does not exist,
             it will be created with this description. The default description is the same as used by the
             conversion_tools.get_module function.
+        always_write_timestamps: bool, default: False
+            Set to True to always write timestamps.
+            By default (False), the function checks if timestamps are available, and if not, uses starting_time and rate.
+            If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
+            to be retrieved from the video file.
         """
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
@@ -276,14 +272,23 @@ class InternalVideoInterface(BaseDataInterface):
         file_path = Path(self.source_data["file_path"])
 
         # Be sure to copy metadata at this step to avoid mutating in-place
-        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideo", None)
-        if videos_metadata is None:
-            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideo"])
+        videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideos", None)
+        # If no metadata is provided use the default metadata
+        if videos_metadata is None or self.video_name not in videos_metadata:
+            videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideos"])
         image_series_kwargs = videos_metadata[self.video_name]
         image_series_kwargs["name"] = self.video_name
+        device_kwargs = image_series_kwargs.pop("device", None)
+
+        if device_kwargs is not None:
+            if device_kwargs["name"] in nwbfile.devices:
+                device = nwbfile.devices[device_kwargs["name"]]
+            else:
+                device = Device(**device_kwargs)
+                nwbfile.add_device(device)
+            image_series_kwargs["device"] = device
 
         stub_frames = 10
-        timing_type = self.get_timing_type()
 
         uncompressed_estimate = file_path.stat().st_size * 70
         available_memory = psutil.virtual_memory().available
@@ -339,13 +344,24 @@ class InternalVideoInterface(BaseDataInterface):
 
         image_series_kwargs.update(data=iterable)
 
-        if timing_type == "starting_time and rate":
+        from ....utils import calculate_regular_series_rate
+
+        if always_write_timestamps:
+            timestamps = self.get_timestamps()
+            image_series_kwargs.update(timestamps=timestamps)
+        elif self._timestamps is not None:
+            # Check if timestamps are regular
+            rate = calculate_regular_series_rate(series=self._timestamps)
+            if rate is not None:
+                starting_time = self._timestamps[0]
+                image_series_kwargs.update(starting_time=starting_time, rate=rate)
+            else:
+                image_series_kwargs.update(timestamps=self._timestamps)
+        else:
             starting_time = self._starting_time if self._starting_time is not None else 0.0
             with VideoCaptureContext(file_path=str(file_path)) as video:
                 rate = video.get_video_fps()
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
-        elif timing_type == "timestamps":
-            image_series_kwargs.update(timestamps=self._timestamps)
 
         # Attach image series
         image_series = ImageSeries(**image_series_kwargs)

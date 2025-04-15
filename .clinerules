@@ -3,7 +3,6 @@
 * When working with tests, use pytest if possible instead of unittest or hdmf.testing.TestCase
 * If a new feature requires a new dependency, make sure to add it in the pyproject.toml
 * To enable dependencies that are specific to certain Interface or Converter classes, import these additional dependencies within the class using `tools.get_package` instead of importing them at the top of the file.
-* Always make a contribution to the CHANGELOG file summarizing any changes
 * Use typehints and numpy-style docstrings
 * always apply Black formatting
 * avoid making any modifications that are not strictly necessary to the task you've been requested to do (including docstrings)

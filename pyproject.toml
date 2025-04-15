@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.2"
+version = "0.7.3"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -53,6 +53,7 @@ dependencies = [
     "docstring-parser",
     "packaging",  # Issue 903
     "referencing",
+    "numcodecs<0.16.0", # For supporting zarr < 3
 ]
 
 
@@ -72,7 +73,7 @@ test = [
     "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
     "ndx-miniscope",
-    "spikeinterface[qualitymetrics]>=0.102.0",
+    "spikeinterface[qualitymetrics]>=0.102.2",
     "zarr",
     "pytest-xdist"
 ]
