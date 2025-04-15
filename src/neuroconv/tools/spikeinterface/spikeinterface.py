@@ -709,6 +709,9 @@ def add_electrodes_to_nwbfile(
     exclude: tuple
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
+    null_values_for_properties : dict of str to Any
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
     assert isinstance(
         nwbfile, pynwb.NWBFile
@@ -1723,6 +1726,9 @@ def add_sorting_to_nwbfile(
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
+    null_values_for_properties : dict of str to Any
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
 
     assert write_as in [
