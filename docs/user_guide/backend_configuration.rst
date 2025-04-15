@@ -160,7 +160,7 @@ the compression level but leave all the other settings the same.
 
 .. code-block:: python
 
-    dataset_configuration = backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["clevel"] = 4
+    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["clevel"] = 4
 
     with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
         nwbfile = io.read()
