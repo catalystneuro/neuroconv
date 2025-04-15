@@ -3,6 +3,7 @@
 import importlib
 from typing import Union
 
+import numpy as np
 from hdmf.common import Data
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging import version
@@ -45,11 +46,12 @@ def configure_backend(
 
         neurodata_object = nwbfile.objects[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
-        data_chunk_iterator_class = (
-            None
-            if isinstance(neurodata_object.fields.get(dataset_name), AbstractDataChunkIterator)
-            else DataChunkIterator
-        )
+        if isinstance(neurodata_object.fields.get(dataset_name), AbstractDataChunkIterator):
+            data_chunk_iterator_class = None
+            data_chunk_iterator_kwargs = dict()
+        else:
+            data_chunk_iterator_class = DataChunkIterator
+            data_chunk_iterator_kwargs = dict(buffer_size=np.prod(dataset_configuration.buffer_shape))
 
         # Table columns
         if isinstance(neurodata_object, Data):
@@ -57,6 +59,7 @@ def configure_backend(
                 data_io_class=data_io_class,
                 data_io_kwargs=data_io_kwargs,
                 data_chunk_iterator_class=data_chunk_iterator_class,
+                data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
@@ -65,6 +68,7 @@ def configure_backend(
                 data_io_class=data_io_class,
                 data_io_kwargs=data_io_kwargs,
                 data_chunk_iterator_class=data_chunk_iterator_class,
+                data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
         # Special ndx-events v0.2.0 types
         elif is_ndx_events_installed and (get_package_version("ndx-events") <= version.parse("0.2.1")):
@@ -77,6 +81,7 @@ def configure_backend(
                     data_io_class=data_io_class,
                     data_io_kwargs=data_io_kwargs,
                     data_chunk_iterator_class=data_chunk_iterator_class,
+                    data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
                 )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
