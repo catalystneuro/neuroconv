@@ -156,7 +156,7 @@ def _add_recording_segment_to_nwbfile(
     always_write_timestamps: bool = False,
 ):
     """
-    See add_recordingto_nwbfile for details.
+    See add_recording_to_nwbfile for details.
     """
 
     if write_scaled:
