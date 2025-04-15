@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
@@ -52,6 +53,7 @@ dependencies = [
     "docstring-parser",
     "packaging",  # Issue 903
     "referencing",
+    "numcodecs<0.16.0", # For supporting zarr < 3
 ]
 
 
@@ -71,7 +73,7 @@ test = [
     "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
     "ndx-miniscope",
-    "spikeinterface[qualitymetrics]>=0.102.0",
+    "spikeinterface[qualitymetrics]>=0.102.2",
     "zarr",
     "pytest-xdist"
 ]
@@ -84,7 +86,7 @@ docs = [
     "sphinx-toggleprompt==0.2.0",
     "sphinx-copybutton==0.5.0",
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.102",  # Needed for the API documentation
+    "spikeinterface>=0.102.2",  # Needed for the API documentation
     "pydata_sphinx_theme==0.12.0"
 ]
 
@@ -148,95 +150,95 @@ behavior = [
 
 ## Ecephys
 alphaomega = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 axona = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 biocam = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 blackrock = [
     "neo>=0.14",
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
 ]
 cellexplorer = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "pymatreader>=0.0.32",
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
     "setuptools; python_version >= '3.12'"
 ]
 edf = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
 ]
 intan = [
     "neo>=0.14",
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
 ]
 kilosort = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 
 maxwell = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 mcsraw = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 mearec = [
     "MEArec>=1.8.0",
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 neuroscope = [
     "lxml>=4.6.5",
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 openephys = [
     "lxml>=4.9.4",
     "neo>=0.14",
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
 ]
 phy = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 plexon = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
 ]
 spikegadgets = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 spikeglx = [
     "neo>=0.14",
-    "spikeinterface>=0.102",
+    "spikeinterface>=0.102.2",
 ]
 tdt = [
-    "neo>=0.13.3",
-    "spikeinterface>=0.102",
+    "neo>=0.14",
+    "spikeinterface>=0.102.2",
 ]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",

@@ -2,13 +2,20 @@
 
 ## Deprecations and Changes
 * Release pydantic ceiling [#1273](https://github.com/catalystneuro/neuroconv/pull/1273)
+* `write_scaled` behavior on `add_electrical_series_to_nwbfile` is deprecated and will be removed in or after October 2025 [PR #1292](https://github.com/catalystneuro/neuroconv/pull/1292)
+* `add_electrical_series_to_nwbfile` now requires both gain and offsets to write scaling factor for voltage conversion when writing to NWB [PR #1292](https://github.com/catalystneuro/neuroconv/pull/1292)
 
 ## Bug Fixes
 
 ## Features
+* Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#1296]((https://github.com/catalystneuro/neuroconv/pull/1296))
 
 ## Improvements
+* `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 * Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
+* `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds that instead if detected [#1293](https://github.com/catalystneuro/neuroconv/pull/1293)
+* Fixed a bug in the extractor interfaces where segmentation and sorting interfaces were initialized twice [PR #1288](https://github.com/catalystneuro/neuroconv/pull/1288)
+* Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
 
 
 # v0.7.2 (April 4, 2025)
@@ -84,7 +91,6 @@
 * Added Returns section to all getter docstrings [PR #1185](https://github.com/catalystneuro/neuroconv/pull/1185)
 * ElectricalSeries have better chunking defaults when data is passed as plain array [PR #1184](https://github.com/catalystneuro/neuroconv/pull/1184)
 * Ophys interfaces now call `get_metadata` by default when no metadata is passed [PR #1200](https://github.com/catalystneuro/neuroconv/pull/1200) and [PR #1232](https://github.com/catalystneuro/neuroconv/pull/1232)
-
 
 # v0.6.7 (January 20, 2025)
 
