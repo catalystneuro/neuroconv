@@ -149,15 +149,15 @@ behavior = [
 
 ## Ecephys
 alphaomega = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 axona = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 biocam = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 blackrock = [
@@ -165,13 +165,13 @@ blackrock = [
     "spikeinterface>=0.102",
 ]
 cellexplorer = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "pymatreader>=0.0.32",
     "spikeinterface>=0.102",
     "setuptools; python_version >= '3.12'"
 ]
 edf = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
     "spikeinterface>=0.102",
 ]
@@ -180,32 +180,32 @@ intan = [
     "spikeinterface>=0.102",
 ]
 kilosort = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 
 maxwell = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 mcsraw = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 mearec = [
     "MEArec>=1.8.0",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 neuroscope = [
     "lxml>=4.6.5",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 openephys = [
@@ -214,21 +214,21 @@ openephys = [
     "spikeinterface>=0.102",
 ]
 phy = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 plexon = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
     "spikeinterface>=0.102",
 ]
 spikegadgets = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 spikeglx = [
@@ -236,7 +236,7 @@ spikeglx = [
     "spikeinterface>=0.102",
 ]
 tdt = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102",
 ]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
