@@ -426,7 +426,7 @@ def configure_and_write_nwbfile(
 
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
-    with IO(output_filepath, mode="w") as io:
+    with IO(nwbfile_path, mode="w") as io:
         if export:
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
