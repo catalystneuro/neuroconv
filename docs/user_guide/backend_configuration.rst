@@ -14,7 +14,7 @@ Find out more about memory buffering of large source files in the `advanced NWB 
 Default configuration
 ---------------------
 
-To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:meth:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
+To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:function:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
 
 .. code-block:: python
 
@@ -137,6 +137,34 @@ Then we can use this configuration to write the NWB file:
     dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
 
     configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output.nwb")
+
+
+Existing configuration
+----------------------
+
+If you have already written a file and want to get the configuration that was used, you can use the :py:function:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
+
+.. code-block:: python
+
+    from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
+    from pynwb import NWBHDF5IO
+
+    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
+        nwbfile = io.read()
+        backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+
+    print(backend_configuration)
+
+Then, you can modify the configuration and write a new file using the same method as above. For example, we can increase
+the compression level but leave all the other settings the same.
+
+.. code-block:: python
+
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["clevel"] = 4
+
+    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
+        nwbfile = io.read()
+        configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb", export=True)
 
 
 Interfaces and Converters
