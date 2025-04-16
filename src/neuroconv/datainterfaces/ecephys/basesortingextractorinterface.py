@@ -293,18 +293,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         -----
         This function adds metadata to the `nwbfile` in-place, meaning the `nwbfile` object is modified directly.
         """
-        from ...tools.spikeinterface import (
-            add_devices_to_nwbfile,
-            add_electrode_groups_to_nwbfile,
-            add_electrodes_to_nwbfile,
-        )
+        from ...tools.spikeinterface import add_recording_metadata_to_nwbfile
 
         if hasattr(self, "generate_recording_with_channel_metadata"):
             recording = self.generate_recording_with_channel_metadata()
-
-            add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-            add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-            add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     def add_to_nwbfile(
         self,
