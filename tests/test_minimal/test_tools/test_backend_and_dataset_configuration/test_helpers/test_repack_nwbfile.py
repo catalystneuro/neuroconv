@@ -6,8 +6,10 @@ from hdmf_zarr import NWBZarrIO, ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
 from numcodecs import Blosc, GZip
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
+from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from pynwb.testing.mock.ophys import mock_ImagingPlane
 
 from neuroconv.tools.nwb_helpers import (
     get_module,
@@ -32,6 +34,21 @@ def generate_complex_nwbfile() -> NWBFile:
     processed_array = np.array([[7.0, 8.0], [9.0, 10.0], [11.0, 12.0], [13.0, 14.0]])
     processed_time_series = mock_TimeSeries(name="ProcessedTimeSeries", data=processed_array)
     ecephys_module.add(processed_time_series)
+
+    n_rois = 10
+    plane_segmentation = PlaneSegmentation(
+        description="no description.",
+        imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
+        name="PlaneSegmentation",
+    )
+
+    for _ in range(n_rois):
+        pixel_mask = [(x, x, 1.0) for x in range(10)]
+        plane_segmentation.add_roi(pixel_mask=pixel_mask)
+
+    if "ophys" not in nwbfile.processing:
+        nwbfile.create_processing_module("ophys", "ophys")
+    nwbfile.processing["ophys"].add(plane_segmentation)
 
     return nwbfile
 
