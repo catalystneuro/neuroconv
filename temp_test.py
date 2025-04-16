@@ -6,7 +6,9 @@ import numpy as np
 from hdmf_zarr import ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
+from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.file import mock_NWBFile
+from pynwb.testing.mock.ophys import mock_ImagingPlane
 
 from neuroconv.tools.nwb_helpers import repack_nwbfile
 
@@ -30,6 +32,24 @@ def write_nwbfile(nwbfile_path: Path, backend: str = "hdf5"):
         timestamps=timestamps,
     )
     nwbfile.add_acquisition(time_series_with_timestamps)
+
+    # pixel mask to check compound dtypes
+    n_rois = 10
+    nwbfile = mock_NWBFile()
+    plane_segmentation = PlaneSegmentation(
+        description="no description.",
+        imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
+        name="TestPlaneSegmentation",
+    )
+
+    for _ in range(n_rois):
+        pixel_mask = [(x, x, 1.0) for x in range(10)]
+        plane_segmentation.add_roi(pixel_mask=pixel_mask)
+
+    if "ophys" not in nwbfile.processing:
+        nwbfile.create_processing_module("ophys", "ophys")
+    nwbfile.processing["ophys"].add(plane_segmentation)
+
     IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
     with IO(str(nwbfile_path), mode="w") as io:
         io.write(nwbfile)
@@ -58,7 +78,7 @@ def main():
         export_nwbfile_path=str(repacked_nwbfile_path),
         backend=backend,
         backend_configuration_changes=backend_configuration_changes,
-        use_default_backend_configuration=False,
+        use_default_backend_configuration=True,
     )
 
     IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
