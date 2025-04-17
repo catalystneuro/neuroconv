@@ -14,6 +14,7 @@ from pynwb.behavior import CompassDirection
 from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
+from pynwb.testing.mock.ecephys import mock_ElectrodeTable
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.importing import is_package_installed
@@ -56,7 +57,7 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
     with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
 
-        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
 
         assert len(dataset_configurations) == 2
 
@@ -111,7 +112,7 @@ def test_configuration_on_external_image_series(tmp_path, backend: Literal["hdf5
         io.write(nwbfile)
     with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
-        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
         assert len(dataset_configurations) == 0
 
 
@@ -150,7 +151,7 @@ def test_configuration_on_dynamic_table(tmp_path, backend: Literal["hdf5", "zarr
     with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
 
-        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
 
         assert len(dataset_configurations) == 2
 
@@ -228,7 +229,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         io.write(nwbfile)
     with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
-        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
 
         assert len(dataset_configurations) == 9
 
@@ -446,7 +447,7 @@ def test_configuration_on_compass_direction(tmp_path, backend: Literal["hdf5", "
 
     with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
-        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
 
         assert len(dataset_configurations) == 2
 
@@ -544,7 +545,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
     with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
 
-        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
 
         # Note that the labels dataset is not caught since we search only for 'data' and 'timestamps' fields
         assert len(dataset_configurations) == 4
@@ -703,3 +704,83 @@ def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Liter
             assert dataset_configuration.compression_options is None
             assert dataset_configuration.filter_methods == filters
             assert dataset_configuration.filter_options is None
+
+
+def test_configuration_in_memory_nwbfile_error():
+    nwbfile = mock_NWBFile()
+    with pytest.raises(ValueError, match="nwbfile must be read from an existing file!"):
+        list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_electrodes_table(tmp_path, backend: Literal["hdf5", "zarr"]):
+    nwbfile = mock_NWBFile()
+    mock_ElectrodeTable(nwbfile=nwbfile)
+
+    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_electrodes_table.nwb"
+    with IO(nwbfile_path, "w") as io:
+        io.write(nwbfile)
+
+    with IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
+
+    assert len(dataset_configurations) == 2
+    assert dataset_configurations[0].location_in_file == "electrodes/location/data"
+    assert dataset_configurations[1].location_in_file == "electrodes/group_name/data"
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_TimeSeriesReferenceVectorData(tmp_path, backend: Literal["hdf5", "zarr"]):
+    nwbfile = mock_NWBFile()
+    data = np.array([[1, 2, 3], [4, 5, 6]])
+    time_series = mock_TimeSeries(name="TestTimeSeries", data=data)
+    nwbfile.add_acquisition(time_series)
+    nwbfile.add_epoch(start_time=1.0, stop_time=2.0, timeseries=time_series)
+
+    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_timeseries_reference_vector_data.nwb"
+    with IO(nwbfile_path, "w") as io:
+        io.write(nwbfile)
+
+    with IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
+
+    assert len(dataset_configurations) == 4
+    assert dataset_configurations[0].location_in_file == "intervals/epochs/start_time/data"
+    assert dataset_configurations[1].location_in_file == "intervals/epochs/stop_time/data"
+    assert dataset_configurations[2].location_in_file == "intervals/epochs/timeseries_index/data"
+    assert dataset_configurations[3].location_in_file == "acquisition/TestTimeSeries/data"
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_zero_length_axis(tmp_path, backend: Literal["hdf5", "zarr"]):
+    """Test that datasets with a zero-length axis are skipped."""
+    nwbfile = mock_NWBFile()
+
+    # TimeSeries with zero-length axis
+    zero_length_data_ts = np.empty((0, 10))
+    time_series_zero_length = mock_TimeSeries(name="TestTimeSeriesZeroLength", data=zero_length_data_ts)
+    nwbfile.add_acquisition(time_series_zero_length)
+
+    # DynamicTable column with zero-length axis
+    zero_length_data_dt = np.empty((0,))
+    column_zero_length = VectorData(name="TestColumnZeroLength", description="", data=zero_length_data_dt)
+    dynamic_table_zero_length = DynamicTable(
+        name="TestDynamicTableZeroLength", description="", columns=[column_zero_length], id=[]
+    )
+    nwbfile.add_acquisition(dynamic_table_zero_length)
+
+    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    nwbfile_path = tmp_path / f"test_existing_dataset_io_configurations_zero_length_{backend}.nwb"
+    with IO(nwbfile_path, "w") as io:
+        io.write(nwbfile)
+
+    with IO(nwbfile_path, "r") as io:
+        nwbfile_read = io.read()
+        dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile_read))
+
+    # Expect no configurations as both datasets have zero-length axes
+    assert len(dataset_configurations) == 0

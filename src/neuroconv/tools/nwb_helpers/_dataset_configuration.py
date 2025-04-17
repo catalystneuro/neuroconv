@@ -176,10 +176,7 @@ def get_default_dataset_io_configurations(
                 yield dataset_io_configuration
 
 
-def get_existing_dataset_io_configurations(
-    nwbfile: NWBFile,
-    backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
-) -> Generator[DatasetIOConfiguration, None, None]:
+def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[DatasetIOConfiguration, None, None]:
     """
     Generate DatasetIOConfiguration objects for each neurodata object in an nwbfile.
 
@@ -195,22 +192,13 @@ def get_existing_dataset_io_configurations(
     DatasetIOConfiguration
         A configuration object for each dataset in the NWB file.
     """
-    if backend is None and nwbfile.read_io is None:
-        raise ValueError(
-            "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was not "
-            "read from an existing file!"
-        )
-    detected_backend = None
+    if nwbfile.read_io is None:
+        raise ValueError("nwbfile must be read from an existing file!")
+    backend = None
     if isinstance(nwbfile.read_io, NWBHDF5IO):
-        detected_backend = "hdf5"
+        backend = "hdf5"
     elif isinstance(nwbfile.read_io, NWBZarrIO):
-        detected_backend = "zarr"
-    if detected_backend is not None and backend is not None and detected_backend != backend:
-        raise ValueError(
-            f"Detected backend '{detected_backend}' for appending file, but specified `backend` "
-            f"({backend}) does not match! Set `backend=None` or remove the keyword argument to allow it to auto-detect."
-        )
-    backend = backend or detected_backend
+        backend = "zarr"
 
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
@@ -251,10 +239,6 @@ def get_existing_dataset_io_configurations(
                     continue
 
                 candidate_dataset = getattr(neurodata_object, known_dataset_field)
-
-                # Skip edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
-                if isinstance(candidate_dataset, np.ndarray) and candidate_dataset.size == 0:
-                    continue
 
                 # Skip datasets with any zero-length axes
                 candidate_dataset = getattr(neurodata_object, known_dataset_field)
