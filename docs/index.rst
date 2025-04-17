@@ -65,6 +65,7 @@ We are happy to help and appreciate your feedback.
   catalogue/index
   developer_guide/index
   api/index
+  how_to/index
 
 
 Related links

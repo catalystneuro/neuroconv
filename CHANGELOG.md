@@ -16,7 +16,7 @@
 * `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds that instead if detected [#1293](https://github.com/catalystneuro/neuroconv/pull/1293)
 * Fixed a bug in the extractor interfaces where segmentation and sorting interfaces were initialized twice [PR #1288](https://github.com/catalystneuro/neuroconv/pull/1288)
 * Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
-
+* Added *how to* documentation on how to set a probe to a recording interfaces [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
 
 # v0.7.2 (April 4, 2025)
 
