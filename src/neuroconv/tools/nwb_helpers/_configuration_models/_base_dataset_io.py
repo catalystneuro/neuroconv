@@ -79,6 +79,9 @@ def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
 def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
     """Attempt to infer the dtype of the contained values of the dataset."""
     if hasattr(dataset, "dtype"):
+        if isinstance(dataset.dtype, list):
+            data_type = np.dtype(", ".join(dataset.dtype))
+            return data_type
         data_type = np.dtype(dataset.dtype)
         return data_type
 
@@ -352,9 +355,13 @@ class DatasetIOConfiguration(BaseModel, ABC):
         dataset_name: Literal["data", "timestamps"],
     ) -> dict:
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
-        full_shape = getattr(neurodata_object, dataset_name).shape
-        dtype = getattr(neurodata_object, dataset_name).dtype
-        chunk_shape = getattr(neurodata_object, dataset_name).chunks
+        dataset = getattr(neurodata_object, dataset_name)
+        full_shape = dataset.shape
+        dtype = _infer_dtype(dataset=dataset)
+        try:  # TODO: try to make this less hacky
+            chunk_shape = dataset.chunks
+        except AttributeError:
+            chunk_shape = dataset.dataset.chunks
         buffer_chunk_shape = chunk_shape or full_shape
         buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
             buffer_gb=0.5, chunk_shape=buffer_chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)

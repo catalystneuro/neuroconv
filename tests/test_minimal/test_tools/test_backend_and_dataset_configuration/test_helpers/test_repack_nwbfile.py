@@ -35,21 +35,6 @@ def generate_complex_nwbfile() -> NWBFile:
     processed_time_series = mock_TimeSeries(name="ProcessedTimeSeries", data=processed_array)
     ecephys_module.add(processed_time_series)
 
-    n_rois = 10
-    plane_segmentation = PlaneSegmentation(
-        description="no description.",
-        imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
-        name="PlaneSegmentation",
-    )
-
-    for _ in range(n_rois):
-        pixel_mask = [(x, x, 1.0) for x in range(10)]
-        plane_segmentation.add_roi(pixel_mask=pixel_mask)
-
-    if "ophys" not in nwbfile.processing:
-        nwbfile.create_processing_module("ophys", "ophys")
-    nwbfile.processing["ophys"].add(plane_segmentation)
-
     return nwbfile
 
 
@@ -73,6 +58,23 @@ def hdf5_nwbfile_path(tmpdir_factory):
             description="start time of epoch",
             data=H5DataIO(data=start_time, compression="gzip", compression_opts=2),
         )
+
+        # Add PlaneSegmentation with pixel_mask
+        # TODO: move to generate_complex_nwbfile after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
+        n_rois = 10
+        plane_segmentation = PlaneSegmentation(
+            description="no description.",
+            imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
+            name="PlaneSegmentation",
+        )
+
+        for _ in range(n_rois):
+            pixel_mask = [(x, x, 1.0) for x in range(10)]
+            plane_segmentation.add_roi(pixel_mask=pixel_mask)
+
+        if "ophys" not in nwbfile.processing:
+            nwbfile.create_processing_module("ophys", "ophys")
+        nwbfile.processing["ophys"].add(plane_segmentation)
 
         with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
             io.write(nwbfile)
@@ -143,12 +145,14 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_defau
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
                 assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
             else:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts is None
                 assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
                 assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 2
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts is None
         elif backend == "zarr":
             if use_default_backend_configuration:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compressor == default_compressor
@@ -159,6 +163,7 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_defau
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
+                # TODO: add checks for pixel_mask after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
             else:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compressor == compressor
                 assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
@@ -168,6 +173,7 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_defau
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == filters
+                # TODO: add checks for pixel_mask after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -185,7 +191,10 @@ def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, zarr_nwbfile_path, backe
         backend_configuration_changes = {
             "acquisition/RawTimeSeries/data": dict(
                 compression_method="gzip", compression_options=dict(compression_opts=1)
-            )
+            ),
+            "processing/ophys/PlaneSegmentation/pixel_mask/data": dict(
+                compression_method="gzip", compression_options=dict(compression_opts=1)
+            ),
         }
     elif backend == "zarr":
         nwbfile_path = zarr_nwbfile_path
@@ -215,12 +224,14 @@ def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, zarr_nwbfile_path, backe
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
                 assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 1
             else:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 1
                 assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
                 assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 2
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 1
         elif backend == "zarr":
             if use_default_backend_configuration:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compressor == changed_compressor
@@ -231,6 +242,7 @@ def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, zarr_nwbfile_path, backe
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
+                # TODO: add checks for pixel_mask after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
             else:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compressor == changed_compressor
                 assert nwbfile.acquisition["RawTimeSeries"].data.filters == changed_filters
@@ -240,6 +252,7 @@ def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, zarr_nwbfile_path, backe
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == filters
+                # TODO: add checks for pixel_mask after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
 
 
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
