@@ -71,7 +71,7 @@ You can also specify conversion options for each data interface to control how t
                 chunk_mb=10.0,  # Size of chunks for writing
                 display_progress=True  # Show progress bar
             ),
-            # Write as raw, processed, or LFP data
+            # Write as raw (acquisition) processed, or LFP data
             write_as="raw",
             # For testing with a small subset of data
             stub_test=False,
@@ -81,12 +81,10 @@ You can also specify conversion options for each data interface to control how t
         PhySorting=dict(
             # For testing with a small subset of data
             stub_test=False,
-            # Exclude particular units
-            exclude_unit_ids=[],
-            # Write all available unit properties
-            write_unit_properties=True,
-            # Write unit spike waveforms
-            write_waveforms=False
+            #  wite in processing module to write multiple units table
+            write_as="processing"
+            # Set the name of the units table in the processing module
+            units_name = "MyUnitsTable",
         )
     )
 
