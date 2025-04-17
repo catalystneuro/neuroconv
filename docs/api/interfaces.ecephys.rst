@@ -60,7 +60,8 @@ NeuroScope Recording & Sorting
 OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
-
+    :members:
+    :exclude-members: __new__
 
 Phy Sorting
 -----------
