@@ -9,33 +9,7 @@
 
 ## Features
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#1296](https://github.com/catalystneuro/neuroconv/pull/1296)
-<<<<<<< HEAD
 * Added `OpenEphysBinaryAnalogInterface` for converting OpenEphys analog channels data similar to the SpikeGLX NIDQ interface [PR #1237](https://github.com/catalystneuro/neuroconv/pull/1237)
-
-## Improvements
-* `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
-* Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
-* `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds `starting_time` and `rate` instead of timestamps if detected [#1293](https://github.com/catalystneuro/neuroconv/pull/1293)
-* Fixed a bug in the extractor interfaces where segmentation and sorting interfaces were initialized twice [PR #1288](https://github.com/catalystneuro/neuroconv/pull/1288)
-
-
-# v0.7.2 (April 4, 2025)
-
-## Deprecations and Changes
-* Split VideoInterface (now deprecated) into ExternalVideoInterface and InternalVideoInterface [PR #1251](https://github.com/catalystneuro/neuroconv/pull/1251) [PR #1256](https://github.com/catalystneuro/neuroconv/pull/1256) [#1278](https://github.com/catalystneuro/neuroconv/pull/1278)
-* `output_filepath` deprecated on `configure_and_write_nwbfile` use `nwbfile_path` instead [PR #1270](https://github.com/catalystneuro/neuroconv/pull/1270)
-* Temporary set a ceiling on pydantic `<2.11` [PR #1275](https://github.com/catalystneuro/neuroconv/pull/1275)
-
-## Bug Fixes
-* Fixed a check in `_configure_backend` on neurodata_object ndx_events.Events to work only when ndx-events==0.2.0 is used. [PR #998](https://github.com/catalystneuro/neuroconv/pull/998)
-* Added an `append_on_disk_nwbfile` argumento to `run_conversion`. This changes the semantics of the overwrite parameter from assuming append mode when a file exists to a more conventional `safe writing` mode where confirmation is required to overwrite an existing file. Append mode now is controlled with the `append_on_disk_nwbfile`. [#1256](https://github.com/catalystneuro/neuroconv/pull/1256)
-
-## Features
-* Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#1296]((https://github.com/catalystneuro/neuroconv/pull/1296))
-||||||| 6754e788
-* Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#1296]((https://github.com/catalystneuro/neuroconv/pull/1296))
-=======
->>>>>>> main
 
 ## Improvements
 * Add documentation for conversion options with `NWBConverter` [#1301](https://github.com/catalystneuro/neuroconv/pull/1301)
