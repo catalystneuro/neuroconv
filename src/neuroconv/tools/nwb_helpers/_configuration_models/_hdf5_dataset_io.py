@@ -99,13 +99,9 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             neurodata_object=neurodata_object,
             dataset_name=dataset_name,
         )
-        dataset = getattr(neurodata_object, dataset_name)
-        try:  # TODO: try to make this less hacky
-            compression_method = dataset.compression
-            compression_opts = dataset.compression_opts
-        except AttributeError:
-            compression_method = dataset.dataset.compression
-            compression_opts = dataset.dataset.compression_opts
+        dataset = cls.get_dataset(neurodata_object=neurodata_object, dataset_name=dataset_name)
+        compression_method = dataset.compression
+        compression_opts = dataset.compression_opts
         compression_options = dict(compression_opts=compression_opts)
         return cls(
             **kwargs,

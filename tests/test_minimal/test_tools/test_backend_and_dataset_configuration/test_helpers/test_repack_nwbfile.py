@@ -35,6 +35,8 @@ def generate_complex_nwbfile() -> NWBFile:
     processed_time_series = mock_TimeSeries(name="ProcessedTimeSeries", data=processed_array)
     ecephys_module.add(processed_time_series)
 
+    nwbfile.add_epoch(start_time=0.0, stop_time=1.0, timeseries=nwbfile.acquisition["RawTimeSeries"])
+
     return nwbfile
 
 

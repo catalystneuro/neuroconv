@@ -355,13 +355,10 @@ class DatasetIOConfiguration(BaseModel, ABC):
         dataset_name: Literal["data", "timestamps"],
     ) -> dict:
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
-        dataset = getattr(neurodata_object, dataset_name)
+        dataset = DatasetIOConfiguration.get_dataset(neurodata_object=neurodata_object, dataset_name=dataset_name)
         full_shape = dataset.shape
         dtype = _infer_dtype(dataset=dataset)
-        try:  # TODO: try to make this less hacky
-            chunk_shape = dataset.chunks
-        except AttributeError:
-            chunk_shape = dataset.dataset.chunks
+        chunk_shape = dataset.chunks
         buffer_chunk_shape = chunk_shape or full_shape
         buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
             buffer_gb=0.5, chunk_shape=buffer_chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
@@ -376,3 +373,13 @@ class DatasetIOConfiguration(BaseModel, ABC):
             chunk_shape=chunk_shape,
             buffer_shape=buffer_shape,
         )
+
+    @staticmethod
+    def get_dataset(
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> Union[h5py.Dataset, zarr.Array]:
+        dataset = getattr(neurodata_object, dataset_name)
+        while hasattr(dataset, "dataset"):
+            dataset = dataset.dataset
+        return dataset
