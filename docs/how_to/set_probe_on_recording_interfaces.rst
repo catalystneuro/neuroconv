@@ -12,10 +12,10 @@ Why Set Probe Information?
 Probe information provides critical metadata about the spatial arrangement of electrodes,
 which is essential for:
 
-- Proper spike sorting
-- Visualization of recording sites
-- Analysis that depends on spatial relationships between electrodes
-- Complete and reusable NWB files
+- Enabling some spike sorting algorithms that require spatial information.
+- Unit localization algorithms.
+- Visualization of recording sites.
+- Any analysis that depends on spatial relationships between electrodes.
 
 Using ProbeInterface with NeuroConv
 -----------------------------------
@@ -26,11 +26,11 @@ method that allows you to attach probe information to your recording.
 
 .. warning::
    **Important:** Probes must be properly wired before setting them on a recording interface.
-   Wiring connects the probe channels to the recording channels. Without proper wiring,
-   the spatial information won't be correctly associated with your recording data.
+    Wiring connects the probe channels to the recording channels. Without proper wiring,
+    the spatial information won't be correctly associated with your recording data.
 
-   For details on how to wire probes, see the ProbeInterface documentation:
-   https://probeinterface.readthedocs.io/en/main/examples/ex_11_automatic_wiring.html
+    For details on how to wire probes, see the ProbeInterface documentation:
+    https://probeinterface.readthedocs.io/en/main/examples/ex_11_automatic_wiring.html
 
 Example Usage
 -------------
