@@ -11,6 +11,7 @@
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [#1296](https://github.com/catalystneuro/neuroconv/pull/1296)
 
 ## Improvements
+* Add documentation for conversion options with `NWBConverter` [#1301](https://github.com/catalystneuro/neuroconv/pull/1301)
 * `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [#1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 * Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
 * `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds that instead if detected [#1293](https://github.com/catalystneuro/neuroconv/pull/1293)
