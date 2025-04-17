@@ -80,7 +80,7 @@ class BackendConfiguration(BaseModel):
         if use_default_dataset_io_configurations:
             dataset_io_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         else:
-            dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
+            dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile)
         dataset_configurations = {
             default_dataset_configuration.location_in_file: default_dataset_configuration
             for default_dataset_configuration in dataset_io_configurations
