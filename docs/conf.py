@@ -88,6 +88,7 @@ autodoc_default_options = {
     "show-inheritance": False,
     "toctree": True,
     'undoc-members': True,
+    "exclude-members": "__new__",
 }
 
 add_module_names = False
