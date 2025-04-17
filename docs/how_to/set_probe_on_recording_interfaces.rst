@@ -50,6 +50,8 @@ Here's a basic example of how to set a probe on a recording interface:
 
     # Wire the probe (critical step!)
     # See ProbeInterface documentation for wiring details
+    # Creating a probe: https://probeinterface.readthedocs.io/en/main/examples/ex_01_generate_probe_from_sratch.html
+    # Wiring the probe : https://probeinterface.readthedocs.io/en/main/examples/ex_11_automatic_wiring.html
     # The following part requires the probe to be wired
 
     # Set the probe on the recording interface
