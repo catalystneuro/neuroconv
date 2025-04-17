@@ -1,5 +1,5 @@
 How To Guides
-============
+=============
 
 This section contains practical guides for using NeuroConv effectively.
 

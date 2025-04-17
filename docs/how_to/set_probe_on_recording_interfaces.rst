@@ -33,7 +33,7 @@ method that allows you to attach probe information to your recording.
    https://probeinterface.readthedocs.io/en/main/examples/ex_11_automatic_wiring.html
 
 Example Usage
-------------
+-------------
 
 Here's a basic example of how to set a probe on a recording interface:
 
@@ -59,9 +59,9 @@ Here's a basic example of how to set a probe on a recording interface:
     recording_interface.add_to_nwbfile(nwbfile)
 
 Group Mode Parameter
--------------------
+--------------------
 
-When setting a probe, you must specify a ``group_mode`` parameter, which determines how channels
+When setting a probe, you can specify a ``group_mode`` parameter, which determines how channels
 are grouped in the NWB file:
 
 - ``"by_shank"``: Channels are grouped according to the shank they belong to
