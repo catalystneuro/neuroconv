@@ -15,7 +15,7 @@ if not ECEPHY_DATA_PATH.exists():
 def test_openephys_analog_interface(tmp_path):
     """Test the OpenEphysBinaryAnalogInterface with sample data containing analog channels."""
     folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "neural_and_non_neural_data_mixed"
-    stream_name = "Rhythm_FPGA-100.0"
+    stream_name = "Rhythm_FPGA-100.0_ADC"
 
     interface = OpenEphysBinaryAnalogInterface(folder_path=folder_path, stream_name=stream_name)
 

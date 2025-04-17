@@ -58,16 +58,17 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]
-        if len(available_streams) > 1 and stream_name is None:
+        availble_adc_streams = [id for id in available_streams if "ADC" in id]
+        if len(availble_adc_streams) > 1 and stream_name is None:
             raise ValueError(
                 "More than one stream is detected! "
                 "Please specify which stream you wish to load with the `stream_name` argument. "
                 "To see what streams are available, call "
                 " `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
             )
-        if stream_name is not None and stream_name not in available_streams:
+        if stream_name is not None and stream_name not in availble_adc_streams:
             raise ValueError(
-                f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
+                f"The selected stream '{stream_name}' is not in the available adc streams are '{availble_adc_streams}'!"
             )
 
         self.stream_name = stream_name or available_streams[0]
