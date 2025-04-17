@@ -59,11 +59,49 @@ The metadata can then be manually modified with any additional user-input, just 
 
 The final metadata dictionary should follow the form defined by :meth:`.NWBConverter.get_metadata_schema`.
 
+You can also specify conversion options for each data interface to control how the data is written to the NWB file:
+
+.. code-block:: python
+
+    conversion_options = dict(
+        SpikeGLXRecording=dict(
+            # Control memory usage with iterator options
+            iterator_opts=dict(
+                buffer_gb=1.0,  # Amount of memory to use
+                chunk_mb=10.0,  # Size of chunks for writing
+                display_progress=True  # Show progress bar
+            ),
+            # Write as raw (acquisition) processed, or LFP data
+            write_as="raw",
+            # For testing with a small subset of data
+            stub_test=False,
+            # For manual control of timestamps
+            always_write_timestamps=False
+        ),
+        PhySorting=dict(
+            # For testing with a small subset of data
+            stub_test=False,
+            #  write in processing module to write multiple units table
+            write_as="processing"
+            # Set the name of the units table in the processing module
+            units_name = "MyUnitsTable",
+        )
+    )
+
+Note that they keys of the dictionary must match the keys of
+``data_interface_classes``. The values are dictionaries that specify the
+conversion options for each data interface. The available options depend on the specific data interface being used.
+You can find them by looking at the interface `add_to_nwbfile` method.
+
 Now run the entire conversion with:
 
 .. code-block:: python
 
-    converter.run_conversion(metadata=metadata, nwbfile_path="my_nwbfile.nwb")
+    converter.run_conversion(
+        metadata=metadata,
+        nwbfile_path="my_nwbfile.nwb",
+        conversion_options=conversion_options
+    )
 
 Like ``DataInterface`` objects, :py:class:`.NWBConverter` objects can output an in-memory :py:class:`.NWBFile` object by
 calling :meth:`.NWBConverter.create_nwbfile`. This can be useful for debugging, for adding metadata to the file, or for
