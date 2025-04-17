@@ -61,7 +61,15 @@ OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
     :members:
+    :exclude-members: OpenEphysRecordingInterface
+
+    # Exclude OpenEphysRecordingInterface here so we can have fine control and exclude __new__
+
+.. autoclass:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface.OpenEphysRecordingInterface
+    :members:
     :exclude-members: __new__
+
+    # Re-include OpenEphysRecordingInterface manually and hide __new__,
 
 Phy Sorting
 -----------
