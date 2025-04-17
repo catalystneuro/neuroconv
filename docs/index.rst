@@ -37,6 +37,11 @@ Below is an overview of the key sections to help you navigate our documentation 
   The :ref:`User Guide <user_guide>` offers a comprehensive overview of NeuroConv's data model and functionalities.
   It is recommended for users who wish to understand the underlying concepts and extend their scripts beyond basic conversions.
 
+* **How To Guides**
+
+  The :ref:`How To Guides <how_to>` section contains practical guides for using NeuroConv effectively and solve
+  common problems.
+
 * **Catalogue of Projects**
 
   :ref:`The Catalogue of Neuroconv Projects <catalogue>` section showcases a collection of successful conversion projects utilizing NeuroConv.
@@ -47,11 +52,6 @@ Below is an overview of the key sections to help you navigate our documentation 
   For developers interested in contributing to NeuroConv, the :ref:`Developer Guide <developer_guide>` provides essential information such as
   instructions for building your own classes,  our coding style, instructions on how to build the documentation,
   run the testing suite, etc.
-
-* **How To Guides**
-
-  The :ref:`How To Guides <how_to>` section contains practical guides for using NeuroConv effectively and solve
-  common problems.
 
 * **API Reference**
 
@@ -67,8 +67,8 @@ We are happy to help and appreciate your feedback.
 
   user_guide/index
   conversion_examples_gallery/index
-  catalogue/index
   how_to/index
+  catalogue/index
   developer_guide/index
   api/index
 
