@@ -20,7 +20,7 @@ which is essential for:
 Using ProbeInterface with NeuroConv
 -----------------------------------
 
-NeuroConv integrates with the ProbeInterface library to handle probe information.
+NeuroConv integrates with the `ProbeInterface library <https://probeinterface.readthedocs.io/en/main/>`_ to handle probe information.
 All classes that inherit from ``BaseRecordingExtractorInterface`` have a ``set_probe()``
 method that allows you to attach probe information to your recording.
 

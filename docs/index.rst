@@ -48,6 +48,11 @@ Below is an overview of the key sections to help you navigate our documentation 
   instructions for building your own classes,  our coding style, instructions on how to build the documentation,
   run the testing suite, etc.
 
+* **How To Guides**
+
+  The :ref:`How To Guides <how_to>` section contains practical guides for using NeuroConv effectively and solve
+  common problems.
+
 * **API Reference**
 
   Detailed documentation of the NeuroConv API can be found in the :ref:`API <api>` section.
@@ -63,9 +68,9 @@ We are happy to help and appreciate your feedback.
   user_guide/index
   conversion_examples_gallery/index
   catalogue/index
+  how_to/index
   developer_guide/index
   api/index
-  how_to/index
 
 
 Related links
