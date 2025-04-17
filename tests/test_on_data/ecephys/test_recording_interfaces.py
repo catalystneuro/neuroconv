@@ -424,7 +424,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
     data_interface_cls = NeuralynxRecordingInterface
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
-        stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169)",
+        stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169.0)",
     )
     save_directory = OUTPUT_PATH
 
