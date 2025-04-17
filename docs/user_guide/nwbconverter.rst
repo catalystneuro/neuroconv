@@ -81,7 +81,7 @@ You can also specify conversion options for each data interface to control how t
         PhySorting=dict(
             # For testing with a small subset of data
             stub_test=False,
-            #  wite in processing module to write multiple units table
+            #  write in processing module to write multiple units table
             write_as="processing"
             # Set the name of the units table in the processing module
             units_name = "MyUnitsTable",
