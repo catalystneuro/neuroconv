@@ -80,6 +80,7 @@ napoleon_use_ivar = True                   # Interpret instance variables as doc
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
+autodata_content = "both"
 
 autodoc_default_options = {
     "members": True,  # Enables automatic documentation of methods, attributes etc, not just the class docstring

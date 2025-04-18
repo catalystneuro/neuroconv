@@ -1,5 +1,5 @@
-Recording & Sorting
-===================
+Extracellular Electrophysiology
+===============================
 
 Base Recording
 --------------
