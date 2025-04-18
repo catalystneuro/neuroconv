@@ -33,7 +33,7 @@ keys of``data_interface_classes``.
 
     source_data = dict(
         SpikeGLXRecording=dict(
-            file_path="raw_dataset_path"
+            folder_path="raw_dataset_folder_path"
         ),
         PhySorting=dict(
             folder_path="sorted_dataset_path"
