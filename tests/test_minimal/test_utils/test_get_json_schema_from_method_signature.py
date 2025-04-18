@@ -7,6 +7,7 @@ from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
+from neuroconv.tools.importing import get_package_version
 from neuroconv.utils import ArrayType, DeepDict, get_json_schema_from_method_signature
 
 
@@ -238,22 +239,50 @@ def test_fix_to_358():
             pass
 
     test_conversion_options_schema = get_json_schema_from_method_signature(method=Test358.add_to_nwbfile)
-    expected_conversion_options_schema = {
-        "properties": {
-            "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
-            "tag": {"default": "trials", "type": "string"},
-            "column_name_mapping": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
+
+    from packaging import version
+
+    pydantic_version = get_package_version("pydantic")
+
+    if pydantic_version >= version.parse("2.11"):
+
+        expected_conversion_options_schema = {
+            "properties": {
+                "metadata": {
+                    "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "tag": {"default": "trials", "type": "string"},
+                "column_name_mapping": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "column_descriptions": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
             },
-            "column_descriptions": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
+            "type": "object",
+            "additionalProperties": False,
+        }
+
+    else:
+        expected_conversion_options_schema = {
+            "properties": {
+                "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
+                "tag": {"default": "trials", "type": "string"},
+                "column_name_mapping": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "column_descriptions": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
             },
-        },
-        "type": "object",
-        "additionalProperties": False,
-    }
+            "type": "object",
+            "additionalProperties": False,
+        }
 
     assert test_conversion_options_schema == expected_conversion_options_schema
 
