@@ -56,6 +56,7 @@ html_theme_options = {
     ],
 }
 
+# Add here link checks that should be ignored by the link checker action
 linkcheck_anchors = False
 linkcheck_ignore = [
     "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
@@ -68,13 +69,14 @@ linkcheck_ignore = [
 
 
 # Napoleon
-napoleon_google_docstring = False
-napoleon_numpy_docstring = True
-napoleon_use_param = False
-napoleon_use_ivar = True
-napoleon_include_init_with_doc = False
-napoleon_include_private_with_doc = False
-napoleon_include_special_with_doc = True
+napoleon_google_docstring = False          # Disable support for Google-style docstrings (use NumPy-style instead)
+napoleon_numpy_docstring = True            # Enable support for NumPy-style docstrings
+napoleon_use_param = False                 # Do not convert :param: sections into Parameters; leave as-is
+napoleon_use_ivar = True                   # Interpret instance variables as documented with :ivar:
+napoleon_include_init_with_doc = False     # Do not show __init__ docstring separately if it duplicates the class doc
+napoleon_include_private_with_doc = False  # Exclude private methods (_method) from docs even if they have docstrings
+napoleon_include_special_with_doc = True   # Include special methods like __init__, __str__ if they have docstrings
+
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
@@ -87,7 +89,6 @@ autodoc_default_options = {
     "private-members": False,
     "show-inheritance": False,
     "toctree": True,
-    'undoc-members': True,
     "exclude-members": "__new__",
 }
 
