@@ -89,7 +89,6 @@ autodoc_default_options = {
     "private-members": False,
     "show-inheritance": False,
     "toctree": True,
-    'undoc-members': True, # Adds undocumented members to the docs
     "exclude-members": "__new__",
 }
 
