@@ -137,5 +137,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-  If you do not see the format you need, feel free to :format-request-form:`request it<>` or
+  If you do not see the format you need, feel free to :format-request-form:`request it` or
   :ref:`build-data-interface`.
