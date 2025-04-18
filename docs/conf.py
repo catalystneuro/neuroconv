@@ -84,8 +84,8 @@ autoclass_content = "both"  # Concatenates docstring of the class with that of i
 autodoc_default_options = {
     "members": True,  # Enables automatic documentation of methods, attributes etc, not just the class docstring
     "member-order": "bysource", # Displays classes and methods by their order in source code
-    "private-members": False,
-    # "undoc-members": True,      # Document members without docstrings
+    "private-members": False,   # Do not include private members (those starting with an underscore)
+    "undoc-members": True,      # Document members without docstrings, including class attributes
     "show-inheritance": False,
     "toctree": True,
     "exclude-members": "__new__",  # Do not display __new__ method in the docs
