@@ -89,6 +89,7 @@ autodoc_default_options = {
     "private-members": False,
     "show-inheritance": False,
     "toctree": True,
+    'undoc-members': True,
     "exclude-members": "__new__",
 }
 
