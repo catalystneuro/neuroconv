@@ -1,3 +1,6 @@
+.. _user_guide:
+
+
 How To Guides
 =============
 
