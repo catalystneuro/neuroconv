@@ -76,20 +76,19 @@ napoleon_google_docstring = False          # Disable support for Google-style do
 napoleon_numpy_docstring = True            # Enable support for NumPy-style docstrings
 napoleon_use_param = False                 # Do not convert :param: sections into Parameters; leave as-is
 napoleon_use_ivar = True                   # Interpret instance variables as documented with :ivar:
-napoleon_include_init_with_doc = False     # Do not show __init__ docstring separately if it duplicates the class doc
-napoleon_include_private_with_doc = False  # Exclude private methods (_method) from docs even if they have docstrings
 
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
 
 autodoc_default_options = {
-    "members": True,
+    "members": True,  # Enables automatic documentation of methods, attributes etc, not just the class docstring
     "member-order": "bysource", # Displays classes and methods by their order in source code
     "private-members": False,
+    "undoc-members": True,      # Document members without docstrings
     "show-inheritance": False,
     "toctree": True,
-    "exclude-members": "__new__",
+    "exclude-members": "__new__",  # Do not display __new__ method in the docs
 }
 
 
