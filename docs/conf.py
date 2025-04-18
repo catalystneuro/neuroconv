@@ -56,6 +56,10 @@ html_theme_options = {
     ],
 }
 
+# Prevent Sphinx from prefixing class and function names with their module paths
+# For example, displays 'ClassName' instead of 'package.module.ClassName'
+add_module_names = False
+
 # Add here link checks that should be ignored by the link checker action
 linkcheck_anchors = False
 linkcheck_ignore = [
@@ -67,7 +71,6 @@ linkcheck_ignore = [
 # Extension configuration
 # --------------------------------------------------
 
-
 # Napoleon
 napoleon_google_docstring = False          # Disable support for Google-style docstrings (use NumPy-style instead)
 napoleon_numpy_docstring = True            # Enable support for NumPy-style docstrings
@@ -75,24 +78,19 @@ napoleon_use_param = False                 # Do not convert :param: sections int
 napoleon_use_ivar = True                   # Interpret instance variables as documented with :ivar:
 napoleon_include_init_with_doc = False     # Do not show __init__ docstring separately if it duplicates the class doc
 napoleon_include_private_with_doc = False  # Exclude private methods (_method) from docs even if they have docstrings
-napoleon_include_special_with_doc = True   # Include special methods like __init__, __str__ if they have docstrings
 
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
-autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
-autodata_content = "both"
 
 autodoc_default_options = {
     "members": True,
-    "member-order": "bysource",
+    "member-order": "bysource", # Displays classes and methods by their order in source code
     "private-members": False,
     "show-inheritance": False,
     "toctree": True,
     "exclude-members": "__new__",
 }
-
-add_module_names = False
 
 
 def _correct_signatures(app, what, name, obj, options, signature, return_annotation):

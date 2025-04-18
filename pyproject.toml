@@ -79,12 +79,11 @@ test = [
 ]
 
 docs = [
-    "Jinja2<3.1",
-    "Sphinx==6.2.1",  # Need >6 for exclude-members in autodoc
-    "readthedocs-sphinx-search==0.1.2",
-    "sphinx-toggleprompt==0.2.0",
-    "sphinx-copybutton==0.5.0",
-    "pydata_sphinx_theme==0.16.0",
+    "Sphinx==7.0.1",  # Need >6 for exclude-members in autodoc
+    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be rmemoved see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
+    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
+    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
+    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
     "spikeinterface>=0.102.2",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
