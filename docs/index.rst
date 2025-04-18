@@ -43,7 +43,7 @@ Below is an overview of the key sections to help you navigate our documentation 
   common problems.
 
 * **Catalogue of Projects**
-  
+
   :ref:`The Catalogue of Neuroconv Projects <catalogue>` section showcases a collection of successful conversion projects utilizing NeuroConv.
   It serves as both inspiration and a practical reference for what can be achieved with our library.
 
