@@ -247,6 +247,84 @@ If you do not intend to make any alterations to the default configuration for th
 and all datasets in the NWB file will automatically use the default configurations!
 
 
+Repacking
+---------
+
+If you want to change the backend configuration of an existing NWB file, you can use the :py:method:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
+For example, this function can be used to apply recommended chunking and compression settings to an NWB file that was created without them.
+
+.. code-block:: python
+
+    from datetime import datetime
+    from uuid import uuid4
+
+    from pynwb import NWBFile, TimeSeries, NWBHDF5IO
+    from neuroconv.tools.nwb_helpers import repack_nwbfile
+
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0)
+    nwbfile = NWBFile(
+        identifier=str(uuid4()),
+        session_start_time=session_start_time,
+        session_description="A session of my experiment.",
+    )
+
+    time_series = TimeSeries(
+        name="MyTimeSeries",
+        description="A time series from my experiment.",
+        unit="cm/s",
+        data=[1., 2., 3.],
+        timestamps=[0.0, 0.2, 0.4],
+    )
+    nwbfile.add_acquisition(time_series)
+
+    with NWBHDF5IO(nwbfile_path="uncompressed_nwbfile.nwb", mode="w") as io:
+        io.write(nwbfile)
+
+    repack_nwbfile(
+        nwbfile_path="uncompressed_nwbfile.nwb",
+        export_nwbfile_path="repacked_nwbfile.nwb",
+        backend="hdf5",
+    )
+
+This will create a new NWB file with the same data as the original,
+but with the recommended chunking and compression settings applied.
+By default, repack_nwbfile will use the default backend configuration,
+but you can also specify changes with an appropriately formatted dictionary.
+
+.. code-block:: python
+
+    repack_nwbfile(
+        nwbfile_path="uncompressed_nwbfile.nwb",
+        export_nwbfile_path="repacked_nwbfile.nwb",
+        backend="hdf5",
+        backend_configuration_changes={
+            "acquisition/MyTimeSeries/data": {
+                "compression_method": "gzip",
+                "compression_options": {"compression_opts":1},
+            },
+        },
+    )
+
+If your NWB file is already mostly configured properly, but you want to make a targeted change to the settings of a few
+of the objects, you can set the ``use_default_backend_configuration`` flag to False, which will use the existing nwbfile
+as a template for the new file, and only apply the changes you specify.
+
+.. code-block:: python
+
+    repack_nwbfile(
+        nwbfile_path="repacked_nwbfile.nwb",
+        export_nwbfile_path="twice_repacked_nwbfile.nwb",
+        backend="hdf5",
+        use_default_backend_configuration=False,
+        backend_configuration_changes={
+            "acquisition/MyTimeSeries/data": {
+                "compression_method": "gzip",
+                "compression_options": {"compression_opts":2},
+            },
+        },
+    )
+
+
 FAQ
 ---
 
