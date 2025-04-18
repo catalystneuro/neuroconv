@@ -1,6 +1,5 @@
 .. _how_to:
 
-
 How To Guides
 =============
 
