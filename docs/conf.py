@@ -85,13 +85,13 @@ autodoc_default_options = {
     "members": True,  # Enables automatic documentation of methods, attributes etc, not just the class docstring
     "member-order": "bysource", # Displays classes and methods by their order in source code
     "private-members": False,
-    "undoc-members": True,      # Document members without docstrings
+    # "undoc-members": True,      # Document members without docstrings
     "show-inheritance": False,
     "toctree": True,
     "exclude-members": "__new__",  # Do not display __new__ method in the docs
 }
 
-
+# This is used to remove self from the signature of the class methods
 def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
     if what == "class":
         signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
