@@ -104,4 +104,4 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
             raise AssertionError("The Open Ephys data must be in 'legacy' (.continuous) or in 'binary' (.dat) format.")
 
 
-OpenEphysRecordingInterface.__doc__.__init__ = OpenEphysRecordingInterface.__new__.__doc__
+OpenEphysRecordingInterface.__init__.__doc__ = OpenEphysRecordingInterface.__new__.__doc__
