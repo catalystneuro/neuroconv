@@ -77,10 +77,8 @@ napoleon_numpy_docstring = True            # Enable support for NumPy-style docs
 napoleon_use_param = False                 # Do not convert :param: sections into Parameters; leave as-is
 napoleon_use_ivar = True                   # Interpret instance variables as documented with :ivar:
 
-
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
-autodata_content = "both"
 
 autodoc_default_options = {
     "members": True,  # Enables automatic documentation of methods, attributes etc, not just the class docstring
