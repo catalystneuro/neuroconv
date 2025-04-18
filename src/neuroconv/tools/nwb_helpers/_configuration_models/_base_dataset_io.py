@@ -79,6 +79,9 @@ def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
 def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
     """Attempt to infer the dtype of the contained values of the dataset."""
     if hasattr(dataset, "dtype"):
+        if isinstance(dataset.dtype, list):
+            data_type = np.dtype(", ".join(dataset.dtype))
+            return data_type
         data_type = np.dtype(dataset.dtype)
         return data_type
 
@@ -150,7 +153,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         """
         size_in_bytes = math.prod(self.full_shape) * self.dtype.itemsize
         maximum_ram_usage_per_iteration_in_bytes = math.prod(self.buffer_shape) * self.dtype.itemsize
-        disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
 
         string = (
             f"\n{self.location_in_file}"
@@ -162,10 +164,14 @@ class DatasetIOConfiguration(BaseModel, ABC):
             f"\n  buffer shape : {self.buffer_shape}"
             f"\n  expected RAM usage : {human_readable_size(maximum_ram_usage_per_iteration_in_bytes)}"
             "\n"
-            f"\n  chunk shape : {self.chunk_shape}"
-            f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
-            "\n"
         )
+        if self.chunk_shape is not None:
+            disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
+            string += (
+                f"\n  chunk shape : {self.chunk_shape}"
+                f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
+                "\n"
+            )
         if self.compression_method is not None:
             string += f"\n  compression method : {self.compression_method}"
         if self.compression_options is not None:
@@ -185,9 +191,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
             dataset_name == location_in_file.split("/")[-1]
         ), f"The `dataset_name` ({dataset_name}) does not match the end of the `location_in_file` ({location_in_file})!"
 
-        chunk_shape = values["chunk_shape"]
-        buffer_shape = values["buffer_shape"]
         full_shape = values["full_shape"]
+        chunk_shape = values["chunk_shape"] if values["chunk_shape"] is not None else full_shape
+        buffer_shape = values["buffer_shape"] if values["buffer_shape"] is not None else full_shape
 
         if len(chunk_shape) != len(buffer_shape):
             raise ValueError(
@@ -342,3 +348,38 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape=buffer_shape,
             compression_method=compression_method,
         )
+
+    @staticmethod
+    def get_kwargs_from_neurodata_object(
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> dict:
+        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
+        dataset = DatasetIOConfiguration.get_dataset(neurodata_object=neurodata_object, dataset_name=dataset_name)
+        full_shape = dataset.shape
+        dtype = _infer_dtype(dataset=dataset)
+        chunk_shape = dataset.chunks
+        buffer_chunk_shape = chunk_shape or full_shape
+        buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+            buffer_gb=0.5, chunk_shape=buffer_chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+        )
+        return dict(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            location_in_file=location_in_file,
+            dataset_name=dataset_name,
+            full_shape=full_shape,
+            dtype=dtype,
+            chunk_shape=chunk_shape,
+            buffer_shape=buffer_shape,
+        )
+
+    @staticmethod
+    def get_dataset(
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> Union[h5py.Dataset, zarr.Array]:
+        dataset = getattr(neurodata_object, dataset_name)
+        while hasattr(dataset, "dataset"):
+            dataset = dataset.dataset
+        return dataset

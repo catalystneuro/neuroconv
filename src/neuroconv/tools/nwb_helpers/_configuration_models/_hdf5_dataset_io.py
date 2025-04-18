@@ -3,7 +3,10 @@
 from typing import Any, Literal, Union
 
 import h5py
+from hdmf import Container
+from hdmf.build.builders import BaseBuilder
 from pydantic import Field, InstanceOf
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ...importing import is_package_installed
@@ -78,3 +81,30 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
+
+    @classmethod
+    def from_neurodata_object(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+        builder: Union[BaseBuilder, None] = None,
+        use_default_dataset_io_configuration: bool = True,
+    ) -> Self:
+        if use_default_dataset_io_configuration:
+            return super().from_neurodata_object(
+                neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
+            )
+
+        kwargs = cls.get_kwargs_from_neurodata_object(
+            neurodata_object=neurodata_object,
+            dataset_name=dataset_name,
+        )
+        dataset = cls.get_dataset(neurodata_object=neurodata_object, dataset_name=dataset_name)
+        compression_method = dataset.compression
+        compression_opts = dataset.compression_opts
+        compression_options = dict(compression_opts=compression_opts)
+        return cls(
+            **kwargs,
+            compression_method=compression_method,
+            compression_options=compression_options,
+        )
