@@ -80,7 +80,7 @@ test = [
 
 docs = [
     "Jinja2<3.1",
-    "Sphinx==6.0.0",  # Needed for exclude-member
+    "Sphinx==6.1.0",  # Need >6 for exclude-members in autodoc
     "sphinx_rtd_theme==1.0.0",
     "readthedocs-sphinx-search==0.1.2",
     "sphinx-toggleprompt==0.2.0",
