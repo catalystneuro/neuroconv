@@ -103,5 +103,6 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         else:
             raise AssertionError("The Open Ephys data must be in 'legacy' (.continuous) or in 'binary' (.dat) format.")
 
-
+# Ensures __init__ shows the correct docstring in the docs instead of inheriting from the base class
+# See issue https://github.com/catalystneuro/neuroconv/issues/1045
 OpenEphysRecordingInterface.__init__.__doc__ = OpenEphysRecordingInterface.__new__.__doc__
