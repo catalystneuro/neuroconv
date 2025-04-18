@@ -117,8 +117,3 @@ intersphinx_mapping = {
     "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
 }
-
-# To shorten external links
-extlinks = {
-    "format-request-form": ("https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml", "request it")
-}
