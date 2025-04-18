@@ -87,6 +87,7 @@ docs = [
     "pydata_sphinx_theme==0.16.0",
     "roiextractors",  # Needed for the API documentation
     "spikeinterface>=0.102.2",  # Needed for the API documentation
+    "pytest" # used to build the documentation for tools.testing
 ]
 
 dandi = ["dandi>=0.66.5", "dandischema>=0.11"]
