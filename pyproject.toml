@@ -81,13 +81,12 @@ test = [
 docs = [
     "Jinja2<3.1",
     "Sphinx==6.1.0",  # Need >6 for exclude-members in autodoc
-    "sphinx_rtd_theme==1.0.0",
     "readthedocs-sphinx-search==0.1.2",
     "sphinx-toggleprompt==0.2.0",
     "sphinx-copybutton==0.5.0",
+    "pydata_sphinx_theme==0.16.0",
     "roiextractors",  # Needed for the API documentation
     "spikeinterface>=0.102.2",  # Needed for the API documentation
-    "pydata_sphinx_theme==0.16.0"
 ]
 
 dandi = ["dandi>=0.66.5", "dandischema>=0.11"]
