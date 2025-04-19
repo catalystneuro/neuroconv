@@ -106,7 +106,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
     )
     dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.", frozen=True)
     dtype: InstanceOf[np.dtype] = Field(description="The data type of elements of this dataset.", frozen=True)
-    full_shape: tuple[int, ...] = Field(description="The maximum shape of the entire dataset.", frozen=True)
+    full_shape: tuple[Union[int, None], ...] = Field(
+        description="The maximum shape of the entire dataset.", frozen=False
+    )
 
     # User specifiable fields
     chunk_shape: Union[tuple[PositiveInt, ...], None] = Field(
@@ -307,7 +309,12 @@ class DatasetIOConfiguration(BaseModel, ABC):
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
             # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
-            all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset[:].flat])
+            if isinstance(candidate_dataset, np.ndarray):
+                all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset[:].flat])
+            elif isinstance(candidate_dataset, list):
+                all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset])
+            else:
+                all_elements_are_strings = False
             if all_elements_are_strings:
                 dtype = np.array([element for element in candidate_dataset[:].flat]).dtype
                 chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
@@ -318,18 +325,17 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 )
                 compression_method = "gzip"
             else:
-                raise NotImplementedError(
-                    f"Unable to create a `DatasetIOConfiguration` for the dataset at '{location_in_file}'"
-                    f"for neurodata object '{neurodata_object}' of type '{type(neurodata_object)}'!"
+
+                # chunk_shape = (1,) * len(full_shape)  # Worse possible chunking
+                chunk_shape = full_shape
+                buffer_shape = full_shape
+                compression_method = None
+                import warnings
+
+                warnings.warn(
+                    f"Default chunking and compression options for compound objects are not optimized. "
+                    f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
                 )
-                # TODO: Add support for compound objects with non-string elements
-                # chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
-                # buffer_shape = full_shape
-                # compression_method = None
-                # warnings.warn(
-                #     f"Default chunking and compression options for compound objects are not optimized. "
-                #     f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
-                # )
 
         return cls(
             object_id=neurodata_object.object_id,
