@@ -7,9 +7,6 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.tools.spikeinterface.spikeinterface import (
-    _get_electrode_table_indices_for_recording,
-)
 
 
 class SortedRecordingConverter(ConverterPipe):
@@ -90,6 +87,10 @@ class SortedRecordingConverter(ConverterPipe):
             nwbfile=nwbfile,
             metadata=metadata,
             **conversion_options_recording,
+        )
+
+        from ...tools.spikeinterface.spikeinterface import (
+            _get_electrode_table_indices_for_recording,
         )
 
         # This returns the indices in the electrode table that corresponds to the channel ids of the recording
