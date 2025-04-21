@@ -257,7 +257,7 @@ class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneIm
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
-    expected_rate = 29.1248
+    expected_rate = 7.28119
     expected_starting_time = 0.0
 
     def check_extracted_metadata(self, metadata: dict):
