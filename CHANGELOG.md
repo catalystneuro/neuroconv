@@ -7,13 +7,15 @@
 * `add_electrical_series_to_nwbfile`, `add_units_table_to_nwbfile` and `add_electrodes_to_nwbfile` and `add_electrode_groups_to_nwbfile` are becoming private methods. Use `add_recording_to_nwbfile`, `add_sorting_to_nwbfile` and `add_recording_metadata_to_nwbfile` instead [PR #1298](https://github.com/catalystneuro/neuroconv/pull/1298)
 
 ## Bug Fixes
-* Fixed import bugs when importing main modules where non-lazy dependencies were causing imported errors. Added tests to avoid this in the future. [PR #1305](https://github.com/catalystneuro/neuroconv/pull/1305)
+* Fixed import errors in main modules caused by non-lazy dependencies. Added tests to prevent regressions. [PR #1305](https://github.com/catalystneuro/neuroconv/pull/1305)
 
 ## Features
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [PR #1296](https://github.com/catalystneuro/neuroconv/pull/1296)
 
+
 ## Improvements
-* Add documentation for conversion options with `NWBConverter` [#1301](https://github.com/catalystneuro/neuroconv/pull/1301)
+* Add documentation for conversion options with `NWBConverter` [PR #1301](https://github.com/catalystneuro/neuroconv/pull/1301)
+* Support roiextractors 0.5.12 [PR #1306](https://github.com/catalystneuro/neuroconv/pull/1306)
 * `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [PR #1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 * Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
 * `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds that instead if detected [PR #1293](https://github.com/catalystneuro/neuroconv/pull/1293)
@@ -24,7 +26,7 @@
 # v0.7.2 (April 4, 2025)
 
 ## Deprecations and Changes
-* Split VideoInterface (now deprecated) into ExternalVideoInterface and InternalVideoInterface [PR #1251](https://github.com/catalystneuro/neuroconv/pull/1251) [PR #1256](https://github.com/catalystneuro/neuroconv/pull/1256) [#1278](https://github.com/catalystneuro/neuroconv/pull/1278)
+* Split VideoInterface (now deprecated) into ExternalVideoInterface and InternalVideoInterface [PR #1251](https://github.com/catalystneuro/neuroconv/pull/1251) [PR #1256](https://github.com/catalystneuro/neuroconv/pull/1256) [PR #1278](https://github.com/catalystneuro/neuroconv/pull/1278)
 * `output_filepath` deprecated on `configure_and_write_nwbfile` use `nwbfile_path` instead [PR #1270](https://github.com/catalystneuro/neuroconv/pull/1270)
 * Temporary set a ceiling on pydantic `<2.11` [PR #1275](https://github.com/catalystneuro/neuroconv/pull/1275)
 
