@@ -10,7 +10,7 @@
 
 ## Features
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [PR #1296](https://github.com/catalystneuro/neuroconv/pull/1296)
-* Support roiextractors 0.5.12 [PR #1294](https://github.com/catalystneuro/neuroconv/pull/1294)
+* Support roiextractors 0.5.12 [PR #1306](https://github.com/catalystneuro/neuroconv/pull/1306)
 
 ## Improvements
 * Add documentation for conversion options with `NWBConverter` [PR #1301](https://github.com/catalystneuro/neuroconv/pull/1301)
