@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
@@ -42,7 +43,7 @@ dependencies = [
     "hdmf>=3.13.0",
     "hdmf_zarr>=0.7.0",
     "pynwb>=2.7.0",
-    "pydantic>=2.0.0,<2.11", # Pydantic 2.11 changed how the schema works for generic dict types
+    "pydantic>=2.0",
     "typing_extensions>=4.1.0",
     "psutil>=5.8.0",
     "tqdm>=4.60.0",
@@ -149,15 +150,15 @@ behavior = [
 
 ## Ecephys
 alphaomega = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 axona = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 biocam = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 blackrock = [
@@ -165,13 +166,13 @@ blackrock = [
     "spikeinterface>=0.102.2",
 ]
 cellexplorer = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "pymatreader>=0.0.32",
     "spikeinterface>=0.102.2",
     "setuptools; python_version >= '3.12'"
 ]
 edf = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
     "spikeinterface>=0.102.2",
 ]
@@ -180,32 +181,32 @@ intan = [
     "spikeinterface>=0.102.2",
 ]
 kilosort = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 
 maxwell = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 mcsraw = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 mearec = [
     "MEArec>=1.8.0",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 neuroscope = [
     "lxml>=4.6.5",
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 openephys = [
@@ -214,21 +215,21 @@ openephys = [
     "spikeinterface>=0.102.2",
 ]
 phy = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 plexon = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
     "spikeinterface>=0.102.2",
 ]
 spikegadgets = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 spikeglx = [
@@ -236,7 +237,7 @@ spikeglx = [
     "spikeinterface>=0.102.2",
 ]
 tdt = [
-    "neo>=0.13.3",
+    "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
 whitematter = [
@@ -282,50 +283,50 @@ image = [
 
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 cnmfe = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 extract = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 hdf5 = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 sbx = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 scanimage = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 suite2p = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
     "tdt",
 ]
 thor = [
-    "roiextractors>=0.5.11",
+    "roiextractors>=0.5.12",
     "tifffile>=2023.3.21",
 ]
 tiff = [
