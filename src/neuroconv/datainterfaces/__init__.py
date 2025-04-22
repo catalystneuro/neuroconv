@@ -144,6 +144,7 @@ interface_list = [
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
+    WhiteMatterRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
