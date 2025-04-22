@@ -11,6 +11,7 @@
 
 ## Features
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [PR #1296](https://github.com/catalystneuro/neuroconv/pull/1296)
+* Added `OpenEphysBinaryAnalogInterface` for converting OpenEphys analog channels data similar to the SpikeGLX NIDQ interface [PR #1237](https://github.com/catalystneuro/neuroconv/pull/1237)
 
 
 ## Improvements
