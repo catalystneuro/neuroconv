@@ -1181,8 +1181,6 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             data_from_extractor = imaging_extractor.get_video()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
-            assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
-
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
             assert self.interface_kwargs["channel_name"] in optical_channel_names

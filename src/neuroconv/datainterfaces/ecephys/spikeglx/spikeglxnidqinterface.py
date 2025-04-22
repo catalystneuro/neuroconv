@@ -24,7 +24,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
@@ -90,7 +90,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         )
 
         channel_ids = self.recording_extractor.get_channel_ids()
-        analog_channel_signatures = ["XA", "MA"]
+        # analog_channel_signatures are "XA" and "MA"
         self.analog_channel_ids = [ch for ch in channel_ids if "XA" in ch or "MA" in ch]
         self.has_analog_channels = len(self.analog_channel_ids) > 0
         self.has_digital_channels = len(self.analog_channel_ids) < len(channel_ids)
@@ -209,8 +209,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 stacklevel=2,
             )
 
-        if stub_test or self.subset_channels is not None:
-            recording = self.subset_recording(stub_test=stub_test)
+        if stub_test:
+            end_time = self.recording_extractor.get_end_time()
+            end_time = min(end_time, 0.100)
+            recording = self.recording_extractor.time_slice(start_time=0, end_time=end_time)
         else:
             recording = self.recording_extractor
 
@@ -271,7 +273,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         # Create default metadata if not provided
         if metadata is None:
-            metadata = {}
+            metadata = self.get_metadata()
 
         # Prepare TimeSeries metadata
         time_series_name = "TimeSeriesNIDQ"
