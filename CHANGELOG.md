@@ -13,7 +13,6 @@
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [PR #1296](https://github.com/catalystneuro/neuroconv/pull/1296)
 * Added `OpenEphysBinaryAnalogInterface` for converting OpenEphys analog channels data similar to the SpikeGLX NIDQ interface [PR #1237](https://github.com/catalystneuro/neuroconv/pull/1237)
 
-
 ## Improvements
 * Add documentation for conversion options with `NWBConverter` [PR #1301](https://github.com/catalystneuro/neuroconv/pull/1301)
 * Support roiextractors 0.5.12 [PR #1306](https://github.com/catalystneuro/neuroconv/pull/1306)
@@ -23,6 +22,7 @@
 * Fixed a bug in the extractor interfaces where segmentation and sorting interfaces were initialized twice [PR #1288](https://github.com/catalystneuro/neuroconv/pull/1288)
 * Support python 3.13 [PR #1117](https://github.com/catalystneuro/neuroconv/pull/1117)
 * Added *how to* documentation on how to set a probe to a recording interfaces [PR #1300](https://github.com/catalystneuro/neuroconv/pull/1300)
+* Fix API docs for `OpenEphysRecordingInterface` [PR #1302](https://github.com/catalystneuro/neuroconv/pull/1302)
 
 # v0.7.2 (April 4, 2025)
 

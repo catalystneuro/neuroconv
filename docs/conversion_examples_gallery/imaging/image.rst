@@ -1,5 +1,5 @@
 Image data conversion
---------------------
+---------------------
 
 The :py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` allows conversion of various image formats (PNG, JPG, TIFF) to NWB. The interface efficiently handles different color modes and can store images in either the acquisition or stimulus group of the NWB file.
 
@@ -10,7 +10,7 @@ Install NeuroConv with the additional dependencies necessary for reading image d
     pip install "neuroconv[image]"
 
 Supported Image Modes
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 The interface automatically converts the following PIL image modes to their corresponding NWB types:
 
@@ -20,7 +20,7 @@ The interface automatically converts the following PIL image modes to their corr
 - LA (luminance + alpha) → RGBAImage (automatically converted)
 
 Example Usage
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -72,7 +72,7 @@ Example Usage
 
 
 Key Features
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 1. **Memory Efficiency**: Uses an iterator pattern to load images only when needed, making it suitable for large images or multiple images.
 
