@@ -1,19 +1,21 @@
 # v0.7.3 (Upcoming)
 
 ## Deprecations and Changes
-* Release pydantic ceiling [#1273](https://github.com/catalystneuro/neuroconv/pull/1273)
+* Release pydantic ceiling [PR #1273](https://github.com/catalystneuro/neuroconv/pull/1273)
 * `write_scaled` behavior on `add_electrical_series_to_nwbfile` is deprecated and will be removed in or after October 2025 [PR #1292](https://github.com/catalystneuro/neuroconv/pull/1292)
 * `add_electrical_series_to_nwbfile` now requires both gain and offsets to write scaling factor for voltage conversion when writing to NWB [PR #1292](https://github.com/catalystneuro/neuroconv/pull/1292)
 * `add_electrical_series_to_nwbfile`, `add_units_table_to_nwbfile` and `add_electrodes_to_nwbfile` and `add_electrode_groups_to_nwbfile` are becoming private methods. Use `add_recording_to_nwbfile`, `add_sorting_to_nwbfile` and `add_recording_metadata_to_nwbfile` instead [PR #1298](https://github.com/catalystneuro/neuroconv/pull/1298)
 
 ## Bug Fixes
+* Fixed import errors in main modules caused by non-lazy dependencies. Added tests to prevent regressions. [PR #1305](https://github.com/catalystneuro/neuroconv/pull/1305)
 
 ## Features
 * Added a new `add_recording_as_time_series_to_nwbfile` function to add recording extractors from SpikeInterface as recording extractors to an nwbfile as time series [PR #1296](https://github.com/catalystneuro/neuroconv/pull/1296)
-* Support roiextractors 0.5.12 [PR #1306](https://github.com/catalystneuro/neuroconv/pull/1306)
+
 
 ## Improvements
 * Add documentation for conversion options with `NWBConverter` [PR #1301](https://github.com/catalystneuro/neuroconv/pull/1301)
+* Support roiextractors 0.5.12 [PR #1306](https://github.com/catalystneuro/neuroconv/pull/1306)
 * `configure_backend` is now exposed to be imported as `from neuroconv.tools import configure_and_write_nwbfile` [PR #1287](https://github.com/catalystneuro/neuroconv/pull/1287)
 * Added metadata section to video conversion gallery [PR #1276](https://github.com/catalystneuro/neuroconv/pull/1276)
 * `DeepLabCutInterface` now calculates whether the timestamps come from a constant sampling rate and adds that instead if detected [PR #1293](https://github.com/catalystneuro/neuroconv/pull/1293)
@@ -44,10 +46,10 @@
 * `FilePathType` is deprecated, use `FilePath` from pydantic instead [PR #1239](https://github.com/catalystneuro/neuroconv/pull/1239)
 * Change `np.NAN` to `np.nan` to support numpy 2.0 [PR #1245](https://github.com/catalystneuro/neuroconv/pull/1245)
 * Re activate Plexon tests on Mac. Testing this for a while as they are unreliable tests [PR #1195](https://github.com/catalystneuro/neuroconv/pull/1195)
-* Testing: only run tests for oldest and newest versions of python [#1249](https://github.com/catalystneuro/neuroconv/pull/1249)
+* Testing: only run tests for oldest and newest versions of python [PR #1249](https://github.com/catalystneuro/neuroconv/pull/1249)
 * Improve error display on scan image interfaces [PR #1246](https://github.com/catalystneuro/neuroconv/pull/1246)
-* Added concurrency to live-service-testing GitHub Actions workflow to prevent simultaneous write to the dandiset. [#1252](https://github.com/catalystneuro/neuroconv/pull/1252)
-* Updated GitHub Actions workflows to use Environment Files instead of the deprecated `set-output` command [#1259](https://github.com/catalystneuro/neuroconv/pull/1259)
+* Added concurrency to live-service-testing GitHub Actions workflow to prevent simultaneous write to the dandiset. [PR #1252](https://github.com/catalystneuro/neuroconv/pull/1252)
+* Updated GitHub Actions workflows to use Environment Files instead of the deprecated `set-output` command [PR #1259](https://github.com/catalystneuro/neuroconv/pull/1259)
 * Propagate `verbose` parameter from Converters to Interfaces [PR #1253](https://github.com/catalystneuro/neuroconv/issues/1253)
 * Replace uses of scipy load_mat and h5storage loadmat with pymat_reader read_mat in `CellExplorerSortingInterface` [PR #1254](https://github.com/catalystneuro/neuroconv/pull/1254)
 * Added camera device support for ExternalVideoInterface and InternalVideoInterface: [PR #1282](https://github.com/catalystneuro/neuroconv/pull/1282)
@@ -71,7 +73,7 @@
 * Interfaces and converters now have `verbose=False` by default [PR #1153](https://github.com/catalystneuro/neuroconv/pull/1153)
 * Added `metadata` and `conversion_options` as arguments to `NWBConverter.temporally_align_data_interfaces` [PR #1162](https://github.com/catalystneuro/neuroconv/pull/1162)
 * Deprecations in the ecephys pipeline: compression options, old iterator options, methods that did not end up in *to_nwbfile and the `get_schema_from_method_signature` function [PR #1207](https://github.com/catalystneuro/neuroconv/pull/1207)
-* Removed all deprecated functions from the roiextractors module: `add_fluorescence_traces`, `add_background_fluorescence_traces`, `add_summary_images`, `add_segmentation`, and `write_segmentation` [#1233](https://github.com/catalystneuro/neuroconv/pull/1233)
+* Removed all deprecated functions from the roiextractors module: `add_fluorescence_traces`, `add_background_fluorescence_traces`, `add_summary_images`, `add_segmentation`, and `write_segmentation` [PR #1233](https://github.com/catalystneuro/neuroconv/pull/1233)
 
 ## Bug Fixes
 * `run_conversion` does not longer trigger append mode when `nwbfile_path` points to a faulty file [PR #1180](https://github.com/catalystneuro/neuroconv/pull/1180)
