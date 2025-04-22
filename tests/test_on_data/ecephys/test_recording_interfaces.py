@@ -807,11 +807,9 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = WhiteMatterRecordingInterface
     interface_kwargs = dict(
-        file_paths=[
-            str(
-                ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
-            )
-        ],
+        file_path=str(
+            ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
+        ),
         sampling_frequency=25_000.0,
         num_channels=64,
     )
