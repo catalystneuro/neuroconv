@@ -1,5 +1,5 @@
-Recording & Sorting
-===================
+Extracellular Electrophysiology
+===============================
 
 Base Recording
 --------------
@@ -60,7 +60,6 @@ NeuroScope Recording & Sorting
 OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
-
 
 Phy Sorting
 -----------
