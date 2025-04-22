@@ -437,12 +437,12 @@ def add_photon_series_to_nwbfile(
 
     # Add timestamps or rate
     if always_write_timestamps:
-        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_samples()))
         photon_series_kwargs.update(timestamps=timestamps)
     else:
         imaging_has_timestamps = imaging.has_time_vector()
         if imaging_has_timestamps:
-            timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+            timestamps = imaging.frame_to_time(np.arange(imaging.get_num_samples()))
             estimated_rate = calculate_regular_series_rate(series=timestamps)
             starting_time = timestamps[0]
         else:

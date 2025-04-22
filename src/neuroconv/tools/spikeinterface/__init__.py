@@ -18,4 +18,5 @@ from .spikeinterface import (
     add_recording_metadata_to_nwbfile,
 )
 
+
 from .spikeinterfacerecordingdatachunkiterator import get_electrical_series_chunk_shape
