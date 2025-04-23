@@ -136,8 +136,9 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         else:
             num_planes = 1
 
-        image_shape = self.imaging_extractor.get_image_shape()
-        sample_shape = (self.imaging_extractor.get_num_frames(), image_shape[0], image_shape[1], num_planes)
+        height, width = self.imaging_extractor.get_image_shape()
+        num_samples = self.imaging_extractor.get_num_samples()
+        sample_shape = (num_samples, width, height, num_planes)
 
         # if the last dimension is 1, remove it
         sample_shape = sample_shape[:-1] if sample_shape[-1] == 1 else sample_shape
