@@ -130,14 +130,19 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
-        video_shape = (self.imaging_extractor.get_num_frames(),)
-        image_shape = self.imaging_extractor.get_image_size()
-        width, height = image_shape[1], image_shape[0]  # ROIExtractors convention is flipped
-        video_shape += (width, height)
-        if len(image_shape) == 3:
-            depth = image_shape[2]
-            video_shape += (depth,)
-        return video_shape
+
+        if hasattr(self.imaging_extractor, "get_num_planes"):
+            num_planes = self.imaging_extractor.get_num_planes()
+        else:
+            num_planes = 1
+
+        image_shape = self.imaging_extractor.get_image_shape()
+        sample_shape = (self.imaging_extractor.get_num_frames(), image_shape[0], image_shape[1], num_planes)
+
+        # if the last dimension is 1, remove it
+        sample_shape = sample_shape[:-1] if sample_shape[-1] == 1 else sample_shape
+
+        return sample_shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         data = self.imaging_extractor.get_video(
