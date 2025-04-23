@@ -133,13 +133,17 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
     def _get_maxshape(self) -> tuple:
 
         # Using this as a safe method, change once roiextractors 0.5.13 is released
-        single_sample = self.imaging_extractor.get_video(start_frame=0, end_frame=1)
-        num_planes = single_sample.shape[-1] if len(single_sample.shape) == 4 else 1
-        height = single_sample.shape[1]
-        width = single_sample.shape[2]
+        max_series_shape = self.imaging_extractor.get_video(start_frame=0, end_frame=1)
 
         num_samples = self.imaging_extractor.get_num_samples()
-        sample_shape = (num_samples, width, height, num_planes)
+        height = max_series_shape.shape[1]
+        width = max_series_shape.shape[2]
+
+        if len(max_series_shape.shape) == 3:
+            sample_shape = (num_samples, height, width)
+        else:
+            num_planes = max_series_shape.shape[3]
+            sample_shape = (num_samples, height, width, num_planes)
 
         return sample_shape
 
@@ -149,4 +153,5 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             end_frame=selection[0].stop,
         )
         tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
-        return data.transpose(tranpose_axes)[(slice(0, self.buffer_shape[0]),) + selection[1:]]
+        sliced_selection = (slice(0, self.buffer_shape[0]),) + selection[1:]
+        return data.transpose(tranpose_axes)[sliced_selection]
