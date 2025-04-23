@@ -114,16 +114,17 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        image_size = self._get_maxshape()[1:]
-        min_buffer_shape = tuple([chunk_shape[0]]) + image_size
+        sample_shape = self._get_maxshape()[1:]
+        min_buffer_shape = tuple([chunk_shape[0]]) + sample_shape
         scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
-        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
+        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + sample_shape
         scaled_buffer_shape = tuple(
             [
                 min(max(int(dimension_length), chunk_shape[dimension_index]), self._get_maxshape()[dimension_index])
                 for dimension_index, dimension_length in enumerate(max_buffer_shape)
             ]
         )
+
         return scaled_buffer_shape
 
     def _get_dtype(self) -> np.dtype:
@@ -131,17 +132,14 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
     def _get_maxshape(self) -> tuple:
 
-        if hasattr(self.imaging_extractor, "get_num_planes"):
-            num_planes = self.imaging_extractor.get_num_planes()
-        else:
-            num_planes = 1
+        # Using this as a safe method, change once roiextractors 0.5.13 is released
+        single_sample = self.imaging_extractor.get_video(start_frame=0, end_frame=1)
+        num_planes = single_sample.shape[-1] if len(single_sample.shape) == 4 else 1
+        height = single_sample.shape[1]
+        width = single_sample.shape[2]
 
-        height, width = self.imaging_extractor.get_image_shape()
         num_samples = self.imaging_extractor.get_num_samples()
         sample_shape = (num_samples, width, height, num_planes)
-
-        # if the last dimension is 1, remove it
-        sample_shape = sample_shape[:-1] if sample_shape[-1] == 1 else sample_shape
 
         return sample_shape
 
