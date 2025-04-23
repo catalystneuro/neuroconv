@@ -114,10 +114,10 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        sample_shape = self._get_maxshape()[1:]
-        min_buffer_shape = tuple([chunk_shape[0]]) + sample_shape
+        series_max_shape = self._get_maxshape()[1:]
+        min_buffer_shape = tuple([chunk_shape[0]]) + series_max_shape
         scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
-        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + sample_shape
+        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + series_max_shape
         scaled_buffer_shape = tuple(
             [
                 min(max(int(dimension_length), chunk_shape[dimension_index]), self._get_maxshape()[dimension_index])
@@ -140,10 +140,10 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         width = max_series_shape.shape[2]
 
         if len(max_series_shape.shape) == 3:
-            sample_shape = (num_samples, height, width)
+            sample_shape = (num_samples, width, height)
         else:
             num_planes = max_series_shape.shape[3]
-            sample_shape = (num_samples, height, width, num_planes)
+            sample_shape = (num_samples, width, height, num_planes)
 
         return sample_shape
 
@@ -154,4 +154,5 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         )
         tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
         sliced_selection = (slice(0, self.buffer_shape[0]),) + selection[1:]
+
         return data.transpose(tranpose_axes)[sliced_selection]
