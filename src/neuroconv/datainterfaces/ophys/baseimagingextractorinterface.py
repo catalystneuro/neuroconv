@@ -147,6 +147,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         stub_frames: int = 100,
         always_write_timestamps: bool = False,
+        iterator_type: Optional[str] = "v2",
+        iterator_options: Optional[dict] = None,
     ):
         """
         Add imaging data to the NWB file
@@ -169,6 +171,10 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_frames : int, optional
             The number of frames to write when stub_test is True. Will use min(stub_frames, total_frames) to avoid
             exceeding available frames, by default 100.
+        iterator_type : str, optional
+            The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
+        iterator_options : dict, optional
+            Additional options for controlling the iteration process, by default None.
         """
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
@@ -189,4 +195,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             photon_series_index=photon_series_index,
             parent_container=parent_container,
             always_write_timestamps=always_write_timestamps,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
         )
