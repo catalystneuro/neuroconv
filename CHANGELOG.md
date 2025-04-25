@@ -1,4 +1,4 @@
-# v0.7.3 (Upcoming)
+# v0.7.3 (April 25, 2025)
 
 ## Deprecations and Changes
 * Release pydantic ceiling [PR #1273](https://github.com/catalystneuro/neuroconv/pull/1273)
