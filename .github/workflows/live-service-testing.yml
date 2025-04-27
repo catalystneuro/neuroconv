@@ -25,11 +25,6 @@ on:
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
-# We are adding concurrency here to avoid concurrent writes to the dandi API.
-concurrency:
-  group: live-service-testing
-  cancel-in-progress: false
-
 jobs:
   run:
     name: ${{ matrix.os }} Python ${{ matrix.python-version }}

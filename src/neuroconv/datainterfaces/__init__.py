@@ -10,6 +10,8 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
+from .behavior.video.externalvideointerface import ExternalVideoInterface
+from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -44,6 +46,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -122,6 +125,7 @@ interface_list = [
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
+    OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     AxonaRecordingInterface,
@@ -160,6 +164,8 @@ interface_list = [
     ThorImagingInterface,
     # Behavior
     VideoInterface,
+    ExternalVideoInterface,
+    InternalVideoInterface,
     AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
@@ -197,9 +203,15 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    analog=dict(
+        OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+    ),
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
         Video=VideoInterface,
+        ExternalVideo=ExternalVideoInterface,
+        InternalVideo=InternalVideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
