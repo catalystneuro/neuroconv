@@ -55,7 +55,7 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
   # If the conversion gallery is the only thing that changed, run doctests only
@@ -64,7 +64,7 @@ jobs:
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: ./.github/workflows/doctests.yml
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
@@ -78,7 +78,7 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.9"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
