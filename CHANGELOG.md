@@ -7,7 +7,7 @@
 ## Features
 
 ## Improvements
-* Add a `how to` on how to add electrode metadata in the recording interfaces [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
+* Add a `how to` on how to add electrode metadata in the recording interfaces [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
 
 # v0.7.3 (April 25, 2025)
 
