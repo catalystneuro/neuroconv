@@ -220,11 +220,8 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
 
-        # Adding this as a safeguard before the spikeinterface changes are merged:
-        # https://github.com/SpikeInterface/spikeinterface/pull/3588
-        channel_ids = self.recording_extractor.get_channel_ids()
-        channel_ids_as_strings = [str(id) for id in channel_ids]
-        self.recording_extractor = self.recording_extractor.rename_channels(new_channel_ids=channel_ids_as_strings)
+        self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
+        self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
 
     def get_metadata(self) -> dict:
         """
