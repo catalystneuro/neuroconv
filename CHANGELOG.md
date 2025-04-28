@@ -1,6 +1,7 @@
 ## v0.7.4 (Upcoming)
 
 ## Deprecations and Changes
+* Drop support for python 3.9 [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
 
 ## Bug Fixes
 
