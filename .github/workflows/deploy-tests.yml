@@ -24,6 +24,10 @@ jobs:
         run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
       - id: load_os_versions
         run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
+      - name: Debugging
+        run: |
+          echo "Loaded Python versions: ${{ steps.load_python_versions.outputs.python_versions }}"
+          echo "Loaded OS versions: ${{ steps.load_os_versions.outputs.os_versions }}"
 
   assess-file-changes:
     uses: ./.github/workflows/assess-file-changes.yml
