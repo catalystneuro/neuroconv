@@ -8,6 +8,7 @@
 ## Features
 
 ## Improvements
+* Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
 
 # v0.7.3 (April 25, 2025)
 
