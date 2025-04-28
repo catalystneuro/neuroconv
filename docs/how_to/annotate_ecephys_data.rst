@@ -8,7 +8,9 @@ This guide provides instructions on how to annotate extracellular electrophysiol
 How to Set ElectrodeGroup Metadata
 ----------------------------------
 
-When working with extracellular electrophysiology data, you may need to define multiple electrode groups with different metadata (such as location) based on channel names. By default, NeuroConv creates a single ElectrodeGroup that is associated with all channels. This guide demonstrates how to define multiple distinct electrode groups before running the conversion.
+When working with extracellular electrophysiology data, you may need to define multiple electrode groups with different metadata (such as location) based on channel names.
+By default, NeuroConv creates a single ElectrodeGroup that is associated with all channels.
+This guide demonstrates how to define multiple distinct electrode groups and link them to the channels/electrodes.
 
 .. code-block:: python
 
@@ -55,13 +57,49 @@ When working with extracellular electrophysiology data, you may need to define m
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
 
 
-In this example:
-
-1. We first create a mock recording interface with 5 channels.
-2. We retrieve the default metadata using ``get_metadata()``.
-3. We define three electrode groups with different names, descriptions, and locations.
-4. We replace the default ElectrodeGroup in the metadata with our list of electrode groups.
-5. We map each channel ID to its corresponding electrode group name using the ``set_property()`` method.
-6. Finally, we create the NWBFile with our updated metadata.
 
 This approach allows you to associate different channels with different electrode groups, each with its own metadata such as location.
+
+How to Add Location to the Electrodes Table
+------------------------------------------
+
+In addition to setting electrode group metadata, you may want to add specific location information for each individual electrode in the electrodes table. This is particularly useful when electrodes within the same group are in slightly different brain areas or when you want to provide more detailed anatomical information.
+
+.. code-block:: python
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+    from neuroconv.tools import configure_and_write_nwbfile
+
+    interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+    metadata = interface.get_metadata()
+
+    # Get the recording extractor from the interface
+    recording_extractor = interface.recording_extractor
+
+    # Define brain areas for each channel using a dictionary
+    channel_id_to_brain_area = {
+        "0": "CA1",
+        "1": "CA1",
+        "2": "CA3",
+        "3": "DG",
+        "4": "EC"
+    }
+
+    # Set the brain_area property on the recording extractor using the dictionary
+    recording_extractor.set_property(
+        key="brain_area",
+        values=list(channel_id_to_brain_area.values()),
+        ids=list(channel_id_to_brain_area.keys())
+    )
+
+    # Create the NWBFile with the updated metadata
+    nwbfile = interface.add_to_nwbfile(metadata=metadata)
+
+    # You can verify that the brain_area property was added to the electrodes table
+    nwbfile.electrodes
+
+    # Write the NWB file to disk
+    nwbfile_path = "your_annotated_file.nwb"
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
+
+This approach allows you to add specific location information for each electrode, which will be included in the NWB file's electrodes table. The property name "brain_area" is used in this example, but you can use any property name that makes sense for your data.
