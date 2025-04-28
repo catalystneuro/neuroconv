@@ -1,4 +1,4 @@
-## v0.7.4 (Upcoming)
+# v0.7.4 (Upcoming)
 
 ## Deprecations and Changes
 
@@ -8,6 +8,7 @@
 
 ## Improvements
 * Add a `how to` on how to add electrode metadata in the recording interfaces [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
+* Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
 
 # v0.7.3 (April 25, 2025)
 
