@@ -77,12 +77,13 @@ In addition to setting electrode group metadata, you may want to add specific lo
     recording_extractor = interface.recording_extractor
 
     # Define brain areas for each channel using a dictionary
+    # Each ID of the recording should be mapped to a specific brain area
     channel_id_to_brain_area = {
         "0": "CA1",
         "1": "CA1",
         "2": "CA3",
         "3": "DG",
-        "4": "EC"
+        "4": "EC",
     }
 
     # Set the brain_area property on the recording extractor using the dictionary
