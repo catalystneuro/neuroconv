@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
 from types import MethodType
-from typing import List, Literal, Optional, Tuple
+from typing import Literal, Tuple
 from unittest.mock import Mock
 
 import numpy as np
@@ -347,7 +347,7 @@ def _generate_casted_test_masks(num_rois: int, mask_type: Literal["pixel", "voxe
     return casted_masks
 
 
-def assert_masks_equal(mask: List[List[Tuple[int, int, int]]], expected_mask: List[List[Tuple[int, int, int]]]):
+def assert_masks_equal(mask: list[list[Tuple[int, int, int]]], expected_mask: list[list[Tuple[int, int, int]]]):
     """
     Asserts that two lists of pixel masks of inhomogeneous shape are equal.
     """
@@ -534,7 +534,7 @@ class TestAddPlaneSegmentation(TestCase):
             num_columns=self.num_columns,
         )
 
-        def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
+        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
             roi_ids = roi_ids or range(self.get_num_rois())
             pixel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="pixel")
             return pixel_masks
@@ -566,7 +566,7 @@ class TestAddPlaneSegmentation(TestCase):
             num_columns=self.num_columns,
         )
 
-        def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
+        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
             roi_ids = roi_ids or range(self.get_num_rois())
             voxel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="voxel")
             return voxel_masks
@@ -643,7 +643,7 @@ class TestAddPlaneSegmentation(TestCase):
             num_columns=self.num_columns,
         )
 
-        def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
+        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
             roi_ids = roi_ids or range(self.get_num_rois())
             pixel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="pixel")
             return pixel_masks

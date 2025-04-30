@@ -1,7 +1,7 @@
 """Collection of helper functions for assessing and performing automated data transfers related to AWS."""
 
+import pathlib
 import warnings
-from typing import Optional
 
 from pydantic import FilePath, validate_call
 
@@ -14,15 +14,15 @@ def rclone_transfer_batch_job(
     rclone_command: str,
     job_name: str,
     efs_volume_name: str,
-    rclone_config_file_path: Optional[FilePath] = None,
+    rclone_config_file_path: FilePath | None = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
-    job_definition_name: Optional[str] = None,
+    job_definition_name: str | None = None,
     minimum_worker_ram_in_gib: int = 4,
     minimum_worker_cpus: int = 4,
-    submission_id: Optional[str] = None,
-    region: Optional[str] = None,
+    submission_id: str | None = None,
+    region: str | None = None,
 ) -> dict[str, str]:
     """
     Submit a job to AWS Batch for processing.

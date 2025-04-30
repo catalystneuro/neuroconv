@@ -4,7 +4,6 @@ import json
 import re
 from pathlib import Path
 from time import sleep, time
-from typing import Union
 
 from pydantic import DirectoryPath
 from tqdm import tqdm
@@ -35,7 +34,7 @@ def get_globus_dataset_content_sizes(
 
 def transfer_globus_content(
     source_endpoint_id: str,
-    source_files: Union[str, list[list[str]]],
+    source_files: str | list[list[str]],
     destination_endpoint_id: str,
     destination_folder: DirectoryPath,
     display_progress: bool = True,
@@ -81,7 +80,7 @@ def transfer_globus_content(
 
     def _submit_transfer_request(
         source_endpoint_id: str,
-        source_files: Union[str, list[list[str]]],
+        source_files: str | list[list[str]],
         destination_endpoint_id: str,
         destination_folder_path: Path,
     ) -> dict[str, int]:

@@ -1,7 +1,7 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -265,13 +265,13 @@ class VideoInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_frames: Optional[list[int]] = None,
+        starting_frames: list[int] | None = None,
         chunk_data: bool = True,
-        module_name: Optional[str] = None,
-        module_description: Optional[str] = None,
+        module_name: str | None = None,
+        module_description: str | None = None,
     ):
         """
         Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
