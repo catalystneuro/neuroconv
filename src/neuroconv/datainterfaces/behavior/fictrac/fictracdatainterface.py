@@ -2,7 +2,6 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -157,8 +156,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
-        radius: Optional[float] = None,
-        configuration_file_path: Optional[FilePath] = None,
+        radius: float | None = None,
+        configuration_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """
@@ -208,7 +207,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """
         Parameters
@@ -347,8 +346,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
 def extract_session_start_time(
     file_path: FilePath,
-    configuration_file_path: Optional[FilePath] = None,
-) -> Union[datetime, None]:
+    configuration_file_path: FilePath | None = None,
+) -> datetime | None:
     """
     Extract the session start time from a FicTrac data file or its configuration file.
 

@@ -1,7 +1,7 @@
 """Interface for converting single or multiple images to NWB format."""
 
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
@@ -17,7 +17,7 @@ class SingleImageIterator(AbstractDataChunkIterator):
     """Simple iterator to return a single image. This avoids loading the entire image into memory at initializing
     and instead loads it at writing time one by one"""
 
-    def __init__(self, file_path: Union[str, Path]):
+    def __init__(self, file_path: str | Path):
         self._file_path = Path(file_path)
         from PIL import Image
 
@@ -154,8 +154,8 @@ class ImageInterface(BaseDataInterface):
 
     def __init__(
         self,
-        file_paths: Optional[List[Union[str, Path]]] = None,
-        folder_path: Optional[Union[str, Path]] = None,
+        file_paths: list[str | Path] | None = None,
+        folder_path: str | Path | None = None,
         images_location: Literal["acquisition", "stimulus"] = "acquisition",
         verbose: bool = True,
     ):
@@ -218,7 +218,7 @@ class ImageInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[DeepDict] = None,
+        metadata: DeepDict | None = None,
         container_name: str = "images",
     ) -> None:
         """

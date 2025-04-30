@@ -1,7 +1,7 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import psutil
@@ -35,7 +35,7 @@ class InternalVideoInterface(BaseDataInterface):
         file_path: FilePath,
         verbose: bool = False,
         *,
-        video_name: Optional[str] = None,
+        video_name: str | None = None,
     ):
         """
         Initialize the interface.
@@ -200,11 +200,11 @@ class InternalVideoInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
         buffer_data: bool = True,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
-        module_description: Optional[str] = None,
+        module_description: str | None = None,
         always_write_timestamps: bool = False,
     ):
         """

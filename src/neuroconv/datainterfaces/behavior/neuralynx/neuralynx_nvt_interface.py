@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -97,9 +96,9 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         add_position: bool = True,
-        add_angle: Optional[bool] = None,
+        add_angle: bool | None = None,
     ):
         """
         Add NVT data to a given in-memory NWB file
