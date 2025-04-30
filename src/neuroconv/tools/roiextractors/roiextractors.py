@@ -1195,7 +1195,7 @@ def _create_roi_table_region(
     background_or_roi_ids: list,
     nwbfile: NWBFile,
     metadata: dict,
-    plane_segmentation_name: Optional[str] = None,
+    plane_segmentation_name: str | None = None,
 ):
     """Private method to create ROI table region.
 
@@ -1260,10 +1260,10 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
 def add_background_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    background_plane_segmentation_name: Optional[str] = None,
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
+    metadata: dict | None,
+    background_plane_segmentation_name: str | None = None,
+    iterator_options: dict | None = None,
+    compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.

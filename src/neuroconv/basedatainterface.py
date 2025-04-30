@@ -278,7 +278,7 @@ class BaseDataInterface(ABC):
 
         Returns
         -------
-        Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+        HDF5BackendConfiguration | ZarrBackendConfiguration
             The default configuration for the specified backend type.
         """
         return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)

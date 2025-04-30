@@ -13,7 +13,7 @@ def infer_path(path: str) -> PureWindowsPath | Path:
 
     Returns
     -------
-    Union[PureWindowsPath, Path]
+    PureWindowsPath | Path
         Returns a ``PureWindowsPath`` object if the string is in Windows format,
         else returns a ``Path`` object.
 

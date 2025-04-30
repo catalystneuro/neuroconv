@@ -47,7 +47,7 @@ def _get_cv2_timestamps(file_path: Path | str):
 
     Parameters
     ----------
-    file_path : Union[Path, str]
+    file_path : Path | str
         The path to the video file from which to extract timestamps.
 
     Returns

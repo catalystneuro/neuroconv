@@ -164,9 +164,9 @@ class ImageInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths : list of Union[str, Path], optional
+        file_paths : list of str | Path, optional
             List of paths to image files to be converted
-        folder_path : Union[str, Path], optional
+        folder_path : str | Path, optional
             Path to folder containing images to be converted. Used if file_paths not provided.
         images_location : Literal["acquisition", "stimulus"], default: "acquisition"
             Location to store images in the NWB file

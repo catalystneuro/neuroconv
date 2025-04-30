@@ -150,7 +150,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePath
             Path to .dat file.
-        gain : Optional[float], optional
+        gain : float | None, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
@@ -230,7 +230,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePath, optional
+        xml_file_path : FilePath | None, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
@@ -293,7 +293,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             Path to folder containing .clu and .res files.
         keep_mua_units : bool, default: True
             Optional. Whether to return sorted spikes from multi-unit activity.

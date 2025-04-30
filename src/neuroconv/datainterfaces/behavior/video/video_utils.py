@@ -16,7 +16,7 @@ def get_video_timestamps(file_path: FilePath, max_frames: int | None = None, dis
     ----------
     file_path : Path or str
         The path to a multimedia video file
-    max_frames : Optional[int], optional
+    max_frames : int | None, optional
         If provided, extract the timestamps of the video only up to max_frames.
     display_progress : bool, default: True
         Whether to display a progress bar during timestamp extraction.
@@ -51,7 +51,7 @@ class VideoCaptureContext:
 
         Parameters
         ----------
-        max_frames : Optional[int], optional
+        max_frames : int | None, optional
             If provided, extract the timestamps of the video only up to max_frames.
         display_progress : bool, default: True
             Whether to display a progress bar during timestamp extraction.

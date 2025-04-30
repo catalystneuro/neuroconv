@@ -162,19 +162,19 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
             The NWB file to which the NIDQ data will be added
-        metadata : Optional[dict], default: None
+        metadata : dict | None, default: None
             Metadata dictionary with device information. If None, uses default metadata
         stub_test : bool, default: False
             If True, only writes a small amount of data for testing
-        starting_time : Optional[float], default: None
+        starting_time : float | None, default: None
             DEPRECATED: Will be removed in June 2025. Starting time offset for the TimeSeries
         write_as : Literal["raw", "lfp", "processed"], default: "raw"
             DEPRECATED: Will be removed in June 2025. Specifies how to write the data
         write_electrical_series : bool, default: True
             DEPRECATED: Will be removed in June 2025. Whether to write electrical series data
-        iterator_type : Optional[str], default: "v2"
+        iterator_type : str | None, default: "v2"
             Type of iterator to use for data streaming
-        iterator_opts : Optional[dict], default: None
+        iterator_opts : dict | None, default: None
             Additional options for the iterator
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
@@ -257,13 +257,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             The NWB file to add the analog channels to
         recording : BaseRecording
             The recording extractor containing the analog channels
-        iterator_type : Optional[str]
+        iterator_type : str | None
             Type of iterator to use for data streaming
-        iterator_opts : Optional[dict]
+        iterator_opts : dict | None
             Additional options for the iterator
         always_write_timestamps : bool
             If True, always writes timestamps instead of using sampling rate
-        metadata : Optional[dict], default: None
+        metadata : dict | None, default: None
             Metadata dictionary with TimeSeries information
         """
         from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
