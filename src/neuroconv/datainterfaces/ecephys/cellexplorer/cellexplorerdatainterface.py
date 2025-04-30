@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import DirectoryPath, FilePath
@@ -387,15 +387,15 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
+        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "lfp",
         write_electrical_series: bool = True,
-        compression: Optional[str] = "gzip",
-        compression_opts: Optional[int] = None,
+        compression: str | None = "gzip",
+        compression_opts: int | None = None,
         iterator_type: str = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_opts: dict | None = None,
     ):
         super().add_to_nwbfile(
             nwbfile,

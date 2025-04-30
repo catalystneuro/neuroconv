@@ -1243,9 +1243,9 @@ def add_electrodes_info_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBF
 
 def write_recording_to_nwbfile(
     recording: BaseRecording,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
     starting_time: Optional[float] = None,
@@ -1755,9 +1755,9 @@ def add_sorting_to_nwbfile(
 
 def write_sorting_to_nwbfile(
     sorting: BaseSorting,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
     unit_ids: Optional[list[Union[str, int]]] = None,

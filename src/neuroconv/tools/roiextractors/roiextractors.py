@@ -1093,10 +1093,10 @@ def _add_fluorescence_traces_to_nwbfile(
     traces_to_add: dict,
     background_or_roi_ids: list,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
+    metadata: dict | None,
     default_plane_segmentation_index: int,
-    plane_segmentation_name: Optional[str] = None,
-    iterator_options: Optional[dict] = None,
+    plane_segmentation_name: str | None = None,
+    iterator_options: dict | None = None,
 ):
     iterator_options = iterator_options or dict()
 

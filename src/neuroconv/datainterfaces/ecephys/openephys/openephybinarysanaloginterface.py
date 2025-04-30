@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -28,8 +26,8 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = None,
+        stream_name: str | None = None,
+        block_index: int | None = None,
         verbose: bool = False,
         time_series_name: str = "TimeSeriesOpenEphysAnalog",
     ):
@@ -121,10 +119,10 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -134,13 +132,13 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
             The NWB file to which the analog data will be added
-        metadata : Optional[dict], default: None
+        metadata : dict, optional
             Metadata dictionary with device information. If None, uses default metadata
         stub_test : bool, default: False
             If True, only writes a small amount of data for testing
-        iterator_type : Optional[str], default: "v2"
+        iterator_type : str, optional, default: "v2"
             Type of iterator to use for data streaming
-        iterator_opts : Optional[dict], default: None
+        iterator_opts : dict, optional
             Additional options for the iterator
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate

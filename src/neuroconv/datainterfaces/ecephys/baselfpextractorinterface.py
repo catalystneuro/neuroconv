@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pynwb import NWBFile
 
@@ -20,14 +20,14 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
 
     def add_to_nwbfile(
         self,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
+        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "lfp",
         write_electrical_series: bool = True,
         iterator_type: str = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_opts: dict | None = None,
     ):
         return super().add_to_nwbfile(
             nwbfile=nwbfile,
