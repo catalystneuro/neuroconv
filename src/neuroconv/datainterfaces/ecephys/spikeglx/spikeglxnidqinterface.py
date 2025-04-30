@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
@@ -31,11 +31,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
-        file_path: Optional[FilePath] = None,
+        file_path: FilePath | None = None,
         verbose: bool = False,
-        load_sync_channel: Optional[bool] = None,
+        load_sync_channel: bool | None = None,
         es_key: str = "ElectricalSeriesNIDQ",
-        folder_path: Optional[DirectoryPath] = None,
+        folder_path: DirectoryPath | None = None,
     ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
@@ -146,13 +146,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
+        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -243,10 +243,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         recording,
-        iterator_type: Optional[str],
-        iterator_opts: Optional[dict],
+        iterator_type: str | None,
+        iterator_opts: dict | None,
         always_write_timestamps: bool,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """
         Add analog channels from the NIDQ board to the NWB file.

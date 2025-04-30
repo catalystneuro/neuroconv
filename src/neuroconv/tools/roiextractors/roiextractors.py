@@ -832,15 +832,15 @@ def _add_plane_segmentation(
     image_or_pixel_masks: np.ndarray,
     default_plane_segmentation_index: int,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    plane_segmentation_name: Optional[str] = None,
+    metadata: dict | None,
+    plane_segmentation_name: str | None = None,
     include_roi_centroids: bool = False,
-    roi_locations: Optional[np.ndarray] = None,
+    roi_locations: np.ndarray | None = None,
     include_roi_acceptance: bool = False,
-    accepted_ids: Optional[list] = None,
-    rejected_ids: Optional[list] = None,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
+    accepted_ids: list | None = None,
+    rejected_ids: list | None = None,
+    mask_type: str | None = "image",  # Optional[Literal["image", "pixel"]]
+    iterator_options: dict | None = None,
 ) -> NWBFile:
 
     iterator_options = iterator_options or dict()
