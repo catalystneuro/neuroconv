@@ -2,7 +2,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import numpy as np
 import psutil
@@ -1248,13 +1248,13 @@ def write_recording_to_nwbfile(
     metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    starting_time: Optional[float] = None,
-    write_as: Optional[str] = "raw",
-    es_key: Optional[str] = None,
+    starting_time: float | None = None,
+    write_as: str | None = "raw",
+    es_key: str | None = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_opts: dict | None = None,
 ) -> pynwb.NWBFile:
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.

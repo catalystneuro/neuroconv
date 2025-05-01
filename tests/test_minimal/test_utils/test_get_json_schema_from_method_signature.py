@@ -54,7 +54,7 @@ def test_get_json_schema_from_method_signature_advanced():
     They should also be compatible with __future__.annotations for SpikeInterface.
     """
 
-    # TODO: enable | instead of union when 3.11 is minimal
+    # Using Python 3.10 syntax for type annotations
     def advanced_method(
         old_list_of_strings: list[str],
         new_list_of_strings: list[str],
@@ -63,7 +63,7 @@ def test_get_json_schema_from_method_signature_advanced():
         nested_list_of_strings: list[list[str]],
         array_type: ArrayType,
         # more_nested_list_of_strings: list[list[list[str]]],
-        # pathalogical_case: list[dict[str | int | None, list[Optional[dict[str, list[Literal["a", "b"] | None]]]]],],
+        # pathalogical_case: list[dict[str | int | None, list[dict[str, list[Literal["a", "b"] | None]] | None]]],],
     ):
         pass
 
