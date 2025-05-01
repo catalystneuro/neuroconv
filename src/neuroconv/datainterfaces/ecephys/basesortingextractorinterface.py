@@ -275,7 +275,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         ----------
         nwbfile : NWBFile
             The NWBFile object to which the metadata is added.
-        metadata : Optional[DeepDict]
+        metadata : DeepDict | None
             Optional metadata to use for the addition of electrode-related data. If it's provided, it should contain an
             "Ecephys" field with a nested "Electrodes" field.
 

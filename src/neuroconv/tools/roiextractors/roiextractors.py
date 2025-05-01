@@ -738,7 +738,7 @@ def add_plane_segmentation_to_nwbfile(
     plane_segmentation_name: str | None = None,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: str | None = "image",  # Optional[Literal["image", "pixel"]]
+    mask_type: str | None = "image",  # Literal["image", "pixel"] | None
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
@@ -839,7 +839,7 @@ def _add_plane_segmentation(
     include_roi_acceptance: bool = False,
     accepted_ids: list | None = None,
     rejected_ids: list | None = None,
-    mask_type: str | None = "image",  # Optional[Literal["image", "pixel"]]
+    mask_type: str | None = "image",  # Literal["image", "pixel"] | None
     iterator_options: dict | None = None,
 ) -> NWBFile:
 
@@ -951,7 +951,7 @@ def add_background_plane_segmentation_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict | None,
     background_plane_segmentation_name: str | None = None,
-    mask_type: str | None = "image",  # Optional[Literal["image", "pixel"]]
+    mask_type: str | None = "image",  # Literal["image", "pixel"] | None
     iterator_options: dict | None = None,
     compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:

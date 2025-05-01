@@ -383,8 +383,8 @@ def configure_and_write_nwbfile(
     Parameters
     ----------
     nwbfile: NWBFile
-    output_filepath: Optional[FilePath], optional. Deprecated
-    nwbfile_path: Optional[FilePath], optional
+    output_filepath: FilePath | None, optional. Deprecated
+    nwbfile_path: FilePath | None, optional
     backend: {"hdf5", "zarr"}, optional
         The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
         specified backend. If no ``backend`` is specified, the ``backend_configuration`` is used.

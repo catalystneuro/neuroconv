@@ -1374,16 +1374,16 @@ def write_recording_to_nwbfile(
 def add_units_table_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: pynwb.NWBFile,
-    unit_ids: Optional[list[Union[str, int]]] = None,
-    property_descriptions: Optional[dict] = None,
-    skip_properties: Optional[list[str]] = None,
+    unit_ids: list[str | int] | None = None,
+    property_descriptions: dict | None = None,
+    skip_properties: list[str] | None = None,
     units_table_name: str = "units",
-    unit_table_description: Optional[str] = None,
+    unit_table_description: str | None = None,
     write_in_processing_module: bool = False,
-    waveform_means: Optional[np.ndarray] = None,
-    waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices: Optional[list[list[int]]] = None,
-    null_values_for_properties: Optional[dict] = None,
+    waveform_means: np.ndarray | None = None,
+    waveform_sds: np.ndarray | None = None,
+    unit_electrode_indices: list[list[int]] | None = None,
+    null_values_for_properties: dict | None = None,
 ):
     """
     add unist table will become a private method, use `add_sorting_to_nwbfile` instead.
