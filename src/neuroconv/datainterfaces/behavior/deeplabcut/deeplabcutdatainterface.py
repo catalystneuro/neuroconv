@@ -29,6 +29,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         config_file_path: Optional[FilePath] = None,
         individual_name: str = "ind1",
         subject_id: Optional[str] = None,
@@ -117,6 +118,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
+        *,
         metadata: Optional[dict] = None,
         container_name: str = "PoseEstimationDeepLabCut",
     ):
