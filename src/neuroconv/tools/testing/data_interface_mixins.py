@@ -208,7 +208,7 @@ class DataInterfaceTestMixin:
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, backend: "hdf5" | "zarr" = "hdf5"
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -921,7 +921,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: "hdf5" | "zarr" = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -1290,7 +1290,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: "hdf5" | "zarr" = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
