@@ -351,7 +351,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
-        subject_name="ind1",
+        individual_name="ind1",
     )
     save_directory = OUTPUT_PATH
 
@@ -413,7 +413,7 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
         ),
         config_file_path=None,
-        subject_name="ind1",
+        individual_name="ind1",
     )
     save_directory = OUTPUT_PATH
 
@@ -450,7 +450,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
             / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
-        subject_name="ind1",
+        individual_name="ind1",
     )
 
     save_directory = OUTPUT_PATH
@@ -505,7 +505,7 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
             / "SL18_D19_S01_F01_BOX_SLP_20230503_112642.1DLC_resnet50_SubLearnSleepBoxRedLightJun26shuffle1_100000_stubbed.csv"
         ),
         config_file_path=None,
-        subject_name="SL18",
+        individual_name="SL18",
     )
     save_directory = OUTPUT_PATH
 
@@ -533,6 +533,48 @@ def clean_pose_extension_import():
     modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
     for module in modules_to_remove:
         del sys.modules[module]
+
+
+class TestDeepLabCutInterfaceSubjectID(DataInterfaceTestMixin):
+    """Test the mapping between individual_name and subject_id in DeepLabCutInterface."""
+
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        # TODO: Add example file to test data
+        file_path=str(
+            "/Volumes/T7/CatalystNeuro/Jadhav/CoopLearnProject/CohortAS1/Social W/100%/XFN1-XFN3/07-20-2023/DLC data/Raw/log07-20-2023(1-XFN1-XFN3).1DLC_resnet50_SocialWSep18shuffle5_100000_el.h5"
+        ),
+        # config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+        individual_name="rat 1",
+        subject_id="XFN1",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            # Check that the subject_id is correctly set in the NWB file
+            assert nwbfile.subject.subject_id == "XFN1"
+
+            # Check that the pose estimation series use the subject_id in their names
+            pose_estimation_container = nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
+            pose_estimation_series = pose_estimation_container.pose_estimation_series
+
+            # Check that the skeleton references the subject correctly
+            assert pose_estimation_container.skeleton.subject.subject_id == "XFN1"
+
+            # Get the keypoint names from the skeleton
+            keypoint_names = pose_estimation_container.skeleton.nodes[:].tolist()
+
+            # Check that each pose estimation series is named with the subject_id
+            for keypoint in keypoint_names:
+                expected_series_name = f"XFN1_{keypoint}"
+                assert expected_series_name in pose_estimation_series
+
+                # Check that the description uses the subject_id
+                series = pose_estimation_series[expected_series_name]
+                assert "from individual XFN1" in series.description
 
 
 @pytest.mark.skipif(

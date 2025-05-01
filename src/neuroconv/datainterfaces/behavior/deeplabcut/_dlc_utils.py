@@ -264,6 +264,7 @@ def _write_pes_to_nwbfile(
     timestamps,
     exclude_nans,
     pose_estimation_container_kwargs: Optional[dict] = None,
+    subject_id: Optional[str] = None,
 ):
     """
     Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
@@ -274,18 +275,21 @@ def _write_pes_to_nwbfile(
     pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
     pose_estimation_name = pose_estimation_container_kwargs.get("name", "PoseEstimationDeepLabCut")
 
+    # Use subject_id if provided, otherwise use animal name
+    animal = animal if animal else ""
+    subject_id = subject_id if subject_id is not None else animal
+
     # Create a subject if it doesn't exist
     if nwbfile.subject is None:
-        subject = Subject(subject_id=animal)
+        subject = Subject(subject_id=subject_id)
         nwbfile.subject = subject
     else:
         subject = nwbfile.subject
 
     # Create skeleton from the keypoints
     keypoints = df_animal.columns.get_level_values("bodyparts").unique()
-    animal = animal if animal else ""
-    subject = subject if animal == subject.subject_id else None
-    skeleton_name = f"Skeleton{pose_estimation_name}_{animal.capitalize()}"
+    subject = subject if subject_id == subject.subject_id else None
+    skeleton_name = f"Skeleton{pose_estimation_name}_{subject_id.capitalize()}"
     skeleton = Skeleton(
         name=skeleton_name,
         nodes=list(keypoints),
@@ -313,8 +317,8 @@ def _write_pes_to_nwbfile(
             timestamps_cleaned = timestamps
 
         pose_estimation_series_kwargs = dict(
-            name=f"{animal}_{keypoint}" if animal else keypoint,
-            description=f"Keypoint {keypoint} from individual {animal}.",
+            name=f"{subject_id}_{keypoint}" if subject_id else keypoint,
+            description=f"Keypoint {keypoint} from individual {subject_id}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
@@ -369,12 +373,13 @@ def _add_subject_to_nwbfile(
     nwbfile: NWBFile,
     file_path: FilePath,
     individual_name: str,
+    subject_id: Optional[str] = None,
     config_file: Optional[FilePath] = None,
     timestamps: Optional[Union[list, np.ndarray]] = None,
     pose_estimation_container_kwargs: Optional[dict] = None,
 ) -> NWBFile:
     """
-    Given the subject name, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.
+    Given the individual name and subject ID, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.
 
     Parameters
     ----------
@@ -383,8 +388,10 @@ def _add_subject_to_nwbfile(
     file_path : str or path
         Path to the DeepLabCut .h5 or .csv output file.
     individual_name : str
-        Name of the subject (whose pose is predicted) for single-animal DLC project.
-        For multi-animal projects, the names from the DLC project will be used directly.
+        Name of the individual in the DeepLabCut output file.
+        For multi-animal projects, only the data for the individual with this name will be added to the NWB file.
+    subject_id : str, optional
+        The ID to use for the subject in the NWB file. If None, defaults to the individual_name.
     config_file : str or path, optional
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
@@ -453,4 +460,5 @@ def _add_subject_to_nwbfile(
         timestamps,
         exclude_nans=False,
         pose_estimation_container_kwargs=pose_estimation_container_kwargs,
+        subject_id=subject_id,
     )

@@ -30,7 +30,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         config_file_path: Optional[FilePath] = None,
-        subject_name: str = "ind1",
+        individual_name: str = "ind1",
+        subject_id: Optional[str] = None,
         verbose: bool = False,
     ):
         """
@@ -42,9 +43,11 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             Path to the file output by dlc (.h5 or .csv).
         config_file_path : FilePath, optional
             Path to .yml config file
-        subject_name : str, default: "ind1"
-            The name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
-        verbose: bool, default: True
+        individual_name : str, default: "ind1"
+            The name of the individual in the DeepLabCut output file.
+        subject_id : str, optional
+            The ID to use for the subject in the NWB file. If None, defaults to the individual_name.
+        verbose: bool, default: False
             Controls verbosity.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
@@ -71,7 +74,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self.config_dict = dict()
         if config_file_path is not None:
             self.config_dict = _read_config(config_file_path=config_file_path)
-        self.subject_name = subject_name
+        self.individual_name = individual_name
+        self.subject_id = subject_id if subject_id is not None else individual_name
         self.verbose = verbose
         self.pose_estimation_container_kwargs = dict()
 
@@ -136,7 +140,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         _add_subject_to_nwbfile(
             nwbfile=nwbfile,
             file_path=str(self.source_data["file_path"]),
-            individual_name=self.subject_name,
+            individual_name=self.individual_name,
+            subject_id=self.subject_id,
             config_file=self.source_data["config_file_path"],
             timestamps=self._timestamps,
             pose_estimation_container_kwargs=self.pose_estimation_container_kwargs,
