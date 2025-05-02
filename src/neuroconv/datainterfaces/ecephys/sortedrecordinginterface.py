@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -32,7 +30,7 @@ class SortedRecordingConverter(ConverterPipe):
         self,
         recording_interface: BaseRecordingExtractorInterface,
         sorting_interface: BaseSortingExtractorInterface,
-        unit_ids_to_channel_ids: dict[Union[str, int], list[Union[str, int]]],
+        unit_ids_to_channel_ids: dict[str | int, list[str | int]],
     ):
         """
         Parameters
@@ -78,7 +76,7 @@ class SortedRecordingConverter(ConverterPipe):
         data_interfaces = [recording_interface, sorting_interface]
         super().__init__(data_interfaces=data_interfaces)
 
-    def add_to_nwbfile(self, nwbfile, metadata, conversion_options: Optional[dict] = None):
+    def add_to_nwbfile(self, nwbfile, metadata, conversion_options: dict | None = None):
 
         conversion_options = conversion_options or dict()
         conversion_options_recording = conversion_options.get("recording", dict())

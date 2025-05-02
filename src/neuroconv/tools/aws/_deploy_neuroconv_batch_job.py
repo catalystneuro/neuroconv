@@ -4,7 +4,6 @@ import os
 import time
 import uuid
 import warnings
-from typing import Optional
 
 import boto3
 from pydantic import FilePath, validate_call
@@ -22,14 +21,14 @@ def deploy_neuroconv_batch_job(
     yaml_specification_file_path: FilePath,
     job_name: str,
     efs_volume_name: str,
-    rclone_config_file_path: Optional[FilePath] = None,
+    rclone_config_file_path: FilePath | None = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
-    job_definition_name: Optional[str] = None,
+    job_definition_name: str | None = None,
     minimum_worker_ram_in_gib: int = 16,  # Higher than previous recommendations for safer buffering room
     minimum_worker_cpus: int = 4,
-    region: Optional[str] = None,
+    region: str | None = None,
 ) -> dict[str, str]:
     """
     Submit a job to AWS Batch for processing.

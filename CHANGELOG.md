@@ -2,6 +2,7 @@
 
 ## Deprecations and Changes
 * Drop support for python 3.9 [PR #1313](https://github.com/catalystneuro/neuroconv/pull/1313)
+* Updated type hints to take advantage of the | operator [PR #1316](https://github.com/catalystneuro/neuroconv/pull/1313)
 
 ## Bug Fixes
 

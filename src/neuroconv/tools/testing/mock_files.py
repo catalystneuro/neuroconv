@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Optional
 
 
-def generate_path_expander_demo_ibl(folder_path: Optional[str] = None) -> None:
+def generate_path_expander_demo_ibl(folder_path: str | None = None) -> None:
     """
     Partially replicate the file structure of IBL data with dummy files for
     experimentation with `LocalPathExpander`. Specifically, it recreates the

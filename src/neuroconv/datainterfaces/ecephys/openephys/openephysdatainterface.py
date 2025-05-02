@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import DirectoryPath
 
@@ -55,8 +54,8 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     def __new__(
         cls,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = None,
+        stream_name: str | None = None,
+        block_index: int | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):

@@ -4,7 +4,7 @@ import json
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional, Type, Union
+from typing import Any, Callable, Type
 
 import docstring_parser
 import hdmf.data_utils
@@ -66,11 +66,11 @@ NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
 def get_base_schema(
-    tag: Optional[str] = None,
+    tag: str | None = None,
     root: bool = False,
-    id_: Optional[str] = None,
-    required: Optional[list[str]] = None,
-    properties: Optional[dict[str, Any]] = None,
+    id_: str | None = None,
+    required: list[str] | None = None,
+    properties: dict[str, Any] | None = None,
     **kwargs,
 ) -> dict[str, Any]:
     """
@@ -122,7 +122,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict[str, Any]:
+def get_json_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -209,7 +209,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     return json_schema
 
 
-def _copy_without_title_keys(d: Any) -> Optional[dict[str, Any]]:
+def _copy_without_title_keys(d: Any) -> dict[str, Any] | None:
     if not isinstance(d, dict):
         return d
 
@@ -253,7 +253,7 @@ def unroot_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in schema.items() if k in terms}
 
 
-def _is_member(types: Union[Type, tuple[Type, ...]], target_types: Union[Type, tuple[Type, ...]]) -> bool:
+def _is_member(types: Type | tuple[Type, ...], target_types: Type | tuple[Type, ...]) -> bool:
     if not isinstance(target_types, tuple):
         target_types = (target_types,)
     if not isinstance(types, tuple):
