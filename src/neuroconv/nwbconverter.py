@@ -4,7 +4,7 @@ import inspect
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Literal, Optional, Type, Union
+from typing import Literal, Type
 
 from jsonschema import validate
 from pydantic import FilePath, validate_call
@@ -40,10 +40,10 @@ from .utils.json_schema import (
 class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
-    display_name: Union[str, None] = None
+    display_name: str | None = None
     keywords: tuple[str] = tuple()
     associated_suffixes: tuple[str] = tuple()
-    info: Union[str, None] = None
+    info: str | None = None
 
     data_interface_classes: dict[str, Type[BaseDataInterface]] = {}
 
@@ -205,7 +205,7 @@ class NWBConverter:
         if self.verbose:
             print("conversion_options is valid!")
 
-    def create_nwbfile(self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None) -> NWBFile:
+    def create_nwbfile(self, metadata: dict | None = None, conversion_options: dict | None = None) -> NWBFile:
         """
         Create and return an in-memory pynwb.NWBFile object with the conversion data added to it.
 
@@ -229,9 +229,7 @@ class NWBConverter:
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
         return nwbfile
 
-    def add_to_nwbfile(
-        self, nwbfile: NWBFile, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
-    ):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, conversion_options: dict | None = None):
         """
         Add data from the instantiated data interfaces to the given NWBFile.
 
@@ -258,12 +256,12 @@ class NWBConverter:
     def run_conversion(
         self,
         nwbfile_path: FilePath,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
-        backend: Optional[Literal["hdf5", "zarr"]] = None,
-        backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
-        conversion_options: Optional[dict] = None,
+        backend: Literal["hdf5", "zarr"] | None = None,
+        backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
+        conversion_options: dict | None = None,
         append_on_disk_nwbfile: bool = False,
     ) -> None:
         """
@@ -351,9 +349,7 @@ class NWBConverter:
 
                 configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
-    def temporally_align_data_interfaces(
-        self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
-    ):
+    def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
         """Override this method to implement custom alignment."""
         pass
 
@@ -361,7 +357,7 @@ class NWBConverter:
     def get_default_backend_configuration(
         nwbfile: NWBFile,
         backend: Literal["hdf5", "zarr"] = "hdf5",
-    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+    ) -> HDF5BackendConfiguration | ZarrBackendConfiguration:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
 
@@ -374,7 +370,7 @@ class NWBConverter:
 
         Returns
         -------
-        Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+        HDF5BackendConfiguration | ZarrBackendConfiguration
             The default configuration for the specified backend type.
         """
         return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
@@ -391,7 +387,7 @@ class ConverterPipe(NWBConverter):
     def validate_source(cls):
         raise NotImplementedError("Source data not available with previously initialized classes.")
 
-    def __init__(self, data_interfaces: Union[list[BaseDataInterface], dict[str, BaseDataInterface]], verbose=False):
+    def __init__(self, data_interfaces: list[BaseDataInterface] | dict[str, BaseDataInterface], verbose=False):
         self.verbose = verbose
         if isinstance(data_interfaces, list):
             # Create unique names for each interface

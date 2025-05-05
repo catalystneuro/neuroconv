@@ -2,7 +2,6 @@
 
 import warnings
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
@@ -46,11 +45,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
-        file_path: Optional[FilePath] = None,
+        file_path: FilePath | None = None,
         verbose: bool = False,
-        es_key: Optional[str] = None,
-        folder_path: Optional[DirectoryPath] = None,
-        stream_id: Optional[str] = None,
+        es_key: str | None = None,
+        folder_path: DirectoryPath | None = None,
+        stream_id: str | None = None,
     ):
         """
         Parameters

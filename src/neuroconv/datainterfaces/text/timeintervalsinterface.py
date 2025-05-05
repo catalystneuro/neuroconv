@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -20,7 +19,7 @@ class TimeIntervalsInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: FilePath,
-        read_kwargs: Optional[dict] = None,
+        read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
         """
@@ -203,7 +202,7 @@ class TimeIntervalsInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         tag: str = "trials",
         column_name_mapping: dict[str, str] = None,
         column_descriptions: dict[str, str] = None,

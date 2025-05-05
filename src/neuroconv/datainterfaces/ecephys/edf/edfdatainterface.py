@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -39,7 +37,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
-        channels_to_skip: Optional[list] = None,
+        channels_to_skip: list | None = None,
     ):
         """
         Load and prepare data for EDF.

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import DirectoryPath, validate_call
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -28,7 +26,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        exclude_cluster_groups: Optional[list[str]] = None,
+        exclude_cluster_groups: list[str] | None = None,
         verbose: bool = False,
     ):
         """

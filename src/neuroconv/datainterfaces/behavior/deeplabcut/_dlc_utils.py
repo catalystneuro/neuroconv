@@ -1,7 +1,6 @@
 import pickle
 import warnings
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -42,13 +41,13 @@ def _read_config(config_file_path: FilePath) -> dict:
     return cfg
 
 
-def _get_cv2_timestamps(file_path: Union[Path, str]):
+def _get_cv2_timestamps(file_path: Path | str):
     """
     Extract and return an array of timestamps for each frame in a video using OpenCV.
 
     Parameters
     ----------
-    file_path : Union[Path, str]
+    file_path : Path | str
         The path to the video file from which to extract timestamps.
 
     Returns
@@ -263,8 +262,8 @@ def _write_pes_to_nwbfile(
     paf_graph,
     timestamps,
     exclude_nans,
-    pose_estimation_container_kwargs: Optional[dict] = None,
-    subject_id: Optional[str] = None,
+    pose_estimation_container_kwargs: dict | None = None,
+    subject_id: str | None = None,
 ):
     """
     Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
@@ -373,10 +372,10 @@ def _add_subject_to_nwbfile(
     nwbfile: NWBFile,
     file_path: FilePath,
     individual_name: str,
-    subject_id: Optional[str] = None,
-    config_file: Optional[FilePath] = None,
-    timestamps: Optional[Union[list, np.ndarray]] = None,
-    pose_estimation_container_kwargs: Optional[dict] = None,
+    subject_id: str | None = None,
+    config_file: FilePath | None = None,
+    timestamps: list | np.ndarray | None = None,
+    pose_estimation_container_kwargs: dict | None = None,
 ) -> NWBFile:
     """
     Given the individual name and subject ID, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.

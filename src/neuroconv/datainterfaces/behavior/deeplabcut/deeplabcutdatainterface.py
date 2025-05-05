@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -30,9 +29,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
-        config_file_path: Optional[FilePath] = None,
+        config_file_path: FilePath | None = None,
         individual_name: str = "ind1",
-        subject_id: Optional[str] = None,
+        subject_id: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -104,7 +103,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )
 
-    def set_aligned_timestamps(self, aligned_timestamps: Union[list, np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: list | np.ndarray):
         """
         Set aligned timestamps vector for DLC data with user defined timestamps
 
@@ -119,7 +118,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         *,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         container_name: str = "PoseEstimationDeepLabCut",
     ):
         """

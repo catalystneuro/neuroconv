@@ -1,7 +1,6 @@
 """General purpose iterator for all ImagingExtractor data."""
 
 import math
-from typing import Optional
 
 import numpy as np
 from roiextractors import ImagingExtractor
@@ -16,13 +15,13 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         imaging_extractor: ImagingExtractor,
-        buffer_gb: Optional[float] = None,
-        buffer_shape: Optional[tuple] = None,
-        chunk_mb: Optional[float] = None,
-        chunk_shape: Optional[tuple] = None,
+        buffer_gb: float | None = None,
+        buffer_shape: tuple | None = None,
+        chunk_mb: float | None = None,
+        chunk_shape: tuple | None = None,
         display_progress: bool = False,
-        progress_bar_class: Optional[tqdm] = None,
-        progress_bar_options: Optional[dict] = None,
+        progress_bar_class: tqdm | None = None,
+        progress_bar_options: dict | None = None,
     ):
         """
         Initialize an Iterable object which returns DataChunks with data and their selections on each iteration.

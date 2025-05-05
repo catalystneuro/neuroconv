@@ -2,7 +2,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import numpy as np
 import psutil
@@ -25,14 +25,14 @@ from ...utils.str_utils import human_readable_size
 def add_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: Optional[dict] = None,
-    starting_time: Optional[float] = None,
+    metadata: dict | None = None,
+    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
-    es_key: Optional[str] = None,
+    es_key: str | None = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
     iterator_type: str = "v2",
-    iterator_opts: Optional[dict] = None,
+    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
 ):
     """
@@ -115,12 +115,12 @@ def add_electrical_series_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
-    starting_time: Optional[float] = None,
+    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
 ):
     """
@@ -147,12 +147,12 @@ def _add_recording_segment_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
-    starting_time: Optional[float] = None,
+    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
 ):
     """
@@ -325,7 +325,7 @@ def _get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
     return metadata
 
 
-def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
+def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = None):
     """
     Add device information to nwbfile object.
 
@@ -367,7 +367,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] 
             nwbfile.create_device(**device_kwargs)
 
 
-def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: Optional[dict] = None):
+def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict | None = None):
     """
     Deprecated. This will become a private method.
     """
@@ -376,7 +376,7 @@ def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWB
     _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
-def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: Optional[dict] = None):
+def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict | None = None):
     """
     Add electrode group information to nwbfile object.
 
@@ -671,9 +671,9 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
 def add_electrodes_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
     exclude: tuple = (),
-    null_values_for_properties: Optional[dict] = None,
+    null_values_for_properties: dict | None = None,
 ):
     """
     Build an electrode_table from the recording information and it to the nwbfile object.
@@ -944,7 +944,7 @@ def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
     return_scaled: bool = False,
-    iterator_type: Optional[str] = "v2",
+    iterator_type: str | None = "v2",
     iterator_opts: dict = None,
 ) -> AbstractDataChunkIterator:
     """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
@@ -1030,9 +1030,9 @@ def _report_variable_offset(recording: BaseRecording) -> None:
 def add_recording_as_time_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: Optional[dict] = None,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    metadata: dict | None = None,
+    iterator_type: str | None = "v2",
+    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: str = "TimeSeries",
 ):
@@ -1095,10 +1095,10 @@ def add_recording_as_time_series_to_nwbfile(
 def _add_time_series_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
     segment_index: int = 0,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: str = "TimeSeries",
 ):
@@ -1243,18 +1243,18 @@ def add_electrodes_info_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBF
 
 def write_recording_to_nwbfile(
     recording: BaseRecording,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    starting_time: Optional[float] = None,
-    write_as: Optional[str] = "raw",
-    es_key: Optional[str] = None,
+    starting_time: float | None = None,
+    write_as: str | None = "raw",
+    es_key: str | None = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_opts: dict | None = None,
 ) -> pynwb.NWBFile:
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -1374,16 +1374,16 @@ def write_recording_to_nwbfile(
 def add_units_table_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: pynwb.NWBFile,
-    unit_ids: Optional[list[Union[str, int]]] = None,
-    property_descriptions: Optional[dict] = None,
-    skip_properties: Optional[list[str]] = None,
+    unit_ids: list[str | int] | None = None,
+    property_descriptions: dict | None = None,
+    skip_properties: list[str] | None = None,
     units_table_name: str = "units",
-    unit_table_description: Optional[str] = None,
+    unit_table_description: str | None = None,
     write_in_processing_module: bool = False,
-    waveform_means: Optional[np.ndarray] = None,
-    waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices: Optional[list[list[int]]] = None,
-    null_values_for_properties: Optional[dict] = None,
+    waveform_means: np.ndarray | None = None,
+    waveform_sds: np.ndarray | None = None,
+    unit_electrode_indices: list[list[int]] | None = None,
+    null_values_for_properties: dict | None = None,
 ):
     """
     add unist table will become a private method, use `add_sorting_to_nwbfile` instead.
@@ -1413,16 +1413,16 @@ def add_units_table_to_nwbfile(
 def _add_units_table_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: pynwb.NWBFile,
-    unit_ids: Optional[list[Union[str, int]]] = None,
-    property_descriptions: Optional[dict] = None,
-    skip_properties: Optional[list[str]] = None,
+    unit_ids: list[str | int] | None = None,
+    property_descriptions: dict | None = None,
+    skip_properties: list[str] | None = None,
     units_table_name: str = "units",
-    unit_table_description: Optional[str] = None,
+    unit_table_description: str | None = None,
     write_in_processing_module: bool = False,
-    waveform_means: Optional[np.ndarray] = None,
-    waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices: Optional[list[list[int]]] = None,
-    null_values_for_properties: Optional[dict] = None,
+    waveform_means: np.ndarray | None = None,
+    waveform_sds: np.ndarray | None = None,
+    unit_electrode_indices: list[list[int]] | None = None,
+    null_values_for_properties: dict | None = None,
 ):
     """
     Add sorting data to a NWBFile object as a Units table.
@@ -1680,17 +1680,17 @@ def _add_units_table_to_nwbfile(
 
 def add_sorting_to_nwbfile(
     sorting: BaseSorting,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    unit_ids: Optional[Union[list[str], list[int]]] = None,
-    property_descriptions: Optional[dict] = None,
-    skip_properties: Optional[list[str]] = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    unit_ids: list[str] | list[int] | None = None,
+    property_descriptions: dict | None = None,
+    skip_properties: list[str] | None = None,
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
-    waveform_means: Optional[np.ndarray] = None,
-    waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices: Optional[list[list[int]]] = None,
-    null_values_for_properties: Optional[dict] = None,
+    waveform_means: np.ndarray | None = None,
+    waveform_sds: np.ndarray | None = None,
+    unit_electrode_indices: list[list[int]] | None = None,
+    null_values_for_properties: dict | None = None,
 ):
     """Add sorting data (units and their properties) to an NWBFile.
 
@@ -1755,19 +1755,19 @@ def add_sorting_to_nwbfile(
 
 def write_sorting_to_nwbfile(
     sorting: BaseSorting,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    unit_ids: Optional[list[Union[str, int]]] = None,
-    property_descriptions: Optional[dict] = None,
-    skip_properties: Optional[list[str]] = None,
+    unit_ids: list[str | int] | None = None,
+    property_descriptions: dict | None = None,
+    skip_properties: list[str] | None = None,
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
-    waveform_means: Optional[np.ndarray] = None,
-    waveform_sds: Optional[np.ndarray] = None,
+    waveform_means: np.ndarray | None = None,
+    waveform_sds: np.ndarray | None = None,
     unit_electrode_indices=None,
 ):
     """
@@ -1839,12 +1839,12 @@ def write_sorting_to_nwbfile(
 
 def add_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    metadata: Optional[dict] = None,
-    recording: Optional[BaseRecording] = None,
-    unit_ids: Optional[Union[list[str], list[int]]] = None,
-    skip_properties: Optional[list[str]] = None,
-    property_descriptions: Optional[dict] = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    metadata: dict | None = None,
+    recording: BaseRecording | None = None,
+    unit_ids: list[str] | list[int] | None = None,
+    skip_properties: list[str] | None = None,
+    property_descriptions: dict | None = None,
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
@@ -1950,17 +1950,17 @@ def add_sorting_analyzer_to_nwbfile(
 
 def write_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[pynwb.NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: pynwb.NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
-    recording: Optional[BaseRecording] = None,
+    recording: BaseRecording | None = None,
     verbose: bool = False,
-    unit_ids: Optional[Union[list[str], list[int]]] = None,
+    unit_ids: list[str] | list[int] | None = None,
     write_electrical_series: bool = False,
-    add_electrical_series_kwargs: Optional[dict] = None,
-    skip_properties: Optional[list[str]] = None,
-    property_descriptions: Optional[dict] = None,
+    add_electrical_series_kwargs: dict | None = None,
+    skip_properties: list[str] | None = None,
+    property_descriptions: dict | None = None,
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
@@ -129,7 +129,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     return NWBFile(**nwbfile_kwargs)
 
 
-def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: Optional[dict] = None):
+def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):
     """
     Add device information from metadata to NWBFile object.
 
@@ -196,9 +196,9 @@ def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
 
 @contextmanager
 def make_or_load_nwbfile(
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     backend: Literal["hdf5", "zarr"] = "hdf5",
     verbose: bool = False,
@@ -331,8 +331,8 @@ def make_or_load_nwbfile(
 
 
 def _resolve_backend(
-    backend: Optional[Literal["hdf5", "zarr"]] = None,
-    backend_configuration: Optional[BackendConfiguration] = None,
+    backend: Literal["hdf5", "zarr"] | None = None,
+    backend_configuration: BackendConfiguration | None = None,
 ) -> Literal["hdf5"]:
     """
     Resolve the backend to use for writing the NWBFile.
@@ -368,10 +368,10 @@ def _resolve_backend(
 
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
-    output_filepath: Optional[FilePath] = None,
-    nwbfile_path: Optional[FilePath] = None,
-    backend: Optional[Literal["hdf5", "zarr"]] = None,
-    backend_configuration: Optional[BackendConfiguration] = None,
+    output_filepath: FilePath | None = None,
+    nwbfile_path: FilePath | None = None,
+    backend: Literal["hdf5", "zarr"] | None = None,
+    backend_configuration: BackendConfiguration | None = None,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -383,8 +383,8 @@ def configure_and_write_nwbfile(
     Parameters
     ----------
     nwbfile: NWBFile
-    output_filepath: Optional[FilePath], optional. Deprecated
-    nwbfile_path: Optional[FilePath], optional
+    output_filepath: FilePath | None, optional. Deprecated
+    nwbfile_path: FilePath | None, optional
     backend: {"hdf5", "zarr"}, optional
         The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
         specified backend. If no ``backend`` is specified, the ``backend_configuration`` is used.

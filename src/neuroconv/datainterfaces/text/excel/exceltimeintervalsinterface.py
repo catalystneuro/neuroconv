@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pandas as pd
 from pydantic import FilePath, validate_call
 
@@ -17,7 +15,7 @@ class ExcelTimeIntervalsInterface(TimeIntervalsInterface):
     def __init__(
         self,
         file_path: FilePath,
-        read_kwargs: Optional[dict] = None,
+        read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
         """

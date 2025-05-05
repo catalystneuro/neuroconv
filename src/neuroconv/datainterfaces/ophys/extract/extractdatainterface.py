@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import FilePath
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -16,7 +14,7 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
         self,
         file_path: FilePath,
         sampling_frequency: float,
-        output_struct_name: Optional[str] = None,
+        output_struct_name: str | None = None,
         verbose: bool = False,
     ):
         """

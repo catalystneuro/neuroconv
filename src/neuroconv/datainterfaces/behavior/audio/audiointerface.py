@@ -1,7 +1,7 @@
 import json
 import wave
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import scipy
@@ -108,7 +108,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def get_timestamps(self) -> Optional[np.ndarray]:
+    def get_timestamps(self) -> np.ndarray | None:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
@@ -166,11 +166,11 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
-        iterator_options: Optional[dict] = None,
+        iterator_options: dict | None = None,
     ):
         """
         Parameters

@@ -3,7 +3,7 @@ import json
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from jsonschema.validators import validate
 from pydantic import FilePath, validate_call
@@ -32,10 +32,10 @@ from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
-    display_name: Union[str, None] = None
+    display_name: str | None = None
     keywords: tuple[str] = tuple()
     associated_suffixes: tuple[str] = tuple()
-    info: Union[str, None] = None
+    info: str | None = None
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -129,7 +129,7 @@ class BaseDataInterface(ABC):
         """
         return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
-    def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
+    def create_nwbfile(self, metadata: dict | None = None, **conversion_options) -> NWBFile:
         """
         Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
 
@@ -154,7 +154,7 @@ class BaseDataInterface(ABC):
         return nwbfile
 
     @abstractmethod
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options) -> None:
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options) -> None:
         """
         Define a protocol for mapping the data from this interface to NWB neurodata objects.
 
@@ -174,11 +174,11 @@ class BaseDataInterface(ABC):
     def run_conversion(
         self,
         nwbfile_path: FilePath,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
-        backend: Optional[Literal["hdf5", "zarr"]] = None,
-        backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
+        backend: Literal["hdf5", "zarr"] | None = None,
+        backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
         append_on_disk_nwbfile: bool = False,
         **conversion_options,
     ):
@@ -264,7 +264,7 @@ class BaseDataInterface(ABC):
     def get_default_backend_configuration(
         nwbfile: NWBFile,
         backend: Literal["hdf5", "zarr"] = "hdf5",
-    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+    ) -> HDF5BackendConfiguration | ZarrBackendConfiguration:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
 
@@ -278,7 +278,7 @@ class BaseDataInterface(ABC):
 
         Returns
         -------
-        Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+        HDF5BackendConfiguration | ZarrBackendConfiguration
             The default configuration for the specified backend type.
         """
         return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
