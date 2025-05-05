@@ -540,11 +540,12 @@ class TestDeepLabCutInterfaceSubjectID(DataInterfaceTestMixin):
 
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
-        # TODO: Add example file to test data
         file_path=str(
-            "/Volumes/T7/CatalystNeuro/Jadhav/CoopLearnProject/CohortAS1/Social W/100%/XFN1-XFN3/07-20-2023/DLC data/Raw/log07-20-2023(1-XFN1-XFN3).1DLC_resnet50_SocialWSep18shuffle5_100000_el.h5"
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "multi_subject_h5"
+            / "log07-20-2023(1-XFN1-XFN3).1DLC_resnet50_SocialWSep18shuffle5_100000_el_stubbed.h5"
         ),
-        # config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         individual_name="rat 1",
         subject_id="XFN1",
     )
