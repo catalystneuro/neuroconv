@@ -10,6 +10,7 @@
 
 ## Improvements
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
+* Separate subject_id from individual_name in DeepLabCutInterface [PR #1318](https://github.com/catalystneuro/neuroconv/pull/1318)
 
 # v0.7.3 (April 25, 2025)
 
