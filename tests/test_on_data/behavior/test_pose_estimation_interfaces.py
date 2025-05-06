@@ -410,7 +410,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             file_path=self.interface.source_data["file_path"],
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
-            container_name=custom_container_name,
+            pose_estimation_metadata_key=custom_container_name,
         )
 
         new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
@@ -478,7 +478,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             file_path=self.interface.source_data["file_path"],
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
-            container_name=custom_container_name,
+            pose_estimation_metadata_key=custom_container_name,
         )
 
         # Use add_to_nwbfile with the new interface

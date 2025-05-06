@@ -32,24 +32,89 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         file_path: FilePath,
         config_file_path: FilePath | None = None,
         subject_name: str = "ind1",
+        pose_estimation_metadata_key: str = "PoseEstimationDeepLabCut",
         verbose: bool = False,
-        container_name: str = "PoseEstimationDeepLabCut",
     ):
         """
-        Interface for writing DLC's output files to nwb using dlc2nwb.
+        Interface for writing DeepLabCut's output files to NWB.
+
+        This interface reads DeepLabCut output files (.h5 or .csv) and converts them to NWB format
+        using the ndx-pose extension. It extracts keypoints (bodyparts), their coordinates, and confidence
+        values, and organizes them into a structured format within the NWB file.
 
         Parameters
         ----------
         file_path : FilePath
-            Path to the file output by dlc (.h5 or .csv).
+            Path to the file output by DeepLabCut (.h5 or .csv). The file should contain the pose estimation
+            data with keypoints, coordinates, and confidence values.
         config_file_path : FilePath, optional
-            Path to .yml config file
+            Path to the DeepLabCut .yml config file. If provided, additional metadata such as video dimensions,
+            task description, and experimenter information will be extracted.
         subject_name : str, default: "ind1"
-            The name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
-        verbose: bool, default: True
-            Controls verbosity.
-        container_name: str, default: "PoseEstimationDeepLabCut"
-            Name of the PoseEstimation container in the NWB file.
+            The subject name to be used in the metadata. For output files with multiple individuals,
+            this must match the name of the individual for which the data will be added. This name is also
+            used to link the skeleton to the subject in the NWB file.
+        pose_estimation_metadata_key : str, default: "PoseEstimationDeepLabCut"
+            This controls where in the metadata the pose estimation metadata is stored:
+            metadata["PoseEstimation"]["PoseEstimationContainers"][pose_estimation_metadata_key].
+            This key is also used as the name of the PoseEstimation container in the NWB file.
+        verbose : bool, default: False
+            Controls verbosity of the conversion process.
+
+
+        Metadata Structure
+        ------------------
+        The metadata is organized in a hierarchical structure:
+
+        metadata["PoseEstimation"]["Skeletons"][skeleton_name] contains:
+        {
+            "name": "SkeletonPoseEstimationDeepLabCut_SubjectName",
+            "nodes": ["bodypart1", "bodypart2", ...],  # List of keypoints/bodyparts
+            "edges": [[0, 1], [1, 2], ...],  # Connections between nodes (optional)
+            "subject": "subject_name"  # Links the skeleton to the subject
+        }
+
+        metadata["PoseEstimation"]["Devices"][device_name] contains:
+        {
+            "name": "CameraPoseEstimationDeepLabCut",
+            "description": "Camera used for behavioral recording and pose estimation."
+        }
+
+        metadata["PoseEstimation"]["PoseEstimationContainers"][pose_estimation_metadata_key] contains:
+        {
+            "name": "PoseEstimationDeepLabCut",
+            "description": "2D keypoint coordinates estimated using DeepLabCut.",
+            "source_software": "DeepLabCut",
+            "devices": ["device_name"],  # References to devices
+            "PoseEstimationSeries": {
+                "PoseEstimationSeriesBodyPart1": {
+                    "name": "subject_bodypart1",
+                    "description": "Keypoint bodypart1 from individual subject.",
+                    "unit": "pixels",
+                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                    "confidence_definition": "Softmax output of the deep neural network."
+                },
+                "PoseEstimationSeriesBodyPart2: {
+                    "name": "subject_bodypart2",
+                    "description": "Keypoint bodypart2 from individual subject.",
+                    "unit": "pixels",
+                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                    "confidence_definition": "Softmax output of the deep neural network."
+                }
+                ...
+                And so on for each bodypart
+            }
+        }
+
+        The metadata can be customized by:
+        1. Calling get_metadata() to retrieve the default metadata
+        2. Modifying the returned dictionary as needed
+        3. Passing the modified metadata to add_to_nwbfile() or run_conversion()
+
+        Notes
+        -----
+        - When the subject_name matches a subject_id in the NWBFile, the skeleton will be automatically
+        linked to that subject.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         from importlib.metadata import version
@@ -77,7 +142,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
-        self.container_name = container_name
+        self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self.pose_estimation_container_kwargs = dict()
 
         super().__init__(file_path=file_path, config_file_path=config_file_path)
@@ -100,121 +165,138 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         # Add Skeletons schema
         skeleton_schema = get_base_schema(tag="Skeletons")
-
-        # Create a dynamic skeleton name based on the subject name
-        skeleton_name = f"SkeletonPoseEstimationDeepLabCut_{self.subject_name.capitalize()}"
-
-        skeleton_schema["properties"] = {
-            skeleton_name: {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Name of the skeleton", "default": skeleton_name},
-                    "nodes": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "List of node names (bodyparts)",
-                    },
-                    "edges": {
-                        "type": "array",
-                        "items": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
-                        "description": "List of edges connecting nodes, each edge is a pair of node indices",
-                    },
-                    "subject": {
-                        "type": "string",
-                        "description": "Subject ID associated with this skeleton",
-                        "default": self.subject_name,
-                    },
+        skeleton_schema["additionalProperties"] = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Name of the skeleton"},
+                "nodes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of node names (bodyparts)",
                 },
-                "required": ["name", "nodes"],
-            }
+                "edges": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                    },
+                    "description": "List of edges connecting nodes, each edge is a pair of node indices",
+                },
+                "subject": {
+                    "type": ["string", "null"],
+                    "description": "Subject ID associated with this skeleton",
+                },
+            },
+            "required": ["name", "nodes"],
         }
-
-        # Allow additional properties in the Skeletons schema
-        skeleton_schema["additionalProperties"] = True
 
         # Add Devices schema
         devices_schema = get_base_schema(tag="Devices")
-        devices_schema["properties"] = {
-            "CameraPoseEstimationDeepLabCut": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name of the device",
-                        "default": "CameraPoseEstimationDeepLabCut",
-                    },
-                    "description": {"type": "string", "description": "Description of the device"},
-                    "compression": {"type": "string", "description": "Compression format used by the camera"},
-                    "deviceType": {"type": "string", "description": "Type of the device"},
+        devices_schema["additionalProperties"] = {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the device",
                 },
-                "required": ["name"],
-            }
+                "description": {
+                    "type": "string",
+                    "description": "Description of the device",
+                },
+            },
+            "required": ["name"],
         }
 
         # Add PoseEstimationContainers schema
         containers_schema = get_base_schema(tag="PoseEstimationContainers")
-        containers_schema["properties"] = {
-            self.container_name: {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name of the PoseEstimation container",
-                        "default": self.container_name,
-                    },
-                    "description": {"type": "string", "description": "Description of the pose estimation data"},
-                    "source_software": {
-                        "type": "string",
-                        "description": "Software used to generate the pose estimation data",
-                        "default": "DeepLabCut",
-                    },
-                    "dimensions": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "description": "Dimensions of the video [height, width]",
-                    },
-                    "skeleton": {"type": "string", "description": "Reference to a skeleton defined in Skeletons"},
-                    "devices": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "References to devices defined in Devices",
-                    },
-                    "PoseEstimationSeries": {
+        containers_schema["additionalProperties"] = {
+            "type": "object",
+            "description": "Metadata for a PoseEstimation group corresponding to one subject/session",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the PoseEstimation group",
+                    "default": "PoseEstimationDeepLabCut",
+                },
+                "description": {
+                    "type": ["string", "null"],
+                    "description": "Description of the pose estimation procedure and output",
+                },
+                "source_software": {
+                    "type": ["string", "null"],
+                    "description": "Name of the software tool used",
+                    "default": "DeepLabCut",
+                },
+                "source_software_version": {
+                    "type": ["string", "null"],
+                    "description": "Version string of the software tool used",
+                },
+                "scorer": {
+                    "type": ["string", "null"],
+                    "description": "Name of the scorer or algorithm used",
+                },
+                "dimensions": {
+                    "type": ["array", "null"],
+                    "description": "Dimensions [height, width] of the labeled video(s)",
+                    "items": {"type": "integer"},
+                },
+                "original_videos": {
+                    "type": ["array", "null"],
+                    "description": "Paths to the original video files",
+                    "items": {"type": "string"},
+                },
+                "labeled_videos": {
+                    "type": ["array", "null"],
+                    "description": "Paths to the labeled video files",
+                    "items": {"type": "string"},
+                },
+                "skeleton": {
+                    "type": ["string", "null"],
+                    "description": "Reference to a Skeleton defined in Skeletons",
+                },
+                "devices": {
+                    "type": ["array", "null"],
+                    "description": "References to Device objects used to record the videos",
+                    "items": {"type": "string"},
+                },
+                "PoseEstimationSeries": {
+                    "type": ["object", "null"],
+                    "description": "Dictionary of PoseEstimationSeries, one per body part",
+                    "additionalProperties": {
                         "type": "object",
-                        "additionalProperties": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string", "description": "Name for this specific series"},
-                                "description": {
-                                    "type": "string",
-                                    "description": "Description for this specific series",
-                                },
-                                "unit": {
-                                    "type": "string",
-                                    "description": "Unit for this specific series",
-                                    "default": "pixels",
-                                },
-                                "reference_frame": {
-                                    "type": "string",
-                                    "description": "Reference frame for this specific series",
-                                    "default": "(0,0) corresponds to the bottom left corner of the video.",
-                                },
-                                "confidence_definition": {
-                                    "type": "string",
-                                    "description": "Definition of the confidence values",
-                                    "default": "Softmax output of the deep neural network.",
-                                },
+                        "properties": {
+                            "name": {
+                                "type": ["string", "null"],
+                                "description": "Name for this series, typically the body part",
+                            },
+                            "description": {
+                                "type": ["string", "null"],
+                                "description": "Description for this specific series",
+                            },
+                            "unit": {
+                                "type": ["string", "null"],
+                                "description": "Unit of measurement (default: pixels)",
+                                "default": "pixels",
+                            },
+                            "reference_frame": {
+                                "type": ["string", "null"],
+                                "description": "Description of the reference frame",
+                                "default": "(0,0) corresponds to the bottom left corner of the video.",
+                            },
+                            "confidence_definition": {
+                                "type": ["string", "null"],
+                                "description": "How the confidence was computed (e.g., Softmax output)",
+                                "default": "Softmax output of the deep neural network.",
                             },
                         },
-                        "description": "Dictionary of pose estimation series, one for each bodypart",
+                        "required": ["name"],
                     },
                 },
-                "required": ["name"],
-            }
+            },
+            "required": ["name"],
         }
-
-        # Allow additional properties in the PoseEstimationContainers schema
-        containers_schema["additionalProperties"] = True
 
         # Add all schemas to the PoseEstimation schema
         metadata_schema["properties"]["PoseEstimation"]["properties"] = {
@@ -287,7 +369,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             pass
 
         # Create default PoseEstimation metadata
-        container_name = self.container_name
+        container_name = self.pose_estimation_metadata_key
         skeleton_name = f"Skeleton{container_name}_{self.subject_name.capitalize()}"
         device_name = f"Camera{container_name}"
 
@@ -392,18 +474,19 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         container_name: str, default: None
             name of the PoseEstimation container in the nwb. If None, uses the container_name from the interface.
             This parameter is deprecated and will be removed on or after October 2025.
-            Use the container_name parameter when initializing the interface instead.
+            Use the pose_estimation_metadata_key parameter when initializing the interface instead to specify
+            the content of the metadata.
 
         """
         import warnings
 
-        # Use the container_name from the instance if not provided
+        # Use the pose_estimation_metadata_key from the instance if container_name not provided
         if container_name is None:
-            container_name = self.container_name
+            container_name = self.pose_estimation_metadata_key
         else:
             warnings.warn(
                 "The container_name parameter in add_to_nwbfile is deprecated and will be removed on or after October 2025. "
-                "Use the container_name parameter when initializing the interface instead.",
+                "Use the pose_estimation_metadata_key parameter when initializing the interface instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -420,7 +503,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        # Set the container name in the metadata
+        # Set the container name in the metadata, remove this once  container_name is deprecated
         if "PoseEstimation" in default_metadata and "PoseEstimationContainers" in default_metadata["PoseEstimation"]:
             if container_name in default_metadata["PoseEstimation"]["PoseEstimationContainers"]:
                 default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name]["name"] = container_name
