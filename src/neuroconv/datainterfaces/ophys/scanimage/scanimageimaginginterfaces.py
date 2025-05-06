@@ -1,7 +1,10 @@
 import datetime
 import json
+import warnings
 from pathlib import Path
+from typing import Optional
 
+import numpy as np
 from dateutil.parser import parse as dateparse
 from pydantic import DirectoryPath, FilePath, validate_call
 
@@ -9,79 +12,232 @@ from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
-    """
-    Interface for reading TIFF files produced via ScanImage.
+    """Interface for reading TIFF files produced via ScanImage."""
 
-    It extracts metadata from the provided TIFF file and determines the ScanImage version.
-    For the legacy version 3.8, it creates an instance of ScanImageLegacyImagingInterface.
-    For newer versions, it parses the metadata and determines the number of planes.
-    If there is more than one plane and no specific plane is provided, it creates an instance of ScanImageMultiPlaneImagingInterface.
-    If there is only one plane or a specific plane is provided, it creates an instance of ScanImageSinglePlaneImagingInterface.
-    """
+    extractor = "ScanImageImagingExtractor"
 
-    display_name = "ScanImage Imaging"
-    associated_suffixes = (".tif",)
-    info = "Interface for ScanImage TIFF files."
-
-    ExtractorName = "ScanImageTiffImagingExtractor"
-
-    @classmethod
-    def get_source_schema(cls) -> dict:
-        """
-        Get the source schema for the ScanImage imaging interface.
-
-        Returns
-        -------
-        dict
-            The schema dictionary containing input parameters and descriptions
-            for initializing the ScanImage interface.
-        """
-        source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
-        return source_schema
-
-    @validate_call
-    def __new__(
-        cls,
+    def __init__(
+        self,
         file_path: FilePath,
-        channel_name: str | None = None,
+        channel_name: Optional[str] = None,
+        slice_sample: Optional[int] = None,
+        plane_index: Optional[int] = None,
+        file_paths: Optional[list[str]] = None,
         plane_name: str | None = None,
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
     ):
-        from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
-            extract_extra_metadata,
-            parse_metadata,
-        )
+        """
+        Initialize the ScanImage Imaging Interface.
 
-        image_metadata = extract_extra_metadata(file_path=file_path)
-        version = get_scanimage_major_version(scanimage_metadata=image_metadata)
-        if version == "3.8":
-            return ScanImageLegacyImagingInterface(
-                file_path=file_path,
-                fallback_sampling_frequency=fallback_sampling_frequency,
-                verbose=verbose,
+        Parameters
+        ----------
+        file_path : PathType
+            Path to the TIFF file. If this is part of a multi-file series, this should be the first file.
+        channel_name : str, optional
+            Name of the channel to extract. If None and multiple channels are available, the first channel will be used.
+        file_paths : List[PathType], optional
+            List of file paths to use. If provided, this overrides the automatic
+            file detection heuristics. Use this if automatic detection does not work correctly and you know
+            exactly which files should be included.  The file paths should be provided in an order that
+            reflects the temporal order of the frames in the dataset.
+        """
+
+        header_version = self.get_scanimage_version(file_path=file_path)
+        if header_version not in [3, 4, 5]:
+            raise ValueError(
+                f"Unsupported ScanImage version {header_version}. Supported versions are 3, 4, and 5."
+                f"Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead."
             )
 
-        parsed_metadata = parse_metadata(metadata=image_metadata)
-        available_planes = [f"{i}" for i in range(parsed_metadata["num_planes"])]
-        if len(available_planes) > 1 and plane_name is None:
-            return ScanImageMultiPlaneImagingInterface(
-                file_path=file_path,
-                channel_name=channel_name,
-                image_metadata=image_metadata,
-                parsed_metadata=parsed_metadata,
-                verbose=verbose,
+        if plane_name is not None:
+
+            warnings.warn(
+                "The `plane_name` argument is deprecated and will be removed in or after November 2025. Use `plane_index` instead."
+            )
+            plane_index = int(plane_name)
+
+        if fallback_sampling_frequency is not None:
+            warnings.warn(
+                "The `fallback_sampling_frequency` argument is deprecated and will be removed in or after November 2025"
             )
 
-        return ScanImageSinglePlaneImagingInterface(
+        self.channel_name = channel_name
+        super().__init__(
             file_path=file_path,
             channel_name=channel_name,
-            plane_name=plane_name,
-            image_metadata=image_metadata,
-            parsed_metadata=parsed_metadata,
-            verbose=verbose,
+            file_paths=file_paths,
+            plane_index=plane_index,
+            slice_sample=slice_sample,
         )
+
+    def get_metadata(self):
+        """
+        Get metadata for the ScanImage imaging data.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing imaging metadata from the ScanImage files.
+        """
+        metadata = super().get_metadata()
+
+        session_start_time = self._get_session_start_time()
+        if session_start_time:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Extract ScanImage-specific metadata
+        if hasattr(self.imaging_extractor, "_general_metadata"):
+            # Add general metadata to a custom field
+            scanimage_metadata = self.imaging_extractor._general_metadata
+
+            # Update device information
+            device_name = "Microscope"
+            metadata["Ophys"]["Device"][0].update(name=device_name, description=f"Microscope controlled by ScanImage")
+
+            # Update imaging plane metadata
+            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            imaging_plane_metadata.update(
+                device=device_name,
+                imaging_rate=self.imaging_extractor.get_sampling_frequency(),
+                description="Imaging plane from ScanImage acquisition",
+            )
+
+            # Update photon series metadata
+            photon_series_key = self.photon_series_type  # "TwoPhotonSeries" or "OnePhotonSeries"
+            photon_series_metadata = metadata["Ophys"][photon_series_key][0]
+
+            channel_string = self.channel_name.replace(" ", "").capitalize()
+            photon_series_name = f"{photon_series_key}{channel_string}"
+
+            photon_series_metadata["name"] = photon_series_name
+            photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
+
+            # Add additional metadata if available
+            if "FrameData" in scanimage_metadata:
+                frame_data = scanimage_metadata["FrameData"]
+
+                # Calculate scan line rate from line period if available
+                if "SI.hRoiManager.linePeriod" in frame_data:
+                    scan_line_rate = 1 / float(frame_data["SI.hRoiManager.linePeriod"])
+                    photon_series_metadata.update(scan_line_rate=scan_line_rate)
+                elif "SI.hScan2D.scannerFrequency" in frame_data:
+                    photon_series_metadata.update(scan_line_rate=frame_data["SI.hScan2D.scannerFrequency"])
+
+                # Add version information to device description if available
+                if "SI.VERSION_MAJOR" in frame_data:
+                    version = f"{frame_data.get('SI.VERSION_MAJOR', '')}.{frame_data.get('SI.VERSION_MINOR', '')}.{frame_data.get('SI.VERSION_UPDATE', '')}"
+                    metadata["Ophys"]["Device"][0][
+                        "description"
+                    ] = f"Microscope and acquisition data with ScanImage (version {version})"
+
+            # Extract ROI metadata if available
+            if "RoiGroups" in scanimage_metadata:
+                roi_metadata = scanimage_metadata["RoiGroups"]
+
+                # Extract grid spacing and origin coordinates from scanfields
+                grid_spacing = None
+                grid_spacing_unit = "n.a"
+                origin_coords = None
+                origin_coords_unit = "n.a"
+
+                if "imagingRoiGroup" in roi_metadata and "rois" in roi_metadata["imagingRoiGroup"]:
+                    rois = roi_metadata["imagingRoiGroup"]["rois"]
+                    if isinstance(rois, dict) and "scanfields" in rois:
+                        scanfields = rois["scanfields"]
+                        if "sizeXY" in scanfields and "pixelResolutionXY" in scanfields:
+                            fov_size_in_um = np.array(scanfields["sizeXY"])
+                            frame_dimension = np.array(scanfields["pixelResolutionXY"])
+                            grid_spacing = fov_size_in_um / frame_dimension
+                            grid_spacing_unit = "micrometers"
+
+                        if "centerXY" in scanfields:
+                            origin_coords = scanfields["centerXY"]
+                            origin_coords_unit = "micrometers"
+
+                # Update imaging plane metadata with grid spacing and origin coordinates
+                if grid_spacing is not None:
+                    imaging_plane_metadata.update(
+                        grid_spacing=grid_spacing.tolist(), grid_spacing_unit=grid_spacing_unit
+                    )
+
+                if origin_coords is not None:
+                    imaging_plane_metadata.update(origin_coords=origin_coords, origin_coords_unit=origin_coords_unit)
+
+        return metadata
+
+    def _get_session_start_time(self):
+        """
+        Open a ScanImage TIFF file, read the first frame, extract and parse the 'epoch' metadata
+        as the session start time.
+
+        Parameters
+        ----------
+        tiff_path : str or Path
+            Path to the TIFF file.
+
+        Returns
+        -------
+        datetime
+            Parsed datetime from the 'epoch' metadata.
+
+        Raises
+        ------
+        ValueError
+            If 'epoch' metadata is not found or is malformed.
+        """
+
+        from tifffile import TiffReader
+
+        tiff_file_path = self.imaging_extractor.file_path
+        with TiffReader(tiff_file_path) as tif:
+            image_description = tif.pages[0].tags["ImageDescription"].value
+
+        import re
+
+        match = re.search(r"epoch\s*=\s*\[([^\]]+)\]", image_description)
+        if not match:
+            raise ValueError(f"'epoch' field not found in {tiff_file_path}")
+
+        epoch_values = match.group(1).split()
+        import warnings
+
+        if len(epoch_values) != 6:
+            warnings.warn(
+                f"Expected 6 values in 'epoch' field, found {len(epoch_values)}: \n" f"Epoch field {epoch_values}."
+            )
+            return None
+
+        year, month, day, hour, minute, seconds = map(float, epoch_values)
+        second_int = int(seconds)
+        microsecond = int((seconds - second_int) * 1e6)
+
+        return datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), second_int, microsecond)
+
+    @staticmethod
+    def get_scanimage_version(file_path: str) -> int:
+        """
+        Extract the ScanImage version from a BigTIFF file without validation.
+
+        Parameters:
+        -----------
+        file_path : str or Path
+            Path to the ScanImage TIFF file
+
+        Returns:
+        --------
+        int
+            ScanImage version number
+        """
+        with open(file_path, "rb") as f:
+            # Skip the TIFF header (16 bytes) and the Magic Number (4 bytes)
+            f.seek(20)
+
+            # Read ScanImage version (4 bytes)
+            version_bytes = f.read(4)
+            scanimage_version = int.from_bytes(version_bytes, byteorder="little")
+
+            return scanimage_version
 
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
