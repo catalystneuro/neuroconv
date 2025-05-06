@@ -7,6 +7,7 @@
 ## Bug Fixes
 
 ## Features
+* Add metadata support for `DeepLabCutInterface` [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
 
 ## Improvements
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
