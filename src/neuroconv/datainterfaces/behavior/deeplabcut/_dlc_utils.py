@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import yaml
 from pydantic import FilePath
-from pynwb import NWBFile
 from ruamel.yaml import YAML
 
 from ....tools import get_module
@@ -254,42 +253,66 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
 
 def _write_pes_to_nwbfile(
     nwbfile,
-    animal,
     df_animal,
-    scorer,
-    video_file_path,
-    image_shape,
-    paf_graph,
     timestamps,
-    exclude_nans,
-    pose_estimation_container_kwargs: dict | None = None,
+    exclude_nans=False,
+    metadata: dict | None = None,
 ):
     """
     Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        The NWBFile to which the pose estimation data will be added.
+    df_animal : pandas.DataFrame
+        The DataFrame containing the pose estimation data for the animal.
+    timestamps : numpy.ndarray
+        The timestamps for the pose estimation data.
+    exclude_nans : bool, default: False
+        Whether to exclude NaN values from the data.
+    metadata : dict, optional
+        The metadata dictionary containing additional information for the pose estimation.
     """
     from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
     from pynwb.file import Subject
 
-    pose_estimation_container_kwargs = pose_estimation_container_kwargs or dict()
-    pose_estimation_name = pose_estimation_container_kwargs.get("name", "PoseEstimationDeepLabCut")
+    # Set default values
+    metadata = metadata or {}
+    pose_estimation_metadata = metadata.get("PoseEstimation", {})
+
+    # Extract container information
+    container_name = next(
+        iter(pose_estimation_metadata.get("PoseEstimationContainers", {}).keys()), "PoseEstimationDeepLabCut"
+    )
+    container_metadata = pose_estimation_metadata.get("PoseEstimationContainers", {}).get(container_name, {})
+
+    # Extract animal/subject information
+    animal = container_metadata.get("subject_name", "")
 
     # Create a subject if it doesn't exist
-    if nwbfile.subject is None:
+    if nwbfile.subject is None and animal:
         subject = Subject(subject_id=animal)
         nwbfile.subject = subject
     else:
         subject = nwbfile.subject
 
+    # Extract skeleton information
+    skeleton_name = container_metadata.get("skeleton", f"Skeleton{container_name}_{animal.capitalize()}")
+    skeleton_metadata = pose_estimation_metadata.get("Skeletons", {}).get(skeleton_name, {})
+
     # Create skeleton from the keypoints
     keypoints = df_animal.columns.get_level_values("bodyparts").unique()
-    animal = animal if animal else ""
-    subject = subject if animal == subject.subject_id else None
-    skeleton_name = f"Skeleton{pose_estimation_name}_{animal.capitalize()}"
+
+    # Use provided skeleton_nodes if available, otherwise use keypoints
+    nodes = skeleton_metadata.get("nodes", list(keypoints))
+    edges = skeleton_metadata.get("edges", [])
+
     skeleton = Skeleton(
         name=skeleton_name,
-        nodes=list(keypoints),
-        edges=np.array(paf_graph) if paf_graph else None,  # Convert paf_graph to numpy array
-        subject=subject,
+        nodes=nodes,
+        edges=np.array(edges) if edges else None,  # Convert edges to numpy array
+        subject=subject if animal == getattr(subject, "subject_id", "") else None,
     )
 
     behavior_processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
@@ -311,6 +334,7 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
+        # Start with default series kwargs
         pose_estimation_series_kwargs = dict(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
@@ -320,6 +344,12 @@ def _write_pes_to_nwbfile(
             confidence=data[:, 2],
             confidence_definition="Softmax output of the deep neural network.",
         )
+
+        # Get series-specific metadata from PoseEstimationSeries if available
+        pose_estimation_series_metadata = container_metadata.get("PoseEstimationSeries", {})
+        if keypoint in pose_estimation_series_metadata:
+            series_metadata = pose_estimation_series_metadata[keypoint]
+            pose_estimation_series_kwargs.update(series_metadata)
 
         timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
         rate = calculate_regular_series_rate(timestamps)
@@ -334,122 +364,60 @@ def _write_pes_to_nwbfile(
         )
         pose_estimation_series.append(pes)
 
-    camera_name = pose_estimation_name
-    if camera_name not in nwbfile.devices:
+    # Extract device information
+    device_name = container_metadata.get("devices", [f"Camera{container_name}"])[0]
+    device_metadata = pose_estimation_metadata.get("Devices", {}).get(device_name, {})
+
+    # Create or get the device
+    if device_name not in nwbfile.devices:
         camera = nwbfile.create_device(
-            name=camera_name,
-            description="Camera used for behavioral recording and pose estimation.",
+            name=device_name,
+            description=device_metadata.get("description", "Camera used for behavioral recording and pose estimation."),
         )
     else:
-        camera = nwbfile.devices[camera_name]
+        camera = nwbfile.devices[device_name]
+
+    # Extract video information
+    original_videos = container_metadata.get("original_videos", None)
+
+    dimensions = container_metadata.get("dimensions", [0, 0])
+    dimensions = np.array([dimensions], dtype="uint32") if dimensions else np.array([[0, 0]], dtype="uint32")
 
     # Create PoseEstimation container with updated arguments
-    dimensions = [list(map(int, image_shape.split(",")))[1::2]]
-    dimensions = np.array(dimensions, dtype="uint32")
     pose_estimation_default_kwargs = dict(
+        name=container_name,
         pose_estimation_series=pose_estimation_series,
-        description="2D keypoint coordinates estimated using DeepLabCut.",
-        original_videos=[video_file_path] if video_file_path else None,
-        dimensions=dimensions,
+        description=container_metadata.get("description", "2D keypoint coordinates estimated using DeepLabCut."),
+        original_videos=original_videos,
         devices=[camera],
-        scorer=scorer,
-        source_software="DeepLabCut",
+        scorer=container_metadata.get("scorer", "DeepLabCut"),
+        source_software=container_metadata.get("source_software", "DeepLabCut"),
         skeleton=skeleton,
     )
-    pose_estimation_default_kwargs.update(pose_estimation_container_kwargs)
+
+    # Update with any additional container kwargs
+    pose_estimation_default_kwargs.update(
+        {
+            k: v
+            for k, v in container_metadata.items()
+            if k
+            not in [
+                "PoseEstimationSeries",
+                "name",
+                "description",
+                "original_videos",
+                "dimensions",
+                "devices",
+                "scorer",
+                "source_software",
+                "reference_frame",
+                "skeleton",
+            ]
+        }
+    )
+
     pose_estimation_container = PoseEstimation(**pose_estimation_default_kwargs)
 
     behavior_processing_module.add(pose_estimation_container)
 
     return nwbfile
-
-
-def _add_subject_to_nwbfile(
-    nwbfile: NWBFile,
-    file_path: FilePath,
-    individual_name: str,
-    config_file: FilePath | None = None,
-    timestamps: list | np.ndarray | None = None,
-    pose_estimation_container_kwargs: dict | None = None,
-) -> NWBFile:
-    """
-    Given the subject name, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.
-
-    Parameters
-    ----------
-    nwbfile : pynwb.NWBFile
-        The in-memory nwbfile object to which the subject specific pose estimation series will be added.
-    file_path : str or path
-        Path to the DeepLabCut .h5 or .csv output file.
-    individual_name : str
-        Name of the subject (whose pose is predicted) for single-animal DLC project.
-        For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str or path, optional
-        Path to a project config.yaml file
-    timestamps : list, np.ndarray or None, default: None
-        Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
-    pose_estimation_container_kwargs : dict, optional
-        Dictionary of keyword argument pairs to pass to the PoseEstimation container.
-
-    Returns
-    -------
-    nwbfile : pynwb.NWBFile
-        nwbfile with pes written in the behavior module
-    """
-    file_path = Path(file_path)
-
-    video_name, scorer = file_path.stem.split("DLC")
-    scorer = "DLC" + scorer
-
-    # TODO probably could be read directly with h5py
-    # This requires pytables
-    if ".h5" in file_path.suffixes:
-        df = pd.read_hdf(file_path)
-    elif ".csv" in file_path.suffixes:
-        df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
-    df = _ensure_individuals_in_header(df, individual_name)
-
-    # Note the video here is a tuple of the video path and the image shape
-    if config_file is not None:
-        video_file_path, image_shape = _get_video_info_from_config_file(
-            config_file_path=config_file,
-            vidname=video_name,
-        )
-    else:
-        video_file_path = None
-        image_shape = "0, 0, 0, 0"
-
-    # find timestamps only if required:``
-    timestamps_available = timestamps is not None
-    if not timestamps_available:
-        if video_file_path is None:
-            timestamps = df.index.tolist()  # setting timestamps to dummy
-        else:
-            timestamps = _get_video_timestamps(video_file_path, infer_timestamps=True)
-
-    # Fetch the corresponding metadata pickle file, we extract the edges graph from here
-    # TODO: This is the original implementation way to extract the file name but looks very brittle. Improve it
-    filename = str(file_path.parent / file_path.stem)
-    for i, c in enumerate(filename[::-1]):
-        if c.isnumeric():
-            break
-    if i > 0:
-        filename = filename[:-i]
-
-    metadata_file_path = Path(filename + "_meta.pickle")
-    paf_graph = _get_graph_edges(metadata_file_path=metadata_file_path)
-
-    df_animal = df.xs(individual_name, level="individuals", axis=1)
-
-    return _write_pes_to_nwbfile(
-        nwbfile,
-        individual_name,
-        df_animal,
-        scorer,
-        video_file_path,
-        image_shape,
-        paf_graph,
-        timestamps,
-        exclude_nans=False,
-        pose_estimation_container_kwargs=pose_estimation_container_kwargs,
-    )

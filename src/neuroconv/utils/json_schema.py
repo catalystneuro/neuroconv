@@ -2,6 +2,7 @@ import collections.abc
 import inspect
 import json
 import warnings
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Type
@@ -226,11 +227,26 @@ def fill_defaults(schema: dict[str, Any], defaults: dict[str, Any], overwrite: b
     defaults: dict
     overwrite: bool
     """
+    print(f"DEBUG - Schema: {schema.keys()}")
+    print(f"DEBUG - Defaults: {defaults.keys() if isinstance(defaults, dict) else defaults}")
+
     # patternProperties introduced with the CsvTimeIntervalsInterface
     # caused issue with NWBConverter.get_metadata_schema() call leading here
     properties_reference = "properties"
     if properties_reference not in schema and "patternProperties" in schema:
         properties_reference = "patternProperties"
+
+    # Handle additionalProperties case
+    if properties_reference not in schema and "additionalProperties" in schema:
+        print(f"DEBUG - Using additionalProperties instead of properties")
+        # If schema has additionalProperties but no properties, use the additionalProperties
+        if isinstance(schema["additionalProperties"], dict) and "properties" in schema["additionalProperties"]:
+            # Create a properties key with the same structure as additionalProperties.properties
+            schema["properties"] = {}
+            for default_key in defaults.keys():
+                schema["properties"][default_key] = deepcopy(schema["additionalProperties"])
+            properties_reference = "properties"
+            print(f"DEBUG - Created properties from additionalProperties template")
 
     for key, val in schema[properties_reference].items():
         if key in defaults:
