@@ -119,6 +119,11 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                         "items": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
                         "description": "List of edges connecting nodes, each edge is a pair of node indices",
                     },
+                    "subject": {
+                        "type": "string",
+                        "description": "Subject ID associated with this skeleton",
+                        "default": self.subject_name,
+                    },
                 },
                 "required": ["name", "nodes"],
             }
@@ -291,7 +296,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         # Add Skeleton as a dictionary
         pose_estimation_metadata["Skeletons"] = {
-            skeleton_name: {"name": skeleton_name, "nodes": bodyparts, "edges": edges}
+            skeleton_name: {"name": skeleton_name, "nodes": bodyparts, "edges": edges, "subject": self.subject_name}
         }
 
         # Add Device as a dictionary

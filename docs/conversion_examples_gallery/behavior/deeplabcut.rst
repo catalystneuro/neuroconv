@@ -30,7 +30,7 @@ This interface supports both .h5 and .csv output files from DeepLabCut.
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
 Customizing Pose Estimation Metadata
------------------------------------
+------------------------------------
 
 The DeepLabCutInterface provides a rich metadata schema that allows you to customize how the pose estimation data is represented in the NWB file. You can customize the container name, description, reference frame, units, and more.
 

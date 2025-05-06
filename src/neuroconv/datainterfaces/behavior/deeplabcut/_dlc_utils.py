@@ -287,8 +287,17 @@ def _write_pes_to_nwbfile(
     )
     container_metadata = pose_estimation_metadata.get("PoseEstimationContainers", {}).get(container_name, {})
 
-    # Extract animal/subject information
-    animal = container_metadata.get("subject_name", "")
+    # Extract skeleton information
+    skeleton_name = container_metadata.get("skeleton", "")
+    if not skeleton_name:
+        # If no skeleton name is provided, we can't extract the subject
+        animal = ""
+    else:
+        # Extract skeleton metadata
+        skeleton_metadata = pose_estimation_metadata.get("Skeletons", {}).get(skeleton_name, {})
+
+        # Extract animal/subject information from the skeleton metadata
+        animal = skeleton_metadata.get("subject", "")
 
     # Create a subject if it doesn't exist
     if nwbfile.subject is None and animal:
