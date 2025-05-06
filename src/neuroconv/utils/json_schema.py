@@ -2,7 +2,6 @@ import collections.abc
 import inspect
 import json
 import warnings
-from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Type
@@ -232,18 +231,6 @@ def fill_defaults(schema: dict[str, Any], defaults: dict[str, Any], overwrite: b
     properties_reference = "properties"
     if properties_reference not in schema and "patternProperties" in schema:
         properties_reference = "patternProperties"
-
-    # Handle additionalProperties case
-    if properties_reference not in schema and "additionalProperties" in schema:
-        # If schema has additionalProperties but no properties, use the additionalProperties
-        if isinstance(schema["additionalProperties"], dict) and "properties" in schema["additionalProperties"]:
-            # Create a properties key with the same structure as additionalProperties.properties
-            schema["properties"] = {}
-            for default_key in defaults.keys():
-                # Use deepcopy to ensure we don't modify the original additionalProperties schema
-                # This is important when creating multiple properties from the same template
-                schema["properties"][default_key] = deepcopy(schema["additionalProperties"])
-            properties_reference = "properties"
 
     for key, val in schema[properties_reference].items():
         if key in defaults:

@@ -45,7 +45,9 @@ use the following structure:
     >>> pose_estimation_metadata_key = "PoseEstimationContainerName"
     >>> interface = DeepLabCutInterface(file_path=file_path, pose_estimation_metadata_key=pose_estimation_metadata_key)
     >>> metadata = interface.get_metadata()
-
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>>
     >>> # Customize the PoseEstimation container metadata
     >>> metadata["PoseEstimation"]["PoseEstimationContainers"][pose_estimation_metadata_key] = {
     ...     "name": "PoseEstimationContainerName", # Edit to change the name and if you add multiple DLC containers for disambiguation
