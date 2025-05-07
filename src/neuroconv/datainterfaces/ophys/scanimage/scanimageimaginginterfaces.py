@@ -1,7 +1,6 @@
 import datetime
 import json
 from pathlib import Path
-from typing import Optional
 
 from dateutil.parser import parse as dateparse
 from pydantic import DirectoryPath, FilePath, validate_call
@@ -45,9 +44,9 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     def __new__(
         cls,
         file_path: FilePath,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
-        fallback_sampling_frequency: Optional[float] = None,
+        channel_name: str | None = None,
+        plane_name: str | None = None,
+        fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
     ):
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
@@ -111,7 +110,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        fallback_sampling_frequency: Optional[float] = None,
+        fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
     ):
         """
@@ -210,8 +209,8 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
         cls,
         folder_path: DirectoryPath,
         file_pattern: str,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
+        channel_name: str | None = None,
+        plane_name: str | None = None,
         extract_all_metadata: bool = False,
         verbose: bool = False,
     ):
@@ -275,9 +274,9 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        channel_name: Optional[str] = None,
-        image_metadata: Optional[dict] = None,
-        parsed_metadata: Optional[dict] = None,
+        channel_name: str | None = None,
+        image_metadata: dict | None = None,
+        parsed_metadata: dict | None = None,
         verbose: bool = False,
     ):
         """
@@ -391,10 +390,10 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         self,
         folder_path: DirectoryPath,
         file_pattern: str,
-        channel_name: Optional[str] = None,
+        channel_name: str | None = None,
         extract_all_metadata: bool = False,
-        image_metadata: Optional[dict] = None,
-        parsed_metadata: Optional[dict] = None,
+        image_metadata: dict | None = None,
+        parsed_metadata: dict | None = None,
         verbose: bool = False,
     ):
         """
@@ -527,10 +526,10 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
-        image_metadata: Optional[dict] = None,
-        parsed_metadata: Optional[dict] = None,
+        channel_name: str | None = None,
+        plane_name: str | None = None,
+        image_metadata: dict | None = None,
+        parsed_metadata: dict | None = None,
         verbose: bool = False,
     ):
         """
@@ -663,10 +662,10 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
         self,
         folder_path: DirectoryPath,
         file_pattern: str,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
-        image_metadata: Optional[dict] = None,
-        parsed_metadata: Optional[dict] = None,
+        channel_name: str | None = None,
+        plane_name: str | None = None,
+        image_metadata: dict | None = None,
+        parsed_metadata: dict | None = None,
         extract_all_metadata: bool = False,
         verbose: bool = False,
     ):

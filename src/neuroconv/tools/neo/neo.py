@@ -3,7 +3,6 @@ import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional
 
 import neo.io.baseio
 import numpy as np
@@ -413,7 +412,7 @@ def add_neo_to_nwb(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     icephys_experiment_type: str = "voltage_clamp",
-    stimulus_type: Optional[str] = None,
+    stimulus_type: str | None = None,
     skip_electrodes: tuple[int] = (),
 ):
     """
@@ -461,13 +460,13 @@ def add_neo_to_nwb(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: Optional[FilePath] = None,  # pragma: no cover
+    save_path: FilePath | None = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,
-    icephys_experiment_type: Optional[str] = None,
-    stimulus_type: Optional[str] = None,
-    skip_electrodes: Optional[tuple] = (),
+    icephys_experiment_type: str | None = None,
+    stimulus_type: str | None = None,
+    skip_electrodes: tuple | None = (),
 ):
     """
     Primary method for writing a Neo reader object to an NWBFile.

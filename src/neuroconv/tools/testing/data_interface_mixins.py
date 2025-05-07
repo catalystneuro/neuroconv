@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Optional, Type, Union
+from typing import Literal, Type
 
 import numpy as np
 import pytest
@@ -61,7 +61,7 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: Optional[dict] = None
+    conversion_options: dict | None = None
     maxDiff = None
 
     @pytest.fixture
@@ -208,7 +208,7 @@ class DataInterfaceTestMixin:
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -241,7 +241,7 @@ class TemporalAlignmentMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: Optional[dict] = None
+    conversion_options: dict | None = None
     maxDiff = None
 
     @pytest.fixture
@@ -611,8 +611,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: Type[BaseSortingExtractorInterface]
-    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
-    associated_recording_kwargs: Optional[dict] = None
+    associated_recording_cls: Type[BaseRecordingExtractorInterface] | None = None
+    associated_recording_kwargs: dict | None = None
 
     def setUpFreshInterface(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
@@ -921,7 +921,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -1290,7 +1290,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))

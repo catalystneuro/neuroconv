@@ -2,7 +2,7 @@
 
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import h5py
 import numcodecs
@@ -59,7 +59,7 @@ def _find_location_in_memory_nwbfile(neurodata_object: Container, field_name: st
     return _recursively_find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
 
 
-def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
+def _infer_dtype_of_list(list_: list[int | float | list]) -> np.dtype:
     """
     Attempt to infer the dtype of values in an arbitrarily sized and nested list.
 
@@ -76,7 +76,7 @@ def _infer_dtype_of_list(list_: list[Union[int, float, list]]) -> np.dtype:
     raise ValueError("Unable to determine the dtype of values in the list.")
 
 
-def _infer_dtype(dataset: Union[h5py.Dataset, zarr.Array]) -> np.dtype:
+def _infer_dtype(dataset: h5py.Dataset | zarr.Array) -> np.dtype:
     """Attempt to infer the dtype of the contained values of the dataset."""
     if hasattr(dataset, "dtype"):
         data_type = np.dtype(dataset.dtype)
@@ -109,24 +109,24 @@ class DatasetIOConfiguration(BaseModel, ABC):
     full_shape: tuple[int, ...] = Field(description="The maximum shape of the entire dataset.", frozen=True)
 
     # User specifiable fields
-    chunk_shape: Union[tuple[PositiveInt, ...], None] = Field(
+    chunk_shape: tuple[PositiveInt, ...] | None = Field(
         description=(
             "The specified shape to use when chunking the dataset. "
             "For optimized streaming speeds, a total size of around 10 MB is recommended."
         ),
     )
-    buffer_shape: Union[tuple[int, ...], None] = Field(
+    buffer_shape: tuple[int, ...] | None = Field(
         description=(
             "The specified shape to use when iteratively loading data into memory while writing the dataset. "
             "For optimized writing speeds and minimal RAM usage, a total size of around 1 GB is recommended."
         ),
     )
-    compression_method: Union[
-        str, InstanceOf[h5py._hl.filters.FilterRefBase], InstanceOf[numcodecs.abc.Codec], None
-    ] = Field(
-        description="The specified compression method to apply to this dataset. Set to `None` to disable compression.",
+    compression_method: str | InstanceOf[h5py._hl.filters.FilterRefBase] | InstanceOf[numcodecs.abc.Codec] | None = (
+        Field(
+            description="The specified compression method to apply to this dataset. Set to `None` to disable compression.",
+        )
     )
-    compression_options: Union[dict[str, Any], None] = Field(
+    compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
@@ -252,7 +252,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-        builder: Union[BaseBuilder, None] = None,
+        builder: BaseBuilder | None = None,
     ) -> Self:
         """
         Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.

@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -31,9 +30,9 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
-        video_file_path: Optional[FilePath] = None,
+        video_file_path: FilePath | None = None,
         verbose: bool = False,
-        frames_per_second: Optional[float] = None,
+        frames_per_second: float | None = None,
     ):
         """
         Interface for writing sleap .slp files to nwb using the sleap-io library.
@@ -93,7 +92,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """
         Conversion from DLC output files to nwb. Derived from sleap-io library.
