@@ -389,6 +389,10 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
             ]
 
+            for pose_estimation in pose_estimation_series_in_nwb.values():
+                assert pose_estimation.starting_time == 0
+                assert pose_estimation.rate == 1.0
+
             assert all(expected_pose_estimation_series_are_in_nwb_file)
 
             skeleton = pose_estimation_container.skeleton
@@ -455,6 +459,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
         self.check_custom_timestamps(nwbfile_path=self.nwbfile_path)
 
     def check_custom_timestamps(self, nwbfile_path: str):
+        # This is irregular timestamps
         custom_timestamps = np.concatenate(
             (np.linspace(10, 110, 1000), np.linspace(150, 250, 1000), np.linspace(300, 400, 330))
         )

@@ -1,7 +1,6 @@
 import pickle
 import warnings
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -11,6 +10,7 @@ from pynwb import NWBFile
 from ruamel.yaml import YAML
 
 from ....tools import get_module
+from ....utils.checks import calculate_regular_series_rate
 
 
 def _read_config(config_file_path: FilePath) -> dict:
@@ -41,13 +41,13 @@ def _read_config(config_file_path: FilePath) -> dict:
     return cfg
 
 
-def _get_cv2_timestamps(file_path: Union[Path, str]):
+def _get_cv2_timestamps(file_path: Path | str):
     """
     Extract and return an array of timestamps for each frame in a video using OpenCV.
 
     Parameters
     ----------
-    file_path : Union[Path, str]
+    file_path : Path | str
         The path to the video file from which to extract timestamps.
 
     Returns
@@ -262,7 +262,7 @@ def _write_pes_to_nwbfile(
     paf_graph,
     timestamps,
     exclude_nans,
-    pose_estimation_container_kwargs: Optional[dict] = None,
+    pose_estimation_container_kwargs: dict | None = None,
 ):
     """
     Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
@@ -311,16 +311,26 @@ def _write_pes_to_nwbfile(
         else:
             timestamps_cleaned = timestamps
 
-        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
-        pes = PoseEstimationSeries(
+        pose_estimation_series_kwargs = dict(
             name=f"{animal}_{keypoint}" if animal else keypoint,
             description=f"Keypoint {keypoint} from individual {animal}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
-            timestamps=timestamps,
             confidence=data[:, 2],
             confidence_definition="Softmax output of the deep neural network.",
+        )
+
+        timestamps = np.asarray(timestamps_cleaned).astype("float64", copy=False)
+        rate = calculate_regular_series_rate(timestamps)
+        if rate is None:
+            pose_estimation_series_kwargs["timestamps"] = timestamps
+        else:
+            pose_estimation_series_kwargs["rate"] = rate
+            pose_estimation_series_kwargs["starting_time"] = timestamps[0]
+
+        pes = PoseEstimationSeries(
+            **pose_estimation_series_kwargs,
         )
         pose_estimation_series.append(pes)
 
@@ -358,9 +368,9 @@ def _add_subject_to_nwbfile(
     nwbfile: NWBFile,
     file_path: FilePath,
     individual_name: str,
-    config_file: Optional[FilePath] = None,
-    timestamps: Optional[Union[list, np.ndarray]] = None,
-    pose_estimation_container_kwargs: Optional[dict] = None,
+    config_file: FilePath | None = None,
+    timestamps: list | np.ndarray | None = None,
+    pose_estimation_container_kwargs: dict | None = None,
 ) -> NWBFile:
     """
     Given the subject name, add the DLC output file (.h5 or .csv) to an in-memory NWBFile object.

@@ -1,18 +1,18 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
 import importlib
-from typing import Union
 
 from hdmf.common import Data
+from packaging import version
 from pynwb import NWBFile, TimeSeries
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
-from ..importing import is_package_installed
+from ..importing import get_package_version, is_package_installed
 
 
 def configure_backend(
-    nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+    nwbfile: NWBFile, backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration
 ) -> None:
     """
     Configure all datasets specified in the `backend_configuration` with their appropriate DataIO and options.
@@ -53,13 +53,14 @@ def configure_backend(
                 dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
             )
         # Special ndx-events v0.2.0 types
-        elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.Events):
-            neurodata_object.set_data_io(
-                dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
-            )
-        # But temporarily skipping LabeledEvents
-        elif is_ndx_events_installed and isinstance(neurodata_object, ndx_events.LabeledEvents):
-            continue
+        elif is_ndx_events_installed and (get_package_version("ndx-events") <= version.parse("0.2.1")):
+            # Temporarily skipping LabeledEvents
+            if isinstance(neurodata_object, ndx_events.LabeledEvents):
+                continue
+            elif isinstance(neurodata_object, ndx_events.Events):
+                neurodata_object.set_data_io(
+                    dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+                )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue

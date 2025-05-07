@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from dateutil.parser import parse
 from pydantic import DirectoryPath
@@ -66,7 +66,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
+        stream_name: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -253,7 +253,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
+        stream_name: str | None = None,
         verbose: bool = False,
     ):
         """

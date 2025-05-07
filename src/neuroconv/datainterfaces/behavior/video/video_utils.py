@@ -1,5 +1,4 @@
 import math
-from typing import Optional, Tuple
 
 import numpy as np
 from pydantic import FilePath
@@ -10,14 +9,14 @@ from neuroconv.tools.hdmf import GenericDataChunkIterator
 from ....tools import get_package
 
 
-def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, display_progress: bool = True) -> list:
+def get_video_timestamps(file_path: FilePath, max_frames: int | None = None, display_progress: bool = True) -> list:
     """Extract the timestamps of the video located in file_path
 
     Parameters
     ----------
     file_path : Path or str
         The path to a multimedia video file
-    max_frames : Optional[int], optional
+    max_frames : int | None, optional
         If provided, extract the timestamps of the video only up to max_frames.
     display_progress : bool, default: True
         Whether to display a progress bar during timestamp extraction.
@@ -46,13 +45,13 @@ class VideoCaptureContext:
         self._frame_count = None
         self._video_open_msg = "The video file is not open!"
 
-    def get_video_timestamps(self, max_frames: Optional[int] = None, display_progress: bool = True):
+    def get_video_timestamps(self, max_frames: int | None = None, display_progress: bool = True):
         """
         Return numpy array of the timestamps(s) for a video file.
 
         Parameters
         ----------
-        max_frames : Optional[int], optional
+        max_frames : int | None, optional
             If provided, extract the timestamps of the video only up to max_frames.
         display_progress : bool, default: True
             Whether to display a progress bar during timestamp extraction.
@@ -96,7 +95,7 @@ class VideoCaptureContext:
         prop = self.get_cv_attribute("CAP_PROP_FPS")
         return self.vc.get(prop)
 
-    def get_frame_shape(self) -> Tuple:
+    def get_frame_shape(self) -> tuple:
         """
         Return the shape of frames from a video file.
 

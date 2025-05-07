@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import DirectoryPath, FilePath
@@ -66,7 +65,7 @@ def filter_non_neural_channels(recording_extractor, xml_file_path: str):
         return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor, gain: Optional[float] = None):
+def add_recording_extractor_properties(recording_extractor, gain: float | None = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
@@ -139,8 +138,8 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        gain: Optional[float] = None,
-        xml_file_path: Optional[FilePath] = None,
+        gain: float | None = None,
+        xml_file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
@@ -151,7 +150,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePath
             Path to .dat file.
-        gain : Optional[float], optional
+        gain : float | None, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
@@ -216,8 +215,9 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        gain: Optional[float] = None,
-        xml_file_path: Optional[FilePath] = None,
+        gain: float | None = None,
+        xml_file_path: FilePath | None = None,
+        verbose: bool = False,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -230,10 +230,12 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePath, optional
+        xml_file_path : FilePath | None, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        verbose : bool, default: False
+            If True, enables verbose mode for detailed logging.
         """
         get_package(package_name="lxml")
 
@@ -282,8 +284,8 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: DirectoryPath,
         keep_mua_units: bool = True,
-        exclude_shanks: Optional[list[int]] = None,
-        xml_file_path: Optional[FilePath] = None,
+        exclude_shanks: list[int] | None = None,
+        xml_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """
@@ -291,7 +293,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             Path to folder containing .clu and .res files.
         keep_mua_units : bool, default: True
             Optional. Whether to return sorted spikes from multi-unit activity.
