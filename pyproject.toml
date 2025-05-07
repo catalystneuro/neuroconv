@@ -238,7 +238,7 @@ tdt = [
     "spikeinterface>=0.102.2",
 ]
 whitematter = [
-    "spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@main",
+    "spikeinterface>=0.102.3",
 ]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
