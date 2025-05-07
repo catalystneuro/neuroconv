@@ -1,10 +1,12 @@
 import pytest
+from parameterized import parameterized_class
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
     Suite2pSegmentationInterface,
+    InscopixSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     SegmentationExtractorInterfaceTestMixin,
@@ -204,3 +206,40 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
+
+@parameterized_class(
+    [
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"),
+            ),
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"),
+            ),
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_u8.isxd"),
+            ),
+        },
+    ],
+)
+class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with various Inscopix file types."""
+    data_interface_cls = InscopixSegmentationInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
+    )
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
+        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
+    
+        # Check that TwoPhotonSeries doesn't exist (since Inscopix should be OnePhoton)
+        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
+
+        # Verify the device description is correct
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"

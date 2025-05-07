@@ -15,6 +15,7 @@ from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     Hdf5ImagingInterface,
+    InscopixImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     SbxImagingInterface,
@@ -893,3 +894,41 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             AssertionError, match="The main folder should contain at least one subfolder named 'Miniscope'."
         ):
             self.data_interface_cls(folder_path=folder_path)
+
+@parameterized_class(
+    [
+        # {
+        #     "interface_kwargs": dict(
+        #         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"),
+        #     ),
+        # },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"),
+            ),
+        },
+        {
+            "interface_kwargs": dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"),
+            ),
+        },
+    ],
+)
+class TestInscopixImagingInterface(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with various Inscopix file types."""
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
+    )
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
+        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
+    
+        # Check that TwoPhotonSeries doesn't exist (since Inscopix should be OnePhoton)
+        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
+
+        # Verify the device description is correct
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
