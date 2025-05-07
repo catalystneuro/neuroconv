@@ -895,6 +895,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
+
 @parameterized_class(
     [
         # {
@@ -916,6 +917,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 )
 class TestInscopixImagingInterface(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with various Inscopix file types."""
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
 
@@ -926,7 +928,7 @@ class TestInscopixImagingInterface(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-    
+
         # Check that TwoPhotonSeries doesn't exist (since Inscopix should be OnePhoton)
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
 
