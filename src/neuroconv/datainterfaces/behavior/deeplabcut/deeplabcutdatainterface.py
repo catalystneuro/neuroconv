@@ -550,4 +550,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             timestamps=timestamps,
             exclude_nans=False,
             metadata=default_metadata,
+            pose_estimation_metadata_key=container_name,
         )
