@@ -110,6 +110,7 @@ use the following structure:
 The metadata structure for DeepLabCut includes:
 
 1. **PoseEstimationContainers** - Contains the main metadata for the pose estimation:
+
    - ``name``: Name of the pose estimation container
    - ``description``: Description of the pose estimation data
    - ``source_software``: Software used for pose estimation (DeepLabCut)
@@ -121,7 +122,8 @@ The metadata structure for DeepLabCut includes:
    - ``PoseEstimationSeries``: Dictionary of series for each bodypart
 
 2. **Skeletons** - Defines the skeleton structure:
+
    - ``name``: Name of the skeleton
    - ``nodes``: List of bodyparts/keypoints
    - ``edges``: Connections between nodes (optional)
-   - ``subject``: Subject ID associated with this skeleton
+   - ``subject``: Subject ID associated with this skeleton. If the subject matches the subject_id of the nwbfile the skeleton will be linked to the Subject.
