@@ -180,9 +180,6 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
                 assert pose_estimation_series.confidence.shape[0] == 10
 
 
-@pytest.mark.skipif(
-    ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
-)
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
     data_interface_cls = SLEAPInterface
@@ -219,9 +216,6 @@ class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
             assert set(pose_estimation_series_in_nwb) == set(expected_pose_estimation_series)
 
 
-@pytest.mark.skipif(
-    ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
-)
 class CustomTestSLEAPInterface(TestCase):
     savedir = OUTPUT_PATH
 
