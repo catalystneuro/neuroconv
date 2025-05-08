@@ -228,9 +228,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
@@ -244,7 +242,9 @@ class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfa
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
+    )
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
