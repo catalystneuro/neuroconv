@@ -22,7 +22,7 @@ Convert WhiteMatter data to NWB using :py:class:`~neuroconv.datainterfaces.eceph
     >>> sampling_frequency = 25_000.0
     >>> num_channels = 64
     >>> interface = WhiteMatterRecordingInterface(
-    ...    file_paths=[file_path],
+    ...    file_path=file_path,
     ...    sampling_frequency=sampling_frequency,
     ...    num_channels=num_channels,
     ... )
@@ -88,7 +88,7 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> sampling_frequency = 25_000.0
     >>> num_channels = 64
     >>> interface = WhiteMatterRecordingInterface(
-    ...    file_paths=[file_path],
+    ...    file_path=file_path,
     ...    sampling_frequency=sampling_frequency,
     ...    num_channels=num_channels,
     ... )
