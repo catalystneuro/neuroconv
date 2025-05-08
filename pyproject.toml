@@ -74,7 +74,9 @@ test = [
     "ndx-miniscope",
     "spikeinterface[qualitymetrics]>=0.102.2",
     "zarr",
-    "pytest-xdist"
+    "pytest-xdist",
+    "soundfile>=0.12.1",  # For audio file writing in tests
+
 ]
 
 docs = [
@@ -111,6 +113,8 @@ text = [
 ## Behavior
 audio = [
     "ndx-sound>=0.2.0",
+    "librosa>=0.10.0; python_version>='3.9'",  # For MP3 support
+    "ffmpeg-python",
 ]
 sleap = [
     "av>=10.0.0",
