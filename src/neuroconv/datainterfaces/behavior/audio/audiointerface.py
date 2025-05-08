@@ -249,7 +249,21 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         int
             Bit depth of the WAV file (8, 16, 24, 32, etc.)
         """
-        with wave.open(str(file_path), "rb") as wav_file:
-            sample_width = wav_file.getsampwidth()
-            bit_depth = sample_width * 8
-        return bit_depth
+        try:
+            # First try using wave module for standard PCM files (including 24-bit)
+            with wave.open(str(file_path), "rb") as wav_file:
+                sample_width = wav_file.getsampwidth()
+                bit_depth = sample_width * 8
+            return bit_depth
+        except wave.Error:
+            # If wave module fails (e.g., for IEEE float format), use scipy.io.wavfile
+            _, data = scipy.io.wavfile.read(file_path)
+
+            # Handle IEEE float format (format code 3)
+            if data.dtype == np.float32:
+                return 32
+            elif data.dtype == np.float64:
+                return 64
+
+            # For other formats, return the bit size of the data type
+            return data.dtype.itemsize * 8
