@@ -88,58 +88,66 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ScanImageMultiPlaneImaging
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
 
-@parameterized_class(
-    [
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-                channel_name="Channel 1",
-                plane_name="0",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel1Plane0",
-            "imaging_plane_name": "ImagingPlaneChannel1Plane0",
-        },
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-                channel_name="Channel 1",
-                plane_name="1",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel1Plane1",
-            "imaging_plane_name": "ImagingPlaneChannel1Plane1",
-        },
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-                channel_name="Channel 4",
-                plane_name="0",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel4Plane0",
-            "imaging_plane_name": "ImagingPlaneChannel4Plane0",
-        },
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-                channel_name="Channel 4",
-                plane_name="1",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel4Plane1",
-            "imaging_plane_name": "ImagingPlaneChannel4Plane1",
-        },
-    ],
-)
 class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-        channel_name="Channel 1",
-        plane_name="0",
-    )
-
-    photon_series_name = "TwoPhotonSeriesChannel1Plane0"
-    imaging_plane_name = "ImagingPlaneChannel1Plane0"
     expected_two_photon_series_data_shape = (6, 256, 528)
+
+    @pytest.fixture(
+        params=[
+            dict(
+                interface_kwargs=dict(
+                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    channel_name="Channel 1",
+                    plane_name="0",
+                ),
+                expected_photon_series_name="TwoPhotonSeriesChannel1Plane0",
+                expected_imaging_plane_name="ImagingPlaneChannel1Plane0",
+            ),
+            dict(
+                interface_kwargs=dict(
+                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    channel_name="Channel 1",
+                    plane_name="1",
+                ),
+                expected_photon_series_name="TwoPhotonSeriesChannel1Plane1",
+                expected_imaging_plane_name="ImagingPlaneChannel1Plane1",
+            ),
+            dict(
+                interface_kwargs=dict(
+                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    channel_name="Channel 4",
+                    plane_name="0",
+                ),
+                expected_photon_series_name="TwoPhotonSeriesChannel4Plane0",
+                expected_imaging_plane_name="ImagingPlaneChannel4Plane0",
+            ),
+            dict(
+                interface_kwargs=dict(
+                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    channel_name="Channel 4",
+                    plane_name="1",
+                ),
+                expected_photon_series_name="TwoPhotonSeriesChannel4Plane1",
+                expected_imaging_plane_name="ImagingPlaneChannel4Plane1",
+            ),
+        ],
+        ids=[
+            "Channel1Plane0",
+            "Channel1Plane1",
+            "Channel4Plane0",
+            "Channel4Plane1",
+        ],
+    )
+    def setup_interface(self, request):
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = request.param["interface_kwargs"]
+        self.photon_series_name = request.param["expected_photon_series_name"]
+        self.imaging_plane_name = request.param["expected_imaging_plane_name"]
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        return self.interface, self.test_name
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
