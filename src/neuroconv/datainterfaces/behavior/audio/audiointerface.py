@@ -51,7 +51,8 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
 
-        suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
+        # Only check the last suffix of each file path
+        suffixes = [Path(file_path).suffix for file_path in file_paths]
         format_is_not_supported = [
             suffix for suffix in suffixes if suffix not in [".wav"]
         ]  # TODO: add support for more formats
