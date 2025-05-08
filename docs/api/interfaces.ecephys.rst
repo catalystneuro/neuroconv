@@ -88,3 +88,7 @@ SpikeGLX Recording
 Tucker-Davis Technologies (TDT) Recording
 -----------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface
+
+White Matter Recording
+----------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.whitematter.whitematterdatainterface

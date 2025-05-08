@@ -33,6 +33,7 @@ from neuroconv.datainterfaces import (
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     TdtRecordingInterface,
+    WhiteMatterRecordingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
@@ -801,3 +802,15 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
+
+
+class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = WhiteMatterRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
+        ),
+        sampling_frequency=25_000.0,
+        num_channels=64,
+    )
+    save_directory = OUTPUT_PATH
