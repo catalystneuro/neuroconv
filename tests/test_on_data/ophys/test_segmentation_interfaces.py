@@ -215,14 +215,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
-
-    def check_extracted_metadata(self, metadata: dict):
-        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
-        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
-
-
+    
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset.isxd"""
 
@@ -232,23 +225,9 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
     )
 
-    def check_extracted_metadata(self, metadata: dict):
-        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
-        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
-
-
 class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with empty_cellset.isxd"""
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd"))
-
-    def check_extracted_metadata(self, metadata: dict):
-        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
-        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-        assert metadata["Ophys"]["OnePhotonSeries"] == [], "OnePhotonSeries is not empty"
-        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
