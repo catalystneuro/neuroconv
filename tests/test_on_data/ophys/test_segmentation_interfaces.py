@@ -216,18 +216,20 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
 
+
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset.isxd"""
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
+
 
 class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with empty_cellset.isxd"""
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
+    )
