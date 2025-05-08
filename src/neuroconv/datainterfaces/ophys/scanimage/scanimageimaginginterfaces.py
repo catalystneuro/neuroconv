@@ -78,6 +78,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             )
 
         self.channel_name = channel_name
+        self.plane_index = plane_index
         super().__init__(
             file_path=file_path,
             channel_name=channel_name,
@@ -87,6 +88,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             interleave_slice_samples=interleave_slice_samples,
             verbose=verbose,
         )
+
+        # Make sure the timestamps are available, the extractor caches them
+        times = self.imaging_extractor.get_times()
+        self.imaging_extractor.set_times(times=times)
 
     def get_metadata(self):
         """
@@ -122,7 +127,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # Update imaging plane metadata
             imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-            imaging_plane_name = f"ImagingPlane{channel_name_string}"
+            plane_index_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
+            imaging_plane_name = f"ImagingPlane{channel_name_string}{plane_index_string}"
             imaging_plane_metadata.update(
                 name=imaging_plane_name,
                 device=device_name,
@@ -135,7 +141,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             photon_series_key = self.photon_series_type  # "TwoPhotonSeries" or "OnePhotonSeries"
             photon_series_metadata = metadata["Ophys"][photon_series_key][0]
 
-            photon_series_name = f"{photon_series_key}{channel_name_string}"
+            photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
             photon_series_metadata["imaging_plane"] = imaging_plane_name
             photon_series_metadata["name"] = photon_series_name
             photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"

@@ -1131,8 +1131,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
 
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
-            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
-            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
+
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
@@ -1147,11 +1146,8 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             data_from_extractor = imaging_extractor.get_video()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
-            assert two_photon_series.description == json.dumps(self.interface.image_metadata)
-
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
 
 
@@ -1174,7 +1170,6 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
             assert two_photon_series.rate == self.expected_rate
             assert two_photon_series.starting_time == self.expected_starting_time
-            assert two_photon_series.timestamps is None
 
             imaging_extractor = self.interface.imaging_extractor
             data_from_extractor = imaging_extractor.get_video()

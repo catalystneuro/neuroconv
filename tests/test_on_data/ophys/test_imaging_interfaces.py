@@ -63,8 +63,8 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ScanImageMultiPlaneImaging
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
-    expected_rate = 7.28119  # This is the volumetric rate
-    expected_starting_time = 0.0
+    expected_rate = None  # This is interleaved data so the timestamps are written
+    expected_starting_time = None
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
@@ -81,8 +81,8 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ScanImageMultiPlaneImaging
     photon_series_name = "TwoPhotonSeriesChannel4"
     imaging_plane_name = "ImagingPlaneChannel4"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
-    expected_rate = 7.28119  # This is the volumetric rate
-    expected_starting_time = 0.0
+    expected_rate = None  # This is interleaved data so the timestamps are written
+    expected_starting_time = None
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
