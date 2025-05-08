@@ -49,30 +49,10 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
-@parameterized_class(
-    [
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-                channel_name="Channel 1",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel1",
-            "imaging_plane_name": "ImagingPlaneChannel1",
-        },
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
-                channel_name="Channel 4",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel4",
-            "imaging_plane_name": "ImagingPlaneChannel4",
-        },
-    ],
-)
-class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin):
+class TestScanImageImagingInterfaceMultiPlaneChannel1(ScanImageMultiPlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+        file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
         channel_name="Channel 1",
     )
     save_directory = OUTPUT_PATH
@@ -80,7 +60,25 @@ class TestScanImageImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInte
     photon_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
-    expected_rate = 29.1248
+    expected_rate = 7.28119  # This is the volumetric rate
+    expected_starting_time = 0.0
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+
+class TestScanImageImagingInterfaceMultiPlaneChannel4(ScanImageMultiPlaneImagingInterfaceMixin):
+    data_interface_cls = ScanImageImagingInterface
+    interface_kwargs = dict(
+        file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
+        channel_name="Channel 4",
+    )
+    save_directory = OUTPUT_PATH
+
+    photon_series_name = "TwoPhotonSeriesChannel4"
+    imaging_plane_name = "ImagingPlaneChannel4"
+    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_rate = 7.28119  # This is the volumetric rate
     expected_starting_time = 0.0
 
     def check_extracted_metadata(self, metadata: dict):

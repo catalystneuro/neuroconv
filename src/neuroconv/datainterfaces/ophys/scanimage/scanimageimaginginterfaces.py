@@ -18,7 +18,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePath,
+        file_path: Optional[FilePath] = None,
         channel_name: Optional[str] = None,
         slice_sample: Optional[int] = None,
         plane_index: Optional[int] = None,
@@ -49,8 +49,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - If False (default): Requires a specific slice_sample to be provided when frames_per_slice > 1.
             - This parameter has no effect when frames_per_slice = 1 or when slice_sample is provided.
         """
-
-        header_version = self.get_scanimage_version(file_path=file_path)
+        file_paths = [Path(file_path)] if file_path else file_paths
+        header_version = self.get_scanimage_version(file_path=file_paths[0])
         if header_version not in [3, 4, 5]:
             raise ValueError(
                 f"Unsupported ScanImage version {header_version}. Supported versions are 3, 4, and 5."
@@ -111,22 +111,32 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             # Update device information
             device_name = "Microscope"
             metadata["Ophys"]["Device"][0].update(name=device_name, description=f"Microscope controlled by ScanImage")
+            channel_name_string = self.channel_name.replace(" ", "").capitalize()
+
+            optical_channel_name = f"OpticalChannel{channel_name_string}"
+            optical_channel_metadata = {
+                "name": optical_channel_name,
+                "description": "Optical channel from ScanImage acquisition",
+                "emission_lambda": np.nan,
+            }
 
             # Update imaging plane metadata
             imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            imaging_plane_name = f"ImagingPlane{channel_name_string}"
             imaging_plane_metadata.update(
+                name=imaging_plane_name,
                 device=device_name,
                 imaging_rate=self.imaging_extractor.get_sampling_frequency(),
                 description="Imaging plane from ScanImage acquisition",
+                optical_channel=[optical_channel_metadata],
             )
 
             # Update photon series metadata
             photon_series_key = self.photon_series_type  # "TwoPhotonSeries" or "OnePhotonSeries"
             photon_series_metadata = metadata["Ophys"][photon_series_key][0]
 
-            channel_string = self.channel_name.replace(" ", "").capitalize()
-            photon_series_name = f"{photon_series_key}{channel_string}"
-
+            photon_series_name = f"{photon_series_key}{channel_name_string}"
+            photon_series_metadata["imaging_plane"] = imaging_plane_name
             photon_series_metadata["name"] = photon_series_name
             photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
 
