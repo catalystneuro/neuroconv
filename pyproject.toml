@@ -115,6 +115,7 @@ audio = [
 sleap = [
     "av>=10.0.0",
     "sleap-io>=0.3.0",
+    "ndx-pose>=0.2.2",
 ]
 deeplabcut = [
     "ndx-pose>=0.2",
@@ -237,6 +238,9 @@ tdt = [
     "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
+whitematter = [
+    "spikeinterface>=0.102.3",
+]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
@@ -258,6 +262,7 @@ ecephys = [  # Note that this the requirements of the extracts as they are on pi
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
+    "neuroconv[whitematter]",
 ]
 
 ## Icephys
