@@ -7,11 +7,11 @@ Install NeuroConv with the additional dependencies necessary for reading ScanIma
 
     pip install "neuroconv[scanimage]"
 
-Convert single plane single file imaging data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Convert ScanImage imaging data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Convert ScanImage imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageImagingInterface`.
+The `ScanImageImagingInterface` handles both single and multi-file data, as well as multi-channel data.
+For multi-channel data, you need to specify the channel name, and you can use `plane_index` if you want to only write a specific plane.
 
 .. code-block:: python
 
@@ -20,8 +20,16 @@ Convert ScanImage imaging data to NWB using
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
+    >>> # For single file data
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"
-    >>> interface = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1", plane_name="0", verbose=False)
+    >>>
+    >>> # Specify channel_name for multi-channel data
+    >>> # Specify plane_index for selecting a specific plane in multi-plane data
+    >>> interface = ScanImageImagingInterface(
+    >>>     file_path=file_path,
+    >>>     channel_name="Channel 1",  # Required for multi-channel data
+    >>>     plane_index=0,  # Optional: specify to only write a specific plane
+    >>> )
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -32,48 +40,34 @@ Convert ScanImage imaging data to NWB using
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
+Convert ScanImage legacy data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Convert multi-plane (volumetric) single file imaging data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For older ScanImage files (v3.8 and earlier), you need to install the legacy dependencies.
 
-Convert ScanImage volumetric imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageImagingInterface`.
+.. code-block:: bash
+
+    pip install "neuroconv[scanimage_legacy]"
+
+And use the `ScanImageLegacyImagingInterface`:
+
+For ScanImage v3.8 files, you need to specify the fallback sampling frequency if it cannot be extracted from the file metadata.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import ScanImageImagingInterface
+    >>> from neuroconv.datainterfaces import ScanImageLegacyImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"
-    >>> interface = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1", verbose=False)
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_v3.8_file.tif"
     >>>
-    >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>>
-    >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{output_folder}/scanimage_multi_plane.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-
-Convert single plane multi-file (buffered) imaging data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Convert multi-file ScanImage imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageMultiFileImagingInterface`.
-
-.. code-block:: python
-
-    >>> from zoneinfo import ZoneInfo
-    >>> from neuroconv.datainterfaces import ScanImageMultiFileImagingInterface
-    >>>
-    >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
-    >>> file_pattern = "scanimage_20240320_multifile*.tif"
-    >>> channel_name = "Channel 1"
-    >>> interface = ScanImageMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
+    >>> # The fallback_sampling_frequency is only needed if the sampling frequency
+    >>> # cannot be extracted from the file metadata
+    >>> interface = ScanImageLegacyImagingInterface(
+    >>>     file_path=file_path,
+    >>>     fallback_sampling_frequency=30.0,  # Optional: only if not in metadata
+    >>> )
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -81,31 +75,5 @@ Convert multi-file ScanImage imaging data to NWB using
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{output_folder}/scanimage_single_plane_multi_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-
-Convert multi-plane (volumetric) multi-file (buffered) imaging data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Convert volumetric multi-file ScanImage imaging data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces.ScanImageMultiPlaneMultiFileImagingInterface`.
-
-.. code-block:: python
-
-    >>> from zoneinfo import ZoneInfo
-    >>> from neuroconv.datainterfaces import ScanImageMultiFileImagingInterface
-    >>>
-    >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
-    >>> file_pattern = "scanimage_20220923_roi.tif"
-    >>> channel_name = "Channel 1"
-    >>> interface = ScanImageMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name, verbose=False)
-    >>>
-    >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>>
-    >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{output_folder}/scanimage_multi_plane_multi_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)

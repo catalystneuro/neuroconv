@@ -1,7 +1,6 @@
 import platform
 from datetime import datetime
 from pathlib import Path
-from unittest import skipIf
 
 import numpy as np
 import pytest
@@ -214,7 +213,7 @@ class TestScanImageImagingInterfacesAssertions:
             ScanImageMultiPlaneImagingInterface(file_path=file_path, channel_name="Channel 1")
 
 
-@skipIf(platform.machine() == "arm64", "Interface not supported on arm64 architecture")
+@pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))

@@ -9,6 +9,7 @@
 ## Features
 * Add metadata support for `DeepLabCutInterface` [PR #1319](https://github.com/catalystneuro/neuroconv/pull/1319)
 * Added a RecordingInterface for WhiteMatter ephys data [PR #1297](https://github.com/catalystneuro/neuroconv/pull/1297)
+* Improved `ScanImageInteface` to support both single and multi-file data [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
 
 ## Improvements
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)

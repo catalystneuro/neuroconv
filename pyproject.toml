@@ -308,7 +308,9 @@ sbx = [
     "roiextractors>=0.5.12",
 ]
 scanimage = [
-    "roiextractors>=0.5.12",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
+]
+scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
