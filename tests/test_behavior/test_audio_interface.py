@@ -11,6 +11,7 @@ from dateutil.tz import gettz
 from numpy.testing import assert_array_equal
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
@@ -39,12 +40,10 @@ def create_audio_files(
 
 
 class TestAudioInterface(AudioInterfaceTestMixin):
-
     data_interface_cls = AudioInterface
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_test(self, request, tmp_path_factory):
-
         cls = request.cls
 
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
@@ -65,7 +64,6 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
     @pytest.fixture(scope="function", autouse=True)
     def setup_converter(self):
-
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")
         self.create_audio_converter()
         self.metadata = self.nwb_converter.get_metadata()
@@ -258,3 +256,24 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 # Try to read the data
                 acoustic_series = nwbfile.stimulus[audio_name].data[:]
                 assert len(acoustic_series) > 0
+
+    def test_multiple_dots_in_filename(self):
+        """Test that AudioInterface works with WAV files that have multiple dots in filename."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create a WAV file with multiple dots in the filename
+            file_path = Path(temp_dir) / "test.1.wav"
+            create_24bit_wav_file(file_path)
+
+            # Initialize a fresh AudioInterface with the file
+            interface = AudioInterface(file_paths=[file_path])
+            # Get metadata
+            metadata = interface.get_metadata()
+            metadata["NWBFile"].update(session_start_time=self.session_start_time)
+
+            # Test add to NWBFile
+            nwbfile = mock_NWBFile()
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
+
+            # Check that the acoustic waveform series exists
+            audio_name = metadata["Behavior"]["Audio"][0]["name"]
+            assert audio_name in nwbfile.stimulus
