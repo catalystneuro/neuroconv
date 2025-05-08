@@ -898,6 +898,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
 class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd."""
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -913,6 +914,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd."""
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -928,11 +930,10 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_u8.isxd."""
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""

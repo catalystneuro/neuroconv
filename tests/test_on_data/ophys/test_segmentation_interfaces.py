@@ -1,5 +1,4 @@
 import pytest
-from parameterized import parameterized_class
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -210,6 +209,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 
 class TestInscopixSegmentationInterfaceMovie128x128x100Part1(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with movie_128x128x100_part1.isxd."""
+
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -225,6 +225,7 @@ class TestInscopixSegmentationInterfaceMovie128x128x100Part1(SegmentationExtract
 
 class TestInscopixSegmentationInterfaceMovieLongerThan3Min(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with movie_longer_than_3_min.isxd."""
+
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -240,11 +241,10 @@ class TestInscopixSegmentationInterfaceMovieLongerThan3Min(SegmentationExtractor
 
 class TestInscopixSegmentationInterfaceMovieU8(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with movie_u8.isxd."""
+
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_u8.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_u8.isxd"))
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
