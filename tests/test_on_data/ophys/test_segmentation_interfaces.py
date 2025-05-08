@@ -220,7 +220,7 @@ class TestInscopixSegmentationInterfaceMovie128x128x100Part1(SegmentationExtract
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
 
 
 class TestInscopixSegmentationInterfaceMovieLongerThan3Min(SegmentationExtractorInterfaceTestMixin):
@@ -236,7 +236,7 @@ class TestInscopixSegmentationInterfaceMovieLongerThan3Min(SegmentationExtractor
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
 
 
 class TestInscopixSegmentationInterfaceMovieU8(SegmentationExtractorInterfaceTestMixin):
@@ -250,4 +250,4 @@ class TestInscopixSegmentationInterfaceMovieU8(SegmentationExtractorInterfaceTes
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"

@@ -909,7 +909,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Imaging", "Incorrect device description"
 
 
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
@@ -925,7 +925,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Imaging", "Incorrect device description"
 
 
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
@@ -939,4 +939,4 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Imaging", "Incorrect device description"
