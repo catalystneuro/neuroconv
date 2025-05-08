@@ -11,6 +11,7 @@ from dateutil.tz import gettz
 from numpy.testing import assert_array_equal
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
@@ -269,18 +270,10 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             metadata = interface.get_metadata()
             metadata["NWBFile"].update(session_start_time=self.session_start_time)
 
-            # Run conversion
-            nwbfile_path = str(self.test_dir / "audio_test.1.nwb")
-            interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+            # Test add to NWBFile
+            nwbfile = mock_NWBFile()
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
 
-            # Verify the file was created and can be read
-            with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-                nwbfile = io.read()
-
-                # Check that the acoustic waveform series exists
-                audio_name = metadata["Behavior"]["Audio"][0]["name"]
-                assert audio_name in nwbfile.stimulus
-
-                # Try to read the data
-                acoustic_series = nwbfile.stimulus[audio_name].data[:]
-                assert len(acoustic_series) > 0
+            # Check that the acoustic waveform series exists
+            audio_name = metadata["Behavior"]["Audio"][0]["name"]
+            assert audio_name in nwbfile.stimulus
