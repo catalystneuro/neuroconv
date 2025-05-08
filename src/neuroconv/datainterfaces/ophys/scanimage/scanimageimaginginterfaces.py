@@ -14,7 +14,11 @@ from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
     """Interface for reading TIFF files produced via ScanImage."""
 
-    extractor = "ScanImageImagingExtractor"
+    display_name = "ScanImage Imaging"
+    associated_suffixes = (".tif", ".tiff")
+    info = "Interface for ScanImage TIFF files."
+
+    ExtractorName = "ScanImageImagingExtractor"
 
     def __init__(
         self,
