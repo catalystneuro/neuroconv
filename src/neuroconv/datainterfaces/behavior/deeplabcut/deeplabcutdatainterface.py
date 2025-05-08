@@ -118,7 +118,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         #. Modifying the returned dictionary as needed
         #. Passing the modified metadata to add_to_nwbfile() or run_conversion()
 
-        See also our `Conversion Gallery <https://neuroconv.readthedocs.io/en/main/conversion_examples_gallery/deeplabcut_conversion.html>`_
+        See also our `Conversion Gallery <https://neuroconv.readthedocs.io/en/main/conversion_examples_gallery/behavior/deeplabcut.html>`_
         for more examples using DeepLabCut data.
 
         Notes
