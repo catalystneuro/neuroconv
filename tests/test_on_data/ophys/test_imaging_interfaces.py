@@ -895,30 +895,11 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
-@parameterized_class(
-    [
-        # {
-        #     "interface_kwargs": dict(
-        #         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"),
-        #     ),
-        # },
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"),
-            ),
-        },
-        {
-            "interface_kwargs": dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"),
-            ),
-        },
-    ],
-)
-class TestInscopixImagingInterface(ImagingExtractorInterfaceTestMixin):
-    """Test InscopixImagingInterface with various Inscopix file types."""
+
+class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_128x128x100_part1.isxd."""
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
     )
@@ -926,9 +907,35 @@ class TestInscopixImagingInterface(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-    
-        # Check that TwoPhotonSeries doesn't exist (since Inscopix should be OnePhoton)
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
 
-        # Verify the device description is correct
+
+class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd."""
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+    )
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
+        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
+        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+
+
+class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_u8.isxd."""
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd")
+    )
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
+        assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
+        assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
         assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"

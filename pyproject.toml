@@ -326,6 +326,10 @@ tiff = [
     "roiextractors>=0.5.9",
     "tiffile>=2018.10.18",
 ]
+inscopix = [
+    "roiextractors @ git+https://github.com/daphnedequatrebarbes/roiextractors.git@add_inscopix_segmentation_extractor"
+]
+
 ophys = [
     "neuroconv[brukertiff]",
     "neuroconv[caiman]",
@@ -341,6 +345,7 @@ ophys = [
     "neuroconv[tdt_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
+    "neuroconv[inscopix]",
 ]
 # Note these are references to the package in pipy (not local)
 full = [
