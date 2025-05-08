@@ -3,6 +3,7 @@
 ## Deprecations and Changes
 * Drop support for python 3.9 [PR #1313](https://github.com/catalystneuro/neuroconv/pull/1313)
 * Updated type hints to take advantage of the | operator [PR #1316](https://github.com/catalystneuro/neuroconv/pull/1313)
+* Set minimum version requirement for `ndx-pose` to 0.2.0 [PR #1322](https://github.com/catalystneuro/neuroconv/pull/1322)
 
 ## Bug Fixes
 * Fix `AudioInterface` to correctly handle WAV filenames with multiple dots by validating only the last suffix. [PR #1327](https://github.com/catalystneuro/neuroconv/pull/1327)
