@@ -207,13 +207,13 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     conversion_options = dict(stub_test=True)
 
 
-class TestInscopixSegmentationInterfaceMovie128x128x100Part1(SegmentationExtractorInterfaceTestMixin):
-    """Test InscopixSegmentationInterface with movie_128x128x100_part1.isxd."""
+class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with cellset_series_part1.isxd"""
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
 
     def check_extracted_metadata(self, metadata: dict):
@@ -223,13 +223,13 @@ class TestInscopixSegmentationInterfaceMovie128x128x100Part1(SegmentationExtract
         assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
 
 
-class TestInscopixSegmentationInterfaceMovieLongerThan3Min(SegmentationExtractorInterfaceTestMixin):
-    """Test InscopixSegmentationInterface with movie_longer_than_3_min.isxd."""
+class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with cellset.isxd"""
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
     )
 
     def check_extracted_metadata(self, metadata: dict):
@@ -239,15 +239,16 @@ class TestInscopixSegmentationInterfaceMovieLongerThan3Min(SegmentationExtractor
         assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
 
 
-class TestInscopixSegmentationInterfaceMovieU8(SegmentationExtractorInterfaceTestMixin):
-    """Test InscopixSegmentationInterface with movie_u8.isxd."""
+class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with empty_cellset.isxd"""
 
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "movie_u8.isxd"))
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd"))
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
         assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
+        assert metadata["Ophys"]["OnePhotonSeries"] == [], "OnePhotonSeries is not empty"
         assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
         assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix Segmentation", "Incorrect device description"
