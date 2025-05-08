@@ -1,7 +1,5 @@
-import platform
 from datetime import datetime
 from pathlib import Path
-from unittest import skipIf
 
 import numpy as np
 import pytest
@@ -146,70 +144,67 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
 
-class TestScanImageImagingInterfacesAssertions(hdmf_TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.data_interface_cls = ScanImageImagingInterface
+class TestScanImageImagingInterfacesAssertions:
 
     def test_not_recognized_scanimage_version(self):
         """Test that ValueError is returned when ScanImage version could not be determined from metadata."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif")
-        with self.assertRaisesRegex(ValueError, "ScanImage version could not be determined from metadata."):
-            self.data_interface_cls(file_path=file_path)
+        with pytest.raises(
+            ValueError,
+            match="Unsupported ScanImage version 65536. Supported versions are 3, 4, and 5.Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead.",
+        ):
+            ScanImageImagingInterface(file_path=file_path)
 
     def test_not_supported_scanimage_version(self):
         """Test that ValueError is raised for ScanImage version 3.8 when ScanImageSinglePlaneImagingInterface is used."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff")
-        with self.assertRaisesRegex(ValueError, "ScanImage version 3.8 is not supported."):
+        with pytest.raises(ValueError, match="ScanImage version 3.8 is not supported."):
             ScanImageSinglePlaneImagingInterface(file_path=file_path)
 
     def test_channel_name_not_specified(self):
         """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
-        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
-            self.data_interface_cls(file_path=file_path)
+        with pytest.raises(ValueError, match="Multiple channels available in the data"):
+            ScanImageImagingInterface(file_path=file_path)
 
     def test_channel_name_not_specified_for_multi_plane_data(self):
         """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
-        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
+        with pytest.raises(ValueError, match="More than one channel is detected!"):
             ScanImageMultiPlaneImagingInterface(file_path=file_path)
 
     def test_plane_name_not_specified(self):
         """Test that ValueError is raised when plane_name is not specified for data with multiple planes."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
-        with self.assertRaisesRegex(ValueError, "More than one plane is detected!"):
+        with pytest.raises(ValueError, match="More than one plane is detected!"):
             ScanImageSinglePlaneImagingInterface(file_path=file_path, channel_name="Channel 1")
 
     def test_incorrect_channel_name(self):
         """Test that ValueError is raised when incorrect channel name is specified."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
         channel_name = "Channel 2"
-        with self.assertRaisesRegex(
-            AssertionError, r"Channel 'Channel 2' not found![\s\n]+Available channels are: \['Channel 1', 'Channel 4'\]"
+        with pytest.raises(
+            ValueError,
+            match=r"Channel name \(Channel 2\) not found in available channels \(\['Channel 1', 'Channel 4'\]\)\. Please specify a valid channel name\.",
         ):
-            self.data_interface_cls(file_path=file_path, channel_name=channel_name)
+            ScanImageImagingInterface(file_path=file_path, channel_name=channel_name, interleave_slice_samples=True)
 
     def test_incorrect_plane_name(self):
         """Test that ValueError is raised when incorrect plane name is specified."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
-        with self.assertRaisesRegex(
-            AssertionError,
-            r"Plane '20' not found![\s\n]+Available planes are: \['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'\]",
-        ):
-            self.data_interface_cls(file_path=file_path, plane_name="20")
+        with pytest.raises(ValueError, match=r"plane_index \(20\) must be between 0 and 19"):
+            ScanImageImagingInterface(file_path=file_path, plane_name="20")
 
     def test_non_volumetric_data(self):
         """Test that ValueError is raised for non-volumetric imaging data."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
-        with self.assertRaisesRegex(
+        with pytest.raises(
             ValueError,
-            "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead.",
+            match="Only one plane detected. For single plane imaging data use ScanImageSinglePlaneImagingInterface instead.",
         ):
             ScanImageMultiPlaneImagingInterface(file_path=file_path, channel_name="Channel 1")
 
 
-@skipIf(platform.machine() == "arm64", "Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))

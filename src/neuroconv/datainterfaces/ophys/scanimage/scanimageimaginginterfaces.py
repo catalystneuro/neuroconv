@@ -23,6 +23,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         slice_sample: Optional[int] = None,
         plane_index: Optional[int] = None,
         file_paths: Optional[list[str]] = None,
+        interleave_slice_samples: Optional[bool] = None,
         plane_name: str | None = None,
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
@@ -41,6 +42,12 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             file detection heuristics. Use this if automatic detection does not work correctly and you know
             exactly which files should be included.  The file paths should be provided in an order that
             reflects the temporal order of the frames in the dataset.
+        interleave_slice_samples : bool, default: True
+            Controls whether to interleave all slice samples as separate time points when frames_per_slice > 1:
+            - If True: Interleaves all slice samples as separate time points, increasing the effective
+              number of samples by frames_per_slice. This treats each slice_sample as a distinct sample.
+            - If False (default): Requires a specific slice_sample to be provided when frames_per_slice > 1.
+            - This parameter has no effect when frames_per_slice = 1 or when slice_sample is provided.
         """
 
         header_version = self.get_scanimage_version(file_path=file_path)
@@ -48,6 +55,14 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             raise ValueError(
                 f"Unsupported ScanImage version {header_version}. Supported versions are 3, 4, and 5."
                 f"Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead."
+            )
+
+        # Backward compatibility flag - will be set to False after November 2025
+        if interleave_slice_samples is None:
+            interleave_slice_samples = True
+            warnings.warn(
+                "interleave_slice_samples currently set to True for backward compatibility. \n"
+                "This will be set to False by default in or after November 2025."
             )
 
         if plane_name is not None:
@@ -69,6 +84,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             file_paths=file_paths,
             plane_index=plane_index,
             slice_sample=slice_sample,
+            interleave_slice_samples=interleave_slice_samples,
+            verbose=verbose,
         )
 
     def get_metadata(self):
