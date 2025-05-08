@@ -39,12 +39,10 @@ def create_audio_files(
 
 
 class TestAudioInterface(AudioInterfaceTestMixin):
-
     data_interface_cls = AudioInterface
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_test(self, request, tmp_path_factory):
-
         cls = request.cls
 
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
@@ -65,7 +63,6 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
     @pytest.fixture(scope="function", autouse=True)
     def setup_converter(self):
-
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")
         self.create_audio_converter()
         self.metadata = self.nwb_converter.get_metadata()
@@ -243,6 +240,43 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
             # Run conversion
             nwbfile_path = str(self.test_dir / "audio_24bit_test.nwb")
+
+            # This will fail if the AudioInterface doesn't handle 24-bit WAV files correctly
+            nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+            # Verify the file was created and can be read
+            with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+                nwbfile = io.read()
+
+                # Check that the acoustic waveform series exists
+                audio_name = metadata["Behavior"]["Audio"][0]["name"]
+                assert audio_name in nwbfile.stimulus
+
+                # Try to read the data
+                acoustic_series = nwbfile.stimulus[audio_name].data[:]
+                assert len(acoustic_series) > 0
+
+    def test_multiple_dots_in_filename(self):
+        """Test that AudioInterface works with WAV files that have multiple dots in filename."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create a 24-bit WAV file
+            file_path = Path(temp_dir) / "test.1.wav"
+            create_24bit_wav_file(file_path)
+
+            # Create a converter with the AudioInterface
+            class AudioTestNWBConverter(NWBConverter):
+                data_interface_classes = dict(Audio=AudioInterface)
+
+            # Initialize the converter with the 24-bit WAV file
+            source_data = dict(Audio=dict(file_paths=[file_path]))
+            nwb_converter = AudioTestNWBConverter(source_data)
+
+            # Get metadata
+            metadata = nwb_converter.get_metadata()
+            metadata["NWBFile"].update(session_start_time=self.session_start_time)
+
+            # Run conversion
+            nwbfile_path = str(self.test_dir / "audio_test.1.nwb")
 
             # This will fail if the AudioInterface doesn't handle 24-bit WAV files correctly
             nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
