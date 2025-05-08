@@ -5,8 +5,8 @@ from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
-    Suite2pSegmentationInterface,
     InscopixSegmentationInterface,
+    Suite2pSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     SegmentationExtractorInterfaceTestMixin,

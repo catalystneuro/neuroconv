@@ -1,6 +1,9 @@
-from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from typing import Literal
+
 from pydantic import FilePath, validate_call
+
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+
 
 class InscopixImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for Inscopix Imaging Extractor."""
@@ -8,9 +11,10 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
     display_name = "Inscopix Imaging"
     associated_suffixes = (".isxd",)
     info = "Interface for handling Inscopix imaging data."
-    
+
     @validate_call
-    def __init__(self,
+    def __init__(
+        self,
         file_path: FilePath,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",

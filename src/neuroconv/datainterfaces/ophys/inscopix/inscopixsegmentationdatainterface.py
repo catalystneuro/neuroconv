@@ -1,6 +1,8 @@
-from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from pydantic import FilePath, validate_call
 from typing import Literal
+
+from pydantic import FilePath, validate_call
+
+from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
@@ -22,7 +24,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
-        
+
     def get_metadata(self) -> dict:
         """
         Retrieve metadata for the Inscopix segmentation data.
