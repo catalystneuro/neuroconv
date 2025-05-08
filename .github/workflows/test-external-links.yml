@@ -6,6 +6,7 @@ on:
     # We add ready_for_review to trigger the check for changelog and full tests when ready for review is clicked
   merge_group:
   workflow_call:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
