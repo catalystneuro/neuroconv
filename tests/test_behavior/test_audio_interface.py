@@ -259,7 +259,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
     def test_multiple_dots_in_filename(self):
         """Test that AudioInterface works with WAV files that have multiple dots in filename."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a 24-bit WAV file
+            # Create a WAV file with multiple dots in the filename
             file_path = Path(temp_dir) / "test.1.wav"
             create_24bit_wav_file(file_path)
 
