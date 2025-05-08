@@ -20,15 +20,15 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
-    >>> # For single file data
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"
+    >>>
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "volumetric_single_channel_single_file_no_flyback" / "vol_no_flyback_00001_00001.tif"
     >>>
     >>> # Specify channel_name for multi-channel data
-    >>> # Specify plane_index for selecting a specific plane in multi-plane data
+    >>> # Specify plane_index for selecting a specific plane in multi-plane data or leave undefined  to write volumetric data
     >>> interface = ScanImageImagingInterface(
     >>>     file_path=file_path,
     >>>     channel_name="Channel 1",  # Required for multi-channel data
-    >>>     plane_index=0,  # Optional: specify to only write a specific plane
+    >>>     plane_index=None,  # Optional: specify to only write a specific plane
     >>> )
     >>>
     >>> metadata = interface.get_metadata()
