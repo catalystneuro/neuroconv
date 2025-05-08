@@ -62,56 +62,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             Controls verbosity of the conversion process.
 
 
-        Metadata Structure
-        ------------------
-        The metadata is organized in a hierarchical structure:
-
-        .. code-block:: python
-
-            metadata = {
-                "PoseEstimation": {
-                    "Skeletons": {
-                        "skeleton_name": {
-                            "name": "SkeletonPoseEstimationDeepLabCut_SubjectName",
-                            "nodes": ["bodypart1", "bodypart2", ...],  # List of keypoints/bodyparts
-                            "edges": [[0, 1], [1, 2], ...],  # Connections between nodes (optional)
-                            "subject": "subject_name"  # Links the skeleton to the subject
-                        }
-                    },
-                    "Devices": {
-                        "device_name": {
-                            "name": "CameraPoseEstimationDeepLabCut",
-                            "description": "Camera used for behavioral recording and pose estimation."
-                        }
-                    },
-                    "PoseEstimationContainers": {
-                        "pose_estimation_metadata_key": {
-                            "name": "PoseEstimationDeepLabCut",
-                            "description": "2D keypoint coordinates estimated using DeepLabCut.",
-                            "source_software": "DeepLabCut",
-                            "devices": ["device_name"],  # References to devices
-                            "PoseEstimationSeries": {
-                                "PoseEstimationSeriesBodyPart1": {
-                                    "name": "subject_bodypart1",
-                                    "description": "Keypoint bodypart1 from individual subject.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network."
-                                },
-                                "PoseEstimationSeriesBodyPart2": {
-                                    "name": "subject_bodypart2",
-                                    "description": "Keypoint bodypart2 from individual subject.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network."
-                                }
-                                # And so on for each bodypart
-                            }
-                        }
-                    }
-                }
-            }
-
         The metadata can be customized by:
 
         #. Calling get_metadata() to retrieve the default metadata
