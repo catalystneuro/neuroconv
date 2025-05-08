@@ -56,6 +56,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ScanImageMultiPlaneImaging
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
         channel_name="Channel 1",
+        interleave_slice_samples=True,
     )
     save_directory = OUTPUT_PATH
 
@@ -74,6 +75,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ScanImageMultiPlaneImaging
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
         channel_name="Channel 4",
+        interleave_slice_samples=True,
     )
     save_directory = OUTPUT_PATH
 
@@ -99,6 +101,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 1",
                     plane_name="0",
+                    interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane0",
                 expected_imaging_plane_name="ImagingPlaneChannel1Plane0",
@@ -108,6 +111,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 1",
                     plane_name="1",
+                    interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane1",
                 expected_imaging_plane_name="ImagingPlaneChannel1Plane1",
@@ -117,6 +121,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 4",
                     plane_name="0",
+                    interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane0",
                 expected_imaging_plane_name="ImagingPlaneChannel4Plane0",
@@ -126,6 +131,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 4",
                     plane_name="1",
+                    interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane1",
                 expected_imaging_plane_name="ImagingPlaneChannel4Plane1",
