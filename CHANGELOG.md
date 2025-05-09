@@ -1,4 +1,4 @@
-## v0.7.4 (Upcoming)
+# v0.7.4 (Upcoming)
 
 ## Deprecations and Changes
 * Drop support for python 3.9 [PR #1313](https://github.com/catalystneuro/neuroconv/pull/1313)
@@ -15,6 +15,7 @@
 * Improved `ScanImageInteface` to support both single and multi-file data [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330)
 
 ## Improvements
+* Add a `how to` on how to add electrode metadata in the recording interfaces [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
 
 # v0.7.3 (April 25, 2025)
