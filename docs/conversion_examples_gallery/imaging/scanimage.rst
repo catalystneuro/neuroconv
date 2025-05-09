@@ -59,7 +59,7 @@ For ScanImage v3.8 files, you need to specify the fallback sampling frequency if
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ScanImageLegacyImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_v3.8_file.tif"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"
     >>>
     >>> # The fallback_sampling_frequency is only needed if the sampling frequency
     >>> # cannot be extracted from the file metadata
