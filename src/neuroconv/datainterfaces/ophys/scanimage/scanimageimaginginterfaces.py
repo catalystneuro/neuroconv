@@ -38,13 +38,14 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     ExtractorName = "ScanImageImagingExtractor"
 
+    @validate_call
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
         channel_name: Optional[str] = None,
         slice_sample: Optional[int] = None,
         plane_index: Optional[int] = None,
-        file_paths: Optional[list[str]] = None,
+        file_paths: Optional[list[FilePath]] = None,
         interleave_slice_samples: Optional[bool] = None,
         plane_name: str | None = None,
         fallback_sampling_frequency: float | None = None,
@@ -61,33 +62,40 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         channel_name : str, optional
             Name of the channel to extract (e.g., "Channel 1", "Channel 2").
             - If None and only one channel is available, that channel will be used.
-            - If None and multiple channels are available, the first channel will be used.
+            - If None and multiple channels are available, an error will be raised.
             - Use `get_available_channels(file_path)` to see available channels before creating the interface.
         slice_sample : int, optional
             Controls how to handle multiple frames per slice in volumetric data:
-            - If an integer (0 to frames_per_slice-1): Uses only that specific frame for each slice,
-              effectively selecting a single sample from each acquisition.
-            - If None (default): Uses the interleave_slice_samples parameter to determine behavior.
-            - This parameter has no effect when frames_per_slice = 1.
+            ScanImage data can contain multiple frames for a single plane. Use this to
+            select a specific frame from each slice. if None, this will throw an error.
+            Select a slice sample or set `interleave_slice_samples` to True to interleave
+            all the slice samples as separate volumes/samples. Note that this will scramble the
+            acquisition order of the frames.
+            This parameter has no effect when frames_per_slice = 1.
         plane_index : int, optional
             Must be between 0 and num_planes-1. Used to extract a specific plane from volumetric data.
             When provided:
+
             - The resulting extractor will be planar
             - Each sample will contain only data for the specified plane
             - This parameter has no effect on planar (non-volumetric) data.
-        file_paths : list[str], optional
-            List of file paths to use. If provided, this overrides the automatic
-            file detection heuristics. Use this parameter when:
+        file_paths : list[Path | str], optional
+            List of file paths to use. This is an escape value that can be used
+            in case the automatic file detection doesn't work correctly and can be used
+            to override the automatic file detection.
+            This is useful when:
+
             - Automatic detection doesn't work correctly
             - You need to specify a custom subset of files
             - You need to control the exact order of files
             The file paths must be provided in the temporal order of the frames in the dataset.
         interleave_slice_samples : bool, optional
             Controls whether to interleave all slice samples as separate time points when frames_per_slice > 1:
+
             - If True: Interleaves all slice samples as separate time points, increasing the effective
-              number of samples by frames_per_slice. This treats each slice_sample as a distinct sample.
+            number of samples by frames_per_slice. This treats each slice_sample as a distinct sample.
             - If False: Requires a specific slice_sample to be provided when frames_per_slice > 1.
-            - This parameter has no effect when frames_per_slice = 1 or when slice_sample is provided.
+            - This parameter has n\o effect when frames_per_slice = 1 or when slice_sample is provided.
             - Default is True for backward compatibility (will change to False after November 2025).
         plane_name : str, optional
             Deprecated. Use plane_index instead. Will be removed in or after November 2025.
