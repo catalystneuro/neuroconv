@@ -12,7 +12,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for handling Inscopix imaging data."
 
-    @validate_call
     def __init__(
         self,
         file_path: FilePath,
@@ -33,16 +32,16 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             photon_series_type=photon_series_type,
         )
 
-    def get_metadata(self) -> dict:
-        """
-        Get metadata for the Scanbox imaging data.
+    # def get_metadata(self) -> dict:
+    #     """
+    #     Get metadata for the Scanbox imaging data.
 
-        Returns
-        -------
-        dict
-            Dictionary containing metadata including device information and imaging details
-            specific to the Scanbox system.
-        """
-        metadata = super().get_metadata()
-        metadata["Ophys"]["Device"][0]["description"] = "Inscopix imaging"
-        return metadata
+    #     Returns
+    #     -------
+    #     dict
+    #         Dictionary containing metadata including device information and imaging details
+    #         specific to the Scanbox system.
+    #     """
+    #     metadata = super().get_metadata()
+    #     metadata["Ophys"]["Device"][0]["description"] = "Inscopix imaging"
+    #     return metadata
