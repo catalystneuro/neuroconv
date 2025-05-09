@@ -382,9 +382,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     """
-    .. deprecated:: 0.x.x
-       This class is deprecated and will be removed in or after November 2025.
-       Use :class:`ScanImageImagingInterface` instead.
 
     Interface for reading TIFF files produced via ScanImage v3.8.
     """
@@ -478,10 +475,6 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
 
 class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
     """
-    .. deprecated:: 0.x.x
-       This class is deprecated and will be removed in or after October 2025.
-       Use :class:`ScanImageImagingInterface` instead.
-
     Interface for reading multi-file (buffered) TIFF files produced via ScanImage.
 
     It extracts metadata from the first TIFF file in the provided folder and determines the number of available planes.
@@ -568,10 +561,6 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
 class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     """
-    .. deprecated:: 0.x.x
-       This class is deprecated and will be removed in or after October 2025.
-       Use :class:`ScanImageImagingInterface` instead.
-
     Interface for reading multi plane (volumetric) TIFF files produced via ScanImage.
     """
 
@@ -702,10 +691,6 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
 class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
     """
-    .. deprecated:: 0.x.x
-       This class is deprecated and will be removed in or after October 2025.
-       Use :class:`ScanImageImagingInterface` instead.
-
     Interface for reading volumetric multi-file (buffered) TIFF files produced via ScanImage.
     """
 
@@ -844,10 +829,6 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
 class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     """
-    .. deprecated:: 0.x.x
-       This class is deprecated and will be removed in or after October 2025.
-       Use :class:`ScanImageImagingInterface` instead.
-
     Interface for reading TIFF files produced via ScanImage.
     """
 
@@ -998,10 +979,6 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
 class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
     """
-    .. deprecated:: 0.x.x
-       This class is deprecated and will be removed in or after October 2025.
-       Use :class:`ScanImageImagingInterface` instead.
-
     Interface for reading multi-file (buffered) TIFF files produced via ScanImage.
     """
 
