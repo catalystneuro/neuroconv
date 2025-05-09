@@ -21,16 +21,15 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "volumetric_single_channel_single_file_no_flyback" / "vol_no_flyback_00001_00001.tif"
+    >>> file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "volumetric_single_channel_single_file_no_flyback" / "vol_no_flyback_00001_00001.tif")
     >>>
     >>> # Specify channel_name for multi-channel data
     >>> # Specify plane_index for selecting a specific plane in multi-plane data or leave undefined  to write volumetric data
     >>> interface = ScanImageImagingInterface(
-    >>>     file_path=file_path,
-    >>>     channel_name="Channel 1",  # Required for multi-channel data
-    >>>     plane_index=None,  # Optional: specify to only write a specific plane
-    >>> )
-    >>>
+    ...     file_path=file_path,
+    ...     channel_name="Channel 1",  # Required for multi-channel data
+    ...     plane_index=None,  # Optional: specify to only write a specific plane
+    ... )
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
@@ -60,14 +59,14 @@ For ScanImage v3.8 files, you need to specify the fallback sampling frequency if
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ScanImageLegacyImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_v3.8_file.tif"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"
     >>>
     >>> # The fallback_sampling_frequency is only needed if the sampling frequency
     >>> # cannot be extracted from the file metadata
     >>> interface = ScanImageLegacyImagingInterface(
-    >>>     file_path=file_path,
-    >>>     fallback_sampling_frequency=30.0,  # Optional: only if not in metadata
-    >>> )
+    ...     file_path=file_path,
+    ...     fallback_sampling_frequency=30.0,  # Optional: only if not in metadata
+    ... )
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
