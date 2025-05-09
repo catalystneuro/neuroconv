@@ -94,7 +94,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - If True: Interleaves all slice samples as separate time points, increasing the effective
             number of samples by frames_per_slice. This treats each slice_sample as a distinct sample.
             - If False: Requires a specific slice_sample to be provided when frames_per_slice > 1.
-            - This parameter has no effect when frames_per_slice = 1 or when slice_sample is provided.
+            - This parameter has no effect when ``frames_per_slice = 1`` or when ``slice_sample`` is provided.
             - Default is True for backward compatibility (will change to False after November 2025).
         plane_name : str, optional
             Deprecated. Use plane_index instead. Will be removed in or after November 2025.
