@@ -134,3 +134,6 @@ venv.bak/
 
 # Spyder
 .spyproject
+
+# Cline Memory Bank files
+memory-bank/*
