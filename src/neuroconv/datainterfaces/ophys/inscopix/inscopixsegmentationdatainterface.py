@@ -13,4 +13,5 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False):
-        super().__init__(file_path=file_path, verbose=verbose)
+        self.file_path = str(file_path)
+        super().__init__(file_path=self.file_path, verbose=verbose)
