@@ -21,7 +21,7 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
     >>>
-    >>> file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "volumetric_single_channel_single_file_no_flyback" / "vol_no_flyback_00001_00001.tif")
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "volumetric_single_channel_single_file_no_flyback" / "vol_no_flyback_00001_00001.tif"
     >>>
     >>> # Specify channel_name for multi-channel data
     >>> # Specify plane_index for selecting a specific plane in multi-plane data or leave undefined  to write volumetric data
@@ -59,7 +59,7 @@ For ScanImage v3.8 files, you need to specify the fallback sampling frequency if
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ScanImageLegacyImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_v3.8_file.tif"
     >>>
     >>> # The fallback_sampling_frequency is only needed if the sampling frequency
     >>> # cannot be extracted from the file metadata

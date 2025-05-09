@@ -100,7 +100,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                 interface_kwargs=dict(
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 1",
-                    plane_name="0",
+                    plane_index=0,
                     interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane0",
@@ -110,7 +110,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                 interface_kwargs=dict(
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 1",
-                    plane_name="1",
+                    plane_index=1,
                     interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane1",
@@ -120,7 +120,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                 interface_kwargs=dict(
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 4",
-                    plane_name="0",
+                    plane_index=0,
                     interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane0",
@@ -130,7 +130,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
                 interface_kwargs=dict(
                     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
                     channel_name="Channel 4",
-                    plane_name="1",
+                    plane_index=1,
                     interleave_slice_samples=True,
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane1",
