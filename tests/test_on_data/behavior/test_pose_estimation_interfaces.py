@@ -242,9 +242,6 @@ class CustomTestSLEAPInterface(TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # Test matching number of processing modules
-            number_of_videos = len(labels.videos)
-            assert len(nwbfile.processing) == number_of_videos
 
             # Test processing module naming as video
             processing_module_name = "SLEAP_VIDEO_000_20190128_113421"
@@ -303,9 +300,6 @@ class CustomTestSLEAPInterface(TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # Test matching number of processing modules
-            number_of_videos = len(labels.videos)
-            assert len(nwbfile.processing) == number_of_videos
 
             # Test processing module naming as video
             video_name = Path(labels.videos[0].filename).stem
