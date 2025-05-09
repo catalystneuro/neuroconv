@@ -52,8 +52,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         verbose: bool = False,
     ):
         """
-        Initialize the ScanImage Imaging Interface.
-
         Parameters
         ----------
         file_path : FilePath, optional
@@ -61,6 +59,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             Either `file_path` or `file_paths` must be provided.
         channel_name : str, optional
             Name of the channel to extract (e.g., "Channel 1", "Channel 2").
+
             - If None and only one channel is available, that channel will be used.
             - If None and multiple channels are available, an error will be raised.
             - Use `get_available_channels(file_path)` to see available channels before creating the interface.
@@ -73,7 +72,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             acquisition order of the frames.
             This parameter has no effect when frames_per_slice = 1.
         plane_index : int, optional
-            Must be between 0 and num_planes-1. Used to extract a specific plane from volumetric data.
+            Must be between ``0`` and ``num_planes-1``. Used to extract a specific plane from volumetric data.
             When provided:
 
             - The resulting extractor will be planar
@@ -95,7 +94,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - If True: Interleaves all slice samples as separate time points, increasing the effective
             number of samples by frames_per_slice. This treats each slice_sample as a distinct sample.
             - If False: Requires a specific slice_sample to be provided when frames_per_slice > 1.
-            - This parameter has n\o effect when frames_per_slice = 1 or when slice_sample is provided.
+            - This parameter has no effect when ``frames_per_slice = 1`` or when ``slice_sample`` is provided.
             - Default is True for backward compatibility (will change to False after November 2025).
         plane_name : str, optional
             Deprecated. Use plane_index instead. Will be removed in or after November 2025.
@@ -382,7 +381,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading TIFF files produced via ScanImage v3.8."""
+    """
+
+    Interface for reading TIFF files produced via ScanImage v3.8.
+    """
 
     display_name = "ScanImage Imaging"
     associated_suffixes = (".tif",)
@@ -558,7 +560,9 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading multi plane (volumetric) TIFF files produced via ScanImage."""
+    """
+    Interface for reading multi plane (volumetric) TIFF files produced via ScanImage.
+    """
 
     display_name = "ScanImage Volumetric Imaging"
     associated_suffixes = (".tif",)
@@ -686,7 +690,9 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading volumetric multi-file (buffered) TIFF files produced via ScanImage."""
+    """
+    Interface for reading volumetric multi-file (buffered) TIFF files produced via ScanImage.
+    """
 
     display_name = "ScanImage Volumetric Multi-File Imaging"
     associated_suffixes = (".tif",)
@@ -822,7 +828,9 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
 
 class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading TIFF files produced via ScanImage."""
+    """
+    Interface for reading TIFF files produced via ScanImage.
+    """
 
     display_name = "ScanImage Single Plane Imaging"
     associated_suffixes = (".tif",)
@@ -970,7 +978,9 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
-    """Interface for reading multi-file (buffered) TIFF files produced via ScanImage."""
+    """
+    Interface for reading multi-file (buffered) TIFF files produced via ScanImage.
+    """
 
     display_name = "ScanImage Single Plane Multi-File Imaging"
     associated_suffixes = (".tif",)

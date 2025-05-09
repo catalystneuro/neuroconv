@@ -1,7 +1,7 @@
 .. _linking_sorted_data:
 
 How to Link Sorted Data to Electrodes
-===================================
+=====================================
 
 The ``SortedRecordingConverter`` maintains proper linkage between sorted units and their corresponding recording channels in NWB files.
 It handles the critical relationship between ``Units`` and ``Electrodes`` tables by:
@@ -16,7 +16,7 @@ Basic Usage
 ----------
 
 Single Probe and Single Recording
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This example demonstrates linking data from a single Neuropixel probe recorded with SpikeGLX and sorted with Kilosort.
 
