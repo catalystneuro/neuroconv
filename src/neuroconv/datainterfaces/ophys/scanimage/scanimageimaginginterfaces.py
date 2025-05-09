@@ -52,8 +52,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         verbose: bool = False,
     ):
         """
-        Initialize the ScanImage Imaging Interface.
-
         Parameters
         ----------
         file_path : FilePath, optional
@@ -61,6 +59,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             Either `file_path` or `file_paths` must be provided.
         channel_name : str, optional
             Name of the channel to extract (e.g., "Channel 1", "Channel 2").
+
             - If None and only one channel is available, that channel will be used.
             - If None and multiple channels are available, an error will be raised.
             - Use `get_available_channels(file_path)` to see available channels before creating the interface.
