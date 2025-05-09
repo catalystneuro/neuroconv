@@ -4,6 +4,7 @@ from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
+    InscopixSegmentationInterface,
     Suite2pSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
@@ -204,3 +205,31 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
+
+
+class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with cellset_series_part1.isxd"""
+
+    data_interface_cls = InscopixSegmentationInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
+    )
+
+
+class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with cellset.isxd"""
+
+    data_interface_cls = InscopixSegmentationInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
+
+
+class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfaceTestMixin):
+    """Test InscopixSegmentationInterface with empty_cellset.isxd"""
+
+    data_interface_cls = InscopixSegmentationInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
+    )
