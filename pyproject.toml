@@ -114,7 +114,8 @@ audio = [
 ]
 sleap = [
     "av>=10.0.0",
-    "sleap-io>=0.0.2,<0.3.0",
+    "sleap-io>=0.3.0",
+    "ndx-pose>=0.2.2",
 ]
 deeplabcut = [
     "ndx-pose>=0.2",
