@@ -75,7 +75,7 @@ test = [
     "spikeinterface[qualitymetrics]>=0.102.2",
     "zarr",
     "pytest-xdist",
-    "pytest-mock"  # Added for mocking dependencies
+    "pytest-mock"  # Add pytest-mock for mocking dependencies in tests
 ]
 
 docs = [
@@ -309,7 +309,9 @@ miniscope = [
 sbx = [
     "roiextractors>=0.5.12",
 ]
-
+scanimage = [
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
+]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
@@ -332,13 +334,11 @@ tiff = [
     "roiextractors>=0.5.9",
     "tiffile>=2018.10.18",
 ]
-
-# Maintain the Git branch for inscopix but remove the isx dependency for CI
+# Add the inscopix extra with the required Git branch
 inscopix = [
     "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@add_inscopix_segmentation_extractor",
 ]
 
-# Keep the ophys configuration as-is but exclude inscopix from it
 ophys = [
     "neuroconv[brukertiff]",
     "neuroconv[caiman]",
@@ -348,22 +348,15 @@ ophys = [
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
     "neuroconv[sbx]",
-    # "neuroconv[scanimage]",  # Comment out scanimage to avoid conflicts
+    "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
-    # "neuroconv[inscopix]"  # Comment out inscopix to avoid conflicts
+    # Don't include inscopix in ophys to avoid conflicts in CI
 ]
-
-# Add a specific group for CI testing that has everything needed
-ophys_ci = [
-    "roiextractors>=0.5.12",  # Base version for standard extractors
-    "neuroconv[ophys]",       # Standard ophys components
-]
-
 # Note these are references to the package in pipy (not local)
 full = [
     "neuroconv[aws]",
@@ -373,7 +366,7 @@ full = [
     "neuroconv[ecephys]",
     "neuroconv[icephys]",
     "neuroconv[image]",
-    "neuroconv[ophys]",  # Use standard ophys in full
+    "neuroconv[ophys]",
     "neuroconv[text]",
 ]
 
