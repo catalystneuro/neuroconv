@@ -114,7 +114,8 @@ audio = [
 ]
 sleap = [
     "av>=10.0.0",
-    "sleap-io>=0.0.2,<0.3.0",
+    "sleap-io>=0.3.0",
+    "ndx-pose>=0.2.2",
 ]
 deeplabcut = [
     "ndx-pose>=0.2",
@@ -237,6 +238,9 @@ tdt = [
     "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
+whitematter = [
+    "spikeinterface>=0.102.3",
+]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
@@ -258,6 +262,7 @@ ecephys = [  # Note that this the requirements of the extracts as they are on pi
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
+    "neuroconv[whitematter]",
 ]
 
 ## Icephys
@@ -304,7 +309,9 @@ sbx = [
     "roiextractors>=0.5.12",
 ]
 scanimage = [
-    "roiextractors>=0.5.12",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
+]
+scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
@@ -347,6 +354,8 @@ ophys = [
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[inscopix]",
+    "neuroconv[scanimage_legacy]",
+
 ]
 # Note these are references to the package in pipy (not local)
 full = [
