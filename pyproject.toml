@@ -75,7 +75,6 @@ test = [
     "spikeinterface[qualitymetrics]>=0.102.2",
     "zarr",
     "pytest-xdist",
-    "pytest-mock"  # Add pytest-mock for mocking dependencies in tests
 ]
 
 docs = [
