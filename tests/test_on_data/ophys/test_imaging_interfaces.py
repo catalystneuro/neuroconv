@@ -916,15 +916,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
-    )
-
-    # def check_extracted_metadata(self, metadata: dict):
-    #     """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
-    #     assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-    #     assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-    #     assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"))
 
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
@@ -932,15 +924,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
-    )
-
-    # def check_extracted_metadata(self, metadata: dict):
-    #     """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
-    #     assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-    #     assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-    #     assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"))
 
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
@@ -949,9 +933,3 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
-
-    # def check_extracted_metadata(self, metadata: dict):
-    #     """Check that the metadata contains OnePhotonSeries and not TwoPhotonSeries."""
-    #     assert "OnePhotonSeries" in metadata["Ophys"], "OnePhotonSeries not found in metadata"
-    #     assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
-    #     assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
