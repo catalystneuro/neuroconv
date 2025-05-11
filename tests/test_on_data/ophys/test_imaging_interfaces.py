@@ -9,6 +9,8 @@ from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
 from parameterized import parameterized_class
 from pynwb import NWBHDF5IO
+import sys
+
 
 from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
@@ -42,7 +44,10 @@ try:
 except ImportError:
     from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
-
+skip_on_darwin_arm64 = pytest.mark.skipif(
+    (platform.system() == "Darwin" and platform.machine() == "arm64") or "isx" not in sys.modules,
+    reason="Inscopix tests are skipped on macOS ARM64 or when isx module is not available"
+)
 class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
     interface_kwargs = dict(
@@ -905,7 +910,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
-
+@skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd."""
 
@@ -921,7 +926,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     #     assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
     #     assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
 
-
+@skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd."""
 
@@ -937,7 +942,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     #     assert "TwoPhotonSeries" not in metadata["Ophys"], "TwoPhotonSeries found in Inscopix metadata"
     #     assert metadata["Ophys"]["Device"][0]["description"] == "Inscopix imaging", "Incorrect device description"
 
-
+@skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_u8.isxd."""
 

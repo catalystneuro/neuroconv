@@ -337,7 +337,7 @@ tiff = [
 # Add the inscopix extra with the required Git branch
 inscopix = [
     "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@add_inscopix_segmentation_extractor",
-    "isx>=2.0; sys_platform != 'darwin'"
+    "isx>=2.0; sys_platform != 'darwin' or platform_machine != 'arm64'"
 ]
 
 ophys = [

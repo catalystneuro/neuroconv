@@ -1,4 +1,6 @@
 import pytest
+import platform
+import sys
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -16,6 +18,11 @@ try:
 except ImportError:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
+
+skip_on_darwin_arm64 = pytest.mark.skipif(
+    (platform.system() == "Darwin" and platform.machine() == "arm64") or "isx" not in sys.modules,
+    reason="Inscopix tests are skipped on macOS ARM64 or when isx module is not available"
+)
 
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
@@ -206,7 +213,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
-
+@skip_on_darwin_arm64
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset_series_part1.isxd"""
 
@@ -217,7 +224,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     )
     conversion_options = dict(stub_test=True)
 
-
+@skip_on_darwin_arm64
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset.isxd"""
 
@@ -226,7 +233,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     conversion_options = dict(stub_test=True)
 
-
+@skip_on_darwin_arm64
 class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with empty_cellset.isxd"""
 
