@@ -918,7 +918,9 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
+    )
 
 
 @skip_on_darwin_arm64
@@ -927,7 +929,9 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+    )
 
 
 @skip_on_darwin_arm64
