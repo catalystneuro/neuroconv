@@ -75,6 +75,8 @@ Related links
 -------------
 
 
+For an overview of the NWB standard and ecosystem, please view:
+
 - The `NWB Overview <https://nwb-overview.readthedocs.io/en/latest/>`_
 
 For a no code solution to conversion to NWB, please view:
