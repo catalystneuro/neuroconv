@@ -26,6 +26,7 @@ class TestAudioInterfaceWavIEEEFloat(DataInterfaceTestMixin):
             # Verify we can read the data
             data = nwbfile.stimulus["AcousticWaveformSeries"].data[:]
             assert len(data) > 0
+            assert data.dtype == "float32"
 
 
 if __name__ == "__main__":
