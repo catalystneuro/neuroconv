@@ -53,6 +53,10 @@ Below is an overview of the key sections to help you navigate our documentation 
   Detailed documentation of the NeuroConv API can be found in the :ref:`API <api>` section.
 
 
+
+The `CatalystNeuro Conversion Database <https://catalystneuro.com/nwb-conversions/>`_ showcases a collection of successful conversion projects utilizing NeuroConv.
+It serves as both inspiration and a practical reference for what can be achieved with our library.
+
 Do you find that some information is missing or some section lacking or unclear? Reach out with an issue or pull request on our `GitHub repository <https://github.com/catalystneuro/neuroconv>`_.
 We are happy to help and appreciate your feedback.
 
@@ -70,7 +74,6 @@ We are happy to help and appreciate your feedback.
 Related links
 -------------
 
-For an overview of the NWB standard and ecosystem, please view:
 
 - The `NWB Overview <https://nwb-overview.readthedocs.io/en/latest/>`_
 
