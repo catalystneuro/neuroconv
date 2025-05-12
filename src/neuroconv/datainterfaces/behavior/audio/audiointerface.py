@@ -191,6 +191,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         -------
         NWBFile
         """
+
+        metadata = metadata or self.get_metadata()
+
         file_paths = self.source_data["file_paths"]
         audio_metadata = metadata["Behavior"]["Audio"]
         _check_audio_names_are_unique(metadata=audio_metadata)
