@@ -13,6 +13,8 @@
 * Add metadata support for `DeepLabCutInterface` [PR #1319](https://github.com/catalystneuro/neuroconv/pull/1319)
 * Added a RecordingInterface for WhiteMatter ephys data [PR #1297](https://github.com/catalystneuro/neuroconv/pull/1297)
 * Improved `ScanImageInteface` to support both single and multi-file data [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330)
+* Added `InscopixImagingInterface` for converting Inscopix imaging data. [PR #707](https://github.com/catalystneuro/neuroconv/issues/707)
+* Added `InscopixSegmentationInterface` for converting Inscopix segmentatation data. [PR #707](https://github.com/catalystneuro/neuroconv/pull/707)
 
 ## Improvements
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
@@ -482,9 +484,6 @@
 
 
 # v0.4.5 (November 6, 2023)
-
-### Back-compatibility break
-* The `CEDRecordingInterface` has now been removed; use the `Spike2RecordingInterface` instead. [PR #602](https://github.com/catalystneuro/neuroconv/pull/602)
 
 ### Features
 * Added support for python 3.12 [PR #626](https://github.com/catalystneuro/neuroconv/pull/626)
