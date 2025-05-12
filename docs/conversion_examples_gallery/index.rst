@@ -33,6 +33,7 @@ Recording
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     Tucker-Davis Technologies (TDT) <recording/tdt>
+    White Matter <recording/whitematter>
 
 Sorting
 ~~~~~~~
