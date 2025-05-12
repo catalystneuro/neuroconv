@@ -87,7 +87,6 @@ For more information regarding the NWB Standard, please view
 
 - The `NWB Format Specification <https://nwb-schema.readthedocs.io/en/latest/>`_
 
-
 .. seealso::
 
   Watch a video introduction to NeuroConv `here <https://youtu.be/QofVU-59Dd4>`_
