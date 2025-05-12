@@ -42,11 +42,6 @@ Below is an overview of the key sections to help you navigate our documentation 
   The :ref:`How To Guides <how_to>` section contains practical guides for using NeuroConv effectively and solve
   common problems.
 
-* **Catalogue of Projects**
-
-  :ref:`The Catalogue of Neuroconv Projects <catalogue>` section showcases a collection of successful conversion projects utilizing NeuroConv.
-  It serves as both inspiration and a practical reference for what can be achieved with our library.
-
 * **Developer Guide**
 
   For developers interested in contributing to NeuroConv, the :ref:`Developer Guide <developer_guide>` provides essential information such as
@@ -68,14 +63,12 @@ We are happy to help and appreciate your feedback.
   user_guide/index
   conversion_examples_gallery/index
   how_to/index
-  catalogue/index
   developer_guide/index
   api/index
 
 
 Related links
 -------------
-
 
 For an overview of the NWB standard and ecosystem, please view:
 
@@ -88,6 +81,9 @@ For a no code solution to conversion to NWB, please view:
 For more information regarding the NWB Standard, please view
 
 - The `NWB Format Specification <https://nwb-schema.readthedocs.io/en/latest/>`_
+
+The `CatalystNeuro Conversion Database <https://catalystneuro.com/nwb-conversions/>`_ showcases a collection of successful conversion projects utilizing NeuroConv.
+  It serves as both inspiration and a practical reference for what can be achieved with our library.
 
 .. seealso::
 
