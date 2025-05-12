@@ -87,8 +87,6 @@ For more information regarding the NWB Standard, please view
 
 - The `NWB Format Specification <https://nwb-schema.readthedocs.io/en/latest/>`_
 
-The `CatalystNeuro Conversion Database <https://catalystneuro.com/nwb-conversions/>`_ showcases a collection of successful conversion projects utilizing NeuroConv.
-  It serves as both inspiration and a practical reference for what can be achieved with our library.
 
 .. seealso::
 
