@@ -11,11 +11,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     info = "Interface for handling segmentation data from Inscopix."
 
     @validate_call
-    def __init__(
-        self, 
-        file_path: FilePath, 
-        verbose: bool = False
-        ):
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Parameters
         ----------
