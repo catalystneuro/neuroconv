@@ -12,6 +12,7 @@ from hdmf import Container
 from hdmf.build.builders import (
     BaseBuilder,
 )
+from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -28,7 +29,7 @@ from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from ...hdmf import GenericDataChunkIterator, SliceableDataChunkIterator
+from ...hdmf import SliceableDataChunkIterator
 
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
@@ -274,7 +275,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         full_shape = get_full_data_shape(dataset=candidate_dataset, location_in_file=location_in_file, builder=builder)
         dtype = _infer_dtype(dataset=candidate_dataset)
 
-        if isinstance(candidate_dataset, GenericDataChunkIterator):
+        if isinstance(candidate_dataset, HDMFGenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
             compression_method = "gzip"

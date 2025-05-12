@@ -129,9 +129,11 @@ def test_video_chunking(nwb_converter, nwbfile_path, metadata):
         nwbfile = io.read()
         mod = nwbfile.acquisition
         # Verify that chunking is applied
-        assert mod["Video test1"].data.chunks is not None
+        video_written_with_iterator = mod["Video test1"]
+        video_written_without_iterator = mod["Video test2"]
+        assert video_written_with_iterator.data.chunks is not None
         # Verify that non-chunking option works
-        assert mod["Video test2"].data.chunks is not None  # Still chunked due to HDF5 storage
+        assert video_written_without_iterator.data.chunks is not None  # Still chunked due to HDF5 storage
 
 
 def test_video_stub(nwb_converter, nwbfile_path, metadata):

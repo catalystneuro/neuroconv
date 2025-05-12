@@ -13,7 +13,6 @@ from hdmf.utils import get_data_shape
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
-    # TODO Should this be added to the API?
 
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> tuple[int]:
         return self.estimate_default_buffer_shape(

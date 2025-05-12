@@ -94,17 +94,21 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         num_frames = self._maxshape[0]
-        width = self._maxshape[1]
-        height = self._maxshape[2]
+        width = int(self._maxshape[1])
+        height = int(self._maxshape[2])
+        if len(self._maxshape) == 4:
+            num_planes = int(self._maxshape[3])
+        else:
+            num_planes = None
 
-        frame_size_bytes = width * height * self._dtype.itemsize
-        chunk_size_bytes = chunk_mb * 1e6
-        num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
-
-        if len(self._maxshape) == 3:
-            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height)
-        elif len(self._maxshape) == 4:
-            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height, 1)
+        chunk_shape = get_two_photon_series_chunk_shape(
+            num_frames=num_frames,
+            width=width,
+            height=height,
+            dtype=self._dtype,
+            num_planes=num_planes,
+            chunk_mb=chunk_mb,
+        )
 
         return chunk_shape
 
@@ -115,24 +119,34 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         series_max_shape = self._get_maxshape()[1:]
         min_buffer_shape = tuple([chunk_shape[0]]) + series_max_shape
-        scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
-        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + series_max_shape
-        scaled_buffer_shape = tuple(
-            [
-                min(max(int(dimension_length), chunk_shape[dimension_index]), self._get_maxshape()[dimension_index])
-                for dimension_index, dimension_length in enumerate(max_buffer_shape)
-            ]
-        )
 
-        return scaled_buffer_shape
+        # Calculate scaling factor based on buffer size and data type
+        bytes_per_element = self._get_dtype().itemsize
+        min_buffer_size = math.prod(min_buffer_shape) * bytes_per_element
+        scaling_factor = math.floor((buffer_gb * 1e9) / min_buffer_size)
+
+        # Determine maximum buffer shape with scaling factor
+        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + series_max_shape
+
+        # Build the scaled buffer shape element by element instead of using list comprehension
+        scaled_buffer_shape = []
+        maxshape = self._get_maxshape()
+
+        for dimension_index, dimension_length in enumerate(max_buffer_shape):
+            min_size = chunk_shape[dimension_index]
+            max_size = maxshape[dimension_index]
+            scaled_size = max(int(dimension_length), min_size)
+            scaled_size = min(scaled_size, max_size)
+            scaled_buffer_shape.append(scaled_size)
+
+        return tuple(scaled_buffer_shape)
 
     def _get_dtype(self) -> np.dtype:
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
 
-        # Using this as a safe method, change once roiextractors 0.5.13 is released
-        max_series_shape = self.imaging_extractor.get_video(start_frame=0, end_frame=1)
+        max_series_shape = self.imaging_extractor.get_sample_shape()
 
         num_samples = self.imaging_extractor.get_num_samples()
         height = max_series_shape.shape[1]
@@ -147,11 +161,65 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         return sample_shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
-        data = self.imaging_extractor.get_video(
-            start_frame=selection[0].start,
-            end_frame=selection[0].stop,
+        data = self.imaging_extractor.get_series(
+            start_sample=selection[0].start,
+            end_sample=selection[0].stop,
         )
         tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
         sliced_selection = (slice(0, self.buffer_shape[0]),) + selection[1:]
 
         return data.transpose(tranpose_axes)[sliced_selection]
+
+
+def get_two_photon_series_chunk_shape(
+    num_frames: int,
+    width: int,
+    height: int,
+    dtype: np.dtype,
+    num_planes: int | None = None,
+    chunk_mb: float = 10.0,
+) -> tuple[int, int]:
+    """
+    Estimate good chunk shape for a TwoPhotonSeries dataset.
+
+    This function gives good estimates for cloud access patterns.
+
+    Parameters
+    ----------
+    num_frames : int
+        The number of frames in the TwoPhotonSeries dataset.
+    width : int
+        The width of the TwoPhotonSeries dataset.
+    height : int
+        The height of the TwoPhotonSeries dataset.
+    dtype : np.dtype
+        The data type of the TwoPhotonSeries dataset.
+    num_planes : int,
+        The number of planes in the TwoPhotonSeries dataset.
+        The default is None.
+    chunk_mb : float, optional
+        The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
+        The default is 10MB, as recommended by the HDF5 group.
+
+    Returns
+    -------
+    tuple[int, int, int] | tuple[int, int, int, int]
+        The chunk shape for the TwoPhotonSeries dataset.
+    """
+    assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
+
+    frame_size_bytes = width * height * dtype.itemsize
+    chunk_size_bytes = chunk_mb * 1e6
+    num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
+
+    # Ensure that the frames per chunk is less than the total number of frames and greater than 1
+    num_frames_per_chunk = min(num_frames_per_chunk, num_frames)
+    num_frames_per_chunk = max(num_frames_per_chunk, 1)
+
+    if num_planes is None:
+        chunk_shape = (num_frames_per_chunk, width, height)
+    else:
+        # TODO: review the policy of chunking the data with only one volume
+        chunk_shape = (num_frames_per_chunk, width, height, 1)
+
+    return chunk_shape
