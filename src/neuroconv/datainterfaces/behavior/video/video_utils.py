@@ -266,28 +266,56 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
     def _get_default_chunk_shape(self, chunk_mb):
         """Shape is either one frame or a subset: scaled frame size but with all pixel colors"""
+
+        frames_count = self._scale_shape_to_size(
+            size_mb=chunk_mb,
+            shape=self._full_frame_shape[:1],
+            size=self._full_frame_size_mb,
+            max_shape=self._maxshape[:1],
+        )
+
+        chunk_shape = frames_count + tuple(self._maxshape[1:])
+
         return self._fit_frames_to_size(chunk_mb)
 
     def _get_default_buffer_shape(self, buffer_gb):
         """Buffer shape is a multiple of frame shape along the frame dimension."""
         assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"
-        return self._fit_frames_to_size(buffer_gb * 1e3)
+
+        chunk_shape = self._fit_frames_to_size(buffer_gb * 1e3)
+
+        return chunk_shape
 
     def _fit_frames_to_size(self, size_mb):
         """Finds the number of frames which fit size_mb and returns the full frame shape."""
+
         frames_count = self._scale_shape_to_size(
             size_mb=size_mb,
             shape=self._full_frame_shape[:1],
             size=self._full_frame_size_mb,
             max_shape=self._maxshape[:1],
         )
+
         return frames_count + tuple(self._maxshape[1:])
 
     @staticmethod
     def _scale_shape_to_size(size_mb, shape, size, max_shape):
         """Given the shape and size of array, return shape that will fit size_mb."""
-        k = math.floor((size_mb / size) ** (1 / len(shape)))
-        return tuple([min(max(int(x), shape[j]), max_shape[j]) for j, x in enumerate(k * np.array(shape))])
+
+        # Distribute volume evenly across shape dimensions
+        scaling_factor = math.floor((size_mb / size) ** (1 / len(shape)))
+        scaled_shape = scaling_factor * np.array(shape)
+
+        # Ensure each dimension is within bounds (not smaller than original, not larger than max)
+        result_shape = []
+        for dimension_index, dimension in enumerate(scaled_shape):
+            # Clamp between original and max shape
+            bounded_dimension = max(int(dimension), shape[dimension_index])
+            bounded_dimension = min(bounded_dimension, max_shape[dimension_index])
+
+            result_shape.append(bounded_dimension)
+
+        return tuple(result_shape)
 
     def _get_frame_details(self):
         """Get frame shape and size in MB"""
@@ -307,4 +335,6 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         return self.video_capture_ob.get_video_frame_dtype()
 
     def _get_maxshape(self):
-        return (self.video_capture_ob.get_video_frame_count(), *self.video_capture_ob.get_frame_shape())
+        num_frames = self.video_capture_ob.get_video_frame_count()
+        height, width, channels = self.video_capture_ob.get_frame_shape()
+        return (num_frames, height, width, channels)

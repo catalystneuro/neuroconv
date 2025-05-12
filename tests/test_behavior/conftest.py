@@ -9,6 +9,15 @@ def tmp_path_session(tmp_path_factory):
     return tmp_path_factory.mktemp("session")
 
 
+test_video_parameters = {
+    "number_of_frames": 30,
+    "number_of_rows": 64,
+    "number_of_columns": 48,
+    "frameSize": (48, 64),  # This is give in x,y images coordinates (x is columns)
+    "fps": 25,
+}
+
+
 @pytest.fixture(scope="session")
 def video_files(tmp_path_session):
     """Create test video files and return their paths."""
@@ -16,11 +25,11 @@ def video_files(tmp_path_session):
     video_file1 = str(tmp_path_session / "test1.avi")
     video_file2 = str(tmp_path_session / "test2.avi")
     video_file3 = str(tmp_path_session / "test3.avi")
-    number_of_frames = 30
-    number_of_rows = 64
-    number_of_columns = 48
-    frameSize = (number_of_columns, number_of_rows)  # This is give in x,y images coordinates (x is columns)
-    fps = 25
+    number_of_frames = test_video_parameters["number_of_frames"]
+    number_of_rows = test_video_parameters["number_of_rows"]
+    number_of_columns = test_video_parameters["number_of_columns"]
+    frameSize = test_video_parameters["frameSize"]
+    fps = test_video_parameters["fps"]
     # Standard code for specifying image formats
     fourcc_specification = ("M", "J", "P", "G")
     # Utility to transform the four code specification to OpenCV specification

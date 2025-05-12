@@ -128,7 +128,6 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         # Determine maximum buffer shape with scaling factor
         max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + series_max_shape
 
-        # Build the scaled buffer shape element by element instead of using list comprehension
         scaled_buffer_shape = []
         maxshape = self._get_maxshape()
 

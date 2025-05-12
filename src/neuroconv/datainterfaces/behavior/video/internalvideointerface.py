@@ -298,11 +298,11 @@ class InternalVideoInterface(BaseDataInterface):
             buffer_data = True
 
         if buffer_data:
-            # Use VideoDataChunkIterator with the calculated chunk shape
             data_iterable = VideoDataChunkIterator(
                 video_file=file_path,
                 stub_test=stub_test,
             )
+            # next(data_iterable)
         else:
             # Load the video
             with VideoCaptureContext(file_path) as video_capture_ob:
