@@ -101,12 +101,12 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         else:
             num_planes = None
 
-        chunk_shape = get_two_photon_series_chunk_shape(
+        chunk_shape = get_image_series_chunk_shape(
             num_frames=num_frames,
-            width=width,
-            height=height,
+            x_size=width,
+            y_size=height,
+            z_size=num_planes,
             dtype=self._dtype,
-            num_planes=num_planes,
             chunk_mb=chunk_mb,
         )
 
@@ -170,31 +170,32 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         return data.transpose(tranpose_axes)[sliced_selection]
 
 
-def get_two_photon_series_chunk_shape(
+def get_image_series_chunk_shape(
+    *,
     num_frames: int,
-    width: int,
-    height: int,
+    x_size: int,
+    y_size: int,
     dtype: np.dtype,
-    num_planes: int | None = None,
+    z_size: int | None = None,
     chunk_mb: float = 10.0,
 ) -> tuple[int, int]:
     """
-    Estimate good chunk shape for a TwoPhotonSeries dataset.
+    Estimate good chunk shape for a ImageSeries dataset.
 
     This function gives good estimates for cloud access patterns.
 
     Parameters
     ----------
     num_frames : int
-        The number of frames in the TwoPhotonSeries dataset.
-    width : int
-        The width of the TwoPhotonSeries dataset.
-    height : int
-        The height of the TwoPhotonSeries dataset.
+        The number of frames in the ImageSeries dataset.
+    x_size : int
+        The x_size of the ImageSeries dataset. Usually the width of the image.
+    y_size : int
+        The y_size of the ImageSeries dataset. Usually the height of the image.
     dtype : np.dtype
-        The data type of the TwoPhotonSeries dataset.
-    num_planes : int,
-        The number of planes in the TwoPhotonSeries dataset.
+        The data type of the ImageSeries dataset.
+    z_size : int,
+        The number of planes in the ImageSeries dataset. Can be number of channels or number of z-planes.
         The default is None.
     chunk_mb : float, optional
         The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
@@ -207,7 +208,7 @@ def get_two_photon_series_chunk_shape(
     """
     assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
-    frame_size_bytes = width * height * dtype.itemsize
+    frame_size_bytes = x_size * y_size * dtype.itemsize
     chunk_size_bytes = chunk_mb * 1e6
     num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
 
@@ -215,10 +216,10 @@ def get_two_photon_series_chunk_shape(
     num_frames_per_chunk = min(num_frames_per_chunk, num_frames)
     num_frames_per_chunk = max(num_frames_per_chunk, 1)
 
-    if num_planes is None:
-        chunk_shape = (num_frames_per_chunk, width, height)
+    if z_size is None:
+        chunk_shape = (num_frames_per_chunk, x_size, y_size)
     else:
         # TODO: review the policy of chunking the data with only one volume
-        chunk_shape = (num_frames_per_chunk, width, height, 1)
+        chunk_shape = (num_frames_per_chunk, x_size, y_size, z_size)
 
     return chunk_shape

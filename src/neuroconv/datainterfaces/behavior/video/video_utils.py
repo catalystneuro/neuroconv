@@ -1,10 +1,11 @@
-import math
-
 import numpy as np
 from pydantic import FilePath
 from tqdm import tqdm
 
 from neuroconv.tools.hdmf import GenericDataChunkIterator
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
+    get_image_series_chunk_shape,
+)
 
 from ....tools import get_package
 
@@ -256,6 +257,13 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
     ):
         self.video_capture_ob = VideoCaptureContext(video_file)
         self._full_frame_size_mb, self._full_frame_shape = self._get_frame_details()
+        self._dtype = self.video_capture_ob.get_video_frame_dtype()
+        self._num_frames = self.video_capture_ob.get_video_frame_count()
+        self._frame_shape = self.video_capture_ob.get_frame_shape()  # Note this includes the color channels
+        self._height = self._frame_shape[0]
+        self._width = self._frame_shape[1]
+        self._num_channels = self._frame_shape[2]
+
         if stub_test:
             self.video_capture_ob.frame_count = 10
         super().__init__(
@@ -265,18 +273,17 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         )
 
     def _get_default_chunk_shape(self, chunk_mb):
-        """Shape is either one frame or a subset: scaled frame size but with all pixel colors"""
+        """This is how the data is chunked for reading."""
 
-        frames_count = self._scale_shape_to_size(
-            size_mb=chunk_mb,
-            shape=self._full_frame_shape[:1],
-            size=self._full_frame_size_mb,
-            max_shape=self._maxshape[:1],
+        chunk_shape = get_image_series_chunk_shape(
+            num_frames=self._num_frames,
+            x_size=self._frame_shape[1],
+            y_size=self._frame_shape[0],
+            z_size=self._num_channels,
+            dtype=self._dtype,
         )
 
-        chunk_shape = frames_count + tuple(self._maxshape[1:])
-
-        return self._fit_frames_to_size(chunk_mb)
+        return chunk_shape
 
     def _get_default_buffer_shape(self, buffer_gb):
         """Buffer shape is a multiple of frame shape along the frame dimension."""
@@ -286,55 +293,18 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
         return chunk_shape
 
-    def _fit_frames_to_size(self, size_mb):
-        """Finds the number of frames which fit size_mb and returns the full frame shape."""
-
-        frames_count = self._scale_shape_to_size(
-            size_mb=size_mb,
-            shape=self._full_frame_shape[:1],
-            size=self._full_frame_size_mb,
-            max_shape=self._maxshape[:1],
-        )
-
-        return frames_count + tuple(self._maxshape[1:])
-
-    @staticmethod
-    def _scale_shape_to_size(size_mb, shape, size, max_shape):
-        """Given the shape and size of array, return shape that will fit size_mb."""
-
-        # Distribute volume evenly across shape dimensions
-        scaling_factor = math.floor((size_mb / size) ** (1 / len(shape)))
-        scaled_shape = scaling_factor * np.array(shape)
-
-        # Ensure each dimension is within bounds (not smaller than original, not larger than max)
-        result_shape = []
-        for dimension_index, dimension in enumerate(scaled_shape):
-            # Clamp between original and max shape
-            bounded_dimension = max(int(dimension), shape[dimension_index])
-            bounded_dimension = min(bounded_dimension, max_shape[dimension_index])
-
-            result_shape.append(bounded_dimension)
-
-        return tuple(result_shape)
-
-    def _get_frame_details(self):
-        """Get frame shape and size in MB"""
-        frame_shape = (1, *self.video_capture_ob.get_frame_shape())
-        min_frame_size_mb = (math.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
-        return min_frame_size_mb, frame_shape
-
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         start_frame = selection[0].start
         end_frame = selection[0].stop
-        frames = np.empty(shape=[end_frame - start_frame, *self._maxshape[1:]])
+
+        shape = (end_frame - start_frame, *self._maxshape[1:])
+        frames = np.empty(shape=shape, dtype=self._dtype)
         for frame_number in range(end_frame - start_frame):
             frames[frame_number] = next(self.video_capture_ob)
         return frames
 
-    def _get_dtype(self):
-        return self.video_capture_ob.get_video_frame_dtype()
+    def _get_dtype(self) -> np.dtype:
+        return self._dtype
 
-    def _get_maxshape(self):
-        num_frames = self.video_capture_ob.get_video_frame_count()
-        height, width, channels = self.video_capture_ob.get_frame_shape()
-        return (num_frames, height, width, channels)
+    def _get_maxshape(self) -> tuple[int, int, int, int]:
+        return (self._num_frames, self._height, self._width, self._num_channels)
