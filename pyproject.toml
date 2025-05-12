@@ -355,7 +355,7 @@ ophys = [
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
-    # Don't include inscopix in ophys to avoid conflicts in CI
+    # Not including inscopix in ophys to avoid conflicts in CI
 ]
 # Note these are references to the package in pipy (not local)
 full = [
