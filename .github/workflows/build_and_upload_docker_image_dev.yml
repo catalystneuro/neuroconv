@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install git
-        run: apt-get install git-all
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -29,7 +27,7 @@ jobs:
           username: ${{ secrets.DOCKER_UPLOADER_USERNAME }}
           password: ${{ secrets.DOCKER_UPLOADER_PASSWORD }}
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           push: true  # Push is a shorthand for --output=type=registry
           tags: ghcr.io/catalystneuro/neuroconv:dev
