@@ -381,10 +381,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
-    """
-
-    Interface for reading TIFF files produced via ScanImage v3.8.
-    """
+    """Interface for reading TIFF files produced via ScanImage v3.8."""
 
     display_name = "ScanImage Imaging"
     associated_suffixes = (".tif",)
@@ -560,9 +557,7 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
-    """
-    Interface for reading multi plane (volumetric) TIFF files produced via ScanImage.
-    """
+    """Interface for reading multi plane (volumetric) TIFF files produced via ScanImage."""
 
     display_name = "ScanImage Volumetric Imaging"
     associated_suffixes = (".tif",)
@@ -690,9 +685,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
-    """
-    Interface for reading volumetric multi-file (buffered) TIFF files produced via ScanImage.
-    """
+    """Interface for reading volumetric multi-file (buffered) TIFF files produced via ScanImage."""
 
     display_name = "ScanImage Volumetric Multi-File Imaging"
     associated_suffixes = (".tif",)
@@ -828,9 +821,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
 
 
 class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
-    """
-    Interface for reading TIFF files produced via ScanImage.
-    """
+    """Interface for reading TIFF files produced via ScanImage."""
 
     display_name = "ScanImage Single Plane Imaging"
     associated_suffixes = (".tif",)
@@ -978,9 +969,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
 
 class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterface):
-    """
-    Interface for reading multi-file (buffered) TIFF files produced via ScanImage.
-    """
+    """Interface for reading multi-file (buffered) TIFF files produced via ScanImage."""
 
     display_name = "ScanImage Single Plane Multi-File Imaging"
     associated_suffixes = (".tif",)
