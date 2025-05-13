@@ -209,15 +209,21 @@ class DatasetIOConfiguration(BaseModel, ABC):
             raise ValueError(
                 f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"
             )
+        if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
+            raise ValueError(
+                f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
+                f"location '{location_in_file}'!"
+            )
+
         if any(chunk_axis > buffer_axis for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=} for dataset at "
                 f"location '{location_in_file}'!"
             )
 
-        if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
+        if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
             raise ValueError(
-                f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
+                f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
                 f"location '{location_in_file}'!"
             )
 
@@ -228,12 +234,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         ):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
-                f"location '{location_in_file}'!"
-            )
-
-        if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
-            raise ValueError(
-                f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
                 f"location '{location_in_file}'!"
             )
 
