@@ -14,6 +14,14 @@ from hdmf.utils import get_data_shape
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # Add the sizes for easy access after all chunk sizes are calculated
+        # self.chunk_shape and self.buffer shape are attribute in HDMFGenericDataChunkIterator
+        self._chunk_size_mb = math.prod(self.chunk_shape) * self._get_dtype().itemsize / 1e6
+        self._buffer_size_gb = math.prod(self.buffer_shape) * self._get_dtype().itemsize / 1e9
+
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> tuple[int]:
         return self.estimate_default_buffer_shape(
             buffer_gb=buffer_gb, chunk_shape=self.chunk_shape, maxshape=self.maxshape, dtype=self.dtype

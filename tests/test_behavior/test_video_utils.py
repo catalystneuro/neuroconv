@@ -150,8 +150,8 @@ class TestVideoInterface(unittest.TestCase):
 
     def test_iterator_stub(self):
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
-        it = VideoDataChunkIterator(video_file, stub_test=True)
-        img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
+        iterator = VideoDataChunkIterator(video_file, stub_test=True)
+        img_srs = ImageSeries(name="imageseries", data=iterator, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
@@ -162,38 +162,37 @@ class TestVideoInterface(unittest.TestCase):
     def test_frame_shape_big(self):
         frame_shape = (800, 600, 3)
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
-        num_frames_chunk = 6
-        num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
-        it = VideoDataChunkIterator(video_file)
-        img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
+        num_frames_chunk = 20
+        iterator = VideoDataChunkIterator(video_file)
+        img_srs = ImageSeries(name="imageseries", data=iterator, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            expected_chunk_shape = (num_frames_chunk,) + frame_shape
+            expected_chunk_shape = (num_frames_chunk,) + frame_shape[:-1] + (1,)
             assert nwbfile.acquisition["imageseries"].data.chunks == expected_chunk_shape
 
     def test_frame_shape_small(self):
         frame_shape = (400, 300, 3)
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
-        num_frames_chunk = 27
-        num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
-        it = VideoDataChunkIterator(video_file)
-        img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
+        num_frames_chunk = 41
+        iterator = VideoDataChunkIterator(video_file, chunk_mb=5)
+        img_srs = ImageSeries(name="imageseries", data=iterator, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            expected_chunk_shape = (num_frames_chunk,) + frame_shape
-            assert nwbfile.acquisition["imageseries"].data.chunks == expected_chunk_shape
+            expected_chunk_shape = (num_frames_chunk,) + frame_shape[:-1] + (1,)
+            image_series = nwbfile.acquisition["imageseries"]
+            assert image_series.data.chunks == expected_chunk_shape
 
     def test_custom_chunk_shape(self):
         custom_frame_shape = (1, 100, 100, 3)
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
-        it = VideoDataChunkIterator(video_file, chunk_shape=custom_frame_shape)
-        img_srs = ImageSeries(name="imageseries", data=it, unit="na", starting_time=None, rate=1.0)
+        iterator = VideoDataChunkIterator(video_file, chunk_shape=custom_frame_shape)
+        img_srs = ImageSeries(name="imageseries", data=iterator, unit="na", starting_time=None, rate=1.0)
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
