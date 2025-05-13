@@ -333,9 +333,8 @@ tiff = [
     "roiextractors>=0.5.9",
     "tiffile>=2018.10.18",
 ]
-# Add the inscopix extra with the required Git branch
 inscopix = [
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@add_inscopix_segmentation_extractor",
+    "roiextractors>=0.5.13
     "isx>=2.0; sys_platform != 'darwin' or platform_machine != 'arm64'"
 ]
 
@@ -355,7 +354,7 @@ ophys = [
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
-    # Not including inscopix in ophys to avoid conflicts in CI
+    "neuroconv[inscopix]"
 ]
 # Note these are references to the package in pipy (not local)
 full = [
