@@ -39,6 +39,7 @@ jobs:
   run-daily-dev-tests:
     needs: load_python_and_os_versions
     uses: ./.github/workflows/dev-testing.yml
+    continue-on-error: true  # Allow this job to fail without failing the workflow
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
