@@ -13,7 +13,8 @@ test_video_parameters = {
     "number_of_frames": 30,
     "number_of_rows": 64,
     "number_of_columns": 48,
-    "frameSize": (48, 64),  # This is give in x,y images coordinates (x is columns)
+    "frame_shape": (48, 64),  # This is give in x,y images coordinates (x is columns)
+    "number_of_channels": 3,
     "fps": 25,
 }
 
@@ -28,7 +29,8 @@ def video_files(tmp_path_session):
     number_of_frames = test_video_parameters["number_of_frames"]
     number_of_rows = test_video_parameters["number_of_rows"]
     number_of_columns = test_video_parameters["number_of_columns"]
-    frameSize = test_video_parameters["frameSize"]
+    frame_shape = test_video_parameters["frame_shape"]
+    number_of_channels = test_video_parameters["number_of_channels"]
     fps = test_video_parameters["fps"]
     # Standard code for specifying image formats
     fourcc_specification = ("M", "J", "P", "G")
@@ -39,25 +41,26 @@ def video_files(tmp_path_session):
         filename=video_file1,
         fourcc=fourcc,
         fps=fps,
-        frameSize=frameSize,
+        frameSize=frame_shape,
     )
     writer2 = cv2.VideoWriter(
         filename=video_file2,
         fourcc=fourcc,
         fps=fps,
-        frameSize=frameSize,
+        frameSize=frame_shape,
     )
     writer3 = cv2.VideoWriter(
         filename=video_file3,
         fourcc=fourcc,
         fps=fps,
-        frameSize=frameSize,
+        frameSize=frame_shape,
     )
 
+    sample_shape = (number_of_rows, number_of_columns, number_of_channels)
     for frame in range(number_of_frames):
-        writer1.write(np.random.randint(0, 255, (number_of_rows, number_of_columns, 3)).astype("uint8"))
-        writer2.write(np.random.randint(0, 255, (number_of_rows, number_of_columns, 3)).astype("uint8"))
-        writer3.write(np.random.randint(0, 255, (number_of_rows, number_of_columns, 3)).astype("uint8"))
+        writer1.write(np.random.randint(0, 255, sample_shape).astype("uint8"))
+        writer2.write(np.random.randint(0, 255, sample_shape).astype("uint8"))
+        writer3.write(np.random.randint(0, 255, sample_shape).astype("uint8"))
 
     writer1.release()
     writer2.release()

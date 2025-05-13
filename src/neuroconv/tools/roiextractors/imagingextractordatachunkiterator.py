@@ -70,8 +70,6 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         if chunk_mb is None and chunk_shape is None:
             chunk_mb = 10.0
 
-        self._maxshape = self._get_maxshape()
-        self._dtype = self._get_dtype()
         if chunk_shape is None:
             chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
 
@@ -89,24 +87,33 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             progress_bar_options=progress_bar_options,
         )
 
+    def _get_sample_shape(self) -> tuple:
+        """We are using this translate the sample shape in roiextractors to the nwb convention"""
+
+        roi_extractors_frame_shape = self.imaging_extractor.get_frame_shape()
+        height, width = roi_extractors_frame_shape[0], roi_extractors_frame_shape[1]
+        nwb_frame_shape = (width, height)
+
+        if self.imaging_extractor.is_volumetric():
+            num_planes = self.imaging_extractor.get_num_planes()
+            sample_shape = nwb_frame_shape + (num_planes,)
+        else:
+            sample_shape = nwb_frame_shape
+
+        return sample_shape
+
     def _get_default_chunk_shape(self, chunk_mb: float) -> tuple:
         """Select the chunk_shape less than the threshold of chunk_mb while keeping the original image size."""
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
-        num_frames = self._maxshape[0]
-        width = int(self._maxshape[1])
-        height = int(self._maxshape[2])
-        if len(self._maxshape) == 4:
-            num_planes = int(self._maxshape[3])
-        else:
-            num_planes = None
+        num_frames = self.imaging_extractor.get_num_samples()
+        sample_shape = self._get_sample_shape()
+        dtype = self.imaging_extractor.get_dtype()
 
         chunk_shape = get_image_series_chunk_shape(
             num_frames=num_frames,
-            x_size=width,
-            y_size=height,
-            z_size=num_planes,
-            dtype=self._dtype,
+            sample_shape=sample_shape,
+            dtype=dtype,
             chunk_mb=chunk_mb,
         )
 
@@ -117,47 +124,30 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        series_max_shape = self._get_maxshape()[1:]
-        min_buffer_shape = tuple([chunk_shape[0]]) + series_max_shape
+        sample_shape = self._get_sample_shape()
+        series_shape = self._get_maxshape()
+        dtype = self._get_dtype()
 
-        # Calculate scaling factor based on buffer size and data type
-        bytes_per_element = self._get_dtype().itemsize
-        min_buffer_size = math.prod(min_buffer_shape) * bytes_per_element
-        scaling_factor = math.floor((buffer_gb * 1e9) / min_buffer_size)
+        buffer_shape = get_image_series_buffer_shape(
+            chunk_shape=chunk_shape,
+            sample_shape=sample_shape,
+            series_shape=series_shape,
+            dtype=dtype,
+            buffer_gb=buffer_gb,
+        )
 
-        # Determine maximum buffer shape with scaling factor
-        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + series_max_shape
-
-        scaled_buffer_shape = []
-        maxshape = self._get_maxshape()
-
-        for dimension_index, dimension_length in enumerate(max_buffer_shape):
-            min_size = chunk_shape[dimension_index]
-            max_size = maxshape[dimension_index]
-            scaled_size = max(int(dimension_length), min_size)
-            scaled_size = min(scaled_size, max_size)
-            scaled_buffer_shape.append(scaled_size)
-
-        return tuple(scaled_buffer_shape)
+        return buffer_shape
 
     def _get_dtype(self) -> np.dtype:
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
 
-        max_series_shape = self.imaging_extractor.get_sample_shape()
+        num_frames = self.imaging_extractor.get_num_samples()
+        sample_shape = self._get_sample_shape()
 
-        num_samples = self.imaging_extractor.get_num_samples()
-        height = max_series_shape.shape[1]
-        width = max_series_shape.shape[2]
-
-        if len(max_series_shape.shape) == 3:
-            sample_shape = (num_samples, width, height)
-        else:
-            num_planes = max_series_shape.shape[3]
-            sample_shape = (num_samples, width, height, num_planes)
-
-        return sample_shape
+        max_shape = (num_frames,) + sample_shape
+        return max_shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         data = self.imaging_extractor.get_series(
@@ -173,10 +163,8 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 def get_image_series_chunk_shape(
     *,
     num_frames: int,
-    x_size: int,
-    y_size: int,
+    sample_shape: tuple[int, int, int] | tuple[int, int, int, int],
     dtype: np.dtype,
-    z_size: int | None = None,
     chunk_mb: float = 10.0,
 ) -> tuple[int, int]:
     """
@@ -188,15 +176,12 @@ def get_image_series_chunk_shape(
     ----------
     num_frames : int
         The number of frames in the ImageSeries dataset.
-    x_size : int
-        The x_size of the ImageSeries dataset. Usually the width of the image.
-    y_size : int
-        The y_size of the ImageSeries dataset. Usually the height of the image.
+    sample_shape : tuple[int, int, int] | tuple[int, int, int, int]
+        The shape of a single sample for the ImageSeries.
+        For TwoPhotonSeries, this might be (num_columns, num_rows) or (num_columns, num_rows, num_planes).
+        For ImageSeries, this might be (num_columns, num_rows, num_channels).
     dtype : np.dtype
         The data type of the ImageSeries dataset.
-    z_size : int,
-        The number of planes in the ImageSeries dataset. Can be number of channels or number of z-planes.
-        The default is None.
     chunk_mb : float, optional
         The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
         The default is 10MB, as recommended by the HDF5 group.
@@ -208,18 +193,85 @@ def get_image_series_chunk_shape(
     """
     assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
-    frame_size_bytes = x_size * y_size * dtype.itemsize
+    num_rows, num_columns = sample_shape[0], sample_shape[1]
+    frame_size_bytes = num_rows * num_columns * dtype.itemsize
+
     chunk_size_bytes = chunk_mb * 1e6
     num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
 
-    # Ensure that the frames per chunk is less than the total number of frames and greater than 1
+    # Clip the number of frames between 1 and num_frames
     num_frames_per_chunk = min(num_frames_per_chunk, num_frames)
     num_frames_per_chunk = max(num_frames_per_chunk, 1)
 
-    if z_size is None:
-        chunk_shape = (num_frames_per_chunk, x_size, y_size)
-    else:
-        # TODO: review the policy of chunking the data with only one volume
-        chunk_shape = (num_frames_per_chunk, x_size, y_size, z_size)
+    chunk_shape = (num_frames_per_chunk, num_rows, num_columns)
+
+    if len(sample_shape) == 3:
+        chunk_shape = chunk_shape + (1,)
 
     return chunk_shape
+
+
+def get_image_series_buffer_shape(
+    *,
+    chunk_shape: tuple[int, int, int] | tuple[int, int, int, int],
+    sample_shape: tuple[int, int, int] | tuple[int, int, int, int],
+    series_shape: tuple[int, int, int] | tuple[int, int, int, int],
+    dtype: np.dtype,
+    buffer_gb: float = 1.0,
+) -> tuple[int, int, int] | tuple[int, int, int, int]:
+    """
+    Estimate good buffer shape for a ImageSeries dataset.
+
+    This function gives good estimates for cloud access patterns.
+
+    Parameters
+    ----------
+    chunk_shape : tuple[int, int, int] | tuple[int, int, int, int]
+        The shape of the chunk for the ImageSeries dataset.
+    sample_shape : tuple[int, int, int] | tuple[int, int, int, int]
+        The shape of a single sample for the ImageSeries.
+        For TwoPhotonSeries, this might be (num_columns, num_rows) or (num_columns, num_rows, num_planes).
+        For ImageSeries, this might be (num_columns, num_rows, num_channels).
+    series_shape : tuple[int, int, int] | tuple[int, int, int, int]
+        The shape of the full ImageSeries dataset.
+    dtype : np.dtype
+        The data type of the ImageSeries dataset.
+    buffer_gb : float
+        The upper bound on size in gigabytes (GB) of the internal chunk for the HDF5 dataset.
+
+    Returns
+    -------
+    tuple[int, int] | tuple[int, int, int]
+        The buffer shape for the TwoPhotonSeries dataset.
+    """
+    assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+
+    # First we determined a minimal buffer shape, this is a chunk shape but we included
+    # the full last dimension (note that chunk_shape last dimension is 1 or omitted)
+    num_frames_in_chunk = chunk_shape[0]
+    min_buffer_shape = (num_frames_in_chunk,) + sample_shape
+
+    # The smallest the buffer could be is the size of a chunk
+    bytes_per_element = dtype.itemsize
+    minimal_buffer_size_in_bytes = math.prod(min_buffer_shape) * bytes_per_element
+
+    desired_buffer_size_in_bytes = buffer_gb * 1e9
+    scaling_factor = desired_buffer_size_in_bytes // minimal_buffer_size_in_bytes
+    num_frames_in_buffer = num_frames_in_chunk * scaling_factor
+
+    # This is the largest buffer that still fits within the buffer_gb
+    max_buffer_shape = tuple([num_frames_in_buffer]) + sample_shape
+
+    corrected_buffer_shape = []
+
+    # We need to clip every element to be between the minimal and maximal values
+    minimal_values = min_buffer_shape
+    maximal_values = series_shape
+    for dimension_index, dimension_length in enumerate(max_buffer_shape):
+        min_size = minimal_values[dimension_index]
+        max_size = maximal_values[dimension_index]
+        scaled_size = max(int(dimension_length), min_size)
+        scaled_size = min(scaled_size, max_size)
+        corrected_buffer_shape.append(scaled_size)
+
+    return tuple(corrected_buffer_shape)

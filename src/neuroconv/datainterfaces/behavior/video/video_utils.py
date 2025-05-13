@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 from neuroconv.tools.hdmf import GenericDataChunkIterator
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
+    get_image_series_buffer_shape,
     get_image_series_chunk_shape,
 )
 
@@ -251,25 +252,41 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         video_file: FilePath,
-        buffer_gb: float = None,
-        chunk_shape: tuple = None,
+        buffer_gb: float | None = None,
+        buffer_shape: tuple | None = None,
+        chunk_mb: float | None = None,
+        chunk_shape: tuple | None = None,
+        display_progress: bool = False,
+        progress_bar_class: tqdm | None = None,
+        progress_bar_options: dict | None = None,
         stub_test: bool = False,
     ):
         self.video_capture_ob = VideoCaptureContext(video_file)
-        self._full_frame_size_mb, self._full_frame_shape = self._get_frame_details()
-        self._dtype = self.video_capture_ob.get_video_frame_dtype()
-        self._num_frames = self.video_capture_ob.get_video_frame_count()
-        self._frame_shape = self.video_capture_ob.get_frame_shape()  # Note this includes the color channels
-        self._height = self._frame_shape[0]
-        self._width = self._frame_shape[1]
-        self._num_channels = self._frame_shape[2]
-
         if stub_test:
             self.video_capture_ob.frame_count = 10
+
+        self._dtype = self.video_capture_ob.get_video_frame_dtype()
+        self._num_frames = self.video_capture_ob.get_video_frame_count()
+        self._sample_shape = self.video_capture_ob.get_frame_shape()
+
+        if chunk_mb is None and chunk_shape is None:
+            chunk_mb = 10.0
+
+        if chunk_shape is None:
+            chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
+
+        if buffer_gb is None and buffer_shape is None:
+            buffer_gb = 1.0
+
+        if buffer_shape is None:
+            buffer_shape = self._get_scaled_buffer_shape(buffer_gb=buffer_gb, chunk_shape=chunk_shape)
+
         super().__init__(
-            buffer_gb=buffer_gb,
+            buffer_shape=buffer_shape,
             chunk_shape=chunk_shape,
-            display_progress=True,
+            display_progress=display_progress,
+            progress_bar_class=progress_bar_class,
+            progress_bar_options=progress_bar_options,
         )
 
     def _get_default_chunk_shape(self, chunk_mb):
@@ -277,21 +294,30 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
         chunk_shape = get_image_series_chunk_shape(
             num_frames=self._num_frames,
-            x_size=self._frame_shape[1],
-            y_size=self._frame_shape[0],
-            z_size=self._num_channels,
+            sample_shape=self._sample_shape,
             dtype=self._dtype,
+            chunk_mb=chunk_mb,
+        )
+        return chunk_shape
+
+    def _get_scaled_buffer_shape(self, buffer_gb: float, chunk_shape: tuple) -> tuple:
+        """Select the buffer_shape less than the threshold of buffer_gb that is also a multiple of the chunk_shape."""
+        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
+
+        sample_shape = self._sample_shape
+        series_shape = self._get_maxshape()
+        dtype = self._get_dtype()
+
+        buffer_shape = get_image_series_buffer_shape(
+            chunk_shape=chunk_shape,
+            sample_shape=sample_shape,
+            series_shape=series_shape,
+            dtype=dtype,
+            buffer_gb=buffer_gb,
         )
 
-        return chunk_shape
-
-    def _get_default_buffer_shape(self, buffer_gb):
-        """Buffer shape is a multiple of frame shape along the frame dimension."""
-        assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"
-
-        chunk_shape = self._fit_frames_to_size(buffer_gb * 1e3)
-
-        return chunk_shape
+        return buffer_shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         start_frame = selection[0].start
@@ -307,4 +333,4 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         return self._dtype
 
     def _get_maxshape(self) -> tuple[int, int, int, int]:
-        return (self._num_frames, self._height, self._width, self._num_channels)
+        return (self._num_frames, *self._sample_shape)

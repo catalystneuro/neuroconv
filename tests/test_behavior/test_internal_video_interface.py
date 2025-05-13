@@ -131,7 +131,8 @@ def test_video_chunking(nwb_converter, nwbfile_path, metadata):
     num_frames = test_video_parameters["number_of_frames"]
     num_rows = test_video_parameters["number_of_rows"]
     num_columns = test_video_parameters["number_of_columns"]
-    expected_video_shape = (num_frames, num_rows, num_columns, 3)
+    num_channels = test_video_parameters["number_of_channels"]
+    expected_video_shape = (num_frames, num_rows, num_columns, num_channels)
 
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
@@ -140,11 +141,11 @@ def test_video_chunking(nwb_converter, nwbfile_path, metadata):
         # Verify that chunking is applied
         video_written_with_iterator = mod["Video test1"]
         assert video_written_with_iterator.data.shape == expected_video_shape  # Chunked data
-        assert video_written_with_iterator.data.chunks == (10, 64, 48, 3)  # Chunked data
+        assert video_written_with_iterator.data.chunks == (num_frames, num_rows, num_columns, 1)  # Chunked data
 
         video_written_without_iterator = mod["Video test2"]
         assert video_written_without_iterator.data.shape == expected_video_shape
-        assert video_written_without_iterator.data.chunks == (30, 64, 48, 3)
+        assert video_written_without_iterator.data.chunks == (30, num_rows, num_columns, num_channels)
 
 
 def test_video_stub(nwb_converter, nwbfile_path, metadata):
