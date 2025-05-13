@@ -23,6 +23,7 @@ from pydantic import (
 )
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
+from pynwb.image import ImageSeries
 from typing_extensions import Self
 
 from neuroconv.tools.hdmf import get_full_data_shape
@@ -190,6 +191,16 @@ class DatasetIOConfiguration(BaseModel, ABC):
         buffer_shape = values["buffer_shape"]
         full_shape = values["full_shape"]
 
+        if any(chunk_axis <= 0 for chunk_axis in chunk_shape):
+            raise ValueError(
+                f"Some dimensions of the {chunk_shape=} are less than or equal to zero for dataset at "
+                f"location '{location_in_file}'!"
+            )
+
+        # We only do the buffer checks for datasets with iterative writing.
+        if buffer_shape is None:
+            return values
+
         if len(chunk_shape) != len(buffer_shape):
             raise ValueError(
                 f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location_in_file}'!"
@@ -198,26 +209,15 @@ class DatasetIOConfiguration(BaseModel, ABC):
             raise ValueError(
                 f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"
             )
-
-        if any(chunk_axis <= 0 for chunk_axis in chunk_shape):
-            raise ValueError(
-                f"Some dimensions of the {chunk_shape=} are less than or equal to zero for dataset at "
-                f"location '{location_in_file}'!"
-            )
-        if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
-            raise ValueError(
-                f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
-                f"location '{location_in_file}'!"
-            )
-
         if any(chunk_axis > buffer_axis for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=} for dataset at "
                 f"location '{location_in_file}'!"
             )
-        if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
+
+        if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
             raise ValueError(
-                f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
+                f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
                 f"location '{location_in_file}'!"
             )
 
@@ -228,6 +228,12 @@ class DatasetIOConfiguration(BaseModel, ABC):
         ):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
+                f"location '{location_in_file}'!"
+            )
+
+        if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
+            raise ValueError(
+                f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
                 f"location '{location_in_file}'!"
             )
 
@@ -291,19 +297,34 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
             )
 
-            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=1.0,
-                chunk_shape=chunk_shape,
-                maxshape=full_shape,
+            buffer_shape = None  # This is the non-iterative path
+            compression_method = "gzip"
+
+        elif isinstance(neurodata_object, ImageSeries) and dataset_name == "data":
+            from ....tools.roiextractors.imagingextractordatachunkiterator import (
+                get_image_series_chunk_shape,
+            )
+
+            num_samples = candidate_dataset.shape[0]
+            sample_shape = candidate_dataset.shape[1:]
+
+            chunk_shape = get_image_series_chunk_shape(
+                num_samples=num_samples,
+                sample_shape=sample_shape,
                 dtype=dtype,
             )
+            buffer_shape = None  # This is the non-iterative path
             compression_method = "gzip"
+
         elif dtype != np.dtype("object"):
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
                 chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
             )
             buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+                buffer_gb=0.5,
+                chunk_shape=chunk_shape,
+                maxshape=full_shape,
+                dtype=np.dtype(dtype),
             )
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects

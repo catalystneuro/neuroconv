@@ -302,7 +302,6 @@ class InternalVideoInterface(BaseDataInterface):
                 video_file=file_path,
                 stub_test=stub_test,
             )
-            # next(data_iterable)
         else:
             # Load the video
             with VideoCaptureContext(file_path) as video_capture_ob:

@@ -266,7 +266,7 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
             self.video_capture_ob.frame_count = 10
 
         self._dtype = self.video_capture_ob.get_video_frame_dtype()
-        self._num_frames = self.video_capture_ob.get_video_frame_count()
+        self._num_samples = self.video_capture_ob.get_video_frame_count()
         self._sample_shape = self.video_capture_ob.get_frame_shape()
 
         if chunk_mb is None and chunk_shape is None:
@@ -293,7 +293,7 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         """This is how the data is chunked for reading."""
 
         chunk_shape = get_image_series_chunk_shape(
-            num_frames=self._num_frames,
+            num_samples=self._num_samples,
             sample_shape=self._sample_shape,
             dtype=self._dtype,
             chunk_mb=chunk_mb,
@@ -333,4 +333,4 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         return self._dtype
 
     def _get_maxshape(self) -> tuple[int, int, int, int]:
-        return (self._num_frames, *self._sample_shape)
+        return (self._num_samples, *self._sample_shape)

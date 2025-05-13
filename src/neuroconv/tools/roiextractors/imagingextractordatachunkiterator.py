@@ -106,12 +106,12 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         """Select the chunk_shape less than the threshold of chunk_mb while keeping the original image size."""
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
-        num_frames = self.imaging_extractor.get_num_samples()
+        num_samples = self.imaging_extractor.get_num_samples()
         sample_shape = self._get_sample_shape()
         dtype = self.imaging_extractor.get_dtype()
 
         chunk_shape = get_image_series_chunk_shape(
-            num_frames=num_frames,
+            num_samples=num_samples,
             sample_shape=sample_shape,
             dtype=dtype,
             chunk_mb=chunk_mb,
@@ -162,7 +162,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
 def get_image_series_chunk_shape(
     *,
-    num_frames: int,
+    num_samples: int,
     sample_shape: tuple[int, int, int] | tuple[int, int, int, int],
     dtype: np.dtype,
     chunk_mb: float = 10.0,
@@ -174,7 +174,7 @@ def get_image_series_chunk_shape(
 
     Parameters
     ----------
-    num_frames : int
+    num_samples : int
         The number of frames in the ImageSeries dataset.
     sample_shape : tuple[int, int, int] | tuple[int, int, int, int]
         The shape of a single sample for the ImageSeries.
@@ -197,13 +197,13 @@ def get_image_series_chunk_shape(
     frame_size_bytes = num_rows * num_columns * dtype.itemsize
 
     chunk_size_bytes = chunk_mb * 1e6
-    num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
+    num_samples_per_chunk = int(chunk_size_bytes / frame_size_bytes)
 
-    # Clip the number of frames between 1 and num_frames
-    num_frames_per_chunk = min(num_frames_per_chunk, num_frames)
-    num_frames_per_chunk = max(num_frames_per_chunk, 1)
+    # Clip the number of frames between 1 and num_samples
+    num_samples_per_chunk = min(num_samples_per_chunk, num_samples)
+    num_samples_per_chunk = max(num_samples_per_chunk, 1)
 
-    chunk_shape = (num_frames_per_chunk, num_rows, num_columns)
+    chunk_shape = (num_samples_per_chunk, num_rows, num_columns)
 
     if len(sample_shape) == 3:
         chunk_shape = chunk_shape + (1,)
