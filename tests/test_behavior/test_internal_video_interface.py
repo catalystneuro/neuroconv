@@ -133,7 +133,9 @@ def test_video_chunking(nwb_converter, nwbfile_path, metadata):
     num_columns = test_video_parameters["number_of_columns"]
     num_channels = test_video_parameters["number_of_channels"]
     expected_video_shape = (num_frames, num_rows, num_columns, num_channels)
-    expected_chunking = (num_frames, num_rows, num_columns, 1)  # We chunk each channel separately
+    # We chunk each channel separately  and this dataset is small enough that each
+    # chunk covers all the frames
+    expected_chunking = (num_frames, num_rows, num_columns, 1)
 
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
