@@ -94,7 +94,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         height, width = roi_extractors_frame_shape[0], roi_extractors_frame_shape[1]
         nwb_frame_shape = (width, height)
 
-        if self.imaging_extractor.is_volumetric():
+        if self.imaging_extractor.is_volumetric:
             num_planes = self.imaging_extractor.get_num_planes()
             sample_shape = nwb_frame_shape + (num_planes,)
         else:
