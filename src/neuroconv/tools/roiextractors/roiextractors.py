@@ -531,15 +531,16 @@ def _imaging_frames_to_hdmf_iterator(
     """
 
     def data_generator(imaging):
-        for i in range(imaging.get_num_frames()):
-            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+        num_samples = imaging.get_num_samples()
+        for i in range(num_samples):
+            yield imaging.get_series(start_sample=i, end_sample=i + 1).squeeze().T
 
     assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_video().transpose((0, 2, 1))
+        return imaging.get_series().transpose((0, 2, 1))
 
     if iterator_type == "v1":
         if "buffer_size" not in iterator_options:
