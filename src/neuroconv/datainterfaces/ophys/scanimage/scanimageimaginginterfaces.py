@@ -388,7 +388,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage v3.8 TIFF files."
 
-    ExtractorName = "ScanImageTiffImagingExtractor"
+    ExtractorName = "ScanImageLegacyImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:

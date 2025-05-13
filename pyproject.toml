@@ -281,52 +281,53 @@ image = [
 
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 cnmfe = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 extract = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 hdf5 = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 sbx = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 scanimage = [
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
+    "roiextractors>=0.5.13",
+    "natsort",
 ]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 suite2p = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tdt",
 ]
 thor = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
 ]
 tiff = [
