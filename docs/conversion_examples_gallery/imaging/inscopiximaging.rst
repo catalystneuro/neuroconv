@@ -17,7 +17,7 @@ Convert Inscopix imaging data to NWB using
    >>> from pathlib import Path
    >>> from neuroconv.datainterfaces import InscopixImagingInterface
    >>>
-   >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Inscopix" / "movie_128x128x100_part1.isxd"
+   >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"
    >>> interface = InscopixImagingInterface(file_path=file_path, verbose=False)
    >>>
    >>> metadata = interface.get_metadata()
