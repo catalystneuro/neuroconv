@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import Optional
 
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
@@ -111,9 +110,9 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
-        plane_segmentation_name: Optional[str] = None,
+        channel_name: str | None = None,
+        plane_name: str | None = None,
+        plane_segmentation_name: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -174,14 +173,14 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
         stub_frames: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
-        plane_segmentation_name: Optional[str] = None,
-        iterator_options: Optional[dict] = None,
+        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: str | None = None,
+        iterator_options: dict | None = None,
     ):
         """
         Add segmentation data to the specified NWBFile.

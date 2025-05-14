@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import FilePath, validate_call
 
@@ -16,7 +16,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        sampling_frequency: Optional[float] = None,
+        sampling_frequency: float | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):

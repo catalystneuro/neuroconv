@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import Optional
 
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
@@ -31,9 +30,9 @@ class LightningPoseConverter(NWBConverter):
         self,
         file_path: FilePath,
         original_video_file_path: FilePath,
-        labeled_video_file_path: Optional[FilePath] = None,
-        image_series_original_video_name: Optional[str] = None,
-        image_series_labeled_video_name: Optional[str] = None,
+        labeled_video_file_path: FilePath | None = None,
+        image_series_original_video_name: str | None = None,
+        image_series_labeled_video_name: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -104,11 +103,11 @@ class LightningPoseConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        reference_frame: Optional[str] = None,
-        confidence_definition: Optional[str] = None,
+        reference_frame: str | None = None,
+        confidence_definition: str | None = None,
         external_mode: bool = True,
-        starting_frames_original_videos: Optional[list[int]] = None,
-        starting_frames_labeled_videos: Optional[list[int]] = None,
+        starting_frames_original_videos: list[int] | None = None,
+        starting_frames_labeled_videos: list[int] | None = None,
         stub_test: bool = False,
     ):
         """
@@ -183,15 +182,15 @@ class LightningPoseConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[FilePath] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile_path: FilePath | None = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
-        reference_frame: Optional[str] = None,
-        confidence_definition: Optional[str] = None,
+        reference_frame: str | None = None,
+        confidence_definition: str | None = None,
         external_mode: bool = True,
-        starting_frames_original_videos: Optional[list] = None,
-        starting_frames_labeled_videos: Optional[list] = None,
+        starting_frames_original_videos: list | None = None,
+        starting_frames_labeled_videos: list | None = None,
         stub_test: bool = False,
     ) -> None:
         """

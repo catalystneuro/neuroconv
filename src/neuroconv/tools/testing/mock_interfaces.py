@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -39,7 +39,7 @@ class MockInterface(BaseDataInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
 
         return None
 
@@ -55,7 +55,7 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         source_schema["additionalProperties"] = True
         return source_schema
 
-    def __init__(self, event_times: Optional[ArrayType] = None):
+    def __init__(self, event_times: ArrayType | None = None):
         """
         Initialize the interface with event times for behavior.
 
@@ -139,7 +139,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: Optional[list[list[float]]] = None, ttl_duration: float = 1.0
+        self, signal_duration: float = 7.0, ttl_times: list[list[float]] | None = None, ttl_duration: float = 1.0
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.

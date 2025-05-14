@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.3"
+version = "0.7.4"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -114,7 +114,8 @@ audio = [
 ]
 sleap = [
     "av>=10.0.0",
-    "sleap-io>=0.0.2",
+    "sleap-io>=0.3.0",
+    "ndx-pose>=0.2.2",
 ]
 deeplabcut = [
     "ndx-pose>=0.2",
@@ -237,6 +238,9 @@ tdt = [
     "neo>=0.14",
     "spikeinterface>=0.102.2",
 ]
+whitematter = [
+    "spikeinterface>=0.102.3",
+]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
@@ -258,6 +262,7 @@ ecephys = [  # Note that this the requirements of the extracts as they are on pi
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
+    "neuroconv[whitematter]",
 ]
 
 ## Icephys
@@ -276,50 +281,53 @@ image = [
 
 ## Ophys
 brukertiff = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 cnmfe = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 extract = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 hdf5 = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 sbx = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 scanimage = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
+    "natsort",
+]
+scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 suite2p = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tdt",
 ]
 thor = [
-    "roiextractors>=0.5.12",
+    "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
 ]
 tiff = [
@@ -341,6 +349,7 @@ ophys = [
     "neuroconv[tdt_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
+    "neuroconv[scanimage_legacy]",
 ]
 # Note these are references to the package in pipy (not local)
 full = [

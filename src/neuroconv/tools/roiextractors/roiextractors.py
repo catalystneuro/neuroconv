@@ -2,7 +2,7 @@ import math
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import psutil
@@ -196,7 +196,7 @@ def get_nwb_imaging_metadata(
     return metadata
 
 
-def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: Optional[dict] = None) -> NWBFile:
+def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
     The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
@@ -250,7 +250,7 @@ def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata
 def add_imaging_plane_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
-    imaging_plane_name: Optional[str] = None,
+    imaging_plane_name: str | None = None,
 ) -> NWBFile:
     """
     Adds the imaging plane specified by the metadata to the nwb file.
@@ -339,12 +339,12 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
 def add_photon_series_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
-    iterator_type: Optional[str] = "v2",
-    iterator_options: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
@@ -502,8 +502,8 @@ def _check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
-    iterator_type: Optional[str] = "v2",
-    iterator_options: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
 ):
     """
     Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
@@ -531,15 +531,16 @@ def _imaging_frames_to_hdmf_iterator(
     """
 
     def data_generator(imaging):
-        for i in range(imaging.get_num_frames()):
-            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+        num_samples = imaging.get_num_samples()
+        for i in range(num_samples):
+            yield imaging.get_series(start_sample=i, end_sample=i + 1).squeeze().T
 
     assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_video().transpose((0, 2, 1))
+        return imaging.get_series().transpose((0, 2, 1))
 
     if iterator_type == "v1":
         if "buffer_size" not in iterator_options:
@@ -552,11 +553,11 @@ def _imaging_frames_to_hdmf_iterator(
 def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
-    iterator_type: Optional[str] = "v2",
-    iterator_options: Optional[dict] = None,
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     always_write_timestamps: bool = False,
 ) -> NWBFile:
@@ -612,13 +613,13 @@ def add_imaging_to_nwbfile(
 
 def write_imaging_to_nwbfile(
     imaging: ImagingExtractor,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
     iterator_type: str = "v2",
-    iterator_options: Optional[dict] = None,
+    iterator_options: dict | None = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
 ):
     """
@@ -734,12 +735,12 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
 def add_plane_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    plane_segmentation_name: Optional[str] = None,
+    metadata: dict | None,
+    plane_segmentation_name: str | None = None,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
+    mask_type: str | None = "image",  # Literal["image", "pixel"] | None
+    iterator_options: dict | None = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -832,15 +833,15 @@ def _add_plane_segmentation(
     image_or_pixel_masks: np.ndarray,
     default_plane_segmentation_index: int,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    plane_segmentation_name: Optional[str] = None,
+    metadata: dict | None,
+    plane_segmentation_name: str | None = None,
     include_roi_centroids: bool = False,
-    roi_locations: Optional[np.ndarray] = None,
+    roi_locations: np.ndarray | None = None,
     include_roi_acceptance: bool = False,
-    accepted_ids: Optional[list] = None,
-    rejected_ids: Optional[list] = None,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
+    accepted_ids: list | None = None,
+    rejected_ids: list | None = None,
+    mask_type: str | None = "image",  # Literal["image", "pixel"] | None
+    iterator_options: dict | None = None,
 ) -> NWBFile:
 
     iterator_options = iterator_options or dict()
@@ -949,11 +950,11 @@ def _add_plane_segmentation(
 def add_background_plane_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    background_plane_segmentation_name: Optional[str] = None,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
+    metadata: dict | None,
+    background_plane_segmentation_name: str | None = None,
+    mask_type: str | None = "image",  # Literal["image", "pixel"] | None
+    iterator_options: dict | None = None,
+    compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Add background plane segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1020,11 +1021,11 @@ def add_background_plane_segmentation_to_nwbfile(
 def add_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    plane_segmentation_name: Optional[str] = None,
+    metadata: dict | None,
+    plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
+    iterator_options: dict | None = None,
+    compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -1093,10 +1094,10 @@ def _add_fluorescence_traces_to_nwbfile(
     traces_to_add: dict,
     background_or_roi_ids: list,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
+    metadata: dict | None,
     default_plane_segmentation_index: int,
-    plane_segmentation_name: Optional[str] = None,
-    iterator_options: Optional[dict] = None,
+    plane_segmentation_name: str | None = None,
+    iterator_options: dict | None = None,
 ):
     iterator_options = iterator_options or dict()
 
@@ -1195,7 +1196,7 @@ def _create_roi_table_region(
     background_or_roi_ids: list,
     nwbfile: NWBFile,
     metadata: dict,
-    plane_segmentation_name: Optional[str] = None,
+    plane_segmentation_name: str | None = None,
 ):
     """Private method to create ROI table region.
 
@@ -1260,10 +1261,10 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
 def add_background_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict],
-    background_plane_segmentation_name: Optional[str] = None,
-    iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,  # TODO: remove completely after 10/1/2024
+    metadata: dict | None,
+    background_plane_segmentation_name: str | None = None,
+    iterator_options: dict | None = None,
+    compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -1327,8 +1328,8 @@ def add_background_fluorescence_traces_to_nwbfile(
 def add_summary_images_to_nwbfile(
     nwbfile: NWBFile,
     segmentation_extractor: SegmentationExtractor,
-    metadata: Optional[dict] = None,
-    plane_segmentation_name: Optional[str] = None,
+    metadata: dict | None = None,
+    plane_segmentation_name: str | None = None,
 ) -> NWBFile:
     """
     Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
@@ -1394,14 +1395,14 @@ def add_summary_images_to_nwbfile(
 def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: Optional[dict] = None,
-    plane_segmentation_name: Optional[str] = None,
-    background_plane_segmentation_name: Optional[str] = None,
+    metadata: dict | None = None,
+    plane_segmentation_name: str | None = None,
+    background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
-    iterator_options: Optional[dict] = None,
+    mask_type: str | None = "image",  # Literal["image", "pixel"]
+    iterator_options: dict | None = None,
 ) -> NWBFile:
     """
     Add segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1492,16 +1493,16 @@ def add_segmentation_to_nwbfile(
 
 def write_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
-    iterator_options: Optional[dict] = None,
+    mask_type: str | None = "image",  # Literal["image", "pixel"]
+    iterator_options: dict | None = None,
 ) -> NWBFile:
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.

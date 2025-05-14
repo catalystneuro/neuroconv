@@ -1,7 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 
-from typing import Optional
-
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
@@ -132,15 +130,15 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
         stub_frames: int = 100,
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
-        plane_segmentation_name: Optional[str] = None,
-        iterator_options: Optional[dict] = None,
+        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: str | None = None,
+        iterator_options: dict | None = None,
     ):
         """
 

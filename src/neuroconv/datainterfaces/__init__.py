@@ -69,6 +69,7 @@ from .ecephys.spikegadgets.spikegadgetsdatainterface import (
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
+from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -90,6 +91,7 @@ from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
     ScanImageMultiFileImagingInterface,
+    ScanImageLegacyImagingInterface,
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
@@ -143,6 +145,7 @@ interface_list = [
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
+    WhiteMatterRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
@@ -155,6 +158,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    ScanImageLegacyImagingInterface,
     ScanImageMultiFileImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,

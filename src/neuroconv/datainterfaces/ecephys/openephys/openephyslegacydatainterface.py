@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from warnings import warn
 
 from pydantic import DirectoryPath, validate_call
@@ -61,8 +60,8 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = None,
+        stream_name: str | None = None,
+        block_index: int | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):

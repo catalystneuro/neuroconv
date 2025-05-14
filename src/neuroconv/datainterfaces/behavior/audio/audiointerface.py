@@ -1,7 +1,7 @@
 import json
 import wave
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import scipy
@@ -51,7 +51,8 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
 
-        suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
+        # Only check the last suffix of each file path
+        suffixes = [Path(file_path).suffix for file_path in file_paths]
         format_is_not_supported = [
             suffix for suffix in suffixes if suffix not in [".wav"]
         ]  # TODO: add support for more formats
@@ -108,7 +109,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def get_timestamps(self) -> Optional[np.ndarray]:
+    def get_timestamps(self) -> np.ndarray | None:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
@@ -166,11 +167,11 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
-        iterator_options: Optional[dict] = None,
+        iterator_options: dict | None = None,
     ):
         """
         Parameters

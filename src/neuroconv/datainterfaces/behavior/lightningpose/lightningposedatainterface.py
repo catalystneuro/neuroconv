@@ -2,7 +2,6 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -64,7 +63,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         original_video_file_path: FilePath,
-        labeled_video_file_path: Optional[FilePath] = None,
+        labeled_video_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """
@@ -192,10 +191,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
-        reference_frame: Optional[str] = None,
-        confidence_definition: Optional[str] = None,
-        stub_test: Optional[bool] = False,
+        metadata: dict | None = None,
+        reference_frame: str | None = None,
+        confidence_definition: str | None = None,
+        stub_test: bool | None = False,
     ) -> None:
         """
         Add the pose estimation data to the nwbfile.

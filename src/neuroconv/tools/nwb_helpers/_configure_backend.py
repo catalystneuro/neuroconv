@@ -1,7 +1,6 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
 import importlib
-from typing import Union
 
 from hdmf.common import Data
 from packaging import version
@@ -13,7 +12,7 @@ from ..importing import get_package_version, is_package_installed
 
 
 def configure_backend(
-    nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+    nwbfile: NWBFile, backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration
 ) -> None:
     """
     Configure all datasets specified in the `backend_configuration` with their appropriate DataIO and options.
