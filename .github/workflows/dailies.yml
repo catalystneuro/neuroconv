@@ -177,7 +177,7 @@ jobs:
   notify-link-check-failure:
     runs-on: ubuntu-latest
     needs: [run-daily-doc-link-checks]
-    if: ${{ needs.run-daily-doc-link-checks.outputs.linkcheck_failed == 'true' }}
+    if: ${{ always() && needs.run-daily-doc-link-checks.outputs.linkcheck_failed == 'true' }}
     steps:
       - uses: dawidd6/action-send-mail@v3
         with:
