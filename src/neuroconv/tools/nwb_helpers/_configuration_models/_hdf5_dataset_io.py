@@ -87,7 +87,7 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-        builder: Union[BaseBuilder, None] = None,
+        builder: BaseBuilder | None = None,
         use_default_dataset_io_configuration: bool = True,
     ) -> Self:
         if use_default_dataset_io_configuration:

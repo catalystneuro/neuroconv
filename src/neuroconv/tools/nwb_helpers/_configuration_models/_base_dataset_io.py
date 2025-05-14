@@ -378,7 +378,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
     def get_dataset(
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-    ) -> Union[h5py.Dataset, zarr.Array]:
+    ) -> h5py.Dataset | zarr.Array:
         dataset = getattr(neurodata_object, dataset_name)
         while hasattr(dataset, "dataset"):
             dataset = dataset.dataset

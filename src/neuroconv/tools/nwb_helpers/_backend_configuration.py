@@ -21,7 +21,7 @@ def get_default_backend_configuration(
     return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile)
 
 
-def get_existing_backend_configuration(nwbfile: NWBFile) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+def get_existing_backend_configuration(nwbfile: NWBFile) -> HDF5BackendConfiguration | ZarrBackendConfiguration:
     """Fill an existing backend configuration to serve as a starting point for further customization.
 
     Parameters
@@ -32,7 +32,7 @@ def get_existing_backend_configuration(nwbfile: NWBFile) -> Union[HDF5BackendCon
 
     Returns
     -------
-    Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+    HDF5BackendConfiguration | ZarrBackendConfiguration
         The backend configuration extracted from the nwbfile.
     """
     read_io = nwbfile.read_io

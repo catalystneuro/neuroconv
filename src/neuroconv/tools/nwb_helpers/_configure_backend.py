@@ -1,6 +1,7 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
 import importlib
+import math
 
 from hdmf.common import Data
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
