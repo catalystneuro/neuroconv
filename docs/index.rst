@@ -19,6 +19,19 @@ Features:
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
+Installation
+-----------
+
+To install the latest stable release of **neuroconv** through PyPI, run:
+
+.. code-block:: bash
+
+  pip install neuroconv
+
+Installation instructions for specific format dependencies can be found in the :ref:`Conversion Examples Gallery <conversion_gallery>` for each format.
+
+For instructions on installing the latest development version or additional installation options, see the `GitHub README <https://github.com/catalystneuro/neuroconv#installation>`_.
+
 
 
 How to use the documentation
