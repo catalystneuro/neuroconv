@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Literal, Union
+from typing import Any, Iterable, Literal
 
 import h5py
 import numcodecs
@@ -22,10 +22,10 @@ def mock_HDF5DatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
-    ] = "gzip",
-    compression_options: Union[dict[str, Any], None] = None,
+    compression_method: (
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | h5py._hl.filters.FilterRefBase | None
+    ) = "gzip",
+    compression_options: dict[str, Any] | None = None,
 ) -> HDF5DatasetIOConfiguration:
     """Mock object of a HDF5DatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return HDF5DatasetIOConfiguration(
@@ -49,14 +49,12 @@ def mock_ZarrDatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
-    ] = "gzip",
-    compression_options: Union[dict[str, Any]] = None,
-    filter_methods: Iterable[
-        Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None]
-    ] = None,
-    filter_options: Union[Iterable[dict[str, Any]], None] = None,
+    compression_method: Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None = "gzip",
+    compression_options: dict[str, Any] | None = None,
+    filter_methods: (
+        Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None] | None
+    ) = None,
+    filter_options: Iterable[dict[str, Any]] | None = None,
 ) -> ZarrDatasetIOConfiguration:
     """Mock object of a ZarrDatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return ZarrDatasetIOConfiguration(

@@ -33,6 +33,7 @@ Recording
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     Tucker-Davis Technologies (TDT) <recording/tdt>
+    White Matter <recording/whitematter>
 
 Sorting
 ~~~~~~~
@@ -137,5 +138,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-  If you do not see the format you need, feel free to :format-request-form:`request it<>` or
+If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
   :ref:`build-data-interface`.

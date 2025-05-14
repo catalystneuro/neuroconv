@@ -180,9 +180,6 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
                 assert pose_estimation_series.confidence.shape[0] == 10
 
 
-@pytest.mark.skipif(
-    ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
-)
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
     data_interface_cls = SLEAPInterface
@@ -219,9 +216,6 @@ class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
             assert set(pose_estimation_series_in_nwb) == set(expected_pose_estimation_series)
 
 
-@pytest.mark.skipif(
-    ndx_pose_version >= version.parse("0.2.0"), reason="SLEAPInterface requires ndx-pose version < 0.2.0"
-)
 class CustomTestSLEAPInterface(TestCase):
     savedir = OUTPUT_PATH
 
@@ -248,9 +242,6 @@ class CustomTestSLEAPInterface(TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # Test matching number of processing modules
-            number_of_videos = len(labels.videos)
-            assert len(nwbfile.processing) == number_of_videos
 
             # Test processing module naming as video
             processing_module_name = "SLEAP_VIDEO_000_20190128_113421"
@@ -309,9 +300,6 @@ class CustomTestSLEAPInterface(TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # Test matching number of processing modules
-            number_of_videos = len(labels.videos)
-            assert len(nwbfile.processing) == number_of_videos
 
             # Test processing module naming as video
             video_name = Path(labels.videos[0].filename).stem
@@ -355,8 +343,49 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        # Define expected values directly here
+        expected_bodyparts = ["snout", "leftear", "rightear", "tailbase"]
+        container_name = "PoseEstimationDeepLabCut"
+        skeleton_name = f"Skeleton{container_name}_{self.interface_kwargs['subject_name'].capitalize()}"
+        device_name = f"Camera{container_name}"
+
+        assert "PoseEstimation" in metadata
+        pose_metadata = metadata["PoseEstimation"]
+
+        # Check Skeletons
+        assert "Skeletons" in pose_metadata
+        assert skeleton_name in pose_metadata["Skeletons"]
+        skeleton = pose_metadata["Skeletons"][skeleton_name]
+        assert skeleton["name"] == skeleton_name
+        assert set(skeleton["nodes"]) == set(expected_bodyparts)
+
+        # Check Devices
+        assert "Devices" in pose_metadata
+        assert device_name in pose_metadata["Devices"]
+        device = pose_metadata["Devices"][device_name]
+        assert device["name"] == device_name
+
+        # Check PoseEstimationContainers
+        assert "PoseEstimationContainers" in pose_metadata
+        assert container_name in pose_metadata["PoseEstimationContainers"]
+        container = pose_metadata["PoseEstimationContainers"][container_name]
+        assert container["name"] == container_name
+        assert container["source_software"] == "DeepLabCut"
+        assert container["skeleton"] == skeleton_name
+        assert container["devices"] == [device_name]
+
+        # Check PoseEstimationSeries
+        assert "PoseEstimationSeries" in container
+        for bodypart in expected_bodyparts:
+            assert bodypart in container["PoseEstimationSeries"]
+            series = container["PoseEstimationSeries"][bodypart]
+            assert "unit" in series
+            assert series["unit"] == "pixels"
+
     def run_custom_checks(self):
         self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
+        self.check_custom_metadata()
 
     def check_renaming_instance(self, nwbfile_path: str):
         custom_container_name = "TestPoseEstimation"
@@ -364,14 +393,99 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, container_name=custom_container_name
+        # Create a new interface with the custom container name
+        new_interface = DeepLabCutInterface(
+            file_path=self.interface.source_data["file_path"],
+            config_file_path=self.interface.source_data.get("config_file_path"),
+            subject_name=self.interface.subject_name,
+            pose_estimation_metadata_key=custom_container_name,
         )
+
+        new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
             assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
+
+    def check_custom_metadata(self):
+        from datetime import datetime
+
+        from pynwb import NWBFile
+
+        # Create a test NWBFile
+        nwbfile = NWBFile(
+            session_description="Test session", identifier="TEST123", session_start_time=datetime.now().astimezone()
+        )
+
+        # Add a behavior processing module
+        behavior_module = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
+
+        # Create custom metadata
+        custom_container_name = "CustomPoseEstimation"
+        custom_reference_frame = "Custom reference frame for testing"
+        custom_unit = "custom_units"
+
+        metadata = self.interface.get_metadata()
+
+        # Modify the metadata with custom values
+        pose_metadata = metadata["PoseEstimation"]
+
+        # Get the first skeleton name
+        skeleton_name = next(iter(pose_metadata["Skeletons"].keys()))
+
+        # Get the first device name
+        device_name = next(iter(pose_metadata["Devices"].keys()))
+
+        pose_metadata["PoseEstimationContainers"][custom_container_name] = {
+            "name": custom_container_name,
+            "description": "Custom description for testing",
+            "skeleton": skeleton_name,
+            "devices": [device_name],
+            "reference_frame": custom_reference_frame,
+            "PoseEstimationSeries": {},
+        }
+
+        # Add custom settings for each bodypart
+        bodyparts = pose_metadata["Skeletons"][skeleton_name]["nodes"]
+        for bodypart in bodyparts:
+            pose_metadata["PoseEstimationContainers"][custom_container_name]["PoseEstimationSeries"][bodypart] = {
+                "name": f"{self.interface_kwargs['subject_name']}_{bodypart}",
+                "description": (
+                    f"Custom description for {bodypart}"
+                    if bodypart == "snout"
+                    else f"Keypoint {bodypart} from individual {self.interface_kwargs['subject_name']}."
+                ),
+                "unit": custom_unit,
+                "reference_frame": custom_reference_frame,
+                "confidence_definition": "Softmax output of the deep neural network.",
+            }
+
+        # Create a new interface with the custom container name
+        new_interface = DeepLabCutInterface(
+            file_path=self.interface.source_data["file_path"],
+            config_file_path=self.interface.source_data.get("config_file_path"),
+            subject_name=self.interface.subject_name,
+            pose_estimation_metadata_key=custom_container_name,
+        )
+
+        # Use add_to_nwbfile with the new interface
+        new_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Verify the custom metadata was applied
+        assert "behavior" in nwbfile.processing
+        assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
+
+        container = nwbfile.processing["behavior"].data_interfaces[custom_container_name]
+
+        # Check that all series have the custom unit and reference_frame
+        for series in container.pose_estimation_series.values():
+            assert series.unit == custom_unit
+            assert series.reference_frame == custom_reference_frame
+
+        # Check that snout has the custom description
+        snout_series = container.pose_estimation_series[f"{self.interface_kwargs['subject_name']}_snout"]
+        assert "Custom description for snout" in snout_series.description
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
@@ -388,6 +502,10 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
             ]
+
+            for pose_estimation in pose_estimation_series_in_nwb.values():
+                assert pose_estimation.starting_time == 0
+                assert pose_estimation.rate == 1.0
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
 
@@ -455,6 +573,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
         self.check_custom_timestamps(nwbfile_path=self.nwbfile_path)
 
     def check_custom_timestamps(self, nwbfile_path: str):
+        # This is irregular timestamps
         custom_timestamps = np.concatenate(
             (np.linspace(10, 110, 1000), np.linspace(150, 250, 1000), np.linspace(300, 400, 330))
         )

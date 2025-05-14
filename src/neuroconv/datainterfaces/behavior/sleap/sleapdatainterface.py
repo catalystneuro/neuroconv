@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -31,9 +30,9 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
-        video_file_path: Optional[FilePath] = None,
+        video_file_path: FilePath | None = None,
         verbose: bool = False,
-        frames_per_second: Optional[float] = None,
+        frames_per_second: float | None = None,
     ):
         """
         Interface for writing sleap .slp files to nwb using the sleap-io library.
@@ -52,20 +51,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
-        from importlib.metadata import version
-
         import ndx_pose  # noqa: F401
-        from packaging import version as version_parse
-
-        ndx_pose_version = version("ndx-pose")
-
-        # TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143 and released
-        if version_parse.parse(ndx_pose_version) != version_parse.parse("0.1.1"):
-            raise ImportError(
-                "SLEAP interface requires ndx-pose version 0.1.1. "
-                f"Found version {ndx_pose_version}. Please install the required version: "
-                "pip install 'ndx-pose==0.1.1'"
-            )
 
         self.file_path = Path(file_path)
         self.sleap_io = get_package(package_name="sleap_io")
@@ -93,7 +79,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """
         Conversion from DLC output files to nwb. Derived from sleap-io library.

@@ -1,6 +1,6 @@
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -35,7 +35,7 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
-        video_name: Optional[str] = None,
+        video_name: str | None = None,
     ):
         """
         Initialize the interface.
@@ -229,10 +229,10 @@ class ExternalVideoInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
-        starting_frames: Optional[list[int]] = None,
+        metadata: dict | None = None,
+        starting_frames: list[int] | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
-        module_description: Optional[str] = None,
+        module_description: str | None = None,
         always_write_timestamps: bool = False,
     ):
         """

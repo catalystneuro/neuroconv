@@ -150,7 +150,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
                 num_rows=max_data_shape[2],
             )
 
-        dci = ImagingExtractorDataChunkIterator(
+        data_chunk_iterator = ImagingExtractorDataChunkIterator(
             imaging_extractor=imaging_extractor,
             buffer_gb=buffer_gb,
             buffer_shape=buffer_shape,
@@ -159,10 +159,12 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         )
 
         if buffer_gb is not None:
-            assert ((math.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
+            assert (
+                (math.prod(data_chunk_iterator.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9
+            ) <= buffer_gb
 
-        data_chunks = np.zeros(dci.maxshape)
-        for data_chunk in dci:
+        data_chunks = np.zeros(data_chunk_iterator.maxshape)
+        for data_chunk in data_chunk_iterator:
             data_chunks[data_chunk.selection] = data_chunk.data
 
         expected_frames = imaging_extractor.get_video().transpose((0, 2, 1))

@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -122,7 +122,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         "Gets the channel ids of the data."
         return self.recording_extractor.get_channel_ids()
 
-    def get_original_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
+    def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -148,7 +148,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
+    def get_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -324,13 +324,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
+        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """

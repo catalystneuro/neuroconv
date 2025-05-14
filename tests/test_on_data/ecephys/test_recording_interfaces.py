@@ -33,6 +33,7 @@ from neuroconv.datainterfaces import (
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     TdtRecordingInterface,
+    WhiteMatterRecordingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
@@ -424,7 +425,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
     data_interface_cls = NeuralynxRecordingInterface
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
-        stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169)",
+        stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169.0)",
     )
     save_directory = OUTPUT_PATH
 
@@ -543,7 +544,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
-class TestOpenEphysBinaryRecordingInterfaceNonNeuralDatExcluded(RecordingExtractorInterfaceTestMixin):
+class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
     """Test that non-neural channels are not written as ElectricalSeries"""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
@@ -801,3 +802,15 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
+
+
+class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = WhiteMatterRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
+        ),
+        sampling_frequency=25_000.0,
+        num_channels=64,
+    )
+    save_directory = OUTPUT_PATH

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union
+from typing import Literal
 
 import pytest
 from jsonschema import validate
@@ -7,6 +7,7 @@ from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
+from neuroconv.tools.importing import get_package_version
 from neuroconv.utils import ArrayType, DeepDict, get_json_schema_from_method_signature
 
 
@@ -14,12 +15,12 @@ def test_get_json_schema_from_method_signature_basic():
     def basic_method(
         integer: int,
         floating: float,
-        string_or_path: Union[Path, str],
+        string_or_path: Path | str,
         boolean: bool,
         literal: Literal["a", "b", "c"],
-        dictionary: Dict[str, str],
+        dictionary: dict[str, str],
         string_with_default: str = "hi",
-        optional_dictionary: Optional[Dict[str, str]] = None,
+        optional_dictionary: dict[str, str] | None = None,
     ):
         pass
 
@@ -53,16 +54,16 @@ def test_get_json_schema_from_method_signature_advanced():
     They should also be compatible with __future__.annotations for SpikeInterface.
     """
 
-    # TODO: enable | instead of union when 3.11 is minimal
+    # Using Python 3.10 syntax for type annotations
     def advanced_method(
-        old_list_of_strings: List[str],
+        old_list_of_strings: list[str],
         new_list_of_strings: list[str],
-        old_dict_of_ints: Dict[str, int],
+        old_dict_of_ints: dict[str, int],
         new_dict_of_ints: dict[str, int],
-        nested_list_of_strings: List[List[str]],
+        nested_list_of_strings: list[list[str]],
         array_type: ArrayType,
         # more_nested_list_of_strings: list[list[list[str]]],
-        # pathalogical_case: list[dict[str | int | None, list[Optional[dict[str, list[Literal["a", "b"] | None]]]]],],
+        # pathalogical_case: list[dict[str | int | None, list[dict[str, list[Literal["a", "b"] | None]] | None]]],],
     ):
         pass
 
@@ -120,7 +121,7 @@ def test_get_json_schema_from_method_signature_init():
             folder_path: DirectoryPath,
             old_annotation_1: str,
             old_annotation_2: Path,
-            old_annotation_3: Union[str, Path],
+            old_annotation_3: str | Path,
         ):
             pass
 
@@ -230,30 +231,58 @@ def test_fix_to_358():
     class Test358:
         def add_to_nwbfile(
             self,
-            metadata: Optional[dict] = None,
+            metadata: dict | None = None,
             tag: str = "trials",
-            column_name_mapping: Optional[Dict[str, str]] = None,
-            column_descriptions: Optional[Dict[str, str]] = None,
+            column_name_mapping: dict[str, str] | None = None,
+            column_descriptions: dict[str, str] | None = None,
         ):
             pass
 
     test_conversion_options_schema = get_json_schema_from_method_signature(method=Test358.add_to_nwbfile)
-    expected_conversion_options_schema = {
-        "properties": {
-            "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
-            "tag": {"default": "trials", "type": "string"},
-            "column_name_mapping": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
+
+    from packaging import version
+
+    pydantic_version = get_package_version("pydantic")
+
+    if pydantic_version >= version.parse("2.11"):
+
+        expected_conversion_options_schema = {
+            "properties": {
+                "metadata": {
+                    "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "tag": {"default": "trials", "type": "string"},
+                "column_name_mapping": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "column_descriptions": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
             },
-            "column_descriptions": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
+            "type": "object",
+            "additionalProperties": False,
+        }
+
+    else:
+        expected_conversion_options_schema = {
+            "properties": {
+                "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
+                "tag": {"default": "trials", "type": "string"},
+                "column_name_mapping": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "column_descriptions": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
             },
-        },
-        "type": "object",
-        "additionalProperties": False,
-    }
+            "type": "object",
+            "additionalProperties": False,
+        }
 
     assert test_conversion_options_schema == expected_conversion_options_schema
 

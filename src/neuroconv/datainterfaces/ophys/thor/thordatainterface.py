@@ -1,7 +1,6 @@
 """Interface for Thor TIFF files with OME metadata."""
 
 from datetime import datetime, timezone
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -44,7 +43,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePath, channel_name: Optional[str] = None, verbose: bool = False):
+    def __init__(self, file_path: FilePath, channel_name: str | None = None, verbose: bool = False):
         """
         Initialize reading of a TIFF file.
 

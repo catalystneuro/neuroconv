@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import DirectoryPath, validate_call
 
@@ -60,7 +59,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        streams: Optional[list[str]] = None,
+        streams: list[str] | None = None,
         verbose: bool = False,
     ):
         """

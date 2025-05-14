@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import FilePath
 
@@ -34,7 +33,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        nsx_override: Optional[FilePath] = None,
+        nsx_override: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):

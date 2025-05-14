@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 import numpy as np
 from pydantic import DirectoryPath
@@ -41,7 +40,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
+        stream_name: str | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
@@ -115,9 +114,9 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        sampling_frequency: Optional[float] = None,
+        sampling_frequency: float | None = None,
         verbose: bool = False,
-        stream_id: Optional[str] = None,
+        stream_id: str | None = None,
     ):
         """_summary_
 

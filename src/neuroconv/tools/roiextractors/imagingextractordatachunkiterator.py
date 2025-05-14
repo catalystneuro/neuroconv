@@ -1,7 +1,6 @@
 """General purpose iterator for all ImagingExtractor data."""
 
 import math
-from typing import Optional
 
 import numpy as np
 from roiextractors import ImagingExtractor
@@ -16,13 +15,13 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         imaging_extractor: ImagingExtractor,
-        buffer_gb: Optional[float] = None,
-        buffer_shape: Optional[tuple] = None,
-        chunk_mb: Optional[float] = None,
-        chunk_shape: Optional[tuple] = None,
+        buffer_gb: float | None = None,
+        buffer_shape: tuple | None = None,
+        chunk_mb: float | None = None,
+        chunk_shape: tuple | None = None,
         display_progress: bool = False,
-        progress_bar_class: Optional[tqdm] = None,
-        progress_bar_options: Optional[dict] = None,
+        progress_bar_class: tqdm | None = None,
+        progress_bar_options: dict | None = None,
     ):
         """
         Initialize an Iterable object which returns DataChunks with data and their selections on each iteration.
@@ -114,30 +113,38 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        image_size = self._get_maxshape()[1:]
-        min_buffer_shape = tuple([chunk_shape[0]]) + image_size
+        series_max_shape = self._get_maxshape()[1:]
+        min_buffer_shape = tuple([chunk_shape[0]]) + series_max_shape
         scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
-        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
+        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + series_max_shape
         scaled_buffer_shape = tuple(
             [
                 min(max(int(dimension_length), chunk_shape[dimension_index]), self._get_maxshape()[dimension_index])
                 for dimension_index, dimension_length in enumerate(max_buffer_shape)
             ]
         )
+
         return scaled_buffer_shape
 
     def _get_dtype(self) -> np.dtype:
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
-        video_shape = (self.imaging_extractor.get_num_frames(),)
-        image_shape = self.imaging_extractor.get_image_size()
-        width, height = image_shape[1], image_shape[0]  # ROIExtractors convention is flipped
-        video_shape += (width, height)
-        if len(image_shape) == 3:
-            depth = image_shape[2]
-            video_shape += (depth,)
-        return video_shape
+
+        # Using this as a safe method, change once roiextractors 0.5.13 is released
+        max_series_shape = self.imaging_extractor.get_video(start_frame=0, end_frame=1)
+
+        num_samples = self.imaging_extractor.get_num_samples()
+        height = max_series_shape.shape[1]
+        width = max_series_shape.shape[2]
+
+        if len(max_series_shape.shape) == 3:
+            sample_shape = (num_samples, width, height)
+        else:
+            num_planes = max_series_shape.shape[3]
+            sample_shape = (num_samples, width, height, num_planes)
+
+        return sample_shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         data = self.imaging_extractor.get_video(
@@ -145,4 +152,6 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             end_frame=selection[0].stop,
         )
         tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
-        return data.transpose(tranpose_axes)[(slice(0, self.buffer_shape[0]),) + selection[1:]]
+        sliced_selection = (slice(0, self.buffer_shape[0]),) + selection[1:]
+
+        return data.transpose(tranpose_axes)[sliced_selection]
