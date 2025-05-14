@@ -2,7 +2,6 @@
 
 import math
 import warnings
-from typing import Union
 
 import numpy as np
 from hdmf.build.builders import (
@@ -162,9 +161,9 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
 
 
 def get_full_data_shape(
-    dataset: Union[GenericDataChunkIterator, np.ndarray, list],
+    dataset: GenericDataChunkIterator | np.ndarray | list,
     location_in_file: str,
-    builder: Union[BaseBuilder, None] = None,
+    builder: BaseBuilder | None = None,
 ):
     """Get the full shape of the dataset at the given location in the file.
 

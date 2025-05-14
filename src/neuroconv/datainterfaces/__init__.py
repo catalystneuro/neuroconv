@@ -10,6 +10,8 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
+from .behavior.video.externalvideointerface import ExternalVideoInterface
+from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -44,6 +46,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -66,6 +69,7 @@ from .ecephys.spikegadgets.spikegadgetsdatainterface import (
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
+from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -88,6 +92,7 @@ from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
     ScanImageMultiFileImagingInterface,
+    ScanImageLegacyImagingInterface,
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
@@ -123,6 +128,7 @@ interface_list = [
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
+    OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     AxonaRecordingInterface,
@@ -140,6 +146,7 @@ interface_list = [
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
+    WhiteMatterRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
@@ -152,6 +159,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    ScanImageLegacyImagingInterface,
     ScanImageMultiFileImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
@@ -162,6 +170,8 @@ interface_list = [
     ThorImagingInterface,
     # Behavior
     VideoInterface,
+    ExternalVideoInterface,
+    InternalVideoInterface,
     AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
@@ -199,9 +209,15 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    analog=dict(
+        OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+    ),
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
         Video=VideoInterface,
+        ExternalVideo=ExternalVideoInterface,
+        InternalVideo=InternalVideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,

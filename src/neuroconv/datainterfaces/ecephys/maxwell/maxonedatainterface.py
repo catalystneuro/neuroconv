@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from platform import system
-from typing import Optional
 
 from pydantic import DirectoryPath, FilePath
 
@@ -23,7 +22,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
 
     @staticmethod
     def auto_install_maxwell_hdf5_compression_plugin(
-        hdf5_plugin_path: Optional[DirectoryPath] = None, download_plugin: bool = True
+        hdf5_plugin_path: DirectoryPath | None = None, download_plugin: bool = True
     ) -> None:
         """
         If you do not yet have the Maxwell compression plugin installed, this function will automatically install it.
@@ -45,7 +44,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
     def __init__(
         self,
         file_path: FilePath,
-        hdf5_plugin_path: Optional[DirectoryPath] = None,
+        hdf5_plugin_path: DirectoryPath | None = None,
         download_plugin: bool = True,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",

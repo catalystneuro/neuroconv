@@ -56,6 +56,11 @@ html_theme_options = {
     ],
 }
 
+# Prevent Sphinx from prefixing class and function names with their module paths
+# For example, displays 'ClassName' instead of 'package.module.ClassName'
+add_module_names = False
+
+# Add here link checks that should be ignored by the link checker action
 linkcheck_anchors = False
 linkcheck_ignore = [
     "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
@@ -66,33 +71,26 @@ linkcheck_ignore = [
 # Extension configuration
 # --------------------------------------------------
 
-
 # Napoleon
-napoleon_google_docstring = False
-napoleon_numpy_docstring = True
-napoleon_use_param = False
-napoleon_use_ivar = True
-napoleon_include_init_with_doc = False
-napoleon_include_private_with_doc = False
-napoleon_include_special_with_doc = True
+napoleon_google_docstring = False          # Disable support for Google-style docstrings (use NumPy-style instead)
+napoleon_numpy_docstring = True            # Enable support for NumPy-style docstrings
+napoleon_use_param = False                 # Do not convert :param: sections into Parameters; leave as-is
+napoleon_use_ivar = True                   # Interpret instance variables as documented with :ivar:
 
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
-autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
-autodata_content = "both"
 
 autodoc_default_options = {
-    "members": True,
-    "member-order": "bysource",
-    "private-members": False,
+    "members": True,  # Enables automatic documentation of methods, attributes etc, not just the class docstring
+    "member-order": "bysource", # Displays classes and methods by their order in source code
+    "private-members": False,   # Do not include private members (those starting with an underscore)
+    "undoc-members": True,      # Document members without docstrings, including class attributes
     "show-inheritance": False,
     "toctree": True,
-    'undoc-members': True,
+    "exclude-members": "__new__",  # Do not display __new__ method in the docs
 }
 
-add_module_names = False
-
-
+# This is used to remove self from the signature of the class methods
 def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
     if what == "class":
         signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
@@ -113,10 +111,4 @@ intersphinx_mapping = {
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
     "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
-}
-
-# To shorten external links
-extlinks = {
-    "format-request-form": ("https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement"
-                            "%2Cdata+interfaces&template=format_request.yml&title=%5BNew+Format%5D%3A+", "")
 }

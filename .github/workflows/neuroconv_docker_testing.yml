@@ -37,7 +37,7 @@ jobs:
 
       - name: Get ephy_testing_data current head hash
         id: ephys
-        run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+        run: echo "HASH_EPHY_DATASET=$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
       - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
         uses: actions/cache@v4
         id: cache-ephys-datasets
@@ -46,7 +46,7 @@ jobs:
           key: ephys-datasets-2024-08-30-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
-        run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
+        run: echo "HASH_OPHYS_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
         uses: actions/cache@v4
         id: cache-ophys-datasets
@@ -55,7 +55,7 @@ jobs:
           key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: Get behavior_testing_data current head hash
         id: behavior
-        run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
+        run: echo "HASH_BEHAVIOR_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
       - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
         uses: actions/cache@v4
         id: cache-behavior-datasets

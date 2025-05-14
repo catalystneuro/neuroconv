@@ -337,7 +337,7 @@ class TestVideoConversions(TestCase):
 
     def check_video_custom_module(self):
         self._get_metadata()
-        module_name = "TestModule"
+        module_name = "behavior"
         module_description = "This is a test module."
         conversion_options = dict(
             Video=dict(

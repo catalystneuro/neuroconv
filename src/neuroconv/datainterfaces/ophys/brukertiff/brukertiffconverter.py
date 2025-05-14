@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
@@ -124,9 +124,9 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[FilePath] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile_path: FilePath | None = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
@@ -261,9 +261,9 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[FilePath] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile_path: FilePath | None = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,

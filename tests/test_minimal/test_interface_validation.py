@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pynwb import NWBFile
 
@@ -14,7 +13,7 @@ def test_conversion_options_validation(tmp_path):
     class InterfaceWithDateTimeConversionOptions(MockInterface):
         "class for testing how a file with datetime object is validated"
 
-        def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], datetime_option: datetime):
+        def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, datetime_option: datetime):
             pass
 
     interface = InterfaceWithDateTimeConversionOptions()

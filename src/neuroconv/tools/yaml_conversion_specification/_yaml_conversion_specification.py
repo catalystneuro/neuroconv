@@ -2,7 +2,6 @@ import json
 import os
 from importlib import import_module
 from pathlib import Path
-from typing import Optional
 
 import click
 from jsonschema import validate
@@ -30,8 +29,8 @@ from ...utils import dict_deep_update, load_dict_from_file
 @click.option("--overwrite", help="Overwrite an existing NWBFile at the location.", is_flag=True)
 def run_conversion_from_yaml_cli(
     specification_file_path: str,
-    data_folder_path: Optional[str] = None,
-    output_folder_path: Optional[str] = None,
+    data_folder_path: str | None = None,
+    output_folder_path: str | None = None,
     overwrite: bool = False,
 ):
     """
@@ -50,8 +49,8 @@ def run_conversion_from_yaml_cli(
 
 def run_conversion_from_yaml(
     specification_file_path: FilePath,
-    data_folder_path: Optional[DirectoryPath] = None,
-    output_folder_path: Optional[DirectoryPath] = None,
+    data_folder_path: DirectoryPath | None = None,
+    output_folder_path: DirectoryPath | None = None,
     overwrite: bool = False,
 ) -> None:
     """

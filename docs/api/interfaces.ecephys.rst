@@ -1,5 +1,5 @@
-Recording & Sorting
-===================
+Extracellular Electrophysiology
+===============================
 
 Base Recording
 --------------
@@ -61,7 +61,6 @@ OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
 
-
 Phy Sorting
 -----------
 .. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
@@ -89,3 +88,7 @@ SpikeGLX Recording
 Tucker-Davis Technologies (TDT) Recording
 -----------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface
+
+White Matter Recording
+----------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.whitematter.whitematterdatainterface

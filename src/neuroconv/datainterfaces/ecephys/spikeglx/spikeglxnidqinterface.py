@@ -1,18 +1,15 @@
 import warnings
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
-from pynwb.base import TimeSeries
 
 from .spikeglx_utils import get_session_start_time
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....tools.spikeinterface.spikeinterface import _recording_traces_to_hdmf_iterator
 from ....utils import (
-    calculate_regular_series_rate,
     get_json_schema_from_method_signature,
 )
 
@@ -27,18 +24,18 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
-        file_path: Optional[FilePath] = None,
+        file_path: FilePath | None = None,
         verbose: bool = False,
-        load_sync_channel: Optional[bool] = None,
+        load_sync_channel: bool | None = None,
         es_key: str = "ElectricalSeriesNIDQ",
-        folder_path: Optional[DirectoryPath] = None,
+        folder_path: DirectoryPath | None = None,
     ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
@@ -93,7 +90,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         )
 
         channel_ids = self.recording_extractor.get_channel_ids()
-        analog_channel_signatures = ["XA", "MA"]
+        # analog_channel_signatures are "XA" and "MA"
         self.analog_channel_ids = [ch for ch in channel_ids if "XA" in ch or "MA" in ch]
         self.has_analog_channels = len(self.analog_channel_ids) > 0
         self.has_digital_channels = len(self.analog_channel_ids) < len(channel_ids)
@@ -149,13 +146,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
+        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -165,19 +162,19 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
             The NWB file to which the NIDQ data will be added
-        metadata : Optional[dict], default: None
+        metadata : dict | None, default: None
             Metadata dictionary with device information. If None, uses default metadata
         stub_test : bool, default: False
             If True, only writes a small amount of data for testing
-        starting_time : Optional[float], default: None
+        starting_time : float | None, default: None
             DEPRECATED: Will be removed in June 2025. Starting time offset for the TimeSeries
         write_as : Literal["raw", "lfp", "processed"], default: "raw"
             DEPRECATED: Will be removed in June 2025. Specifies how to write the data
         write_electrical_series : bool, default: True
             DEPRECATED: Will be removed in June 2025. Whether to write electrical series data
-        iterator_type : Optional[str], default: "v2"
+        iterator_type : str | None, default: "v2"
             Type of iterator to use for data streaming
-        iterator_opts : Optional[dict], default: None
+        iterator_opts : dict | None, default: None
             Additional options for the iterator
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
@@ -212,8 +209,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 stacklevel=2,
             )
 
-        if stub_test or self.subset_channels is not None:
-            recording = self.subset_recording(stub_test=stub_test)
+        if stub_test:
+            end_time = self.recording_extractor.get_end_time()
+            end_time = min(end_time, 0.100)
+            recording = self.recording_extractor.time_slice(start_time=0, end_time=end_time)
         else:
             recording = self.recording_extractor
 
@@ -234,6 +233,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
                 always_write_timestamps=always_write_timestamps,
+                metadata=metadata,
             )
 
         if self.has_digital_channels:
@@ -243,9 +243,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         recording,
-        iterator_type: Optional[str],
-        iterator_opts: Optional[dict],
+        iterator_type: str | None,
+        iterator_opts: dict | None,
         always_write_timestamps: bool,
+        metadata: dict | None = None,
     ):
         """
         Add analog channels from the NIDQ board to the NWB file.
@@ -256,50 +257,38 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             The NWB file to add the analog channels to
         recording : BaseRecording
             The recording extractor containing the analog channels
-        iterator_type : Optional[str]
+        iterator_type : str | None
             Type of iterator to use for data streaming
-        iterator_opts : Optional[dict]
+        iterator_opts : dict | None
             Additional options for the iterator
         always_write_timestamps : bool
             If True, always writes timestamps instead of using sampling rate
+        metadata : dict | None, default: None
+            Metadata dictionary with TimeSeries information
         """
+        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
+
         analog_recorder = recording.select_channels(channel_ids=self.analog_channel_ids)
         channel_names = analog_recorder.get_property(key="channel_names")
-        segment_index = 0
-        analog_data_iterator = _recording_traces_to_hdmf_iterator(
+
+        # Create default metadata if not provided
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        # Prepare TimeSeries metadata
+        time_series_name = "TimeSeriesNIDQ"
+        description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
+        metadata["TimeSeries"][time_series_name] = dict(description=description)
+        # Use add_recording_as_time_series_to_nwbfile to add the time series
+        add_recording_as_time_series_to_nwbfile(
             recording=analog_recorder,
-            segment_index=segment_index,
+            nwbfile=nwbfile,
+            metadata=metadata,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            always_write_timestamps=always_write_timestamps,
+            time_series_name=time_series_name,
         )
-
-        name = "TimeSeriesNIDQ"
-        description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
-        time_series_kwargs = dict(name=name, data=analog_data_iterator, unit="a.u.", description=description)
-
-        if always_write_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
-            shifted_timestamps = timestamps
-            time_series_kwargs.update(timestamps=shifted_timestamps)
-        else:
-            recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-            if recording_has_timestamps:
-                timestamps = recording.get_times(segment_index=segment_index)
-                rate = calculate_regular_series_rate(series=timestamps)
-                recording_t_start = timestamps[0]
-            else:
-                rate = recording.get_sampling_frequency()
-                recording_t_start = recording._recording_segments[segment_index].t_start or 0
-
-            if rate:
-                starting_time = float(recording_t_start)
-                time_series_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
-            else:
-                shifted_timestamps = timestamps
-                time_series_kwargs.update(timestamps=shifted_timestamps)
-
-        time_series = TimeSeries(**time_series_kwargs)
-        nwbfile.add_acquisition(time_series)
 
     def _add_digital_channels(self, nwbfile: NWBFile):
         """
