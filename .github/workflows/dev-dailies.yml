@@ -1,4 +1,4 @@
-name: Dev Daily workflows
+name: Daily dev workflows
 
 on:
   workflow_dispatch:
