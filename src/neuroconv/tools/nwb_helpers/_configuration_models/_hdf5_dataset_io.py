@@ -1,6 +1,6 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
 
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import h5py
 from hdmf import Container
@@ -35,9 +35,9 @@ if is_package_installed(package_name="hdf5plugin"):
 class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], InstanceOf[h5py._hl.filters.FilterRefBase], None
-    ] = Field(
+    compression_method: (
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | InstanceOf[h5py._hl.filters.FilterRefBase] | None
+    ) = Field(
         default="gzip",
         description=(
             "The specified compression method to apply to this dataset. "
@@ -48,7 +48,7 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings - no annotation typing.
-    compression_options: Union[dict[str, Any], None] = Field(
+    compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
 

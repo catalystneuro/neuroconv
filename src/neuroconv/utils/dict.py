@@ -3,9 +3,8 @@ import json
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from ctypes import Union
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import yaml
@@ -221,7 +220,7 @@ class DeepDict(defaultdict):
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
-    def deep_update(self, other: Optional[Union[dict[str, Any], "DeepDict"]] = None, **kwargs: Any) -> None:
+    def deep_update(self, other: "dict[str, Any] | DeepDict | None" = None, **kwargs: Any) -> None:
         """
         Recursively update the DeepDict with another dictionary or DeepDict.
 
@@ -247,7 +246,7 @@ class DeepDict(defaultdict):
     def to_dict(self) -> dict[str, Any]:
         """Turn a DeepDict into a normal dictionary"""
 
-        def _to_dict(d: Union[dict[str, Any], "DeepDict"]) -> dict[str, Any]:
+        def _to_dict(d: "dict[str, Any] | DeepDict") -> dict[str, Any]:
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
         return _to_dict(self)

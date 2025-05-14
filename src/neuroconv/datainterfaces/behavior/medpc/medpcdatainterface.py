@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
@@ -48,7 +46,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         session_conditions: dict,
         start_variable: str,
         metadata_medpc_name_to_info_dict: dict,
-        aligned_timestamp_names: Optional[list[str]] = None,
+        aligned_timestamp_names: list[str] | None = None,
         verbose: bool = False,
     ):
         """

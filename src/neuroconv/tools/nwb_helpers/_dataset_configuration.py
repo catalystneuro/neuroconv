@@ -1,6 +1,6 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
-from typing import Generator, Literal, Union
+from typing import Generator, Literal
 
 import h5py
 import numpy as np
@@ -17,7 +17,7 @@ from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
 
-def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
+def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
     """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
     if isinstance(io, NWBHDF5IO):
         return io.mode
@@ -26,9 +26,9 @@ def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
 
 
 def _is_dataset_written_to_file(
-    candidate_dataset: Union[h5py.Dataset, zarr.Array],
+    candidate_dataset: h5py.Dataset | zarr.Array,
     backend: Literal["hdf5", "zarr"],
-    existing_file: Union[h5py.File, zarr.Group, None],
+    existing_file: h5py.File | zarr.Group | None,
 ) -> bool:
     """
     Determine if the neurodata object is already written to the file on disk.
@@ -51,7 +51,7 @@ def _is_dataset_written_to_file(
 
 def get_default_dataset_io_configurations(
     nwbfile: NWBFile,
-    backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
+    backend: None | Literal["hdf5", "zarr"] = None,  # None for auto-detect from append mode, otherwise required
 ) -> Generator[DatasetIOConfiguration, None, None]:
     """
     Generate DatasetIOConfiguration objects for wrapping NWB file objects with a specific backend.

@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import ConfigDict, FilePath, validate_call
 
@@ -18,10 +18,10 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         mov_field: str = "mov",
-        sampling_frequency: Optional[float] = None,
-        start_time: Optional[float] = None,
-        metadata: Optional[dict] = None,
-        channel_names: Optional[ArrayType] = None,
+        sampling_frequency: float | None = None,
+        start_time: float | None = None,
+        metadata: dict | None = None,
+        channel_names: ArrayType | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
     ):

@@ -1,7 +1,6 @@
 """Abstract class defining the structure of all Extractor-based Interfaces."""
 
 from abc import ABC
-from typing import Optional
 
 from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from .tools import get_package
@@ -14,8 +13,8 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
 
     # Manually override any of these attributes in a subclass if needed.
     # Note that values set at the level of class definition are called upon import.
-    ExtractorModuleName: Optional[str] = None
-    ExtractorName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor").
+    ExtractorModuleName: str | None = None
+    ExtractorName: str | None = None  # Defaults to __name__.replace("Interface", "Extractor").
     Extractor = None  # Class loads dynamically on first call to .get_extractor()
 
     @classmethod

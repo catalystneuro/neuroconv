@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -106,9 +104,9 @@ class MiniscopeConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile_path: str | None = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,

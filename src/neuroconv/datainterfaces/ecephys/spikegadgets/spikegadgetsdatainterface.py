@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import ConfigDict, FilePath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -27,7 +25,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePath,
         stream_id: str = "trodes",
-        gains: Optional[ArrayType] = None,
+        gains: ArrayType | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):

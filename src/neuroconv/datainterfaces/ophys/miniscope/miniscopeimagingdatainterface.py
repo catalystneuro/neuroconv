@@ -1,6 +1,6 @@
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import DirectoryPath, validate_call
@@ -116,7 +116,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,

@@ -26,7 +26,6 @@ from .types import (
 # TODO: remove after 3/1/2025
 def __getattr__(name):
     from warnings import warn
-    from typing import Optional
 
     from pydantic import FilePath, DirectoryPath
 
@@ -41,11 +40,11 @@ def __getattr__(name):
     if name == "OptionalFilePath":
         message = (
             "The 'OptionalFilePath' type has been deprecated and will be removed after 3/1/2025. "
-            "Please use `typing.Optional[pydantic.FilePath]` instead."
+            "Please use `pydantic.FilePath | None` instead."
         )
         warn(message=message, category=DeprecationWarning, stacklevel=2)
 
-        return Optional[FilePath]
+        return FilePath | None
     if name == "FolderPathType":
         message = (
             "The 'FolderPathType' type has been deprecated and will be removed after 3/1/2025. "
@@ -57,8 +56,8 @@ def __getattr__(name):
     if name == "OptionalFolderPathType":
         message = (
             "The 'OptionalFolderPathType' type has been deprecated and will be removed after 3/1/2025. "
-            "Please use `typing.Optional[pydantic.DirectoryPath]` instead."
+            "Please use `pydantic.DirectoryPath | None` instead."
         )
         warn(message=message, category=DeprecationWarning, stacklevel=2)
 
-        return Optional[DirectoryPath]
+        return DirectoryPath | None

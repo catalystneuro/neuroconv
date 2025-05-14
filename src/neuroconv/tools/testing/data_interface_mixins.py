@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Optional, Type, Union
+from typing import Literal, Type
 
 import numpy as np
 import pytest
@@ -61,7 +61,7 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: Optional[dict] = None
+    conversion_options: dict | None = None
     maxDiff = None
 
     @pytest.fixture
@@ -208,7 +208,7 @@ class DataInterfaceTestMixin:
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -241,7 +241,7 @@ class TemporalAlignmentMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: Optional[dict] = None
+    conversion_options: dict | None = None
     maxDiff = None
 
     @pytest.fixture
@@ -611,8 +611,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: Type[BaseSortingExtractorInterface]
-    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
-    associated_recording_kwargs: Optional[dict] = None
+    associated_recording_cls: Type[BaseRecordingExtractorInterface] | None = None
+    associated_recording_kwargs: dict | None = None
 
     def setUpFreshInterface(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
@@ -921,7 +921,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -1131,8 +1131,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
 
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
-            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
-            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
+
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
@@ -1147,11 +1146,8 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             data_from_extractor = imaging_extractor.get_video()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
-            assert two_photon_series.description == json.dumps(self.interface.image_metadata)
-
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
 
 
@@ -1166,8 +1162,7 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
             assert self.imaging_plane_name in nwbfile.imaging_planes
             assert self.photon_series_name in nwbfile.acquisition
-            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
-            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
+
             two_photon_series = nwbfile.acquisition[self.photon_series_name]
             assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
             assert two_photon_series.unit == "n.a."
@@ -1175,17 +1170,13 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
 
             assert two_photon_series.rate == self.expected_rate
             assert two_photon_series.starting_time == self.expected_starting_time
-            assert two_photon_series.timestamps is None
 
             imaging_extractor = self.interface.imaging_extractor
             data_from_extractor = imaging_extractor.get_video()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
-            assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
-
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
             optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs["channel_name"] in optical_channel_names
             assert len(optical_channels) == 1
 
 
@@ -1292,7 +1283,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))

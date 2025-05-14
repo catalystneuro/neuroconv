@@ -4,7 +4,6 @@ import json
 import os
 import time
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 
@@ -12,19 +11,19 @@ def submit_aws_batch_job(
     *,
     job_name: str,
     docker_image: str,
-    commands: Optional[list[str]] = None,
-    environment_variables: Optional[dict[str, str]] = None,
-    efs_volume_name: Optional[str] = None,
-    job_dependencies: Optional[list[dict[str, str]]] = None,
+    commands: list[str] | None = None,
+    environment_variables: dict[str, str] | None = None,
+    efs_volume_name: str | None = None,
+    job_dependencies: list[dict[str, str]] | None = None,
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
-    job_definition_name: Optional[str] = None,
+    job_definition_name: str | None = None,
     minimum_worker_ram_in_gib: int = 4,
     minimum_worker_cpus: int = 4,
-    submission_id: Optional[str] = None,
-    region: Optional[str] = None,
+    submission_id: str | None = None,
+    region: str | None = None,
 ) -> dict[str, str]:
     """
     Submit a job to AWS Batch for processing.
@@ -448,8 +447,8 @@ def _ensure_job_queue_exists(
 
 
 def _create_or_get_efs_id(
-    efs_volume_name: Optional[str], efs_client: "boto3.client.efs", region: str = "us-east-2"
-) -> Optional[str]:  # pragma: no cover
+    efs_volume_name: str | None, efs_client: "boto3.client.efs", region: str = "us-east-2"
+) -> str | None:  # pragma: no cover
     if efs_volume_name is None:
         return None
 
@@ -514,7 +513,7 @@ def generate_job_definition_name(
     docker_image: str,
     minimum_worker_ram_in_gib: int,
     minimum_worker_cpus: int,
-    efs_id: Optional[str] = None,
+    efs_id: str | None = None,
 ) -> str:  # pragma: no cover
     """
     Generate a job definition name for the AWS Batch job.
@@ -530,7 +529,7 @@ def generate_job_definition_name(
     minimum_worker_cpus : int
         The minimum number of CPUs required to run this job.
         A minimum of 4 is required, even if only one will be used in the actual process.
-    efs_id : Optional[str]
+    efs_id : str | None
         The ID of the EFS filesystem to mount, if any.
     """
     # AWS Batch does not allow colons, slashes, or periods in job definition names
@@ -556,7 +555,7 @@ def _ensure_job_definition_exists_and_get_arn(
     minimum_worker_cpus: int,
     role_info: dict,
     batch_client: "boto3.client.Batch",
-    efs_id: Optional[str] = None,
+    efs_id: str | None = None,
     max_retries: int = 12,
 ) -> str:  # pragma: no cover
     """

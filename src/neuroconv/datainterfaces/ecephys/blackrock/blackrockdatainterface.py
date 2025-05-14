@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import FilePath
 
@@ -34,7 +33,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        nsx_override: Optional[FilePath] = None,
+        nsx_override: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
@@ -90,7 +89,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = False):
+    def __init__(self, file_path: FilePath, sampling_frequency: float | None = None, verbose: bool = False):
         """
         Parameters
         ----------

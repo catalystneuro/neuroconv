@@ -1,6 +1,6 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import numcodecs
 import zarr
@@ -48,9 +48,9 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
 class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec], None
-    ] = Field(
+    compression_method: (
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec] | None
+    ) = Field(
         default="gzip",  # TODO: would like this to be 'auto'
         description=(
             "The specified compression method to apply to this dataset. "
@@ -61,12 +61,12 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
-    compression_options: Union[dict[str, Any], None] = Field(
+    compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
-    filter_methods: Union[
-        list[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec]]], None
-    ] = Field(
+    filter_methods: (
+        list[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]] | None
+    ) = Field(
         default=None,
         description=(
             "The ordered collection of filtering methods to apply to this dataset prior to compression. "
@@ -75,7 +75,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             "Set to `None` to disable filtering."
         ),
     )
-    filter_options: Union[list[dict[str, Any]], None] = Field(
+    filter_options: list[dict[str, Any]] | None = Field(
         default=None, description="The optional parameters to use for each specified filter method."
     )
 

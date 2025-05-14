@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Optional, Union
 from warnings import warn
 
 from pydantic import DirectoryPath
@@ -14,12 +13,12 @@ from pynwb import NWBHDF5IO
 def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: DirectoryPath,
-    dandiset_folder_path: Optional[DirectoryPath] = None,
+    dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,
-    number_of_jobs: Union[int, None] = None,
-    number_of_threads: Union[int, None] = None,
+    number_of_jobs: int | None = None,
+    number_of_threads: int | None = None,
 ) -> list[Path]:
     """
     Fully automated upload of NWB files to a Dandiset.

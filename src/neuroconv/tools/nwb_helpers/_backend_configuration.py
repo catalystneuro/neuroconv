@@ -1,6 +1,6 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
-from typing import Literal, Union
+from typing import Literal
 
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
@@ -14,7 +14,7 @@ BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 def get_default_backend_configuration(
     nwbfile: NWBFile, backend: Literal["hdf5", "zarr"]
-) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+) -> HDF5BackendConfiguration | ZarrBackendConfiguration:
     """Fill a default backend configuration to serve as a starting point for further customization."""
 
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
