@@ -19,7 +19,11 @@ on:
 
 jobs:
   build-and-test:
+    if: ${{ github.event.pull_request.draft == false }}
+    name: Testing External Links
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
     outputs:
       linkcheck_failed: ${{ steps.set-failure-flag.outputs.failed }}
     steps:
