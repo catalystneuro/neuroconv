@@ -27,6 +27,7 @@ from pynwb.image import ImageSeries
 from typing_extensions import Self
 
 from neuroconv.tools.hdmf import get_full_data_shape
+from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
 from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
@@ -287,7 +288,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
             compression_method = "gzip"
 
         elif isinstance(neurodata_object, ElectricalSeries) and dataset_name == "data":
-            from ....tools.spikeinterface import get_electrical_series_chunk_shape
 
             number_of_frames = candidate_dataset.shape[0]
             number_of_channels = candidate_dataset.shape[1]

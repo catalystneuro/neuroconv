@@ -3,6 +3,10 @@ from pydantic import FilePath
 from tqdm import tqdm
 
 from neuroconv.tools.hdmf import GenericDataChunkIterator
+from neuroconv.tools.iterative_write import (
+    get_image_series_buffer_shape,
+    get_image_series_chunk_shape,
+)
 
 from ....tools import get_package
 
@@ -287,9 +291,6 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
     def _get_default_chunk_shape(self, chunk_mb):
         """This is how the data is chunked for reading."""
-        from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
-            get_image_series_chunk_shape,
-        )
 
         chunk_shape = get_image_series_chunk_shape(
             num_samples=self._num_samples,
@@ -301,9 +302,6 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
     def _get_scaled_buffer_shape(self, buffer_gb: float, chunk_shape: tuple) -> tuple:
         """Select the buffer_shape less than the threshold of buffer_gb that is also a multiple of the chunk_shape."""
-        from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
-            get_image_series_buffer_shape,
-        )
 
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"

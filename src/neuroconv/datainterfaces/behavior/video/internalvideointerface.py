@@ -298,7 +298,7 @@ class InternalVideoInterface(BaseDataInterface):
             buffer_data = True
 
         if buffer_data:
-            data_iterable = VideoDataChunkIterator(
+            data_iterator = VideoDataChunkIterator(
                 video_file=file_path,
                 stub_test=stub_test,
             )
@@ -326,9 +326,9 @@ class InternalVideoInterface(BaseDataInterface):
                     for n, frame in enumerate(video_capture_ob):
                         video[n, :, :, :] = frame
                         pbar.update(1)
-                data_iterable = video
+                data_iterator = video
 
-        image_series_kwargs.update(data=data_iterable)
+        image_series_kwargs.update(data=data_iterator)
 
         from ....utils import calculate_regular_series_rate
 
