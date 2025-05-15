@@ -22,24 +22,41 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         self.file_path = str(file_path)
         super().__init__(file_path=self.file_path, verbose=verbose)
-        self._patch_extractor_for_nwb()
+        
+        # Fix ROI ID issue - NWB expects integer IDs, but Inscopix uses strings
+        self._fix_roi_id_mismatch()
     
-    def _patch_extractor_for_nwb(self):
-        """Convert string ROI IDs to integers for NWB compatibility."""
+    def _fix_roi_id_mismatch(self):
+        """Fix the mismatch between NWB's integer requirements and Inscopix's string IDs."""
+        # Store original string IDs
         self._original_roi_ids = self.segmentation_extractor.get_roi_ids()
         
+        # Patch get_roi_ids to return integers for NWB
         def get_integer_roi_ids():
             return list(range(len(self._original_roi_ids)))
         
-        # Replace get_roi_image_masks to handle integer indexing
+        # Store original method before patching
         original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
         
+        # Patch get_roi_image_masks to handle both integer and string inputs
         def patched_get_roi_image_masks(roi_ids=None):
-            if roi_ids is not None:
-                # Convert integer indices to original string IDs
-                roi_ids = [self._original_roi_ids[i] if isinstance(i, int) and i < len(self._original_roi_ids) else i 
-                          for i in roi_ids]
-            return original_get_roi_image_masks(roi_ids=roi_ids)
+            if roi_ids is None:
+                # When None, the original method will use all ROIs
+                return original_get_roi_image_masks(roi_ids=None)
+            
+            # Convert any integers to their corresponding string IDs
+            converted_ids = []
+            for roi_id in roi_ids:
+                if isinstance(roi_id, int) and 0 <= roi_id < len(self._original_roi_ids):
+                    # Convert integer to string ID
+                    converted_ids.append(self._original_roi_ids[roi_id])
+                else:
+                    # Keep string IDs as is
+                    converted_ids.append(roi_id)
+            
+            # Call original method with string IDs
+            return original_get_roi_image_masks(roi_ids=converted_ids)
         
+        # Apply patches
         self.segmentation_extractor.get_roi_ids = get_integer_roi_ids
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
