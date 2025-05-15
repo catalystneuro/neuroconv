@@ -241,16 +241,15 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     @staticmethod
     def _get_wav_bit_depth(file_path: FilePath) -> int:
         """
-        Determine the bit depth of a WAV file by parsing the header.
-
+        Get the bit depth of a WAV file.
         Parameters
         ----------
         file_path : str or Path
-
+            Path to the WAV file
         Returns
         -------
         int
-            Bit depth (8, 16, 24, 32, etc.)
+            Bit depth of the WAV file (8, 16, 24, 32, etc.)
         """
         with open(file_path, "rb") as f:
             f.seek(34)
