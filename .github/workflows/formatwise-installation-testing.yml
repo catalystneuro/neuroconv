@@ -1,22 +1,47 @@
-name: Formwatwise gallery tests
+name: Formatwise gallery tests
 on:
   schedule:
     - cron: "0 16 * * 1"  # Every Monday at noon EST
   workflow_dispatch:
+  # Add trigger for workflow_call to be used by auto-publish
+  workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string'
+        required: false
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string'
+        required: false
+        type: string
 
 jobs:
+  load_python_and_os_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
+      - name: Debugging
+        run: |
+          echo "Loaded Python versions: ${{ steps.load_python_versions.outputs.python_versions }}"
+          echo "Loaded OS versions: ${{ steps.load_os_versions.outputs.os_versions }}"
+
   run:
-    name: ${{ format.type }}:${{ format.name }} on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    needs: load_python_and_os_versions
+    name: Format tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # Disabling these due to multiplicative nature
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        format: [ {type: recording, name: spikeglx}, {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut} ]  # SpikeGLX is the test of the 'empty' requirements functionality - missing: ced recording gallery and video behavior gallery
+        python-version: ${{ fromJson(inputs.python-versions || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
+        os: ${{ fromJson(inputs.os-versions || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
-      - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
@@ -26,14 +51,9 @@ jobs:
 
       - name: Global Setup
         run: |
-          python -m pip install -U pip  # Official recommended way
+          python -m pip install --upgrade pip
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-      - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
-
-
-
 
       # Only rely on caches in matrix - absolutely no S3 transfer in a matrix this large.
       - name: Get ephy_testing_data current head hash
@@ -64,9 +84,82 @@ jobs:
           path: ./behavior_testing_data
           key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
+      # Install virtualenv for creating clean environments
+      - name: Install virtualenv
+        run: python -m pip install --upgrade virtualenv
 
+      # Run all format tests in sequence
+      - name: Run all format tests in sequence
+        shell: bash
+        run: |
+          # Define all formats to test
+          FORMATS=(
+            "recording:spikeglx"
+            "recording:edf"
+            "recording:intan"
+            "recording:neuralynx"
+            "recording:neuroscope"
+            "recording:openephys"
+            "sorting:cellexplorer"
+            "sorting:neuralynx"
+            "sorting:neuroscope"
+            "imaging:scanimage"
+            "imaging:tiff"
+            "behavior:deeplabcut"
+          )
 
-      - name: Install a specific format
-        run: pip install .[${{ matrix.format.name }}]
-      - name: Run that particular file in the doctest gallery
-        run: pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/${{ matrix.format.type }}/${{ matrix.format.name }}.rst
+          # Track overall success
+          OVERALL_SUCCESS=true
+          FAILED_FORMATS=()
+
+          # Loop through each format
+          for format in "${FORMATS[@]}"; do
+            # Split type and name
+            IFS=':' read -r type name <<< "$format"
+
+            echo "===================================================="
+            echo "Testing $type:$name"
+            echo "===================================================="
+
+            # Create fresh virtual environment
+            python -m virtualenv clean_env_$name
+
+            # Activate environment (OS-specific)
+            if [ "${{ runner.os }}" == "Windows" ]; then
+              source clean_env_$name/Scripts/activate
+            else
+              source clean_env_$name/bin/activate
+            fi
+
+            # Install dependencies
+            pip install ".[test,$name]"
+
+            # Run test
+            if pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/$type/$name.rst; then
+              echo "✅ $type:$name test passed"
+            else
+              echo "❌ $type:$name test failed"
+              OVERALL_SUCCESS=false
+              FAILED_FORMATS+=("$type:$name")
+            fi
+
+            # Deactivate environment
+            deactivate
+
+            # Remove environment to save space
+            rm -rf clean_env_$name
+
+            echo ""
+          done
+
+          # Report results
+          echo "===================================================="
+          if [ "$OVERALL_SUCCESS" = true ]; then
+            echo "✅ All format tests passed!"
+          else
+            echo "❌ Some format tests failed:"
+            for failed in "${FAILED_FORMATS[@]}"; do
+              echo "   - $failed"
+            done
+            exit 1
+          fi
