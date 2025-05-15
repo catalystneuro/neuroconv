@@ -1,5 +1,5 @@
 import json
-import wave
+import struct
 from pathlib import Path
 from typing import Literal
 
@@ -239,35 +239,24 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return nwbfile
 
     @staticmethod
-    def _get_wav_bit_depth(file_path):
+    def _get_wav_bit_depth(filepath):
         """
-        Get the bit depth of a WAV file.
+        Determine the bit depth of a WAV file by parsing the header.
 
         Parameters
         ----------
-        file_path : str or Path
-            Path to the WAV file
+        filepath : str or Path
 
         Returns
         -------
         int
-            Bit depth of the WAV file (8, 16, 24, 32, etc.)
+            Bit depth (8, 16, 24, 32, etc.)
         """
-        try:
-            # First try using wave module for standard PCM files (including 24-bit)
-            with wave.open(str(file_path), "rb") as wav_file:
-                sample_width = wav_file.getsampwidth()
-                bit_depth = sample_width * 8
-            return bit_depth
-        except wave.Error:
-            # If wave module fails (e.g., for IEEE float format), use scipy.io.wavfile
-            _, data = scipy.io.wavfile.read(file_path)
+        with open(filepath, "rb") as f:
+            f.seek(20)
+            audio_format = struct.unpack("<H", f.read(2))[0]  # 1 = PCM, 3 = IEEE_FLOAT
 
-            # Handle IEEE float format (format code 3)
-            if data.dtype == np.float32:
-                return 32
-            elif data.dtype == np.float64:
-                return 64
+            f.seek(34)
+            bits_per_sample = struct.unpack("<H", f.read(2))[0]
 
-            # For other formats, return the bit size of the data type
-            return data.dtype.itemsize * 8
+            return bits_per_sample
