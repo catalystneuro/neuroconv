@@ -20,7 +20,7 @@ Features:
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
 Installation
------------
+------------
 
 To install the latest stable release of **neuroconv** you can use `PyPI <https://pip.pypa.io/>`. To do this, run:
 
