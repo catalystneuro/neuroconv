@@ -251,8 +251,11 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         int
             Bit depth of the WAV file (8, 16, 24, 32, etc.)
         """
+
+        struct_module_uint16 = "<H"  # < Is little-endian
+
         with open(file_path, "rb") as f:
             f.seek(34)
-            bits_per_sample = struct.unpack("<H", f.read(2))[0]
+            bits_per_sample = struct.unpack(struct_module_uint16, f.read(2))[0]
 
             return bits_per_sample
