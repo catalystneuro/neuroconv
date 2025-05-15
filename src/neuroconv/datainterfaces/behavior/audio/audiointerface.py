@@ -239,23 +239,20 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return nwbfile
 
     @staticmethod
-    def _get_wav_bit_depth(filepath):
+    def _get_wav_bit_depth(file_path: FilePath) -> int:
         """
         Determine the bit depth of a WAV file by parsing the header.
 
         Parameters
         ----------
-        filepath : str or Path
+        file_path : str or Path
 
         Returns
         -------
         int
             Bit depth (8, 16, 24, 32, etc.)
         """
-        with open(filepath, "rb") as f:
-            f.seek(20)
-            audio_format = struct.unpack("<H", f.read(2))[0]  # 1 = PCM, 3 = IEEE_FLOAT
-
+        with open(file_path, "rb") as f:
             f.seek(34)
             bits_per_sample = struct.unpack("<H", f.read(2))[0]
 
