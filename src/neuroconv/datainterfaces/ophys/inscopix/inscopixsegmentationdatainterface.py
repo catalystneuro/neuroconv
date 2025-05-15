@@ -22,28 +22,28 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         self.file_path = str(file_path)
         super().__init__(file_path=self.file_path, verbose=verbose)
-        
+
         # Fix ROI ID issue - NWB expects integer IDs, but Inscopix uses strings
         self._fix_roi_id_mismatch()
-    
+
     def _fix_roi_id_mismatch(self):
         """Fix the mismatch between NWB's integer requirements and Inscopix's string IDs."""
         # Store original string IDs
         self._original_roi_ids = self.segmentation_extractor.get_roi_ids()
-        
+
         # Patch get_roi_ids to return integers for NWB
         def get_integer_roi_ids():
             return list(range(len(self._original_roi_ids)))
-        
+
         # Store original method before patching
         original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-        
+
         # Patch get_roi_image_masks to handle both integer and string inputs
         def patched_get_roi_image_masks(roi_ids=None):
             if roi_ids is None:
                 # When None, the original method will use all ROIs
                 return original_get_roi_image_masks(roi_ids=None)
-            
+
             # Convert any integers to their corresponding string IDs
             converted_ids = []
             for roi_id in roi_ids:
@@ -53,10 +53,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 else:
                     # Keep string IDs as is
                     converted_ids.append(roi_id)
-            
+
             # Call original method with string IDs
             return original_get_roi_image_masks(roi_ids=converted_ids)
-        
+
         # Apply patches
         self.segmentation_extractor.get_roi_ids = get_integer_roi_ids
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
