@@ -87,7 +87,7 @@ Segmentation
     EXTRACT <segmentation/extract>
     Suite2P <segmentation/suite2p>
     Inscopix <segmentation/inscopixsegmentation>
-    
+
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
 
