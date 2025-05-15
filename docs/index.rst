@@ -22,7 +22,7 @@ Features:
 Installation
 -----------
 
-To install the latest stable release of **neuroconv** through PyPI, run:
+To install the latest stable release of **neuroconv** through `PyPI <https://pip.pypa.io/>`, run:
 
 .. code-block:: bash
 
