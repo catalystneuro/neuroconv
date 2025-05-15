@@ -1,5 +1,5 @@
 Inscopix imaging data conversion
-**------------------------------**
+--------------------------------
 
 Install NeuroConv with the additional dependencies necessary for reading Inscopix data.
 
