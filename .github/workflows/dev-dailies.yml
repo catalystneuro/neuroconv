@@ -47,13 +47,6 @@ jobs:
       python-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
-  run-daily-neuroconv-docker-testing:
-    uses: ./.github/workflows/neuroconv_docker_testing.yml
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
-
   run-daily-rclone-docker-testing:
     uses: ./.github/workflows/rclone_docker_testing.yml
     secrets:
@@ -111,22 +104,6 @@ jobs:
           to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
           from: NeuroConv
           body: "The daily live service test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dev-dailies.yml"
-
-  notify-neuroconv-docker-test-failure:
-    runs-on: ubuntu-latest
-    needs: [run-daily-neuroconv-docker-testing]
-    if: ${{ always() && needs.run-daily-neuroconv-docker-testing.result == 'failure' }}
-    steps:
-      - uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: NeuroConv Daily NeuroConv Docker Test Failure
-          to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
-          from: NeuroConv
-          body: "The daily neuroconv docker test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dev-dailies.yml"
 
   notify-rclone-docker-test-failure:
     runs-on: ubuntu-latest
