@@ -68,4 +68,4 @@ jobs:
           subject: NeuroConv Daily NeuroConv Docker Test Failure
           to: ${{ secrets.DAILY_FAILURE_EMAIL_LIST }}
           from: NeuroConv
-          body: "The daily neuroconv docker test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dev-dailies.yml"
+          body: "The daily neuroconv docker test workflow failed, please check status at https://github.com/catalystneuro/neuroconv/actions/workflows/dailies.yml"
