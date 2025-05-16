@@ -961,9 +961,9 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
             print(f"OnePhotonSeries name mismatch: expected 'OnePhotonSeries', got '{one_photon_series['name']}'")
             raise
         try:
-            assert one_photon_series["unit"] == "n.a"
+            assert one_photon_series["unit"] == "n.a."
         except AssertionError:
-            print(f"OnePhotonSeries unit mismatch: expected 'n.a', got '{one_photon_series['unit']}'")
+            print(f"OnePhotonSeries unit mismatch: expected 'n.a.', got '{one_photon_series['unit']}'")
             raise
         try:
             assert one_photon_series["dimension"] == [128, 128]
@@ -1011,7 +1011,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
                 assert self.optical_series_name in nwbfile.acquisition
                 one_photon_series = nwbfile.acquisition[self.optical_series_name]
                 assert one_photon_series.imaging_plane.name == "ImagingPlane"
-                assert one_photon_series.unit == "n.a"
+                assert one_photon_series.unit == "n.a."
             except AssertionError:
                 print(f"OnePhotonSeries '{self.optical_series_name}' is missing or has incorrect properties.")
                 raise
