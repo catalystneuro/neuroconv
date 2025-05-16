@@ -211,7 +211,7 @@ class TestVideoInterface(unittest.TestCase):
 
 # To Discuss in review: This does not raise an error anymore because our implementation has a safety mechanism
 # that clips the buffer size between the size of the chunk and the max size of the data. In other words.
-# The previous erro was:
+# The previous error was:
 # # Traceback (most recent call last):
 #   File "/home/heberto/development/neuroconv/src/neuroconv/datainterfaces/behavior/video/video_utils.py", line 273, in _get_default_buffer_shape
 #     assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"
