@@ -10,6 +10,7 @@ from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
 from parameterized import parameterized_class
 from pynwb import NWBHDF5IO
+import importlib
 
 from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
@@ -49,10 +50,9 @@ skip_on_darwin_arm64 = pytest.mark.skipif(
 )
 
 skip_if_isx_not_installed = pytest.mark.skipif(
-    "isx" not in sys.modules,
+    not importlib.util.find_spec("isx"),
     reason="Tests are skipped because the 'isx' module is not installed.",
 )
-
 
 class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
