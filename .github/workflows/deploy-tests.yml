@@ -1,121 +1,97 @@
-name: Minimal and Full Tests
+name: Deploy tests
 
 on:
-  workflow_call:
-    inputs:
-      python-versions:
-        description: 'List of Python versions to use in matrix, as JSON string'
-        required: true
-        type: string
-      os-versions:
-        description: 'List of OS versions to use in matrix, as JSON string'
-        required: true
-        type: string
-
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
-      S3_GIN_BUCKET:
-        required: true
-      CODECOV_TOKEN:
-        required: true
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    # Synchronize, open and reopened are the default types for pull request
+    # We add ready_for_review to trigger the check for changelog and full tests when ready for review is clicked
+  merge_group:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  run:
-    name: ${{ matrix.os }} Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ${{ fromJson(inputs.python-versions) }}
-        os: ${{ fromJson(inputs.os-versions) }}
+  load_python_and_os_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
     steps:
       - uses: actions/checkout@v4
-      - run: git fetch --prune --unshallow --tags
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Global Setup
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
+      - name: Debugging
         run: |
-          python -m pip install -U pip  # Official recommended way
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
+          echo "Loaded Python versions: ${{ steps.load_python_versions.outputs.python_versions }}"
+          echo "Loaded OS versions: ${{ steps.load_os_versions.outputs.os_versions }}"
 
-      - name: Install NeuroConv with minimal requirements
-        run: pip install .
-      - name: Test initial import of all non-lazy dependencies
-        run: |  # Minimal installation should allow for lazy imports on main modules
-          python -c "import neuroconv"
-          python -c "import neuroconv.datainterfaces"
-          python -c "import neuroconv.tools"
-          python -c "import neuroconv.utils"
-          python -c "import neuroconv.converters"
-      - name: Install Wine (For Plexon2 Tests)
-        uses: ./.github/actions/install-wine
-        with:
-          os: ${{ runner.os }}
+  assess-file-changes:
+    uses: ./.github/workflows/assess-file-changes.yml
 
-      - name: Install NeuroConv with testing requirements
-        run: pip install .[test]
-      - name: Run import tests
+  detect-changelog-updates:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && github.event.pull_request.draft == false }}
+    name: Auto-detecting CHANGELOG.md updates
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
+        run: echo "CHANGELOG.md has been updated."
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
         run: |
-          pytest tests/imports.py::TestImportStructure::test_top_level
-          pytest tests/imports.py::TestImportStructure::test_tools
-          pytest tests/imports.py::TestImportStructure::test_datainterfaces
+          echo "CHANGELOG.md has not been updated."
+          0
 
-      - name: Run minimal tests
-        run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
+  run-tests:
+    needs: [assess-file-changes, load_python_and_os_versions]
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: ./.github/workflows/testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
-      - name: Install additional specific testing-only requirements
-        run: pip install .[test]
+  # If the conversion gallery is the only thing that changed, run doctests only
+  run-doctests-only:
+    needs: [assess-file-changes, load_python_and_os_versions]
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
+    uses: ./.github/workflows/doctests.yml
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
 
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
+  run-live-service-tests:
+    needs: [assess-file-changes, load_python_and_os_versions]
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: ./.github/workflows/live-service-testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
-      - name: Install with behavior requirements
-        run: pip install .[behavior]
-      - name: Run behavior tests
-        run: pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
 
-      - name: Install with icephys requirements
-        run: pip install .[icephys]
-
-      #- name: Run icephys tests  # There are no icephys specific tests without data
-      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
-
-      - name: Prepare data for tests
-        uses: ./.github/actions/load-data
+  check-final-status:
+    name: All tests passing
+    if: always()
+    needs:
+      - run-tests
+      - run-doctests-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether all jobs succeeded or at least one failed
+        uses: re-actors/alls-green@release/v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
-          os: ${{ matrix.os }}
-
-      - name: Install full requirements
-        run: pip install .[full]
-
-      - name: Run full pytest with coverage
-        run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
-      - name: Upload full coverage to Codecov
-        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./codecov.xml
-          flags: unittests
-          name: codecov-umbrella
-          codecov_yml_path: ./codecov.yml
-          fail_ci_if_error: true
-          verbose: true
+          allowed-skips: run-tests, run-doctests-only
+          jobs: ${{ toJSON(needs) }}
