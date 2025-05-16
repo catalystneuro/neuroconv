@@ -53,7 +53,6 @@ dependencies = [
     "packaging",  # Issue 903
     "referencing", # for the json schema
     "numcodecs<0.16.0", # For supporting zarr < 3
-    "ndx-events==0.2.1",  # This has been accepted in a NWBEP and will be included in an upcoming release of pynwb
 ]
 
 
@@ -132,6 +131,7 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
+    "ndx-events==0.2.1",
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -232,6 +232,7 @@ spikegadgets = [
 spikeglx = [
     "neo>=0.14",
     "spikeinterface>=0.102.2",
+    "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [
     "neo>=0.14",
