@@ -245,4 +245,3 @@ class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfa
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
     )
-

@@ -105,7 +105,7 @@ jobs:
 
       - name: Install full requirements
         run: pip install .[full]
-      
+
       - name: Install Inscopix isx module
         run: |
           pip install isx
@@ -116,17 +116,17 @@ jobs:
         run: |
           # First, ensure we can import isx
           python -c "import isx; print(f'ISX imported successfully, version: {isx.__version__}')"
-    
+
           # Find the current directory structure
           echo "Current directory: $(pwd)"
           ls -la
-    
+
           # Find the neuroconv module location
           python -c "import neuroconv; print(f'NeuroConv path: {neuroconv.__path__}')"
-    
+
           # Look for the data_interface_mixins.py file
           find . -name "data_interface_mixins.py"
-    
+
           # Examine the content of the mixins file
           FILE_PATH=$(find . -name "data_interface_mixins.py")
           if [ -n "$FILE_PATH" ]; then
