@@ -36,6 +36,7 @@ jobs:
       matrix:
         python-version: ${{ fromJson(inputs.python-versions) }}
         os: ${{ fromJson(inputs.os-versions) }}
+
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --prune --unshallow --tags
@@ -54,20 +55,20 @@ jobs:
       - name: Install NeuroConv with testing requirements
         run: pip install .[test]
 
-      - name: Run only Inscopix interface tests
-        if: ${{ inputs.test-mode == 'inscopix-only' }}
-        run: |
-          pytest tests/test_on_data/ophys/test_imaging_interfaces.py -vv --cov=neuroconv --cov-report xml:./codecov.xml
-          pytest tests/test_on_data/ophys/test_segmentation_interfaces.py -vv --cov=neuroconv --cov-report xml:./codecov.xml
-
       - name: Prepare data for tests
-        if: ${{ inputs.test-mode != 'inscopix-only' }}
+        if: ${{ inputs.test-mode == 'inscopix-only' || inputs.test-mode == 'full' }}
         uses: ./.github/actions/load-data
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
           os: ${{ matrix.os }}
+
+      - name: Run only Inscopix interface tests
+        if: ${{ inputs.test-mode == 'inscopix-only' }}
+        run: |
+          pytest tests/test_on_data/ophys/test_imaging_interfaces.py -vv --cov=neuroconv --cov-report xml:./codecov.xml
+          pytest tests/test_on_data/ophys/test_segmentation_interfaces.py -vv --cov=neuroconv --cov-report xml:./codecov.xml
 
       - name: Install full requirements
         if: ${{ inputs.test-mode != 'inscopix-only' }}
