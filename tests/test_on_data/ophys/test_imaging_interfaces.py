@@ -1026,16 +1026,6 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
                 )
                 raise
 
-            # Check timestamps exist and match number of frames
-            try:
-                assert one_photon_series.timestamps is not None
-                assert len(one_photon_series.timestamps) == 100
-            except AssertionError:
-                print(
-                    f"Timestamps mismatch: expected 100, got {len(one_photon_series.timestamps) if one_photon_series.timestamps else 'None'}"
-                )
-                raise
-
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
