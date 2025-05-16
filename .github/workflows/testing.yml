@@ -112,32 +112,6 @@ jobs:
           # Verify installation
           python -c "import isx; print(f'Inscopix isx version: {isx.__version__}')"
 
-      - name: Debug ISX module detection
-        run: |
-          # First, ensure we can import isx
-          python -c "import isx; print(f'ISX imported successfully, version: {isx.__version__}')"
-
-          # Find the current directory structure
-          echo "Current directory: $(pwd)"
-          ls -la
-
-          # Find the neuroconv module location
-          python -c "import neuroconv; print(f'NeuroConv path: {neuroconv.__path__}')"
-
-          # Look for the data_interface_mixins.py file
-          find . -name "data_interface_mixins.py"
-
-          # Examine the content of the mixins file
-          FILE_PATH=$(find . -name "data_interface_mixins.py")
-          if [ -n "$FILE_PATH" ]; then
-            echo "Found mixins file at: $FILE_PATH"
-          cat "$FILE_PATH" | grep -A 10 -B 10 "isx module is not installed"
-          else
-            echo "Could not find data_interface_mixins.py"
-          fi
-
-
-
       - name: Run ophys data-dependent tests
         run: pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
 
