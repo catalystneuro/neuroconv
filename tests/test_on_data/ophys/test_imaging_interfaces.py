@@ -973,7 +973,9 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         try:
             assert one_photon_series["imaging_plane"] == "ImagingPlane"
         except AssertionError:
-            print(f"OnePhotonSeries imaging_plane mismatch: expected 'ImagingPlane', got '{one_photon_series['imaging_plane']}'")
+            print(
+                f"OnePhotonSeries imaging_plane mismatch: expected 'ImagingPlane', got '{one_photon_series['imaging_plane']}'"
+            )
             raise
 
     def check_read_nwb(self, nwbfile_path: str):
