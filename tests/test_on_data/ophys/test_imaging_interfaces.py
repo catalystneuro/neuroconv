@@ -44,8 +44,13 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 skip_on_darwin_arm64 = pytest.mark.skipif(
-    (platform.system() == "Darwin" and platform.machine() == "arm64") or "isx" not in sys.modules,
-    reason="Inscopix tests are skipped on macOS ARM64 or when isx module is not available",
+    platform.system() == "Darwin" and platform.machine() == "arm64",
+    reason="Tests are skipped on macOS ARM64 due to platform limitations.",
+)
+
+skip_if_isx_not_installed = pytest.mark.skipif(
+    "isx" not in sys.modules,
+    reason="Tests are skipped because the 'isx' module is not installed.",
 )
 
 
@@ -913,6 +918,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
 
 @skip_on_darwin_arm64
+@skip_if_isx_not_installed
 class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd."""
 
@@ -1001,6 +1007,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
 
 @skip_on_darwin_arm64
+@skip_if_isx_not_installed
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd."""
 
@@ -1012,6 +1019,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
 
 @skip_on_darwin_arm64
+@skip_if_isx_not_installed
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_u8.isxd."""
 
