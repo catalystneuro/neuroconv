@@ -74,15 +74,15 @@ jobs:
       - name: Install additional specific testing-only requirements
         run: pip install .[test]
 
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
-
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
       - name: Run ecephys tests
         run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
+
+      - name: Install with ophys requirements
+        run: pip install .[ophys]
+      - name: Run ophys tests
+        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
 
       - name: Install with behavior requirements
         run: pip install .[behavior]
@@ -105,6 +105,9 @@ jobs:
 
       - name: Install full requirements
         run: pip install .[full]
+
+      - name: Run ophys data-dependent tests
+        run: pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
 
       - name: Run full pytest with coverage
         run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
