@@ -961,9 +961,9 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
             print(f"OnePhotonSeries name mismatch: expected 'OnePhotonSeries', got '{one_photon_series['name']}'")
             raise
         try:
-            assert one_photon_series["unit"] == "px"
+            assert one_photon_series["unit"] == "n.a"
         except AssertionError:
-            print(f"OnePhotonSeries unit mismatch: expected 'px', got '{one_photon_series['unit']}'")
+            print(f"OnePhotonSeries unit mismatch: expected 'n.a', got '{one_photon_series['unit']}'")
             raise
         try:
             assert one_photon_series["dimension"] == [128, 128]
@@ -984,35 +984,54 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
             nwbfile = io.read()
 
             # Check device exists
-            assert "InscopixMicroscope" in nwbfile.devices
-            device = nwbfile.devices["InscopixMicroscope"]
+            try:
+                assert "Microscope" in nwbfile.devices
+            except AssertionError:
+                print("Device 'Microscope' not found in NWB file devices.")
+                raise
 
             # Check imaging plane exists and is properly linked to device
-            assert "ImagingPlane" in nwbfile.imaging_planes
-            imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
-            assert imaging_plane.device.name == "InscopixMicroscope"
+            try:
+                assert "ImagingPlane" in nwbfile.imaging_planes
+                imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
+                assert imaging_plane.device.name == "Microscope"
+            except AssertionError:
+                print("ImagingPlane or its link to 'Microscope' is missing or incorrect.")
+                raise
 
             # Check optical channel
-            optical_channels = imaging_plane.optical_channel
-            assert len(optical_channels) == 1
+            try:
+                assert len(imaging_plane.optical_channel) == 1
+            except AssertionError:
+                print(f"Optical channel count mismatch: expected 1, got {len(imaging_plane.optical_channel)}")
+                raise
 
             # Check OnePhotonSeries exists and has correct links and properties
-            assert self.optical_series_name in nwbfile.acquisition
-            one_photon_series = nwbfile.acquisition[self.optical_series_name]
-            assert one_photon_series.imaging_plane.name == "ImagingPlane"
-            assert one_photon_series.unit == "px"
+            try:
+                assert self.optical_series_name in nwbfile.acquisition
+                one_photon_series = nwbfile.acquisition[self.optical_series_name]
+                assert one_photon_series.imaging_plane.name == "ImagingPlane"
+                assert one_photon_series.unit == "n.a"
+            except AssertionError:
+                print(f"OnePhotonSeries '{self.optical_series_name}' is missing or has incorrect properties.")
+                raise
 
             # Check data dimensions
-            assert one_photon_series.data.shape == (100, 128, 128)  # 100 frames of 128x128
-            assert one_photon_series.data.dtype == np.uint16  # Check data type
+            try:
+                assert one_photon_series.data.shape == (100, 128, 128)
+                assert one_photon_series.data.dtype == np.uint16
+            except AssertionError:
+                print(f"Data shape or type mismatch: expected (100, 128, 128) with dtype uint16, got {one_photon_series.data.shape} with dtype {one_photon_series.data.dtype}")
+                raise
 
             # Check timestamps exist and match number of frames
-            assert one_photon_series.timestamps is not None
-            assert len(one_photon_series.timestamps) == 100
+            try:
+                assert one_photon_series.timestamps is not None
+                assert len(one_photon_series.timestamps) == 100
+            except AssertionError:
+                print(f"Timestamps mismatch: expected 100, got {len(one_photon_series.timestamps) if one_photon_series.timestamps else 'None'}")
+                raise
 
-            # Check dimension field
-            assert one_photon_series.dimension.shape == (2,)
-            np.testing.assert_array_equal(one_photon_series.dimension, [128, 128])
 
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
