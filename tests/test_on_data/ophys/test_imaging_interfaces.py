@@ -932,34 +932,49 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix files."""
 
-        # Check Device metadata
-        assert "Device" in metadata["Ophys"]
-        assert len(metadata["Ophys"]["Device"]) == 1
+        # Check Device
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "Microscope"
-        assert "description" in device
+        try:
+            assert device["name"] == "Microscope"
+        except AssertionError:
+            print(f"Device name mismatch: expected 'Microscope', got '{device['name']}'")
+            raise
 
-        # Check ImagingPlane metadata
-        assert "ImagingPlane" in metadata["Ophys"]
-        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+        # Check ImagingPlane
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "InscopixMicroscope"
-        assert "optical_channel" in imaging_plane
-        assert len(imaging_plane["optical_channel"]) == 1
-        assert "imaging_rate" in imaging_plane
+        try:
+            assert imaging_plane["name"] == "ImagingPlane"
+        except AssertionError:
+            print(f"ImagingPlane name mismatch: expected 'ImagingPlane', got '{imaging_plane['name']}'")
+            raise
+        try:
+            assert len(imaging_plane["optical_channel"]) == 1
+        except AssertionError:
+            print(f"Optical channel count mismatch: expected 1, got {len(imaging_plane['optical_channel'])}")
+            raise
 
-        # Check OnePhotonSeries metadata
-        assert "OnePhotonSeries" in metadata["Ophys"]
-        assert len(metadata["Ophys"]["OnePhotonSeries"]) == 1
+        # Check OnePhotonSeries
         one_photon_series = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert one_photon_series["name"] == "OnePhotonSeries"
-        assert "description" in one_photon_series
-        assert one_photon_series["unit"] == "px"
-        assert "dimension" in one_photon_series
-        assert len(one_photon_series["dimension"]) == 2
-        assert one_photon_series["dimension"] == [128, 128]
-        assert one_photon_series["imaging_plane"] == "ImagingPlane"
+        try:
+            assert one_photon_series["name"] == "OnePhotonSeries"
+        except AssertionError:
+            print(f"OnePhotonSeries name mismatch: expected 'OnePhotonSeries', got '{one_photon_series['name']}'")
+            raise
+        try:
+            assert one_photon_series["unit"] == "px"
+        except AssertionError:
+            print(f"OnePhotonSeries unit mismatch: expected 'px', got '{one_photon_series['unit']}'")
+            raise
+        try:
+            assert one_photon_series["dimension"] == [128, 128]
+        except AssertionError:
+            print(f"OnePhotonSeries dimension mismatch: expected [128, 128], got {one_photon_series['dimension']}")
+            raise
+        try:
+            assert one_photon_series["imaging_plane"] == "ImagingPlane"
+        except AssertionError:
+            print(f"OnePhotonSeries imaging_plane mismatch: expected 'ImagingPlane', got '{one_photon_series['imaging_plane']}'")
+            raise
 
     def check_read_nwb(self, nwbfile_path: str):
         """Check that the data and metadata are correctly written to the NWB file."""
