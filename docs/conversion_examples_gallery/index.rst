@@ -74,6 +74,7 @@ Imaging
     ScanImage <imaging/scanimage>
     Thor <imaging/thor>
     Tiff <imaging/tiff>
+    Inscopix <imaging/inscopiximaging>
 
 Segmentation
 ~~~~~~~~~~~~
@@ -85,6 +86,7 @@ Segmentation
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
     Suite2P <segmentation/suite2p>
+    Inscopix <segmentation/inscopixsegmentation>
 
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
