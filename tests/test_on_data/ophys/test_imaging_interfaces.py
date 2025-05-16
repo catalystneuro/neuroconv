@@ -911,6 +911,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
+
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd."""
@@ -926,17 +927,17 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         """Check that metadata is correctly extracted from Inscopix files."""
         # Check NWBFile metadata
         assert "NWBFile" in metadata
-        
+
         # Check Ophys metadata
         assert "Ophys" in metadata
-        
+
         # Check Device metadata
         assert "Device" in metadata["Ophys"]
         assert len(metadata["Ophys"]["Device"]) == 1
         device = metadata["Ophys"]["Device"][0]
         assert device["name"] == "InscopixMicroscope"
         assert "description" in device
-        
+
         # Check ImagingPlane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
@@ -946,7 +947,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert "optical_channel" in imaging_plane
         assert len(imaging_plane["optical_channel"]) == 1
         assert "imaging_rate" in imaging_plane
-        
+
         # Check OnePhotonSeries metadata
         assert "OnePhotonSeries" in metadata["Ophys"]
         assert len(metadata["Ophys"]["OnePhotonSeries"]) == 1
@@ -963,40 +964,41 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         """Check that the data and metadata are correctly written to the NWB file."""
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
-            
+
             # Check device exists
             assert "InscopixMicroscope" in nwbfile.devices
             device = nwbfile.devices["InscopixMicroscope"]
-            
+
             # Check imaging plane exists and is properly linked to device
             assert "ImagingPlane" in nwbfile.imaging_planes
             imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
             assert imaging_plane.device.name == "InscopixMicroscope"
-            
+
             # Check optical channel
             optical_channels = imaging_plane.optical_channel
             assert len(optical_channels) == 1
-            
+
             # Check OnePhotonSeries exists and has correct links and properties
             assert self.optical_series_name in nwbfile.acquisition
             one_photon_series = nwbfile.acquisition[self.optical_series_name]
             assert one_photon_series.imaging_plane.name == "ImagingPlane"
             assert one_photon_series.unit == "px"
-            
+
             # Check data dimensions
             assert one_photon_series.data.shape == (100, 128, 128)  # 100 frames of 128x128
             assert one_photon_series.data.dtype == np.uint16  # Check data type
-            
+
             # Check timestamps exist and match number of frames
             assert one_photon_series.timestamps is not None
             assert len(one_photon_series.timestamps) == 100
-            
+
             # Check dimension field
             assert one_photon_series.dimension.shape == (2,)
             np.testing.assert_array_equal(one_photon_series.dimension, [128, 128])
-            
+
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
 
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
@@ -1007,6 +1009,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
     )
+
 
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
