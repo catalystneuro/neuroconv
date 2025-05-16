@@ -51,11 +51,11 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Inscopix imaging"
         return metadata
-    
+
     def add_to_nwbfile(self, nwbfile, metadata=None, **kwargs):
         """
         Add the Inscopix data to the NWB file.
-        
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -67,6 +67,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         # Ensure photon_series_type is correctly passed to parent method
         kwargs["photon_series_type"] = self.photon_series_type
-        
+
         # Call parent add_to_nwbfile method with the correct photon_series_type
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **kwargs)
