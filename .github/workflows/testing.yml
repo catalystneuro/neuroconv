@@ -112,7 +112,7 @@ jobs:
           # Verify installation
           python -c "import isx; print(f'Inscopix isx version: {isx.__version__}')"
 
-            - name: Debug ISX module detection
+      - name: Debug ISX module detection
         run: |
           # First, ensure we can import isx
           python -c "import isx; print(f'ISX imported successfully, version: {isx.__version__}')"
