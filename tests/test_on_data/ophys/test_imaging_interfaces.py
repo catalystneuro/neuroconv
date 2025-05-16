@@ -1021,7 +1021,9 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
                 assert one_photon_series.data.shape == (100, 128, 128)
                 assert one_photon_series.data.dtype == np.uint16
             except AssertionError:
-                print(f"Data shape or type mismatch: expected (100, 128, 128) with dtype uint16, got {one_photon_series.data.shape} with dtype {one_photon_series.data.dtype}")
+                print(
+                    f"Data shape or type mismatch: expected (100, 128, 128) with dtype uint16, got {one_photon_series.data.shape} with dtype {one_photon_series.data.dtype}"
+                )
                 raise
 
             # Check timestamps exist and match number of frames
@@ -1029,9 +1031,10 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
                 assert one_photon_series.timestamps is not None
                 assert len(one_photon_series.timestamps) == 100
             except AssertionError:
-                print(f"Timestamps mismatch: expected 100, got {len(one_photon_series.timestamps) if one_photon_series.timestamps else 'None'}")
+                print(
+                    f"Timestamps mismatch: expected 100, got {len(one_photon_series.timestamps) if one_photon_series.timestamps else 'None'}"
+                )
                 raise
-
 
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
