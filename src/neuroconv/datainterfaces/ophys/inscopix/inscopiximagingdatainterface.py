@@ -35,3 +35,20 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
+        
+        self.optical_series_name = photon_series_type
+    
+
+    def get_metadata(self) -> dict:
+        """
+        Get metadata for the Scanbox imaging data.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata including device information and imaging details
+            specific to the Scanbox system.
+        """
+        metadata = super().get_metadata()
+        metadata["Ophys"]["Device"][0]["description"] = "Inscopix imaging"
+        return metadata
