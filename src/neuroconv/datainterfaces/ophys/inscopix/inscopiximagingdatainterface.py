@@ -35,9 +35,8 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
-        
+
         self.optical_series_name = photon_series_type
-    
 
     def get_metadata(self) -> dict:
         """

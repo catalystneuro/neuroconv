@@ -1,5 +1,5 @@
+import importlib
 import platform
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -10,7 +10,6 @@ from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
 from parameterized import parameterized_class
 from pynwb import NWBHDF5IO
-import importlib
 
 from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
@@ -53,6 +52,7 @@ skip_if_isx_not_installed = pytest.mark.skipif(
     not importlib.util.find_spec("isx"),
     reason="Tests are skipped because the 'isx' module is not installed.",
 )
+
 
 class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
