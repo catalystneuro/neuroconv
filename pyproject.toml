@@ -47,12 +47,13 @@ dependencies = [
     "psutil>=5.8.0",
     "tqdm>=4.60.0",
     "pandas",
-    "parse>=1.20.0",
+    "parse>=1.20.0",  # For the path expansion
     "click",
     "docstring-parser",
     "packaging",  # Issue 903
-    "referencing",
+    "referencing", # for the json schema
     "numcodecs<0.16.0", # For supporting zarr < 3
+    "ndx-events==0.2.1",  # This has been accepted in a NWBEP and will be included in an upcoming release of pynwb
 ]
 
 
@@ -69,7 +70,6 @@ neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_spec
 test = [
     "pytest",
     "pytest-cov",
-    "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
     "ndx-miniscope",
     "spikeinterface[qualitymetrics]>=0.102.2",
@@ -132,7 +132,6 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.1",
 ]
 behavior = [
     "neuroconv[sleap]",
