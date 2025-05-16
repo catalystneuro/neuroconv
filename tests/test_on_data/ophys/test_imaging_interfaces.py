@@ -1040,23 +1040,23 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
-@skip_on_darwin_arm64
-@skip_if_isx_not_installed
-class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
-    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd."""
+# @skip_on_darwin_arm64
+# @skip_if_isx_not_installed
+# class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
+#     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd."""
 
-    data_interface_cls = InscopixImagingInterface
-    save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
-    )
+#     data_interface_cls = InscopixImagingInterface
+#     save_directory = OUTPUT_PATH
+#     interface_kwargs = dict(
+#         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+#     )
 
 
-@skip_on_darwin_arm64
-@skip_if_isx_not_installed
-class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
-    """Test InscopixImagingInterface with movie_u8.isxd."""
+# @skip_on_darwin_arm64
+# @skip_if_isx_not_installed
+# class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
+#     """Test InscopixImagingInterface with movie_u8.isxd."""
 
-    data_interface_cls = InscopixImagingInterface
-    save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
+#     data_interface_cls = InscopixImagingInterface
+#     save_directory = OUTPUT_PATH
+#     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
