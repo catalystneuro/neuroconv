@@ -258,6 +258,7 @@ class DeepDict(defaultdict):
         return f"DeepDict({repr(self.to_dict())})"
 
     def _repr_pretty_(self, p, cycle):
+        "This is used by IPython to pretty-print the object and used here to achieve printing parity with dicts."
         p.text("DeepDict(\n")
         p.pretty(self.to_dict())
         p.text("\n)")
