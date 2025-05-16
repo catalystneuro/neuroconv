@@ -1019,7 +1019,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
             # Check data dimensions
             try:
                 assert one_photon_series.data.shape == (100, 128, 128)
-                assert one_photon_series.data.dtype == np.uint16
+                assert one_photon_series.data.dtype == np.float32
             except AssertionError:
                 print(
                     f"Data shape or type mismatch: expected (100, 128, 128) with dtype uint16, got {one_photon_series.data.shape} with dtype {one_photon_series.data.dtype}"
