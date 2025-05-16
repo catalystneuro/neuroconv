@@ -113,7 +113,20 @@ jobs:
           python -c "import isx; print(f'Inscopix isx version: {isx.__version__}')"
         
       - name: Run ophys data-dependent tests
-        run: pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
+        run: |
+          # First, check the module directly
+          python -c "import isx; print(f'ISX imported successfully, version: {isx.__version__}')"
+    
+          # Then find how it's being detected in the code
+          grep -r "isx" --include="*.py" neuroconv/tools
+    
+          # Look at the specific mixin file
+          cat neuroconv/tools/testing/data_interface_mixins.py | grep -A 10 -B 10 "isx module is not installed"
+    
+          # Try to run just one test with verbose output
+          python -m pytest tests/test_on_data/ophys/test_imaging_interfaces.py -vv
+          
+          pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
 
       - name: Run full pytest with coverage
         run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
