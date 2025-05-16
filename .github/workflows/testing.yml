@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       python-versions:
-        description: 'List of Python versions to use in matrix, as JSON string'
+        description: 'st of Python versions to use in matrix, as JSON string'
         required: true
         type: string
       os-versions:
@@ -105,6 +105,13 @@ jobs:
 
       - name: Install full requirements
         run: pip install .[full]
+      
+      - name: Install Inscopix isx module
+        run: |
+          pip install isx
+          # Verify installation
+          python -c "import isx; print(f'Inscopix isx version: {isx.__version__}')"
+        
       - name: Run ophys data-dependent tests
         run: pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
 
