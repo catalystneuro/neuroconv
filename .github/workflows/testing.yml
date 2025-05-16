@@ -106,12 +106,6 @@ jobs:
       - name: Install full requirements
         run: pip install .[full]
 
-      - name: Install Inscopix isx module
-        run: |
-          pip install isx
-          # Verify installation
-          python -c "import isx; print(f'Inscopix isx version: {isx.__version__}')"
-
       - name: Run ophys data-dependent tests
         run: pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
 
