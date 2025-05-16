@@ -198,7 +198,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 f"location '{location_in_file}'!"
             )
 
-        # We only do the buffer checks for datasets with iterative writing.
+        # If the buffer shape is None skip the rest of the checks
         if buffer_shape is None:
             return values
 
@@ -206,6 +206,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
             raise ValueError(
                 f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location_in_file}'!"
             )
+
         if len(buffer_shape) != len(full_shape):
             raise ValueError(
                 f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"

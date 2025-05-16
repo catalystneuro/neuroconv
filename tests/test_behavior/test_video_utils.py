@@ -209,8 +209,9 @@ class TestVideoInterface(unittest.TestCase):
     #         it = VideoDataChunkIterator(video_file, buffer_gb=buffer_size)
 
 
-# TO Discuss: This does not raise an error anymore because our implementation as a safety mechanism
-# That causes too small of a buffer to be equal to the size of the chunk so this test does not fail.
+# To Discuss in review: This does not raise an error anymore because our implementation has a safety mechanism
+# that clips the buffer size between the size of the chunk and the max size of the data. In other words.
+# The previous erro was:
 # # Traceback (most recent call last):
 #   File "/home/heberto/development/neuroconv/src/neuroconv/datainterfaces/behavior/video/video_utils.py", line 273, in _get_default_buffer_shape
 #     assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"

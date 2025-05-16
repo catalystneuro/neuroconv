@@ -302,6 +302,8 @@ class InternalVideoInterface(BaseDataInterface):
                 video_file=file_path,
                 stub_test=stub_test,
             )
+            image_series_kwargs.update(data=data_iterator)
+
         else:
             # Load the video
             with VideoCaptureContext(file_path) as video_capture_ob:
@@ -312,7 +314,7 @@ class InternalVideoInterface(BaseDataInterface):
 
                 maxshape = (total_frames, *frame_shape)
                 tqdm_pos, tqdm_mininterval = (0, 10)
-                video = np.zeros(shape=maxshape, dtype=dtype)
+                video_array = np.zeros(shape=maxshape, dtype=dtype)
 
                 if stub_test:
                     stub_frames = 10
@@ -324,11 +326,10 @@ class InternalVideoInterface(BaseDataInterface):
                     mininterval=tqdm_mininterval,
                 ) as pbar:
                     for n, frame in enumerate(video_capture_ob):
-                        video[n, :, :, :] = frame
+                        video_array[n, :, :, :] = frame
                         pbar.update(1)
-                data_iterator = video
 
-        image_series_kwargs.update(data=data_iterator)
+                image_series_kwargs.update(data=video_array)
 
         from ....utils import calculate_regular_series_rate
 

@@ -17,7 +17,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Add the sizes for easy access after all chunk sizes are calculated
+        # Add the size in bytes of chunk and buffer for easy access
         # self.chunk_shape and self.buffer shape are attribute in HDMFGenericDataChunkIterator
         self._chunk_size_mb = math.prod(self.chunk_shape) * self._get_dtype().itemsize / 1e6
         self._buffer_size_gb = math.prod(self.buffer_shape) * self._get_dtype().itemsize / 1e9

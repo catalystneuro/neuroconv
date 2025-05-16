@@ -90,7 +90,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         )
 
     def _get_sample_shape(self) -> tuple:
-        """We are using this translate the sample shape in roiextractors to the nwb convention"""
+        """This translate the sample shape in roiextractors to the nwb convention by transposing the frame shape."""
 
         roi_extractors_frame_shape = self.imaging_extractor.get_frame_shape()
         height, width = roi_extractors_frame_shape[0], roi_extractors_frame_shape[1]
