@@ -105,7 +105,6 @@ jobs:
 
       - name: Install full requirements
         run: pip install .[full]
-
       - name: Run ophys data-dependent tests
         run: pytest tests/test_on_data/ophys -vv -rsx -n auto --dist loadscope
 
