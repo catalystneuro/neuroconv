@@ -200,20 +200,3 @@ class TestVideoInterface(unittest.TestCase):
             assert all(
                 [nwbfile.acquisition["imageseries"].data.chunks[i] == j for i, j in enumerate(custom_frame_shape)]
             )
-
-    # def test_small_buffer_size(self):
-    #     frame_size_mb = math.prod(self.frame_shape) / 1e6
-    #     buffer_size = frame_size_mb / 1e3 / 2
-    #     video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
-    #     with self.assertRaises(AssertionError):
-    #         it = VideoDataChunkIterator(video_file, buffer_gb=buffer_size)
-
-
-# To Discuss in review: This does not raise an error anymore because our implementation has a safety mechanism
-# that clips the buffer size between the size of the chunk and the max size of the data. In other words.
-# The previous error was:
-# # Traceback (most recent call last):
-#   File "/home/heberto/development/neuroconv/src/neuroconv/datainterfaces/behavior/video/video_utils.py", line 273, in _get_default_buffer_shape
-#     assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"
-#            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-# AssertionError: provide buffer size >= 0.0014399999999999999 GB

@@ -121,7 +121,11 @@ def get_image_series_buffer_shape(
 
 
 def get_electrical_series_chunk_shape(
-    number_of_channels: int, number_of_frames: int, dtype: np.dtype, chunk_mb: float = 10.0
+    *,
+    number_of_channels: int,
+    number_of_frames: int,
+    dtype: np.dtype,
+    chunk_mb: float = 10.0,
 ) -> tuple[int, int]:
     """
     Estimate good chunk shape for an ElectricalSeries dataset.
