@@ -13,7 +13,14 @@ from hdmf.utils import get_data_shape
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
-    # TODO Should this be added to the API?
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # Add the size in bytes of chunk and buffer for easy access
+        # self.chunk_shape and self.buffer shape are attribute in HDMFGenericDataChunkIterator
+        self._chunk_size_mb = math.prod(self.chunk_shape) * self._get_dtype().itemsize / 1e6
+        self._buffer_size_gb = math.prod(self.buffer_shape) * self._get_dtype().itemsize / 1e9
 
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> tuple[int]:
         return self.estimate_default_buffer_shape(
@@ -55,7 +62,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
     def estimate_default_buffer_shape(
         buffer_gb: float, chunk_shape: tuple[int, ...], maxshape: tuple[int, ...], dtype: np.dtype
     ) -> tuple[int, ...]:
-        # TODO: Ad ddocstring to this once someone understands it better
+        # TODO: Add docstring to this once someone understands it better
         # Elevate any overflow warnings to trigger error.
         # This is usually an indicator of something going terribly wrong with the estimation calculations and should be
         # avoided at all costs.

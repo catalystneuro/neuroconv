@@ -14,6 +14,8 @@ from neuroconv.datainterfaces.behavior.video.internalvideointerface import (
 )
 from neuroconv.utils import dict_deep_update
 
+from .conftest import test_video_parameters
+
 
 def test_initialization_without_metadata(video_files):
 
@@ -114,9 +116,10 @@ def test_save_video_to_custom_module(nwb_converter, nwbfile_path, metadata):
 
 def test_video_chunking(nwb_converter, nwbfile_path, metadata):
     """Test that video chunking works correctly."""
+
     conversion_options = dict(
-        Video1=dict(stub_test=True, buffer_data=True),
-        Video2=dict(stub_test=True, buffer_data=False),
+        Video1=dict(buffer_data=True),
+        Video2=dict(buffer_data=False),
     )
     nwb_converter.run_conversion(
         nwbfile_path=nwbfile_path,
@@ -125,13 +128,27 @@ def test_video_chunking(nwb_converter, nwbfile_path, metadata):
         metadata=metadata,
     )
 
+    num_frames = test_video_parameters["number_of_frames"]
+    num_rows = test_video_parameters["number_of_rows"]
+    num_columns = test_video_parameters["number_of_columns"]
+    num_channels = test_video_parameters["number_of_channels"]
+    expected_video_shape = (num_frames, num_rows, num_columns, num_channels)
+    # We chunk each channel separately  and this dataset is small enough that each
+    # chunk covers all the frames
+    expected_chunking = (num_frames, num_rows, num_columns, 1)
+
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         mod = nwbfile.acquisition
+
         # Verify that chunking is applied
-        assert mod["Video test1"].data.chunks is not None
-        # Verify that non-chunking option works
-        assert mod["Video test2"].data.chunks is not None  # Still chunked due to HDF5 storage
+        video_written_with_iterator = mod["Video test1"]
+        assert video_written_with_iterator.data.shape == expected_video_shape  # Chunked data
+        assert video_written_with_iterator.data.chunks == expected_chunking  # Chunked data
+
+        video_written_without_iterator = mod["Video test2"]
+        assert video_written_without_iterator.data.shape == expected_video_shape
+        assert video_written_without_iterator.data.chunks == expected_chunking
 
 
 def test_video_stub(nwb_converter, nwbfile_path, metadata):
