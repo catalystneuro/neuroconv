@@ -1050,6 +1050,8 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
@@ -1103,23 +1105,39 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
         # Check overall ophys structure matches expected metadata
         for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
-            assert len(metadata["Ophys"][category]) == len(self.ophys_metadata[category]), f"Expected {len(self.ophys_metadata[category])} {category}, got {len(metadata['Ophys'][category])}"
+            assert len(metadata["Ophys"][category]) == len(
+                self.ophys_metadata[category]
+            ), f"Expected {len(self.ophys_metadata[category])} {category}, got {len(metadata['Ophys'][category])}"
 
         # Check Device
         device = metadata["Ophys"]["Device"][0]
-        assert (device["name"] == self.device_metadata["name"]), f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
+        assert (
+            device["name"] == self.device_metadata["name"]
+        ), f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
 
         # Check ImagingPlane
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert (imaging_plane["name"] == self.imaging_plane_metadata["name"]), f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
-        assert len(imaging_plane["optical_channel"]) == len(self.imaging_plane_metadata["optical_channel"]), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane['optical_channel'])}"
+        assert (
+            imaging_plane["name"] == self.imaging_plane_metadata["name"]
+        ), f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
+        assert len(imaging_plane["optical_channel"]) == len(
+            self.imaging_plane_metadata["optical_channel"]
+        ), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane['optical_channel'])}"
 
         # Check OnePhotonSeries
         one_photon_series = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert (one_photon_series["name"] == self.photon_series_metadata["name"]), f"OnePhotonSeries name mismatch: expected '{self.photon_series_metadata['name']}', got '{one_photon_series['name']}'"
-        assert (one_photon_series["unit"] == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series['unit']}'"
-        assert (one_photon_series["dimension"] == self.photon_series_metadata["dimension"]), f"OnePhotonSeries dimension mismatch: expected {self.photon_series_metadata['dimension']}, got {one_photon_series['dimension']}"
-        assert (one_photon_series["imaging_plane"] == self.photon_series_metadata["imaging_plane"]), f"OnePhotonSeries imaging_plane mismatch: expected '{self.photon_series_metadata['imaging_plane']}', got '{one_photon_series['imaging_plane']}'"
+        assert (
+            one_photon_series["name"] == self.photon_series_metadata["name"]
+        ), f"OnePhotonSeries name mismatch: expected '{self.photon_series_metadata['name']}', got '{one_photon_series['name']}'"
+        assert (
+            one_photon_series["unit"] == self.photon_series_metadata["unit"]
+        ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series['unit']}'"
+        assert (
+            one_photon_series["dimension"] == self.photon_series_metadata["dimension"]
+        ), f"OnePhotonSeries dimension mismatch: expected {self.photon_series_metadata['dimension']}, got {one_photon_series['dimension']}"
+        assert (
+            one_photon_series["imaging_plane"] == self.photon_series_metadata["imaging_plane"]
+        ), f"OnePhotonSeries imaging_plane mismatch: expected '{self.photon_series_metadata['imaging_plane']}', got '{one_photon_series['imaging_plane']}'"
 
     def check_read_nwb(self, nwbfile_path: str):
         """Check that the data and metadata are correctly written to the NWB file."""
@@ -1130,18 +1148,30 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
             assert self.device_name in nwbfile.devices, f"Device '{self.device_name}' not found in NWB file devices."
 
             # Check imaging plane exists and is properly linked to device
-            assert (self.imaging_plane_name in nwbfile.imaging_planes), f"ImagingPlane '{self.imaging_plane_name}' not found in NWB file."
+            assert (
+                self.imaging_plane_name in nwbfile.imaging_planes
+            ), f"ImagingPlane '{self.imaging_plane_name}' not found in NWB file."
             imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
-            assert (imaging_plane.device.name == self.device_name), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane.device.name}'"
+            assert (
+                imaging_plane.device.name == self.device_name
+            ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane.device.name}'"
 
             # Check optical channel
-            assert len(imaging_plane.optical_channel) == len(self.imaging_plane_metadata["optical_channel"]), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane.optical_channel)}"
+            assert len(imaging_plane.optical_channel) == len(
+                self.imaging_plane_metadata["optical_channel"]
+            ), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane.optical_channel)}"
 
             # Check OnePhotonSeries exists and has correct links and properties
-            assert (self.optical_series_name in nwbfile.acquisition), f"OnePhotonSeries '{self.optical_series_name}' not found in NWB acquisition."
+            assert (
+                self.optical_series_name in nwbfile.acquisition
+            ), f"OnePhotonSeries '{self.optical_series_name}' not found in NWB acquisition."
             one_photon_series = nwbfile.acquisition[self.optical_series_name]
-            assert (one_photon_series.imaging_plane.name == self.imaging_plane_name), f"OnePhotonSeries imaging_plane mismatch: expected '{self.imaging_plane_name}', got '{one_photon_series.imaging_plane.name}'"
-            assert (one_photon_series.unit == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
+            assert (
+                one_photon_series.imaging_plane.name == self.imaging_plane_name
+            ), f"OnePhotonSeries imaging_plane mismatch: expected '{self.imaging_plane_name}', got '{one_photon_series.imaging_plane.name}'"
+            assert (
+                one_photon_series.unit == self.photon_series_metadata["unit"]
+            ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
