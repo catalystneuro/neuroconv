@@ -1,11 +1,9 @@
-import platform
-import sys
 import importlib
+import platform
+
 import numpy as np
-from pynwb import NWBHDF5IO 
-
-
 import pytest
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -15,7 +13,7 @@ from neuroconv.datainterfaces import (
     Suite2pSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
-    SegmentationExtractorInterfaceTestMixin,  
+    SegmentationExtractorInterfaceTestMixin,
 )
 
 try:
@@ -32,6 +30,8 @@ skip_if_isx_not_installed = pytest.mark.skipif(
     not importlib.util.find_spec("isx"),
     reason="Tests are skipped because the 'isx' module is not installed.",
 )
+
+
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
     interface_kwargs = dict(
@@ -221,26 +221,27 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
+
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset_series_part1.isxd"""
-    
+
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
-    
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
         """Set up common metadata for Inscopix segmentation tests."""
         cls = request.cls
-        
+
         # Device metadata
         cls.device_name = "Microscope"
         cls.device_metadata = dict(name=cls.device_name, description="Inscopix Microscope")
-        
+
         # Imaging plane metadata
         cls.imaging_plane_name = "ImagingPlane"
         cls.imaging_plane_metadata = dict(
@@ -251,7 +252,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                 dict(name="OpticalChannel", description="Inscopix Optical Channel", emission_lambda=np.nan)
             ],
         )
-        
+
         # ImageSegmentation metadata
         cls.image_segmentation_name = "ImageSegmentation"
         cls.plane_segmentation_name = "PlaneSegmentation"
@@ -263,9 +264,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                     description="Segmented ROIs",
                     imaging_plane=cls.imaging_plane_name,
                 )
-            ]
+            ],
         )
-        
+
         # Fluorescence metadata
         cls.fluorescence_name = "Fluorescence"
         cls.roi_response_series_name = "RoiResponseSeries"
@@ -275,9 +276,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                 name=cls.roi_response_series_name,
                 description="Fluorescence trace of segmented ROIs",
                 unit="n.a.",
-            )
+            ),
         )
-        
+
         # Combined ophys metadata for validation
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
@@ -285,90 +286,125 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
             ImageSegmentation=cls.image_segmentation_metadata,
             Fluorescence=cls.fluorescence_metadata,
         )
-    
+
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix segmentation files."""
-        
+
         # Check overall ophys structure
         assert "Ophys" in metadata, "Ophys not found in extracted metadata"
-        
+
         # Check required components exist
         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
-        
-        # Validate Device 
+
+        # Validate Device
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == self.device_metadata["name"], f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
-        
+        assert (
+            device["name"] == self.device_metadata["name"]
+        ), f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
+
         # Validate ImagingPlane
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == self.imaging_plane_metadata["name"], f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
-        assert imaging_plane["device"] == self.device_name, f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
-        
-        # Validate ImageSegmentation 
+        assert (
+            imaging_plane["name"] == self.imaging_plane_metadata["name"]
+        ), f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
+        assert (
+            imaging_plane["device"] == self.device_name
+        ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
+
+        # Validate ImageSegmentation
         image_segmentation = metadata["Ophys"]["ImageSegmentation"]
-        assert image_segmentation["name"] == self.image_segmentation_name, f"ImageSegmentation name mismatch: expected '{self.image_segmentation_name}', got '{image_segmentation['name']}'"
-        
+        assert (
+            image_segmentation["name"] == self.image_segmentation_name
+        ), f"ImageSegmentation name mismatch: expected '{self.image_segmentation_name}', got '{image_segmentation['name']}'"
+
         # Check if Fluorescence exists in metadata
         if "Fluorescence" in metadata["Ophys"]:
             fluorescence = metadata["Ophys"]["Fluorescence"]
-            assert fluorescence["name"] == self.fluorescence_name, f"Fluorescence name mismatch: expected '{self.fluorescence_name}', got '{fluorescence['name']}'"
-    
+            assert (
+                fluorescence["name"] == self.fluorescence_name
+            ), f"Fluorescence name mismatch: expected '{self.fluorescence_name}', got '{fluorescence['name']}'"
+
     def check_read_nwb(self, nwbfile_path: str):
         """Check that the data and metadata are correctly written to the NWB file."""
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
-            
+
             # Check device exists
             assert self.device_name in nwbfile.devices, f"Device '{self.device_name}' not found in NWB file devices."
-            
+
             # Check imaging plane exists and is properly linked to device
-            assert self.imaging_plane_name in nwbfile.imaging_planes, f"ImagingPlane '{self.imaging_plane_name}' not found in NWB file."
+            assert (
+                self.imaging_plane_name in nwbfile.imaging_planes
+            ), f"ImagingPlane '{self.imaging_plane_name}' not found in NWB file."
             imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
-            assert imaging_plane.device.name == self.device_name, f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane.device.name}'"
-            
+            assert (
+                imaging_plane.device.name == self.device_name
+            ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane.device.name}'"
+
             # Check optical channel
-            assert len(imaging_plane.optical_channel) == len(self.imaging_plane_metadata["optical_channel"]), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane.optical_channel)}"
-            
+            assert len(imaging_plane.optical_channel) == len(
+                self.imaging_plane_metadata["optical_channel"]
+            ), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane.optical_channel)}"
+
             # Check image segmentation module exists
-            assert self.image_segmentation_name in nwbfile.processing, f"Processing module '{self.image_segmentation_name}' not found in NWB file."
+            assert (
+                self.image_segmentation_name in nwbfile.processing
+            ), f"Processing module '{self.image_segmentation_name}' not found in NWB file."
             image_segmentation = nwbfile.processing[self.image_segmentation_name]
-            
+
             # Check plane segmentation exists
-            assert self.plane_segmentation_name in image_segmentation.plane_segmentations, f"PlaneSegmentation '{self.plane_segmentation_name}' not found in ImageSegmentation."
+            assert (
+                self.plane_segmentation_name in image_segmentation.plane_segmentations
+            ), f"PlaneSegmentation '{self.plane_segmentation_name}' not found in ImageSegmentation."
             plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
-            
+
             # Check plane segmentation is linked to the correct imaging plane
-            assert plane_segmentation.imaging_plane.name == self.imaging_plane_name, f"PlaneSegmentation imaging_plane mismatch: expected '{self.imaging_plane_name}', got '{plane_segmentation.imaging_plane.name}'"
-            
+            assert (
+                plane_segmentation.imaging_plane.name == self.imaging_plane_name
+            ), f"PlaneSegmentation imaging_plane mismatch: expected '{self.imaging_plane_name}', got '{plane_segmentation.imaging_plane.name}'"
+
             # Check that ROIs exist with image masks (based on mask_type='image' default)
             assert plane_segmentation.id.data.shape[0] > 0, "No ROIs found in PlaneSegmentation"
             assert "image_mask" in plane_segmentation, "No image masks found in PlaneSegmentation"
-            
+
             # Check fluorescence data
-            assert self.fluorescence_name in nwbfile.processing, f"Processing module '{self.fluorescence_name}' not found in NWB file."
+            assert (
+                self.fluorescence_name in nwbfile.processing
+            ), f"Processing module '{self.fluorescence_name}' not found in NWB file."
             fluorescence = nwbfile.processing[self.fluorescence_name]
-            
+
             # Check roi response series exists
-            assert self.roi_response_series_name in fluorescence.roi_response_series, f"RoiResponseSeries '{self.roi_response_series_name}' not found in Fluorescence."
+            assert (
+                self.roi_response_series_name in fluorescence.roi_response_series
+            ), f"RoiResponseSeries '{self.roi_response_series_name}' not found in Fluorescence."
             roi_response_series = fluorescence.roi_response_series[self.roi_response_series_name]
-            
+
             # Check data dimensions and connections
             num_rois = plane_segmentation.id.data.shape[0]
-            assert roi_response_series.data.shape[1] == num_rois, f"ROI count mismatch between PlaneSegmentation ({num_rois}) and RoiResponseSeries ({roi_response_series.data.shape[1]})"
-            
-            # Validate trace data 
+            assert (
+                roi_response_series.data.shape[1] == num_rois
+            ), f"ROI count mismatch between PlaneSegmentation ({num_rois}) and RoiResponseSeries ({roi_response_series.data.shape[1]})"
+
+            # Validate trace data
             assert roi_response_series.data.shape[0] > 0, "No timepoints found in RoiResponseSeries"
-            assert roi_response_series.data.dtype == np.float32 or roi_response_series.data.dtype == np.float64, f"Data type is not float: {roi_response_series.data.dtype}"
-            
+            assert (
+                roi_response_series.data.dtype == np.float32 or roi_response_series.data.dtype == np.float64
+            ), f"Data type is not float: {roi_response_series.data.dtype}"
+
             # Check ROI table references
-            assert roi_response_series.rois.table is plane_segmentation, "RoiResponseSeries is not linked to the correct PlaneSegmentation"
-            
+            assert (
+                roi_response_series.rois.table is plane_segmentation
+            ), "RoiResponseSeries is not linked to the correct PlaneSegmentation"
+
             # Check ID handling - confirm the _create_integer_id_wrapper functionality
-            assert all(isinstance(roi_id, (int, np.integer)) for roi_id in plane_segmentation.id.data), "ROI IDs are not integers"
-            
+            assert all(
+                isinstance(roi_id, (int, np.integer)) for roi_id in plane_segmentation.id.data
+            ), "ROI IDs are not integers"
+
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
 
 @skip_on_darwin_arm64
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -387,4 +423,4 @@ class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfa
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
-    ) 
+    )
