@@ -1288,8 +1288,10 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
                 one_photon_series.unit == self.photon_series_metadata["unit"]
             ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
-            assert (one_photon_series.data.dtype == np.uint8), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
-            
+            assert (
+                one_photon_series.data.dtype == np.uint8
+            ), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
+
             # Additional check: verify data range is consistent with uint8 source (0-255)
             # This checks that values were preserved during conversion
             sample_data = one_photon_series.data[0 : min(10, one_photon_series.data.shape[0]), :, :]
