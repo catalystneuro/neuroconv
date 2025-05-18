@@ -1125,9 +1125,15 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
         # Check OnePhotonSeries
         one_photon_series = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert (one_photon_series["name"] == self.photon_series_metadata["name"]), f"OnePhotonSeries name mismatch: expected '{self.photon_series_metadata['name']}', got '{one_photon_series['name']}'"
-        assert (one_photon_series["unit"] == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series['unit']}'"
-        assert (one_photon_series["imaging_plane"] == self.photon_series_metadata["imaging_plane"]), f"OnePhotonSeries imaging_plane mismatch: expected '{self.photon_series_metadata['imaging_plane']}', got '{one_photon_series['imaging_plane']}'"
+        assert (
+            one_photon_series["name"] == self.photon_series_metadata["name"]
+        ), f"OnePhotonSeries name mismatch: expected '{self.photon_series_metadata['name']}', got '{one_photon_series['name']}'"
+        assert (
+            one_photon_series["unit"] == self.photon_series_metadata["unit"]
+        ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series['unit']}'"
+        assert (
+            one_photon_series["imaging_plane"] == self.photon_series_metadata["imaging_plane"]
+        ), f"OnePhotonSeries imaging_plane mismatch: expected '{self.photon_series_metadata['imaging_plane']}', got '{one_photon_series['imaging_plane']}'"
 
     def check_read_nwb(self, nwbfile_path: str):
         """Check that the data and metadata are correctly written to the NWB file."""
