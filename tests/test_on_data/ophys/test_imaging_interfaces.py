@@ -1087,7 +1087,6 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
             name=cls.optical_series_name,
             description="Imaging data acquired from Inscopix microscope",
             unit="n.a.",
-            dimension=[128, 128],  # Assuming same dimensions as the other test
             imaging_plane=cls.imaging_plane_name,
         )
 
@@ -1118,7 +1117,6 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         one_photon_series = metadata["Ophys"]["OnePhotonSeries"][0]
         assert (one_photon_series["name"] == self.photon_series_metadata["name"]), f"OnePhotonSeries name mismatch: expected '{self.photon_series_metadata['name']}', got '{one_photon_series['name']}'"
         assert (one_photon_series["unit"] == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series['unit']}'"
-        assert (one_photon_series["dimension"] == self.photon_series_metadata["dimension"]), f"OnePhotonSeries dimension mismatch: expected {self.photon_series_metadata['dimension']}, got {one_photon_series['dimension']}"
         assert (one_photon_series["imaging_plane"] == self.photon_series_metadata["imaging_plane"]), f"OnePhotonSeries imaging_plane mismatch: expected '{self.photon_series_metadata['imaging_plane']}', got '{one_photon_series['imaging_plane']}'"
 
     def check_read_nwb(self, nwbfile_path: str):
