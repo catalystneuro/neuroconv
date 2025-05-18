@@ -1264,9 +1264,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
             assert (one_photon_series.imaging_plane.name == self.imaging_plane_name), f"OnePhotonSeries imaging_plane mismatch: expected '{self.imaging_plane_name}', got '{one_photon_series.imaging_plane.name}'"
             assert (one_photon_series.unit == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
-            # The key difference for u8 data - verify it's correctly converted to float32 in NWB
-            # (This is important because the original data is uint8 but NWB standard typically uses float32)
-            assert (one_photon_series.data.dtype == np.float32), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
+            assert (one_photon_series.data.dtype == np.uint8), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
             
             # Additional check: verify data range is consistent with uint8 source (0-255)
             # This checks that values were preserved during conversion
