@@ -1172,12 +1172,106 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
+ 
+@skip_on_darwin_arm64
+@skip_if_isx_not_installed
+class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_u8.isxd."""
+    
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd")
+    )
+    optical_series_name = "OnePhotonSeries"
 
-# @skip_on_darwin_arm64
-# @skip_if_isx_not_installed
-# class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
-#     """Test InscopixImagingInterface with movie_u8.isxd."""
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+        """Set up common metadata for all Inscopix tests."""
+        cls = request.cls
 
-#     data_interface_cls = InscopixImagingInterface
-#     save_directory = OUTPUT_PATH
-#     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
+        # Device metadata
+        cls.device_name = "Microscope"
+        cls.device_metadata = dict(name=cls.device_name, description="Inscopix Microscope")
+
+        # Imaging plane metadata
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.imaging_plane_metadata = dict(
+            name=cls.imaging_plane_name,
+            description="Inscopix Imaging Plane",
+            device=cls.device_name,
+            optical_channel=[
+                dict(name="OpticalChannel", description="Inscopix Optical Channel", emission_lambda=np.nan)
+            ],
+        )
+
+        # One photon series metadata
+        cls.photon_series_metadata = dict(
+            name=cls.optical_series_name,
+            description="Imaging data acquired from Inscopix microscope",
+            unit="n.a.",
+            imaging_plane=cls.imaging_plane_name,
+        )
+
+        # Combined ophys metadata for validation
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            OnePhotonSeries=[cls.photon_series_metadata],
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check that metadata is correctly extracted from Inscopix files."""
+
+        # Check overall ophys structure matches expected metadata
+        for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
+            assert len(metadata["Ophys"][category]) == len(self.ophys_metadata[category]), f"Expected {len(self.ophys_metadata[category])} {category}, got {len(metadata['Ophys'][category])}"
+
+        # Check Device
+        device = metadata["Ophys"]["Device"][0]
+        assert (device["name"] == self.device_metadata["name"]), f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
+
+        # Check ImagingPlane
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert (imaging_plane["name"] == self.imaging_plane_metadata["name"]), f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
+        assert len(imaging_plane["optical_channel"]) == len(self.imaging_plane_metadata["optical_channel"]), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane['optical_channel'])}"
+
+        # Check OnePhotonSeries
+        one_photon_series = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert (one_photon_series["name"] == self.photon_series_metadata["name"]), f"OnePhotonSeries name mismatch: expected '{self.photon_series_metadata['name']}', got '{one_photon_series['name']}'"
+        assert (one_photon_series["unit"] == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series['unit']}'"
+        assert (one_photon_series["imaging_plane"] == self.photon_series_metadata["imaging_plane"]), f"OnePhotonSeries imaging_plane mismatch: expected '{self.photon_series_metadata['imaging_plane']}', got '{one_photon_series['imaging_plane']}'"
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Check that the data and metadata are correctly written to the NWB file."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            # Check device exists
+            assert self.device_name in nwbfile.devices, f"Device '{self.device_name}' not found in NWB file devices."
+
+            # Check imaging plane exists and is properly linked to device
+            assert (self.imaging_plane_name in nwbfile.imaging_planes), f"ImagingPlane '{self.imaging_plane_name}' not found in NWB file."
+            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
+            assert (imaging_plane.device.name == self.device_name), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane.device.name}'"
+
+            # Check optical channel
+            assert len(imaging_plane.optical_channel) == len(self.imaging_plane_metadata["optical_channel"]), f"Optical channel count mismatch: expected {len(self.imaging_plane_metadata['optical_channel'])}, got {len(imaging_plane.optical_channel)}"
+
+            # Check OnePhotonSeries exists and has correct links and properties
+            assert (self.optical_series_name in nwbfile.acquisition), f"OnePhotonSeries '{self.optical_series_name}' not found in NWB acquisition."
+            one_photon_series = nwbfile.acquisition[self.optical_series_name]
+            assert (one_photon_series.imaging_plane.name == self.imaging_plane_name), f"OnePhotonSeries imaging_plane mismatch: expected '{self.imaging_plane_name}', got '{one_photon_series.imaging_plane.name}'"
+            assert (one_photon_series.unit == self.photon_series_metadata["unit"]), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
+
+            # The key difference for u8 data - verify it's correctly converted to float32 in NWB
+            # (This is important because the original data is uint8 but NWB standard typically uses float32)
+            assert (one_photon_series.data.dtype == np.float32), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
+            
+            # Additional check: verify data range is consistent with uint8 source (0-255)
+            # This checks that values were preserved during conversion
+            sample_data = one_photon_series.data[0:min(10, one_photon_series.data.shape[0]), :, :]
+            assert np.all(sample_data >= 0) and np.all(sample_data <= 255), f"Data values outside expected range for uint8 source (0-255)"
+
+        # Call parent check_read_nwb to verify extractor compatibility
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
