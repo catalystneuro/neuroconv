@@ -3,7 +3,6 @@ import platform
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -232,16 +231,16 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
-    
+
     # Skip the tests that are failing due to the column length mismatch
     @pytest.mark.skip(reason="Known issue with column length mismatch in PlaneSegmentation table")
     def test_no_metadata_mutation(self, setup_interface):
         super().test_no_metadata_mutation(setup_interface)
-    
+
     @pytest.mark.skip(reason="Known issue with column length mismatch in PlaneSegmentation table")
     def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend):
         super().test_run_conversion_with_backend(setup_interface, tmp_path, backend)
-    
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
         """Set up common metadata for Inscopix segmentation tests."""
@@ -304,7 +303,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         # Check required components exist
         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
-        
+
         # Validate Device
         device = metadata["Ophys"]["Device"][0]
         assert (
@@ -313,9 +312,13 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
         # Validate ImagingPlane
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == self.imaging_plane_metadata["name"], f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
-        assert imaging_plane["device"] == self.device_name, f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
-        
+        assert (
+            imaging_plane["name"] == self.imaging_plane_metadata["name"]
+        ), f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
+        assert (
+            imaging_plane["device"] == self.device_name
+        ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
+
         # Validate ImageSegmentation
         image_segmentation = metadata["Ophys"]["ImageSegmentation"]
         assert (
@@ -325,8 +328,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         # Check if Fluorescence exists in metadata
         if "Fluorescence" in metadata["Ophys"]:
             fluorescence = metadata["Ophys"]["Fluorescence"]
-            assert fluorescence["name"] == self.fluorescence_name, f"Fluorescence name mismatch: expected '{self.fluorescence_name}', got '{fluorescence['name']}'"
-
+            assert (
+                fluorescence["name"] == self.fluorescence_name
+            ), f"Fluorescence name mismatch: expected '{self.fluorescence_name}', got '{fluorescence['name']}'"
 
 
 @skip_on_darwin_arm64
