@@ -1,11 +1,9 @@
-import platform
-import sys
 import importlib
+import platform
+
 import numpy as np
-from pynwb import NWBHDF5IO 
-
-
 import pytest
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -15,7 +13,7 @@ from neuroconv.datainterfaces import (
     Suite2pSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
-    SegmentationExtractorInterfaceTestMixin,  
+    SegmentationExtractorInterfaceTestMixin,
 )
 
 try:
@@ -32,6 +30,8 @@ skip_if_isx_not_installed = pytest.mark.skipif(
     not importlib.util.find_spec("isx"),
     reason="Tests are skipped because the 'isx' module is not installed.",
 )
+
+
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
     interface_kwargs = dict(
@@ -221,11 +221,12 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
+
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset_series_part1.isxd"""
-    
+
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -245,11 +246,11 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     def setup_metadata(cls, request):
         """Set up common metadata for Inscopix segmentation tests."""
         cls = request.cls
-        
+
         # Device metadata
         cls.device_name = "Microscope"
         cls.device_metadata = dict(name=cls.device_name, description="Inscopix Microscope")
-        
+
         # Imaging plane metadata
         cls.imaging_plane_name = "ImagingPlane"
         cls.imaging_plane_metadata = dict(
@@ -260,7 +261,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                 dict(name="OpticalChannel", description="Inscopix Optical Channel", emission_lambda=np.nan)
             ],
         )
-        
+
         # ImageSegmentation metadata
         cls.image_segmentation_name = "ImageSegmentation"
         cls.plane_segmentation_name = "PlaneSegmentation"
@@ -272,9 +273,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                     description="Segmented ROIs",
                     imaging_plane=cls.imaging_plane_name,
                 )
-            ]
+            ],
         )
-        
+
         # Fluorescence metadata
         cls.fluorescence_name = "Fluorescence"
         cls.roi_response_series_name = "RoiResponseSeries"
@@ -284,9 +285,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                 name=cls.roi_response_series_name,
                 description="Fluorescence trace of segmented ROIs",
                 unit="n.a.",
-            )
+            ),
         )
-        
+
         # Combined ophys metadata for validation
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
@@ -294,20 +295,22 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
             ImageSegmentation=cls.image_segmentation_metadata,
             Fluorescence=cls.fluorescence_metadata,
         )
-    
+
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix segmentation files."""
         # Check overall ophys structure
         assert "Ophys" in metadata, "Ophys not found in extracted metadata"
-        
+
         # Check required components exist
         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
         
         # Validate Device
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == self.device_metadata["name"], f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
-        
+        assert (
+            device["name"] == self.device_metadata["name"]
+        ), f"Device name mismatch: expected '{self.device_metadata['name']}', got '{device['name']}'"
+
         # Validate ImagingPlane
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == self.imaging_plane_metadata["name"], f"ImagingPlane name mismatch: expected '{self.imaging_plane_metadata['name']}', got '{imaging_plane['name']}'"
@@ -315,12 +318,15 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         
         # Validate ImageSegmentation
         image_segmentation = metadata["Ophys"]["ImageSegmentation"]
-        assert image_segmentation["name"] == self.image_segmentation_name, f"ImageSegmentation name mismatch: expected '{self.image_segmentation_name}', got '{image_segmentation['name']}'"
-        
+        assert (
+            image_segmentation["name"] == self.image_segmentation_name
+        ), f"ImageSegmentation name mismatch: expected '{self.image_segmentation_name}', got '{image_segmentation['name']}'"
+
         # Check if Fluorescence exists in metadata
         if "Fluorescence" in metadata["Ophys"]:
             fluorescence = metadata["Ophys"]["Fluorescence"]
             assert fluorescence["name"] == self.fluorescence_name, f"Fluorescence name mismatch: expected '{self.fluorescence_name}', got '{fluorescence['name']}'"
+
 
 
 @skip_on_darwin_arm64
@@ -340,4 +346,4 @@ class TestInscopixSegmentationInterfaceCellSetEmpty(SegmentationExtractorInterfa
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
-    ) 
+    )
