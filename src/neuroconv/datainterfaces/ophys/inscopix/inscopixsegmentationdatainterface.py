@@ -1,4 +1,3 @@
-import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
@@ -27,30 +26,30 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         self.file_path = str(file_path)
         self.verbose = verbose
-        
+
         # Initialize parent class with the file path
         super().__init__(file_path=self.file_path, verbose=verbose)
-        
+
         # Handle string ROI IDs if present
         self._fix_roi_ids()
-    
+
     def _fix_roi_ids(self):
         """
         Convert string ROI IDs (like 'C0') to integers (like 0) if needed.
         The base segmentation extractor expects integer ROI IDs.
         """
         # Check if ROI IDs are available and if any are strings
-        if hasattr(self.segmentation_extractor, '_roi_ids'):
+        if hasattr(self.segmentation_extractor, "_roi_ids"):
             roi_ids = self.segmentation_extractor._roi_ids
             if any(isinstance(roi_id, str) for roi_id in roi_ids):
                 # Convert string ROI IDs to integers
                 new_roi_ids = []
                 for roi_id in roi_ids:
-                    if isinstance(roi_id, str) and roi_id.startswith('C'):
+                    if isinstance(roi_id, str) and roi_id.startswith("C"):
                         new_roi_ids.append(int(roi_id[1:]))  # Remove 'C' prefix and convert to int
                     else:
                         new_roi_ids.append(roi_id)
-                
+
                 # Update the ROI IDs in the extractor
                 self.segmentation_extractor._roi_ids = new_roi_ids
 
@@ -69,7 +68,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     ):
         """
         Add segmentation data to an NWB file.
-        
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -111,5 +110,5 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
-            iterator_options=iterator_options
+            iterator_options=iterator_options,
         )
