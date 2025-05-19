@@ -16,8 +16,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     ----------
     file_path : FilePath
         Path to the Inscopix cell set file (.isxd)
-    plane_name : str, optional
-        Name of the imaging plane to load (e.g., "plane0"). Required if the file contains multiple planes.
     verbose : bool, default: False
         Whether to print verbose output during operations
     """
@@ -27,15 +25,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     info = "Interface for Inscopix segmentation data from Inscopix proprietary format."
     keywords = ("segmentation", "roi", "inscopix", "cells")
     
-    def __init__(self, file_path: FilePath, plane_name: Optional[str] = None, verbose: bool = False):
+    def __init__(self, file_path: FilePath, verbose: bool = False):
         """Initialize the Inscopix segmentation interface.
         
         Parameters
         ----------
         file_path : FilePath
             Path to the Inscopix cell set file (.isxd)
-        plane_name : str, optional
-            Name of the imaging plane to load (e.g., "plane0"). Required if the file contains multiple planes.
         verbose : bool, default: False
             Whether to print verbose output during operations
         """
@@ -47,34 +43,38 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "https://github.com/inscopix/pyisx?tab=readme-ov-file#install"
             )
         
-        # Initialize parent class with file_path and optional plane_name
-        kwargs = {"file_path": file_path}
-        if plane_name is not None:
-            kwargs["plane_name"] = plane_name
-        
-        # Initialize the parent class
-        super().__init__(**kwargs)
+        # Initialize the parent class with just file_path
+        # Note: Do NOT pass plane_name here as InscopixSegmentationExtractor doesn't accept it
+        super().__init__(file_path=file_path)
         self.verbose = verbose
         
-        # Check if we need to raise an error about missing plane_name
+        # Access the extractor to verify it initialized correctly
+        self._check_extractor()
+    
+    def _check_extractor(self):
+        """
+        Check if the segmentation extractor was properly initialized.
+        
+        This method verifies that the extractor is accessible and contains valid data.
+        It's called during initialization to catch potential issues early.
+        """
         try:
-            # Try to access the extractor to see if it fails due to missing plane_name
-            extractor = self._extractor_instance
-            # If we got this far, check if we can identify a multi-plane issue
-            if hasattr(extractor, "get_num_planes") and extractor.get_num_planes() > 1 and plane_name is None:
-                raise ValueError(
-                    f"Multiple imaging planes detected in {file_path}. "
-                    f"Please specify which plane to use with the 'plane_name' parameter."
-                )
+            # Try to access the extractor
+            extractor = self.segmentation_extractor
+            
+            # Perform some basic checks
+            num_rois = extractor.get_num_rois()
+            if num_rois == 0:
+                # This is not an error, but might be unexpected in some cases
+                if self.verbose:
+                    print("Warning: No ROIs found in the segmentation data.")
+                    
         except Exception as e:
-            # If there's an error that mentions planes, re-raise with a clearer message
-            if "plane" in str(e).lower():
-                raise ValueError(
-                    f"Error loading Inscopix segmentation data: {str(e)}. "
-                    f"You might need to specify a valid plane_name parameter."
-                ) from e
-            # Otherwise, just re-raise the original error
-            raise
+            # If we hit an issue, provide a clear error message
+            raise ValueError(
+                f"Error initializing Inscopix segmentation extractor from {self.source_data.get('file_path')}: {str(e)}. "
+                f"Please check that the file exists and is a valid Inscopix Cell Set file (.isxd)."
+            ) from e
     
     def get_metadata(self) -> dict:
         """
