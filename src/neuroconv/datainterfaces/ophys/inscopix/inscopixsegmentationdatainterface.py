@@ -53,49 +53,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 
                 # Update the ROI IDs in the extractor
                 self.segmentation_extractor._roi_ids = new_roi_ids
-    
-    def get_metadata(self) -> dict:
-        """
-        Extract metadata from the Inscopix file.
-        
-        Returns
-        -------
-        dict
-            Metadata dictionary for NWB file.
-        """
-        # Get base metadata from parent class
-        metadata = super().get_metadata()
-        
-        # Get additional metadata from the segmentation extractor
-        extractor_meta = self.segmentation_extractor.get_extra_property('metadata')
-        if extractor_meta is None:
-            return metadata
-        
-        # Add subject information
-        if 'extraProperties' in extractor_meta and 'animal' in extractor_meta['extraProperties']:
-            animal_info = extractor_meta['extraProperties']['animal']
-            
-            if 'NWBFile' not in metadata:
-                metadata['NWBFile'] = {}
-            
-            metadata['NWBFile']['Subject'] = {
-                'subject_id': animal_info.get('id', ''),
-                'species': animal_info.get('species', ''),
-                'sex': animal_info.get('sex', ''),
-                'description': animal_info.get('description', '')
-            }
-        
-        # Add microscope information
-        if 'extraProperties' in extractor_meta and 'microscope' in extractor_meta['extraProperties']:
-            microscope_info = extractor_meta['extraProperties']['microscope']
-            
-            if 'Ophys' in metadata and 'Device' in metadata['Ophys'] and len(metadata['Ophys']['Device']) > 0:
-                # Update device description
-                device = metadata['Ophys']['Device'][0]
-                device['description'] = f"Inscopix {microscope_info.get('type', '')} Microscope (SN: {microscope_info.get('serial', '')})"
-        
-        return metadata
-    
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -137,6 +95,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         # Make sure ROI IDs are fixed before adding to NWB file
         self._fix_roi_ids()
+        
+        # Use a default name for plane segmentation if not provided
+        if plane_segmentation_name is None:
+            plane_segmentation_name = "PlaneSegmentation"
         
         # Call parent method to add segmentation data to NWB file
         super().add_to_nwbfile(
