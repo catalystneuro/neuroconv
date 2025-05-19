@@ -25,6 +25,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self.file_path = str(file_path)
         super().__init__(file_path=self.file_path, verbose=verbose)
 
+
 # class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 #     """Data interface for Inscopix Segmentation Extractor."""
 

@@ -223,14 +223,14 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 
 import importlib
 import platform
-from datetime import datetime
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import InscopixSegmentationInterface
-from neuroconv.tools.testing.data_interface_mixins import SegmentationExtractorInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import (
+    SegmentationExtractorInterfaceTestMixin,
+)
 
 # Import paths - adjust these imports as needed for your project structure
 try:
@@ -254,18 +254,16 @@ skip_if_isx_not_installed = pytest.mark.skipif(
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Test InscopixSegmentationInterface with cellset.isxd"""
-    
+
     data_interface_cls = InscopixSegmentationInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
-    )
-    
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(self, request):
         """Set up metadata for Inscopix CellSet test based on the provided footer."""
         cls = request.cls
-        
+
         # Extract relevant information from the footer
         cls.device_name = "Microscope"
         cls.imaging_plane_name = "ImagingPlane"
@@ -273,138 +271,144 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         cls.plane_segmentation_name = "PlaneSegmentation"
         cls.fluorescence_name = "Fluorescence"
         cls.roi_response_series_name = "RoiResponseSeries"
-        
+
         # Use animal information from footer
         cls.animal_id = "FV4581"
         cls.animal_species = "CaMKIICre"
         cls.animal_sex = "m"
         cls.animal_description = "Retrieval day"
-        
+
         # Use microscope information from footer
         cls.microscope_type = "NVista3"
         cls.microscope_serial = "11132301"
         cls.system_serial = "AC-11137705"
-        
+
         # Use imaging parameters from footer
         cls.exp_time = 33
         cls.focus = 1000
         cls.gain = 6
         cls.fps = 30
         cls.led_power = 1.3
-        
+
         # Use ROI information from footer
-        cls.cell_names = ['C0', 'C1', 'C2', 'C3']
+        cls.cell_names = ["C0", "C1", "C2", "C3"]
         cls.cell_status = [0, 0, 0, 2]  # 0 = active, 2 = inactive
-        
+
         # Use image dimensions from footer
         cls.image_width = 398
         cls.image_height = 366
-        
+
         # Detailed metadata structures for validation
         cls.device_metadata = dict(
-            name=cls.device_name,
-            description=f"Inscopix {cls.microscope_type} Microscope (SN: {cls.microscope_serial})"
+            name=cls.device_name, description=f"Inscopix {cls.microscope_type} Microscope (SN: {cls.microscope_serial})"
         )
-        
+
         cls.imaging_plane_metadata = dict(
             name=cls.imaging_plane_name,
             description=f"Inscopix imaging plane at {cls.focus}um focus",
             device=cls.device_name,
             optical_channel=[
-                dict(
-                    name="OpticalChannel",
-                    description="Green fluorescence channel",
-                    emission_lambda=np.nan
-                )
+                dict(name="OpticalChannel", description="Green fluorescence channel", emission_lambda=np.nan)
             ],
             excitation_lambda=np.nan,
             indicator="GCaMP",
             location="brain region",
         )
-        
+
         cls.image_segmentation_metadata = dict(
             name=cls.image_segmentation_name,
             plane_segmentations=[
                 dict(
                     name=cls.plane_segmentation_name,
-                    #description="Segmented ROIs from Inscopix CNMFE analysis",
+                    # description="Segmented ROIs from Inscopix CNMFE analysis",
                     imaging_plane=cls.imaging_plane_name,
                 )
             ],
         )
-        
+
         cls.fluorescence_metadata = dict(
             name=cls.fluorescence_name,
             roi_response_series=dict(
                 name=cls.roi_response_series_name,
-                #description="Fluorescence trace of segmented ROIs (dF over noise)",
+                # description="Fluorescence trace of segmented ROIs (dF over noise)",
                 unit="dF over noise",
             ),
         )
-    
+
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix CellSet file."""
         # Check overall ophys structure
         assert "Ophys" in metadata, "Ophys not found in extracted metadata"
-        
+
         # Check required components exist
         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
-        
+
         # Validate Device
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == self.device_name, \
-            f"Device name mismatch: expected '{self.device_name}', got '{device['name']}'"
-        
+        assert (
+            device["name"] == self.device_name
+        ), f"Device name mismatch: expected '{self.device_name}', got '{device['name']}'"
+
         # Validate ImagingPlane
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == self.imaging_plane_name, \
-            f"ImagingPlane name mismatch: expected '{self.imaging_plane_name}', got '{imaging_plane['name']}'"
-        assert imaging_plane["device"] == self.device_name, \
-            f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
-        
+        assert (
+            imaging_plane["name"] == self.imaging_plane_name
+        ), f"ImagingPlane name mismatch: expected '{self.imaging_plane_name}', got '{imaging_plane['name']}'"
+        assert (
+            imaging_plane["device"] == self.device_name
+        ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
+
         # Validate ImageSegmentation
         image_segmentation = metadata["Ophys"]["ImageSegmentation"]
-        assert "plane_segmentations" in image_segmentation, "plane_segmentations not found in ImageSegmentation metadata"
-        
+        assert (
+            "plane_segmentations" in image_segmentation
+        ), "plane_segmentations not found in ImageSegmentation metadata"
+
         # Check for subject info in NWBFile metadata
         if "Subject" in metadata.get("NWBFile", {}):
             subject = metadata["NWBFile"]["Subject"]
-            assert subject.get("subject_id") == self.animal_id, \
-                f"Subject ID mismatch: expected '{self.animal_id}', got '{subject.get('subject_id')}'"
-            assert subject.get("species") == self.animal_species, \
-                f"Species mismatch: expected '{self.animal_species}', got '{subject.get('species')}'"
-            assert subject.get("sex") == self.animal_sex, \
-                f"Sex mismatch: expected '{self.animal_sex}', got '{subject.get('sex')}'"
-    
+            assert (
+                subject.get("subject_id") == self.animal_id
+            ), f"Subject ID mismatch: expected '{self.animal_id}', got '{subject.get('subject_id')}'"
+            assert (
+                subject.get("species") == self.animal_species
+            ), f"Species mismatch: expected '{self.animal_species}', got '{subject.get('species')}'"
+            assert (
+                subject.get("sex") == self.animal_sex
+            ), f"Sex mismatch: expected '{self.animal_sex}', got '{subject.get('sex')}'"
+
     def run_custom_checks(self):
         """Run additional custom checks for CellSet file."""
         # Verify the segmentation extractor has valid ROIs
         roi_ids = self.interface.segmentation_extractor.get_roi_ids()
-        
+
         # Check number of ROIs matches expected count
-        assert len(roi_ids) == len(self.cell_names), \
-            f"ROI count mismatch: expected {len(self.cell_names)}, got {len(roi_ids)}"
-        
+        assert len(roi_ids) == len(
+            self.cell_names
+        ), f"ROI count mismatch: expected {len(self.cell_names)}, got {len(roi_ids)}"
+
         # Check that image masks can be retrieved
         for roi_id in roi_ids:
             mask = self.interface.segmentation_extractor.get_roi_image_masks(roi_ids=[roi_id])
             assert mask is not None, f"Could not retrieve image mask for ROI {roi_id}"
-            assert mask.shape[-2:] == (self.image_height, self.image_width), \
-                f"Mask shape mismatch: expected ({self.image_height}, {self.image_width}), got {mask.shape[-2:]}"
+            assert mask.shape[-2:] == (
+                self.image_height,
+                self.image_width,
+            ), f"Mask shape mismatch: expected ({self.image_height}, {self.image_width}), got {mask.shape[-2:]}"
 
 
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed
 # class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
 #     """Test InscopixSegmentationInterface with cellset_series_part1.isxd"""
-    
+
 #     data_interface_cls = InscopixSegmentationInterface
 #     save_directory = OUTPUT_PATH
 #     interface_kwargs = dict(
 #         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
 #     )
-    
+
 #     # Skip the tests that are failing due to the column length mismatch
 #     @pytest.mark.skip(reason="Known issue with column length mismatch in PlaneSegmentation table")
 #     def test_no_metadata_mutation(self, setup_interface):
@@ -417,12 +421,12 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #     @pytest.mark.skip(reason="Known issue with column length mismatch in PlaneSegmentation table")
 #     def test_all_conversion_checks(self, setup_interface, tmp_path):
 #         pass
-    
+
 #     @pytest.fixture(scope="class", autouse=True)
 #     def setup_metadata(self, request):
 #         """Set up metadata for CellSetPart1 test."""
 #         cls = request.cls
-        
+
 #         # Basic metadata for CellSetPart1
 #         cls.device_name = "Microscope"
 #         cls.imaging_plane_name = "ImagingPlane"
@@ -430,13 +434,13 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #         cls.plane_segmentation_name = "PlaneSegmentation"
 #         cls.fluorescence_name = "Fluorescence"
 #         cls.roi_response_series_name = "RoiResponseSeries"
-        
+
 #         # Device metadata
 #         cls.device_metadata = dict(
-#             name=cls.device_name, 
+#             name=cls.device_name,
 #             description="Inscopix Microscope for time series data"
 #         )
-        
+
 #         # Imaging plane metadata
 #         cls.imaging_plane_metadata = dict(
 #             name=cls.imaging_plane_name,
@@ -444,8 +448,8 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #             device=cls.device_name,
 #             optical_channel=[
 #                 dict(
-#                     name="OpticalChannel", 
-#                     description="Inscopix Optical Channel", 
+#                     name="OpticalChannel",
+#                     description="Inscopix Optical Channel",
 #                     emission_lambda=np.nan
 #                 )
 #             ],
@@ -453,7 +457,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #             indicator="GCaMP",
 #             location="brain region",
 #         )
-        
+
 #         # ImageSegmentation metadata
 #         cls.image_segmentation_metadata = dict(
 #             name=cls.image_segmentation_name,
@@ -465,7 +469,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #                 )
 #             ],
 #         )
-        
+
 #         # Fluorescence metadata
 #         cls.fluorescence_metadata = dict(
 #             name=cls.fluorescence_name,
@@ -475,21 +479,21 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #                 unit="dF over noise",
 #             ),
 #         )
-    
+
 #     def check_extracted_metadata(self, metadata: dict):
 #         """Check that metadata is correctly extracted from CellSetPart1 file."""
 #         # Check overall ophys structure
 #         assert "Ophys" in metadata, "Ophys not found in extracted metadata"
-        
+
 #         # Check required components exist
 #         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
 #             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
-        
+
 #         # Validate Device
 #         device = metadata["Ophys"]["Device"][0]
 #         assert device["name"] == self.device_name, \
 #             f"Device name mismatch: expected '{self.device_name}', got '{device['name']}'"
-        
+
 #         # Validate ImagingPlane
 #         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
 #         assert imaging_plane["name"] == self.imaging_plane_name, \
@@ -502,18 +506,18 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 # @skip_if_isx_not_installed
 # class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfaceTestMixin):
 #     """Test InscopixSegmentationInterface with empty_cellset.isxd"""
-    
+
 #     data_interface_cls = InscopixSegmentationInterface
 #     save_directory = OUTPUT_PATH
 #     interface_kwargs = dict(
 #         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
 #     )
-    
+
 #     @pytest.fixture(scope="class", autouse=True)
 #     def setup_metadata(self, request):
 #         """Set up metadata for EmptyCellSet test."""
 #         cls = request.cls
-        
+
 #         # Basic metadata for empty cellset
 #         cls.device_name = "Microscope"
 #         cls.imaging_plane_name = "ImagingPlane"
@@ -521,13 +525,13 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #         cls.plane_segmentation_name = "PlaneSegmentation"
 #         cls.fluorescence_name = "Fluorescence"
 #         cls.roi_response_series_name = "RoiResponseSeries"
-        
+
 #         # Device metadata
 #         cls.device_metadata = dict(
-#             name=cls.device_name, 
+#             name=cls.device_name,
 #             description="Inscopix Microscope (Empty Cell Set)"
 #         )
-        
+
 #         # Imaging plane metadata
 #         cls.imaging_plane_metadata = dict(
 #             name=cls.imaging_plane_name,
@@ -535,8 +539,8 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #             device=cls.device_name,
 #             optical_channel=[
 #                 dict(
-#                     name="OpticalChannel", 
-#                     description="Inscopix Optical Channel", 
+#                     name="OpticalChannel",
+#                     description="Inscopix Optical Channel",
 #                     emission_lambda=np.nan
 #                 )
 #             ],
@@ -544,7 +548,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #             indicator="GCaMP",
 #             location="brain region",
 #         )
-        
+
 #         # ImageSegmentation metadata
 #         cls.image_segmentation_metadata = dict(
 #             name=cls.image_segmentation_name,
@@ -556,7 +560,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #                 )
 #             ],
 #         )
-        
+
 #         # Fluorescence metadata
 #         cls.fluorescence_metadata = dict(
 #             name=cls.fluorescence_name,
@@ -566,28 +570,28 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 #                 unit="dF over noise",
 #             ),
 #         )
-    
+
 #     def check_extracted_metadata(self, metadata: dict):
 #         """Check that metadata is correctly extracted from EmptyCellSet file."""
 #         # Check overall ophys structure
 #         assert "Ophys" in metadata, "Ophys not found in extracted metadata"
-        
+
 #         # Check required components exist
 #         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
 #             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
-        
+
 #         # Validate Device
 #         device = metadata["Ophys"]["Device"][0]
 #         assert device["name"] == self.device_name, \
 #             f"Device name mismatch: expected '{self.device_name}', got '{device['name']}'"
-        
+
 #         # Validate ImagingPlane
 #         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
 #         assert imaging_plane["name"] == self.imaging_plane_name, \
 #             f"ImagingPlane name mismatch: expected '{self.imaging_plane_name}', got '{imaging_plane['name']}'"
 #         assert imaging_plane["device"] == self.device_name, \
 #             f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
-    
+
 #     def run_custom_checks(self):
 #         """Run additional custom checks for EmptyCellSet file."""
 #         # For empty cellset, verify the segmentation extractor has no ROIs
