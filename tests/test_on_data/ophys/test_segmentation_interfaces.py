@@ -1,7 +1,6 @@
 import importlib
 import platform
 
-import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import (
@@ -225,9 +224,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = InscopixSegmentationInterface
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -262,28 +259,28 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         # Check basic NWB metadata
         assert "NWBFile" in metadata
         assert "Ophys" in metadata
-        
+
         # Check device metadata
         assert "Device" in metadata["Ophys"]
-        
+
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) > 0
-        
+
         # Check image segmentation metadata
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
-        
+
         # Check cell names are included
         plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert "name" in plane_segmentation
-        
+
         # Check fluorescence metadata
         assert "Fluorescence" in metadata["Ophys"]
-        
+
         # Check for summary images metadata
         assert "SegmentationImages" in metadata["Ophys"]
-        
+
         # Test metadata matches expected cell data
         # Verify we have 4 ROIs based on the CellSet metadata
         roi_table = plane_segmentation.get("roi_table", {})
@@ -295,18 +292,18 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         # Test conversion with stub_test option
         self.interface = self.data_interface_cls(**self.interface_kwargs)
         self.nwbfile_path = self.create_nwbfile_path("stub_test")
-        
+
         # Run conversion with stub_test to limit frames
         self.interface.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
             stub_test=True,
-            stub_frames=10  # Only include 10 frames for faster testing
+            stub_frames=10,  # Only include 10 frames for faster testing
         )
-        
+
         # Verify file was created
         assert self.nwbfile_path.exists()
-        
+
 
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed
