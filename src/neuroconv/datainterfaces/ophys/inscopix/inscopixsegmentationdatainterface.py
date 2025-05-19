@@ -175,7 +175,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Use a default name for plane segmentation if not provided
         if plane_segmentation_name is None:
             plane_segmentation_name = "PlaneSegmentation"
-        
+
         # Call parent method to add segmentation data to NWB file
         try:
             super().add_to_nwbfile(
