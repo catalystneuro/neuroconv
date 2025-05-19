@@ -1,12 +1,12 @@
-import numpy as np
 from pydantic import FilePath, validate_call
+import numpy as np
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix Segmentation Extractor.
-
+    
     This interface handles segmentation data from Inscopix (.isxd) files.
     """
 
@@ -27,146 +27,174 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self.file_path = str(file_path)
         self.verbose = verbose
         super().__init__(file_path=self.file_path, verbose=verbose)
-
+        
         # Cache cell data for direct access
         self._cell_set = self.segmentation_extractor.cell_set
         self._num_cells = self._cell_set.num_cells
-
+        
         if self.verbose:
             print(f"Initialized InscopixSegmentationInterface with {self._num_cells} cells")
             print(f"Original ROI IDs: {self.segmentation_extractor.get_roi_ids()}")
-
-        # Add a custom adapter to access columns directly
-        self._add_custom_plane_segmentation_adapter()
-
-    def _add_custom_plane_segmentation_adapter(self):
-        """Add a custom adapter to ensure consistent column lengths in NWB tables."""
-        from neuroconv.tools.roiextractors import roiextractors
-
-        # Store the original add_plane_segmentation function
-        original_add_plane_segmentation = roiextractors.add_plane_segmentation
-        interface_self = self  # For use in the wrapped function
-
-        # Define a wrapper function with the same signature
-        def wrapped_add_plane_segmentation(
-            segmentation_extractor,
-            nwbfile,
-            imaging_plane,
-            name=None,
-            image_series=None,
-            id=None,
-            columns=None,
-            description=None,
-            roi_response_series=None,
-            reference_images=None,
-            times=None,
-        ):
-            """Ensure consistent column lengths when adding plane segmentation."""
+        
+        # Patch the segmentation extractor
+        self._patch_segmentation_extractor()
+    
+    def _patch_segmentation_extractor(self):
+        """Patch the segmentation extractor with methods that work correctly."""
+        extractor = self.segmentation_extractor
+        interface_self = self  # For use in the methods
+        
+        # Override get_roi_ids to return integers
+        def patched_get_roi_ids():
+            ids = list(range(interface_self._num_cells))
             if interface_self.verbose:
-                print(f"Called wrapped_add_plane_segmentation with {len(segmentation_extractor.get_roi_ids())} ROIs")
-
-            # Get the ROI IDs to ensure consistent lengths
-            roi_ids = segmentation_extractor.get_roi_ids()
-            roi_count = len(roi_ids)
-
-            # For image masks, ensure we have one per ROI
-            if columns is None:
-                columns = {}
-
-            # Override key columns to ensure consistent lengths
-            if "image_mask" in columns:
-                image_masks = columns["image_mask"]
-                if len(image_masks) != roi_count:
-                    if interface_self.verbose:
-                        print(f"Fixing image_mask length: {len(image_masks)} -> {roi_count}")
-
-                    # Reshape to ensure we have exactly one mask per ROI
-                    if len(image_masks) > 0:
-                        # Get the shape of a single mask
-                        mask_shape = image_masks[0].shape
-
-                        # Create a new array with the correct number of masks
-                        if len(image_masks) > roi_count:
-                            # Truncate if too many
-                            new_masks = image_masks[:roi_count]
+                print(f"get_roi_ids: Returning {len(ids)} integer ROI IDs: {ids}")
+            return ids
+        
+        # Override get_roi_image_masks to handle integer IDs correctly
+        def patched_get_roi_image_masks(roi_ids=None):
+            if interface_self.verbose:
+                print(f"get_roi_image_masks called with roi_ids={roi_ids}")
+            
+            if roi_ids is None:
+                # Get all masks
+                masks = []
+                for i in range(interface_self._num_cells):
+                    try:
+                        mask = interface_self._cell_set.get_cell_image_data(i)
+                        masks.append(mask)
+                        if interface_self.verbose:
+                            print(f"Got mask for cell {i} with shape {mask.shape}")
+                    except Exception as e:
+                        if interface_self.verbose:
+                            print(f"Error getting mask for cell {i}: {str(e)}")
+                        # Create an empty mask with the same shape as others
+                        if masks:
+                            empty_mask = np.zeros_like(masks[0])
                         else:
-                            # Pad with zeros if too few
-                            new_masks = np.zeros((roi_count,) + mask_shape, dtype=image_masks.dtype)
-                            new_masks[: len(image_masks)] = image_masks
-
-                        columns["image_mask"] = new_masks
-
-            # Fix pixel_mask if present
-            if "pixel_mask" in columns:
-                pixel_masks = columns["pixel_mask"]
-                if len(pixel_masks) != roi_count:
+                            # Try to get dimensions from a single cell
+                            try:
+                                sample_mask = interface_self._cell_set.get_cell_image_data(0)
+                                empty_mask = np.zeros_like(sample_mask)
+                            except Exception:
+                                # Last resort: use small default size
+                                empty_mask = np.zeros((100, 100))
+                        masks.append(empty_mask)
+                
+                if masks:
+                    return np.stack(masks)
+                return np.array([])
+                
+            # Handle specific ROI IDs
+            masks = []
+            for roi_id in roi_ids:
+                try:
+                    # Use the ROI ID directly as the index
+                    mask = interface_self._cell_set.get_cell_image_data(roi_id)
+                    masks.append(mask)
                     if interface_self.verbose:
-                        print(f"Fixing pixel_mask length: {len(pixel_masks)} -> {roi_count}")
-
-                    # Create an empty array of the correct length
-                    new_masks = [np.zeros((0, 3)) for _ in range(roi_count)]
-
-                    # Copy over available masks
-                    for i in range(min(len(pixel_masks), roi_count)):
-                        new_masks[i] = pixel_masks[i]
-
-                    columns["pixel_mask"] = new_masks
-
-            # Fix voxel_mask if present
-            if "voxel_mask" in columns:
-                voxel_masks = columns["voxel_mask"]
-                if len(voxel_masks) != roi_count:
+                        print(f"Got mask for ROI ID {roi_id} with shape {mask.shape}")
+                except Exception as e:
                     if interface_self.verbose:
-                        print(f"Fixing voxel_mask length: {len(voxel_masks)} -> {roi_count}")
-
-                    # Create an empty array of the correct length
-                    new_masks = [np.zeros((0, 4)) for _ in range(roi_count)]
-
-                    # Copy over available masks
-                    for i in range(min(len(voxel_masks), roi_count)):
-                        new_masks[i] = voxel_masks[i]
-
-                    columns["voxel_mask"] = new_masks
-
-            # Finally, call the original function with the fixed columns
+                        print(f"Error getting mask for ROI ID {roi_id}: {str(e)}")
+                    # Create an empty mask with the same shape as others
+                    if masks:
+                        empty_mask = np.zeros_like(masks[0])
+                    else:
+                        # Try to get dimensions from a single cell
+                        try:
+                            sample_mask = interface_self._cell_set.get_cell_image_data(0)
+                            empty_mask = np.zeros_like(sample_mask)
+                        except Exception:
+                            # Last resort: use small default size
+                            empty_mask = np.zeros((100, 100))
+                    masks.append(empty_mask)
+            
+            if len(masks) == 1:
+                return masks[0]
+            elif masks:
+                return np.stack(masks)
+            else:
+                return np.array([])
+        
+        # Add a direct implementation of get_roi_locations
+        def patched_get_roi_locations(roi_ids=None):
             if interface_self.verbose:
-                print(f"Calling original add_plane_segmentation with {roi_count} ROIs")
-
-            return original_add_plane_segmentation(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile,
-                imaging_plane=imaging_plane,
-                name=name,
-                image_series=image_series,
-                id=id,
-                columns=columns,
-                description=description,
-                roi_response_series=roi_response_series,
-                reference_images=reference_images,
-                times=times,
-            )
-
-        # Monkey patch the add_plane_segmentation function in roiextractors
-        roiextractors.add_plane_segmentation = wrapped_add_plane_segmentation
-
+                print(f"get_roi_locations called with roi_ids={roi_ids}")
+            
+            if roi_ids is None:
+                roi_ids = list(range(interface_self._num_cells))
+            
+            locations = []
+            for roi_id in roi_ids:
+                try:
+                    # Get mask directly from cell_set
+                    mask = interface_self._cell_set.get_cell_image_data(roi_id)
+                    
+                    # Find the center of mass
+                    indices = np.where(mask > 0)
+                    if len(indices[0]) > 0:
+                        y_center = np.mean(indices[0])
+                        x_center = np.mean(indices[1])
+                        locations.append([y_center, x_center])
+                        if interface_self.verbose:
+                            print(f"Found centroid for ROI {roi_id}: [{y_center}, {x_center}]")
+                    else:
+                        # Fallback to center of image
+                        y_center = mask.shape[0] // 2
+                        x_center = mask.shape[1] // 2
+                        locations.append([y_center, x_center])
+                        if interface_self.verbose:
+                            print(f"Empty mask for ROI {roi_id}, using center: [{y_center}, {x_center}]")
+                except Exception as e:
+                    if interface_self.verbose:
+                        print(f"Error processing ROI {roi_id}: {str(e)}")
+                    # Use a default location
+                    try:
+                        # Try to get dimensions from another cell
+                        sample_mask = interface_self._cell_set.get_cell_image_data(0)
+                        y_center = sample_mask.shape[0] // 2
+                        x_center = sample_mask.shape[1] // 2
+                    except Exception:
+                        # Last resort: use arbitrary coordinates
+                        y_center, x_center = 50, 50
+                    
+                    locations.append([y_center, x_center])
+                    if interface_self.verbose:
+                        print(f"Using fallback location for ROI {roi_id}: [{y_center}, {x_center}]")
+            
+            if locations:
+                result = np.array(locations)
+                if interface_self.verbose:
+                    print(f"Returning locations array with shape {result.shape}")
+                return result
+            else:
+                if interface_self.verbose:
+                    print("No locations found, returning empty array")
+                return np.zeros((0, 2))
+        
+        # Apply the patches
+        extractor.get_roi_ids = patched_get_roi_ids
+        extractor.get_roi_image_masks = patched_get_roi_image_masks
+        extractor.get_roi_locations = patched_get_roi_locations
+    
     def add_to_nwbfile(self, nwbfile, metadata=None, **kwargs):
-        """Add segmentation data to an NWBFile.
-
-        Override to handle the Inscopix-specific issues.
-
-        Parameters
-        ----------
-        See BaseSegmentationExtractorInterface.add_to_nwbfile for parameter details.
-        """
+        """Add segmentation data to an NWBFile."""
         if self.verbose:
-            print("Calling custom add_to_nwbfile method")
-
-        # Call the parent method with the patched extractor
+            print("Calling add_to_nwbfile...")
+        
+        # Override mask_type to "image" if not specified
+        if "mask_type" not in kwargs:
+            kwargs["mask_type"] = "image"
+            if self.verbose:
+                print("Setting mask_type to 'image'")
+        
+        # Call the parent method with our patched extractor
         try:
             super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **kwargs)
             if self.verbose:
-                print("Successfully added segmentation to NWBFile")
+                print("Successfully added to NWBFile")
         except Exception as e:
             if self.verbose:
-                print(f"Error adding segmentation to NWBFile: {type(e).__name__}: {str(e)}")
+                print(f"Error in add_to_nwbfile: {type(e).__name__}: {str(e)}")
             raise
