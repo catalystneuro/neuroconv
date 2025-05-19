@@ -26,56 +26,41 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self.file_path = str(file_path)
         super().__init__(file_path=self.file_path, verbose=verbose)
         
-        # Create a wrapper that presents integer IDs to NWB while preserving string IDs internally
-        self._create_integer_id_wrapper()
-
-    def _create_integer_id_wrapper(self):
-        """Create a wrapper that presents integer IDs to NWB while preserving string IDs internally."""
-        # Store original methods and data
-        original_get_roi_ids = self.segmentation_extractor.get_roi_ids
-        original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-        original_get_roi_pixel_masks = self.segmentation_extractor.get_roi_pixel_masks
+        # Save the original methods we'll need to patch
+        self._original_get_roi_ids = self.segmentation_extractor.get_roi_ids
+        self._original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
         
-        # Create mappings between string and integer IDs
-        string_roi_ids = original_get_roi_ids()
-        self._string_to_int_map = {roi_id: i for i, roi_id in enumerate(string_roi_ids)}
-        self._int_to_string_map = {i: roi_id for roi_id, i in self._string_to_int_map.items()}
+        # Create int-to-string and string-to-int mappings
+        original_ids = self._original_get_roi_ids()
+        self._id_map = {i: id for i, id in enumerate(original_ids)}
+        
+        # Patch the methods
+        self._patch_segmentation_extractor()
 
+    def _patch_segmentation_extractor(self):
+        """Patch the segmentation extractor to use integer IDs."""
+        # Store self reference for use in methods
+        interface_self = self
+        
         # Override get_roi_ids to return integer IDs
-        def get_integer_roi_ids():
-            return list(range(len(self._string_to_int_map)))
-
+        def patched_get_roi_ids():
+            return list(range(len(interface_self._id_map)))
+        
         # Override get_roi_image_masks to handle integer IDs
         def patched_get_roi_image_masks(roi_ids=None):
             if roi_ids is None:
-                return original_get_roi_image_masks(roi_ids=None)
-
-            # Convert integer IDs to string IDs
+                return interface_self._original_get_roi_image_masks(roi_ids=None)
+            
+            # Convert integer IDs to original string IDs
             converted_ids = []
             for roi_id in roi_ids:
-                if isinstance(roi_id, int) and roi_id in self._int_to_string_map:
-                    converted_ids.append(self._int_to_string_map[roi_id])
+                if isinstance(roi_id, int) and roi_id in interface_self._id_map:
+                    converted_ids.append(interface_self._id_map[roi_id])
                 else:
                     converted_ids.append(roi_id)
-
-            return original_get_roi_image_masks(roi_ids=converted_ids)
-
-        # Override get_roi_pixel_masks to handle integer IDs
-        def patched_get_roi_pixel_masks(roi_ids=None):
-            if roi_ids is None:
-                return original_get_roi_pixel_masks(roi_ids=None)
-
-            # Convert integer IDs to string IDs
-            converted_ids = []
-            for roi_id in roi_ids:
-                if isinstance(roi_id, int) and roi_id in self._int_to_string_map:
-                    converted_ids.append(self._int_to_string_map[roi_id])
-                else:
-                    converted_ids.append(roi_id)
-
-            return original_get_roi_pixel_masks(roi_ids=converted_ids)
-
-        # Replace the methods on the segmentation extractor
-        self.segmentation_extractor.get_roi_ids = get_integer_roi_ids
+            
+            return interface_self._original_get_roi_image_masks(roi_ids=converted_ids)
+        
+        # Apply the patches
+        self.segmentation_extractor.get_roi_ids = patched_get_roi_ids
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
-        self.segmentation_extractor.get_roi_pixel_masks = patched_get_roi_pixel_masks
