@@ -19,7 +19,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         Parameters
         ----------
         file_path : FilePath
-            Path to the Inscopix segmentation file (.isxd).
+        Path to the Inscopix segmentation file (.isxd).
         verbose : bool, optional
             If True, enables verbose output during processing. Default is False.
         """
@@ -28,16 +28,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Initialize parent class with the file path
         super().__init__(file_path=self.file_path, verbose=verbose)
-
-        # Store original get_roi_image_masks method
-        self._original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-
-        # Override get_roi_image_masks to handle integer ROI IDs
-        def patched_get_roi_image_masks(self, ids=None):
-            """Patched method to handle integer ROI IDs."""
+    
+        # Store the original method reference directly
+        original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
+    
+        # Define a replacement method that properly handles both string and integer IDs
+        def patched_get_roi_image_masks(ids=None):
             if ids is None:
-                return self._original_get_roi_image_masks(ids)
-
+                return original_get_roi_image_masks(ids)
+            
             # Convert integer IDs to string format (e.g., 0 -> 'C0')
             str_roi_ids = []
             for roi_id in ids:
@@ -45,16 +44,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     str_roi_ids.append(f"C{roi_id}")
                 else:
                     str_roi_ids.append(roi_id)
-
-            # Call original method with string IDs
-            return self._original_get_roi_image_masks(str_roi_ids)
-
-        # Apply patched method with the correct 'self' binding
-        import types
-
-        self.segmentation_extractor.get_roi_image_masks = types.MethodType(
-            patched_get_roi_image_masks, self.segmentation_extractor
-        )
+                
+            # Call with string IDs
+            return original_get_roi_image_masks(str_roi_ids)
+    
+        # Replace the method directly
+        self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
 
     def get_metadata(self) -> dict:
         """
