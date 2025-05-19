@@ -47,7 +47,6 @@ skip_on_darwin_arm64 = pytest.mark.skipif(
     platform.system() == "Darwin" and platform.machine() == "arm64",
     reason="Tests are skipped on macOS ARM64 due to platform limitations.",
 )
-
 skip_if_isx_not_installed = pytest.mark.skipif(
     not importlib.util.find_spec("isx"),
     reason="Tests are skipped because the 'isx' module is not installed.",
@@ -931,7 +930,6 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
-        """Set up common metadata for all Inscopix tests."""
         cls = request.cls
 
         # Device metadata
@@ -952,13 +950,11 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         # One photon series metadata
         cls.photon_series_metadata = dict(
             name=cls.optical_series_name,
-            description="Imaging data acquired from Inscopix microscope",
             unit="n.a.",
             dimension=[128, 128],
             imaging_plane=cls.imaging_plane_name,
         )
 
-        # Combined ophys metadata for validation
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
             ImagingPlane=[cls.imaging_plane_metadata],
@@ -968,7 +964,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix files."""
 
-        # Check overall ophys structure matches expected metadata
+        # Check overall ophys structure 
         for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
             assert len(metadata["Ophys"][category]) == len(
                 self.ophys_metadata[category]
@@ -1016,6 +1012,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
             assert (
                 self.imaging_plane_name in nwbfile.imaging_planes
             ), f"ImagingPlane '{self.imaging_plane_name}' not found in NWB file."
+
             imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
             assert (
                 imaging_plane.device.name == self.device_name
@@ -1048,7 +1045,6 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
                 one_photon_series.data.dtype == np.float32
             ), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
 
-        # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
@@ -1066,7 +1062,6 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
-        """Set up common metadata for all Inscopix tests."""
         cls = request.cls
 
         # Device metadata
@@ -1077,7 +1072,6 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         cls.imaging_plane_name = "ImagingPlane"
         cls.imaging_plane_metadata = dict(
             name=cls.imaging_plane_name,
-            description="Inscopix Imaging Plane",
             device=cls.device_name,
             optical_channel=[
                 dict(name="OpticalChannel", description="Inscopix Optical Channel", emission_lambda=np.nan)
@@ -1087,12 +1081,10 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         # One photon series metadata
         cls.photon_series_metadata = dict(
             name=cls.optical_series_name,
-            description="Imaging data acquired from Inscopix microscope",
             unit="n.a.",
             imaging_plane=cls.imaging_plane_name,
         )
 
-        # Combined ophys metadata for validation
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
             ImagingPlane=[cls.imaging_plane_metadata],
@@ -1102,7 +1094,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix files."""
 
-        # Check overall ophys structure matches expected metadata
+        # Check overall ophys structure 
         for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
             assert len(metadata["Ophys"][category]) == len(
                 self.ophys_metadata[category]
@@ -1169,7 +1161,6 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
                 one_photon_series.unit == self.photon_series_metadata["unit"]
             ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
-        # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
@@ -1206,12 +1197,10 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         # One photon series metadata
         cls.photon_series_metadata = dict(
             name=cls.optical_series_name,
-            description="Imaging data acquired from Inscopix microscope",
             unit="n.a.",
             imaging_plane=cls.imaging_plane_name,
         )
 
-        # Combined ophys metadata for validation
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
             ImagingPlane=[cls.imaging_plane_metadata],
@@ -1221,7 +1210,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix files."""
 
-        # Check overall ophys structure matches expected metadata
+        # Check overall ophys structure
         for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
             assert len(metadata["Ophys"][category]) == len(
                 self.ophys_metadata[category]
@@ -1288,16 +1277,12 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
                 one_photon_series.unit == self.photon_series_metadata["unit"]
             ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
-            assert (
-                one_photon_series.data.dtype == np.uint8
-            ), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
-
-            # Additional check: verify data range is consistent with uint8 source (0-255)
-            # This checks that values were preserved during conversion
+            assert (one_photon_series.data.dtype == np.uint8), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
+            
+            # verify data range is consistent with uint8 source 
             sample_data = one_photon_series.data[0 : min(10, one_photon_series.data.shape[0]), :, :]
             assert np.all(sample_data >= 0) and np.all(
                 sample_data <= 255
             ), f"Data values outside expected range for uint8 source (0-255)"
 
-        # Call parent check_read_nwb to verify extractor compatibility
         super().check_read_nwb(nwbfile_path=nwbfile_path)
