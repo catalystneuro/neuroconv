@@ -5,7 +5,7 @@ from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterf
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix Segmentation Extractor.
-    
+
     This interface handles segmentation data from Inscopix (.isxd) files.
     """
 
