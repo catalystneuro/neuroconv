@@ -25,15 +25,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         self.file_path = str(file_path)
         super().__init__(file_path=self.file_path, verbose=verbose)
-        
+
         # Save the original methods we'll need to patch
         self._original_get_roi_ids = self.segmentation_extractor.get_roi_ids
         self._original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-        
+
         # Create int-to-string and string-to-int mappings
         original_ids = self._original_get_roi_ids()
         self._id_map = {i: id for i, id in enumerate(original_ids)}
-        
+
         # Patch the methods
         self._patch_segmentation_extractor()
 
@@ -41,16 +41,16 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """Patch the segmentation extractor to use integer IDs."""
         # Store self reference for use in methods
         interface_self = self
-        
+
         # Override get_roi_ids to return integer IDs
         def patched_get_roi_ids():
             return list(range(len(interface_self._id_map)))
-        
+
         # Override get_roi_image_masks to handle integer IDs
         def patched_get_roi_image_masks(roi_ids=None):
             if roi_ids is None:
                 return interface_self._original_get_roi_image_masks(roi_ids=None)
-            
+
             # Convert integer IDs to original string IDs
             converted_ids = []
             for roi_id in roi_ids:
@@ -58,9 +58,9 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     converted_ids.append(interface_self._id_map[roi_id])
                 else:
                     converted_ids.append(roi_id)
-            
+
             return interface_self._original_get_roi_image_masks(roi_ids=converted_ids)
-        
+
         # Apply the patches
         self.segmentation_extractor.get_roi_ids = patched_get_roi_ids
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
