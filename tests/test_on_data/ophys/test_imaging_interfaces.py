@@ -964,7 +964,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix files."""
 
-        # Check overall ophys structure 
+        # Check overall ophys structure
         for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
             assert len(metadata["Ophys"][category]) == len(
                 self.ophys_metadata[category]
@@ -1094,7 +1094,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         """Check that metadata is correctly extracted from Inscopix files."""
 
-        # Check overall ophys structure 
+        # Check overall ophys structure
         for category in ["Device", "ImagingPlane", "OnePhotonSeries"]:
             assert len(metadata["Ophys"][category]) == len(
                 self.ophys_metadata[category]
@@ -1277,9 +1277,11 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
                 one_photon_series.unit == self.photon_series_metadata["unit"]
             ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
-            assert (one_photon_series.data.dtype == np.uint8), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
-            
-            # verify data range is consistent with uint8 source 
+            assert (
+                one_photon_series.data.dtype == np.uint8
+            ), f"Data type mismatch: expected np.float32, got {one_photon_series.data.dtype}"
+
+            # verify data range is consistent with uint8 source
             sample_data = one_photon_series.data[0 : min(10, one_photon_series.data.shape[0]), :, :]
             assert np.all(sample_data >= 0) and np.all(
                 sample_data <= 255
