@@ -1,6 +1,5 @@
 import copy
 import platform
-from typing import Optional
 
 from pydantic import FilePath
 
@@ -25,7 +24,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for Inscopix segmentation data from Inscopix proprietary format."
     keywords = ("segmentation", "roi", "inscopix", "cells")
-    
+
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """Initialize the Inscopix segmentation interface.
 
@@ -43,40 +42,40 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "Installation instructions can be found at: "
                 "https://github.com/inscopix/pyisx?tab=readme-ov-file#install"
             )
-        
+
         # Initialize the parent class with just file_path
         # Note: Do NOT pass plane_name here as InscopixSegmentationExtractor doesn't accept it
         super().__init__(file_path=file_path)
         self.verbose = verbose
-        
+
         # Access the extractor to verify it initialized correctly
         self._check_extractor()
-    
+
     def _check_extractor(self):
         """
         Check if the segmentation extractor was properly initialized.
-        
+
         This method verifies that the extractor is accessible and contains valid data.
         It's called during initialization to catch potential issues early.
         """
         try:
             # Try to access the extractor
             extractor = self.segmentation_extractor
-            
+
             # Perform some basic checks
             num_rois = extractor.get_num_rois()
             if num_rois == 0:
                 # This is not an error, but might be unexpected in some cases
                 if self.verbose:
                     print("Warning: No ROIs found in the segmentation data.")
-                    
+
         except Exception as e:
             # If we hit an issue, provide a clear error message
             raise ValueError(
                 f"Error initializing Inscopix segmentation extractor from {self.source_data.get('file_path')}: {str(e)}. "
                 f"Please check that the file exists and is a valid Inscopix Cell Set file (.isxd)."
             ) from e
-    
+
     def get_metadata(self) -> dict:
         """
         Retrieve metadata from the segmentation extractor and ensure it's not mutated.

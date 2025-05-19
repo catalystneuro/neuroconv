@@ -224,9 +224,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = InscopixSegmentationInterface
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -252,7 +250,8 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
-    
+
+
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed
 # class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
