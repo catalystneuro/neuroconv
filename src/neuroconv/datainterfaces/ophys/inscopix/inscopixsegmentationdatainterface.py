@@ -1,5 +1,4 @@
-import types
-
+import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
@@ -36,14 +35,14 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self._original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
         
         # Override get_roi_image_masks to handle integer ROI IDs
-        def patched_get_roi_image_masks(roi_ids=None):
+        def patched_get_roi_image_masks(self, ids=None):
             """Patched method to handle integer ROI IDs."""
-            if roi_ids is None:
-                return self._original_get_roi_image_masks(roi_ids)
+            if ids is None:
+                return self._original_get_roi_image_masks(ids)
             
             # Convert integer IDs to string format (e.g., 0 -> 'C0')
             str_roi_ids = []
-            for roi_id in roi_ids:
+            for roi_id in ids:
                 if isinstance(roi_id, int):
                     str_roi_ids.append(f'C{roi_id}')
                 else:
@@ -52,15 +51,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             # Call original method with string IDs
             return self._original_get_roi_image_masks(str_roi_ids)
         
-        # Apply patched method
-        self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks.__get__(
-            self.segmentation_extractor, type(self.segmentation_extractor)
-        )
+        # Apply patched method with the correct 'self' binding
+        import types
+        self.segmentation_extractor.get_roi_image_masks = types.MethodType(patched_get_roi_image_masks, 
+                                                                            self.segmentation_extractor)
     
     def get_metadata(self) -> dict:
         """
         Extract metadata from the Inscopix file.
-
+        
         Returns
         -------
         dict
