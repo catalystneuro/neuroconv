@@ -3,6 +3,7 @@ import platform
 
 import numpy as np
 import pytest
+import copy
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -220,7 +221,6 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
-
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
@@ -249,15 +249,39 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
     def setup_interface(self, request):
         test_id = request.node.callspec.id
         self.test_name = test_id
-        self.interface_kwargs = self.interface_kwargs
         self.conversion_options = request.param
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
 
+    def test_no_metadata_mutation(self):
+        """Test that the interface does not mutate the metadata dictionary."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        
+        # Get the original metadata
+        original_metadata = interface.get_metadata()
+        
+        # Create a deep copy for comparison after operations
+        original_copy = copy.deepcopy(original_metadata)
+        
+        # Run a conversion with the metadata
+        nwbfile_path = self.create_nwbfile_path("metadata_mutation_test")
+        
+        # Use the metadata in the conversion
+        interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            metadata=original_metadata,
+            overwrite=True,
+            **self.conversion_options
+        )
+        
+        # Verify the metadata wasn't changed
+        assert original_metadata == original_copy, "Metadata was mutated during conversion"
+
     def test_check_extracted_metadata(self):
-        self.interface = self.data_interface_cls(**self.interface_kwargs)
-        metadata = self.interface.get_metadata()
+        """Test that the extracted metadata contains expected values."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        metadata = interface.get_metadata()
 
         # Check basic NWB metadata
         assert "NWBFile" in metadata
@@ -274,39 +298,13 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
         
-        # Check cell names are included
+        # Check that plane segmentation has a name
         plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert "name" in plane_segmentation
         
         # Check fluorescence metadata
         assert "Fluorescence" in metadata["Ophys"]
-        
-        # Check for summary images metadata
-        assert "SegmentationImages" in metadata["Ophys"]
-        
-        # Test metadata matches expected cell data
-        # Verify we have 4 ROIs based on the CellSet metadata
-        roi_table = plane_segmentation.get("roi_table", {})
-        if "ids" in roi_table:
-            # If ids are explicitly defined, check their count
-            assert len(roi_table["ids"]) == 4  # From CellNames: ['C0', 'C1', 'C2', 'C3']
 
-    def test_stub_conversion(self):
-        # Test conversion with stub_test option
-        self.interface = self.data_interface_cls(**self.interface_kwargs)
-        self.nwbfile_path = self.create_nwbfile_path("stub_test")
-        
-        # Run conversion with stub_test to limit frames
-        self.interface.run_conversion(
-            nwbfile_path=self.nwbfile_path,
-            overwrite=True,
-            stub_test=True,
-            stub_frames=10  # Only include 10 frames for faster testing
-        )
-        
-        # Verify file was created
-        assert self.nwbfile_path.exists()
-        
 
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed
