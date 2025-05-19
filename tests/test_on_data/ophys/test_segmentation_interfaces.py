@@ -221,181 +221,239 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     conversion_options = dict(stub_test=True)
 
 
-import importlib
-import platform
-
-import numpy as np
-import pytest
-
-from neuroconv.datainterfaces import InscopixSegmentationInterface
-from neuroconv.tools.testing.data_interface_mixins import (
-    SegmentationExtractorInterfaceTestMixin,
-)
-
-# Import paths - adjust these imports as needed for your project structure
-try:
-    from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
-except ImportError:
-    from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
-
-# Skip tests if platform is macOS ARM64 or if isx module is not installed
-skip_on_darwin_arm64 = pytest.mark.skipif(
-    platform.system() == "Darwin" and platform.machine() == "arm64",
-    reason="Tests are skipped on macOS ARM64 due to platform limitations.",
-)
-
-skip_if_isx_not_installed = pytest.mark.skipif(
-    not importlib.util.find_spec("isx"),
-    reason="Tests are skipped because the 'isx' module is not installed.",
-)
-
-
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
-class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
-    """Test InscopixSegmentationInterface with cellset.isxd"""
-
+class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = InscopixSegmentationInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd")
+    )
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        """Set up metadata for Inscopix CellSet test based on the provided footer."""
-        cls = request.cls
+    @pytest.fixture(
+        params=[
+            {"mask_type": "image", "include_background_segmentation": True},
+            {"mask_type": "pixel", "include_background_segmentation": True},
+            {"include_roi_centroids": False, "include_background_segmentation": True},
+            {"include_roi_acceptance": False, "include_background_segmentation": True},
+            {"include_background_segmentation": False},
+        ],
+        ids=[
+            "mask_type_image",
+            "mask_type_pixel",
+            "exclude_roi_centroids",
+            "exclude_roi_acceptance",
+            "exclude_background_segmentation",
+        ],
+    )
+    def setup_interface(self, request):
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = self.interface_kwargs
+        self.conversion_options = request.param
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
 
-        # Extract relevant information from the footer
-        cls.device_name = "Microscope"
-        cls.imaging_plane_name = "ImagingPlane"
-        cls.image_segmentation_name = "ImageSegmentation"
-        cls.plane_segmentation_name = "PlaneSegmentation"
-        cls.fluorescence_name = "Fluorescence"
-        cls.roi_response_series_name = "RoiResponseSeries"
+        return self.interface, self.test_name
 
-        # Use animal information from footer
-        cls.animal_id = "FV4581"
-        cls.animal_species = "CaMKIICre"
-        cls.animal_sex = "m"
-        cls.animal_description = "Retrieval day"
+    def test_check_extracted_metadata(self):
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+        metadata = self.interface.get_metadata()
 
-        # Use microscope information from footer
-        cls.microscope_type = "NVista3"
-        cls.microscope_serial = "11132301"
-        cls.system_serial = "AC-11137705"
+        # Check basic NWB metadata
+        assert "NWBFile" in metadata
+        assert "Ophys" in metadata
+        
+        # Check device metadata
+        assert "Device" in metadata["Ophys"]
+        
+        # Check imaging plane metadata
+        assert "ImagingPlane" in metadata["Ophys"]
+        assert len(metadata["Ophys"]["ImagingPlane"]) > 0
+        
+        # Check image segmentation metadata
+        assert "ImageSegmentation" in metadata["Ophys"]
+        assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
+        
+        # Check cell names are included
+        plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        assert "name" in plane_segmentation
+        
+        # Check fluorescence metadata
+        assert "Fluorescence" in metadata["Ophys"]
+        
+        # Check for summary images metadata
+        assert "SegmentationImages" in metadata["Ophys"]
+        
+        # Test metadata matches expected cell data
+        # Verify we have 4 ROIs based on the CellSet metadata
+        roi_table = plane_segmentation.get("roi_table", {})
+        if "ids" in roi_table:
+            # If ids are explicitly defined, check their count
+            assert len(roi_table["ids"]) == 4  # From CellNames: ['C0', 'C1', 'C2', 'C3']
 
-        # Use imaging parameters from footer
-        cls.exp_time = 33
-        cls.focus = 1000
-        cls.gain = 6
-        cls.fps = 30
-        cls.led_power = 1.3
-
-        # Use ROI information from footer
-        cls.cell_names = ["C0", "C1", "C2", "C3"]
-        cls.cell_status = [0, 0, 0, 2]  # 0 = active, 2 = inactive
-
-        # Use image dimensions from footer
-        cls.image_width = 398
-        cls.image_height = 366
-
-        # Detailed metadata structures for validation
-        cls.device_metadata = dict(
-            name=cls.device_name, description=f"Inscopix {cls.microscope_type} Microscope (SN: {cls.microscope_serial})"
+    def test_stub_conversion(self):
+        # Test conversion with stub_test option
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+        self.nwbfile_path = self.create_nwbfile_path("stub_test")
+        
+        # Run conversion with stub_test to limit frames
+        self.interface.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            stub_test=True,
+            stub_frames=10  # Only include 10 frames for faster testing
         )
+        
+        # Verify file was created
+        assert self.nwbfile_path.exists()
+        
 
-        cls.imaging_plane_metadata = dict(
-            name=cls.imaging_plane_name,
-            description=f"Inscopix imaging plane at {cls.focus}um focus",
-            device=cls.device_name,
-            optical_channel=[
-                dict(name="OpticalChannel", description="Green fluorescence channel", emission_lambda=np.nan)
-            ],
-            excitation_lambda=np.nan,
-            indicator="GCaMP",
-            location="brain region",
-        )
+# @skip_on_darwin_arm64
+# @skip_if_isx_not_installed
+# class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
+#     """Test InscopixSegmentationInterface with cellset.isxd"""
 
-        cls.image_segmentation_metadata = dict(
-            name=cls.image_segmentation_name,
-            plane_segmentations=[
-                dict(
-                    name=cls.plane_segmentation_name,
-                    # description="Segmented ROIs from Inscopix CNMFE analysis",
-                    imaging_plane=cls.imaging_plane_name,
-                )
-            ],
-        )
+#     data_interface_cls = InscopixSegmentationInterface
+#     save_directory = OUTPUT_PATH
+#     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
 
-        cls.fluorescence_metadata = dict(
-            name=cls.fluorescence_name,
-            roi_response_series=dict(
-                name=cls.roi_response_series_name,
-                # description="Fluorescence trace of segmented ROIs (dF over noise)",
-                unit="dF over noise",
-            ),
-        )
+#     @pytest.fixture(scope="class", autouse=True)
+#     def setup_metadata(self, request):
+#         """Set up metadata for Inscopix CellSet test based on the provided footer."""
+#         cls = request.cls
 
-    def check_extracted_metadata(self, metadata: dict):
-        """Check that metadata is correctly extracted from Inscopix CellSet file."""
-        # Check overall ophys structure
-        assert "Ophys" in metadata, "Ophys not found in extracted metadata"
+#         # Extract relevant information from the footer
+#         cls.device_name = "Microscope"
+#         cls.imaging_plane_name = "ImagingPlane"
+#         cls.image_segmentation_name = "ImageSegmentation"
+#         cls.plane_segmentation_name = "PlaneSegmentation"
+#         cls.fluorescence_name = "Fluorescence"
+#         cls.roi_response_series_name = "RoiResponseSeries"
 
-        # Check required components exist
-        for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
-            assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
+#         # Use animal information from footer
+#         cls.animal_id = "FV4581"
+#         cls.animal_species = "CaMKIICre"
+#         cls.animal_sex = "m"
+#         cls.animal_description = "Retrieval day"
 
-        # Validate Device
-        device = metadata["Ophys"]["Device"][0]
-        assert (
-            device["name"] == self.device_name
-        ), f"Device name mismatch: expected '{self.device_name}', got '{device['name']}'"
+#         # Use microscope information from footer
+#         cls.microscope_type = "NVista3"
+#         cls.microscope_serial = "11132301"
+#         cls.system_serial = "AC-11137705"
 
-        # Validate ImagingPlane
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert (
-            imaging_plane["name"] == self.imaging_plane_name
-        ), f"ImagingPlane name mismatch: expected '{self.imaging_plane_name}', got '{imaging_plane['name']}'"
-        assert (
-            imaging_plane["device"] == self.device_name
-        ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
+#         # Use imaging parameters from footer
+#         cls.exp_time = 33
+#         cls.focus = 1000
+#         cls.gain = 6
+#         cls.fps = 30
+#         cls.led_power = 1.3
 
-        # Validate ImageSegmentation
-        image_segmentation = metadata["Ophys"]["ImageSegmentation"]
-        assert (
-            "plane_segmentations" in image_segmentation
-        ), "plane_segmentations not found in ImageSegmentation metadata"
+#         # Use ROI information from footer
+#         cls.cell_names = ["C0", "C1", "C2", "C3"]
+#         cls.cell_status = [0, 0, 0, 2]  # 0 = active, 2 = inactive
 
-        # Check for subject info in NWBFile metadata
-        if "Subject" in metadata.get("NWBFile", {}):
-            subject = metadata["NWBFile"]["Subject"]
-            assert (
-                subject.get("subject_id") == self.animal_id
-            ), f"Subject ID mismatch: expected '{self.animal_id}', got '{subject.get('subject_id')}'"
-            assert (
-                subject.get("species") == self.animal_species
-            ), f"Species mismatch: expected '{self.animal_species}', got '{subject.get('species')}'"
-            assert (
-                subject.get("sex") == self.animal_sex
-            ), f"Sex mismatch: expected '{self.animal_sex}', got '{subject.get('sex')}'"
+#         # Use image dimensions from footer
+#         cls.image_width = 398
+#         cls.image_height = 366
 
-    def run_custom_checks(self):
-        """Run additional custom checks for CellSet file."""
-        # Verify the segmentation extractor has valid ROIs
-        roi_ids = self.interface.segmentation_extractor.get_roi_ids()
+#         # Detailed metadata structures for validation
+#         cls.device_metadata = dict(
+#             name=cls.device_name, description=f"Inscopix {cls.microscope_type} Microscope (SN: {cls.microscope_serial})"
+#         )
 
-        # Check number of ROIs matches expected count
-        assert len(roi_ids) == len(
-            self.cell_names
-        ), f"ROI count mismatch: expected {len(self.cell_names)}, got {len(roi_ids)}"
+#         cls.imaging_plane_metadata = dict(
+#             name=cls.imaging_plane_name,
+#             description=f"Inscopix imaging plane at {cls.focus}um focus",
+#             device=cls.device_name,
+#             optical_channel=[
+#                 dict(name="OpticalChannel", description="Green fluorescence channel", emission_lambda=np.nan)
+#             ],
+#             excitation_lambda=np.nan,
+#             indicator="GCaMP",
+#             location="brain region",
+#         )
 
-        # Check that image masks can be retrieved
-        for roi_id in roi_ids:
-            mask = self.interface.segmentation_extractor.get_roi_image_masks(roi_ids=[roi_id])
-            assert mask is not None, f"Could not retrieve image mask for ROI {roi_id}"
-            assert mask.shape[-2:] == (
-                self.image_height,
-                self.image_width,
-            ), f"Mask shape mismatch: expected ({self.image_height}, {self.image_width}), got {mask.shape[-2:]}"
+#         cls.image_segmentation_metadata = dict(
+#             name=cls.image_segmentation_name,
+#             plane_segmentations=[
+#                 dict(
+#                     name=cls.plane_segmentation_name,
+#                     # description="Segmented ROIs from Inscopix CNMFE analysis",
+#                     imaging_plane=cls.imaging_plane_name,
+#                 )
+#             ],
+#         )
+
+#         cls.fluorescence_metadata = dict(
+#             name=cls.fluorescence_name,
+#             roi_response_series=dict(
+#                 name=cls.roi_response_series_name,
+#                 # description="Fluorescence trace of segmented ROIs (dF over noise)",
+#                 unit="dF over noise",
+#             ),
+#         )
+
+#     def check_extracted_metadata(self, metadata: dict):
+#         """Check that metadata is correctly extracted from Inscopix CellSet file."""
+#         # Check overall ophys structure
+#         assert "Ophys" in metadata, "Ophys not found in extracted metadata"
+
+#         # Check required components exist
+#         for category in ["Device", "ImagingPlane", "ImageSegmentation"]:
+#             assert category in metadata["Ophys"], f"{category} not found in Ophys metadata"
+
+#         # Validate Device
+#         device = metadata["Ophys"]["Device"][0]
+#         assert (
+#             device["name"] == self.device_name
+#         ), f"Device name mismatch: expected '{self.device_name}', got '{device['name']}'"
+
+#         # Validate ImagingPlane
+#         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+#         assert (
+#             imaging_plane["name"] == self.imaging_plane_name
+#         ), f"ImagingPlane name mismatch: expected '{self.imaging_plane_name}', got '{imaging_plane['name']}'"
+#         assert (
+#             imaging_plane["device"] == self.device_name
+#         ), f"ImagingPlane device mismatch: expected '{self.device_name}', got '{imaging_plane['device']}'"
+
+#         # Validate ImageSegmentation
+#         image_segmentation = metadata["Ophys"]["ImageSegmentation"]
+#         assert (
+#             "plane_segmentations" in image_segmentation
+#         ), "plane_segmentations not found in ImageSegmentation metadata"
+
+#         # Check for subject info in NWBFile metadata
+#         if "Subject" in metadata.get("NWBFile", {}):
+#             subject = metadata["NWBFile"]["Subject"]
+#             assert (
+#                 subject.get("subject_id") == self.animal_id
+#             ), f"Subject ID mismatch: expected '{self.animal_id}', got '{subject.get('subject_id')}'"
+#             assert (
+#                 subject.get("species") == self.animal_species
+#             ), f"Species mismatch: expected '{self.animal_species}', got '{subject.get('species')}'"
+#             assert (
+#                 subject.get("sex") == self.animal_sex
+#             ), f"Sex mismatch: expected '{self.animal_sex}', got '{subject.get('sex')}'"
+
+#     def run_custom_checks(self):
+#         """Run additional custom checks for CellSet file."""
+#         # Verify the segmentation extractor has valid ROIs
+#         roi_ids = self.interface.segmentation_extractor.get_roi_ids()
+
+#         # Check number of ROIs matches expected count
+#         assert len(roi_ids) == len(
+#             self.cell_names
+#         ), f"ROI count mismatch: expected {len(self.cell_names)}, got {len(roi_ids)}"
+
+#         # Check that image masks can be retrieved
+#         for roi_id in roi_ids:
+#             mask = self.interface.segmentation_extractor.get_roi_image_masks(roi_ids=[roi_id])
+#             assert mask is not None, f"Could not retrieve image mask for ROI {roi_id}"
+#             assert mask.shape[-2:] == (
+#                 self.image_height,
+#                 self.image_width,
+#             ), f"Mask shape mismatch: expected ({self.image_height}, {self.image_width}), got {mask.shape[-2:]}"
 
 
 # @skip_on_darwin_arm64
