@@ -1,3 +1,4 @@
+import numpy as np
 from pydantic import FilePath, validate_call
 import numpy as np
 from pynwb import NWBFile
@@ -7,7 +8,7 @@ from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterf
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix Segmentation Extractor.
-    
+
     This interface handles segmentation data from Inscopix (.isxd) files.
     """
 
