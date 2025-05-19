@@ -5,7 +5,7 @@ from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterf
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix Segmentation Extractor.
-    
+
     This interface handles segmentation data from Inscopix (.isxd) files.
     """
 
@@ -25,7 +25,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         self.file_path = str(file_path)
         super().__init__(file_path=self.file_path, verbose=verbose)
-        
+
         # Create a wrapper that presents integer IDs to NWB while preserving string IDs internally
         self._create_integer_id_wrapper()
 
@@ -35,7 +35,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         original_get_roi_ids = self.segmentation_extractor.get_roi_ids
         original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
         original_get_roi_pixel_masks = self.segmentation_extractor.get_roi_pixel_masks
-        
+
         # Create mappings between string and integer IDs
         string_roi_ids = original_get_roi_ids()
         self._string_to_int_map = {roi_id: i for i, roi_id in enumerate(string_roi_ids)}
