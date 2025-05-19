@@ -1,12 +1,12 @@
-from pydantic import FilePath, validate_call
 import numpy as np
+from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix Segmentation Extractor.
-    
+
     This interface handles segmentation data from Inscopix (.isxd) files.
     """
 
@@ -27,35 +27,35 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self.file_path = str(file_path)
         self.verbose = verbose
         super().__init__(file_path=self.file_path, verbose=verbose)
-        
+
         # Cache cell data for direct access
         self._cell_set = self.segmentation_extractor.cell_set
         self._num_cells = self._cell_set.num_cells
-        
+
         if self.verbose:
             print(f"Initialized InscopixSegmentationInterface with {self._num_cells} cells")
             print(f"Original ROI IDs: {self.segmentation_extractor.get_roi_ids()}")
-        
+
         # Patch the segmentation extractor
         self._patch_segmentation_extractor()
-    
+
     def _patch_segmentation_extractor(self):
         """Patch the segmentation extractor with methods that work correctly."""
         extractor = self.segmentation_extractor
         interface_self = self  # For use in the methods
-        
+
         # Override get_roi_ids to return integers
         def patched_get_roi_ids():
             ids = list(range(interface_self._num_cells))
             if interface_self.verbose:
                 print(f"get_roi_ids: Returning {len(ids)} integer ROI IDs: {ids}")
             return ids
-        
+
         # Override get_roi_image_masks to handle integer IDs correctly
         def patched_get_roi_image_masks(roi_ids=None):
             if interface_self.verbose:
                 print(f"get_roi_image_masks called with roi_ids={roi_ids}")
-            
+
             if roi_ids is None:
                 # Get all masks
                 masks = []
@@ -80,11 +80,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                                 # Last resort: use small default size
                                 empty_mask = np.zeros((100, 100))
                         masks.append(empty_mask)
-                
+
                 if masks:
                     return np.stack(masks)
                 return np.array([])
-                
+
             # Handle specific ROI IDs
             masks = []
             for roi_id in roi_ids:
@@ -109,28 +109,28 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                             # Last resort: use small default size
                             empty_mask = np.zeros((100, 100))
                     masks.append(empty_mask)
-            
+
             if len(masks) == 1:
                 return masks[0]
             elif masks:
                 return np.stack(masks)
             else:
                 return np.array([])
-        
+
         # Add a direct implementation of get_roi_locations
         def patched_get_roi_locations(roi_ids=None):
             if interface_self.verbose:
                 print(f"get_roi_locations called with roi_ids={roi_ids}")
-            
+
             if roi_ids is None:
                 roi_ids = list(range(interface_self._num_cells))
-            
+
             locations = []
             for roi_id in roi_ids:
                 try:
                     # Get mask directly from cell_set
                     mask = interface_self._cell_set.get_cell_image_data(roi_id)
-                    
+
                     # Find the center of mass
                     indices = np.where(mask > 0)
                     if len(indices[0]) > 0:
@@ -158,11 +158,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     except Exception:
                         # Last resort: use arbitrary coordinates
                         y_center, x_center = 50, 50
-                    
+
                     locations.append([y_center, x_center])
                     if interface_self.verbose:
                         print(f"Using fallback location for ROI {roi_id}: [{y_center}, {x_center}]")
-            
+
             if locations:
                 result = np.array(locations)
                 if interface_self.verbose:
@@ -172,23 +172,23 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 if interface_self.verbose:
                     print("No locations found, returning empty array")
                 return np.zeros((0, 2))
-        
+
         # Apply the patches
         extractor.get_roi_ids = patched_get_roi_ids
         extractor.get_roi_image_masks = patched_get_roi_image_masks
         extractor.get_roi_locations = patched_get_roi_locations
-    
+
     def add_to_nwbfile(self, nwbfile, metadata=None, **kwargs):
         """Add segmentation data to an NWBFile."""
         if self.verbose:
             print("Calling add_to_nwbfile...")
-        
+
         # Override mask_type to "image" if not specified
         if "mask_type" not in kwargs:
             kwargs["mask_type"] = "image"
             if self.verbose:
                 print("Setting mask_type to 'image'")
-        
+
         # Call the parent method with our patched extractor
         try:
             super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **kwargs)
