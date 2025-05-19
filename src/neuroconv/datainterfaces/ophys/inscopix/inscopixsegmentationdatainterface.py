@@ -1,4 +1,5 @@
 from pydantic import FilePath, validate_call
+import numpy as np
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
@@ -29,81 +30,146 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Initialize parent class with the file path
         super().__init__(file_path=self.file_path, verbose=verbose)
         
-        # Store original methods for later use
-        self._original_get_roi_ids = self.segmentation_extractor.get_roi_ids
-        
-        # Create a simple method to get integer ROI IDs
-        def get_integer_roi_ids():
-            return list(range(self.segmentation_extractor.get_num_rois()))
-        
-        # Replace the get_roi_ids method
-        self.segmentation_extractor.get_roi_ids = get_integer_roi_ids
-        
-        # Create a mapping for get_roi_image_masks
-        def modified_get_roi_image_masks(roi_ids=None):
-            # If roi_ids is None, return all masks
-            if roi_ids is None:
-                return self.segmentation_extractor._original_get_roi_image_masks(None)
-            
-            # If roi_ids contains integers, convert them to string IDs ("C0", "C1", etc.)
-            string_ids = []
-            for roi_id in roi_ids:
-                if isinstance(roi_id, int):
-                    string_ids.append(f"C{roi_id}")
-                else:
-                    string_ids.append(roi_id)
-                    
-            # Call the original method with string IDs
-            return self.segmentation_extractor._original_get_roi_image_masks(string_ids)
-        
-        # Store the original method and set up our patched version
-        self.segmentation_extractor._original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-        self.segmentation_extractor.get_roi_image_masks = modified_get_roi_image_masks
+        # Replace the extractor with a custom version that handles integer IDs
+        self.segmentation_extractor = _IntegerIDHandler(self.segmentation_extractor)
 
-    def add_to_nwbfile(self, nwbfile, metadata=None, **kwargs):
+
+class _IntegerIDHandler:
+    """
+    A wrapper class that handles the conversion between integer IDs and string IDs.
+    
+    This class wraps the original segmentation extractor and provides methods
+    that are compatible with both integer IDs and string IDs.
+    """
+    
+    def __init__(self, extractor):
         """
-        Add the segmentation data to an NWB file.
-        
-        This method overrides the parent method to ensure compatibility with NWB format.
+        Initialize the wrapper with the original extractor.
         
         Parameters
         ----------
-        nwbfile : NWBFile
-            The NWB file to add the segmentation data to.
-        metadata : dict, optional
-            Metadata for the NWB file.
-        **kwargs : dict
-            Additional keyword arguments.
+        extractor : SegmentationExtractor
+            The original segmentation extractor.
         """
-        # Set the conversion options
-        mask_type = kwargs.pop('mask_type', 'image')
-        include_roi_centroids = kwargs.pop('include_roi_centroids', True)
-        include_roi_acceptance = kwargs.pop('include_roi_acceptance', True)
+        self._extractor = extractor
         
-        # Ensure we're using integer IDs for the segmentation data
-        # This is critical for NWB compatibility
-        from neuroconv.tools.roiextractors import add_segmentation_to_nwbfile
+        # Create a mapping between integer IDs and string IDs
+        self._string_to_int = {}
+        self._int_to_string = {}
+        for i, string_id in enumerate(self._extractor.get_roi_ids()):
+            self._string_to_int[string_id] = i
+            self._int_to_string[i] = string_id
         
-        # Call the parent method with our custom parameters
-        add_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            include_roi_centroids=include_roi_centroids,
-            include_roi_acceptance=include_roi_acceptance,
-            mask_type=mask_type,
-            **kwargs
-        )
-
-    def get_metadata(self) -> dict:
-        """
-        Extract metadata from the Inscopix file.
-
-        Returns
-        -------
-        dict
-            Metadata dictionary for NWB file.
-        """
-        # Get base metadata from parent class
-        metadata = super().get_metadata()
-        return metadata
+        # Store important attributes
+        self.cell_set = self._extractor.cell_set
+    
+    def get_roi_ids(self):
+        """Return integer ROI IDs instead of string cell names."""
+        return list(range(len(self._int_to_string)))
+    
+    def get_roi_image_masks(self, roi_ids=None):
+        """Get ROI image masks using integer or string IDs."""
+        if roi_ids is None:
+            return self._extractor.get_roi_image_masks(None)
+            
+        # Convert to string IDs if needed
+        str_ids = []
+        for roi_id in roi_ids:
+            if isinstance(roi_id, int):
+                str_ids.append(self._int_to_string[roi_id])
+            else:
+                str_ids.append(roi_id)
+                
+        return self._extractor.get_roi_image_masks(str_ids)
+    
+    def get_roi_pixel_masks(self, roi_ids=None):
+        """Get ROI pixel masks using integer or string IDs."""
+        if roi_ids is None:
+            return self._extractor.get_roi_pixel_masks(None)
+            
+        # Convert to string IDs if needed
+        str_ids = []
+        for roi_id in roi_ids:
+            if isinstance(roi_id, int):
+                str_ids.append(self._int_to_string[roi_id])
+            else:
+                str_ids.append(roi_id)
+                
+        return self._extractor.get_roi_pixel_masks(str_ids)
+    
+    def get_roi_locations(self, roi_ids=None):
+        """Get ROI locations using integer or string IDs."""
+        if roi_ids is None:
+            roi_idx = range(len(self._int_to_string))
+        else:
+            roi_idx = []
+            for roi_id in roi_ids:
+                if isinstance(roi_id, int):
+                    roi_idx.append(roi_id)
+                else:
+                    roi_idx.append(self._string_to_int[roi_id])
+        
+        # Create a result array
+        roi_locations = np.zeros((2, len(roi_idx)), dtype="int")
+        
+        # Get the locations one by one
+        for i, idx in enumerate(roi_idx):
+            string_id = self._int_to_string[idx]
+            image_mask = self._extractor.get_roi_image_masks([string_id])
+            
+            # Compute centroid
+            coords = np.where(image_mask > 0)
+            if coords[0].size > 0:
+                roi_locations[0, i] = int(np.median(coords[0]))
+                roi_locations[1, i] = int(np.median(coords[1]))
+                
+        return roi_locations
+    
+    def get_traces(self, roi_ids=None, start_frame=None, end_frame=None, name="raw"):
+        """Get traces using integer or string IDs."""
+        if roi_ids is None:
+            return self._extractor.get_traces(None, start_frame, end_frame, name)
+            
+        # Convert to string IDs if needed
+        str_ids = []
+        for roi_id in roi_ids:
+            if isinstance(roi_id, int):
+                str_ids.append(self._int_to_string[roi_id])
+            else:
+                str_ids.append(roi_id)
+                
+        return self._extractor.get_traces(str_ids, start_frame, end_frame, name)
+    
+    def get_accepted_list(self):
+        """Return integer IDs of accepted ROIs."""
+        accepted_str_ids = self._extractor.get_accepted_list()
+        return [self._string_to_int[sid] for sid in accepted_str_ids]
+    
+    def get_rejected_list(self):
+        """Return integer IDs of rejected ROIs."""
+        rejected_str_ids = self._extractor.get_rejected_list()
+        return [self._string_to_int[sid] for sid in rejected_str_ids]
+    
+    def get_image_size(self):
+        """Get the image size."""
+        return self._extractor.get_image_size()
+    
+    def get_num_rois(self):
+        """Get the number of ROIs."""
+        return len(self._int_to_string)
+    
+    def get_num_frames(self):
+        """Get the number of frames in the recording."""
+        return self._extractor.get_num_frames()
+    
+    def get_sampling_frequency(self):
+        """Get the sampling frequency in Hz."""
+        return self._extractor.get_sampling_frequency()
+    
+    def frame_to_time(self, frames):
+        """Convert frame indices to times in seconds."""
+        return self._extractor.frame_to_time(frames)
+    
+    def __getattr__(self, name):
+        """Forward all other attribute access to the original extractor."""
+        return getattr(self._extractor, name)
