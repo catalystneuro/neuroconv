@@ -1,16 +1,17 @@
-from pydantic import FilePath
 import copy
 import platform
+
+from pydantic import FilePath
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix segmentation extractor.
-    
+
     This interface handles segmentation data from Inscopix's proprietary format (.isxd),
     extracting ROIs, their masks, and associated traces.
-    
+
     Parameters
     ----------
     file_path : FilePath
@@ -23,10 +24,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".isxd",)  # Changed from .mat to .isxd
     info = "Interface for Inscopix segmentation data from Inscopix proprietary format."
     keywords = ("segmentation", "roi", "inscopix", "cells")
-    
+
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """Initialize the Inscopix segmentation interface.
-        
+
         Parameters
         ----------
         file_path : FilePath
@@ -41,15 +42,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "Installation instructions can be found at: "
                 "https://github.com/inscopix/pyisx?tab=readme-ov-file#install"
             )
-            
+
         # Initialize the parent class
         super().__init__(file_path=file_path)
         self.verbose = verbose
-    
+
     def get_metadata(self) -> dict:
         """
         Retrieve metadata from the segmentation extractor and ensure it's not mutated.
-        
+
         Returns
         -------
         dict
@@ -57,10 +58,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         # Get metadata from parent class
         metadata = super().get_metadata()
-        
+
         # Return a deep copy to prevent mutation during subsequent processing
         return copy.deepcopy(metadata)
-    
+
     def add_to_nwbfile(
         self,
         nwbfile,
@@ -76,7 +77,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     ):
         """
         Add the segmentation data to an NWB file.
-        
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -103,11 +104,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Ensure metadata is not mutated by making a deep copy if provided
         if metadata is not None:
             metadata = copy.deepcopy(metadata)
-            
+
         # Validate mask_type
         if mask_type not in ["image", "pixel", "voxel", None]:
             raise ValueError(f"Invalid mask_type: {mask_type}. Must be one of: 'image', 'pixel', 'voxel', or None")
-        
+
         # Call the parent class implementation with validated parameters
         super().add_to_nwbfile(
             nwbfile=nwbfile,

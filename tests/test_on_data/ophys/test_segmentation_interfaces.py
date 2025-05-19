@@ -1,8 +1,8 @@
+import copy
 import importlib
 import platform
 
 import pytest
-import copy
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -220,6 +220,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
+
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
@@ -254,24 +255,21 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
     def test_no_metadata_mutation(self):
         """Test that the interface does not mutate the metadata dictionary."""
         interface = self.data_interface_cls(**self.interface_kwargs)
-        
+
         # Get the original metadata
         original_metadata = interface.get_metadata()
-        
+
         # Create a deep copy for comparison after operations
         original_copy = copy.deepcopy(original_metadata)
-        
+
         # Run a conversion with the metadata
         nwbfile_path = self.create_nwbfile_path("metadata_mutation_test")
-        
+
         # Use the metadata in the conversion
         interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            metadata=original_metadata,
-            overwrite=True,
-            **self.conversion_options
+            nwbfile_path=nwbfile_path, metadata=original_metadata, overwrite=True, **self.conversion_options
         )
-        
+
         # Verify the metadata wasn't changed
         assert original_metadata == original_copy, "Metadata was mutated during conversion"
 
@@ -294,7 +292,7 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         # Check image segmentation metadata
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
-        
+
         # Check that plane segmentation has a name
         plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert "name" in plane_segmentation
