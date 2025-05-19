@@ -37,13 +37,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             """
             Get the image masks extracted from segmentation algorithm.
             This patched version handles both integer and string ROI IDs.
-            
+
             Parameters
             ----------
             roi_ids: array_like
                 A list or 1D array of ids of the ROIs. Length is the number of ROIs requested.
                 Integer IDs will be converted to string format (e.g., 0 -> 'C0').
-            
+
             Returns
             -------
             image_masks: numpy.ndarray
@@ -51,7 +51,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             """
             if roi_ids is None:
                 return original_method(roi_ids)
-            
+
             # Convert integer IDs to string format (e.g., 0 -> 'C0')
             str_roi_ids = []
             for roi_id in roi_ids:
@@ -59,13 +59,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     str_roi_ids.append(f"C{roi_id}")
                 else:
                     str_roi_ids.append(roi_id)
-            
+
             # Call original method with string IDs
             return original_method(str_roi_ids)
-        
+
         # Replace the original method with our patched version
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
-    
+
     def get_metadata(self) -> dict:
         """
         Extract metadata from the Inscopix file.
