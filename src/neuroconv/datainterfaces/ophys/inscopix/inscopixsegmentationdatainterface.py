@@ -1,12 +1,12 @@
-from pydantic import FilePath, validate_call
 import numpy as np
+from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix Segmentation Extractor.
-    
+
     This interface handles segmentation data from Inscopix (.isxd) files.
     """
 
@@ -31,7 +31,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Cache cell data for direct access
         self._cell_set = self.segmentation_extractor.cell_set
         self._num_cells = self._cell_set.num_cells
-        
+
         if self.verbose:
             print(f"Initialized InscopixSegmentationInterface with {self._num_cells} cells")
             print(f"Original ROI IDs: {self.segmentation_extractor.get_roi_ids()}")
