@@ -1,4 +1,5 @@
-import numpy as np
+import types
+
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
@@ -59,7 +60,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_metadata(self) -> dict:
         """
         Extract metadata from the Inscopix file.
-        
+
         Returns
         -------
         dict
