@@ -1,17 +1,18 @@
-from pydantic import FilePath
 import copy
 import platform
 from typing import Optional
+
+from pydantic import FilePath
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix segmentation extractor.
-    
+
     This interface handles segmentation data from Inscopix's proprietary format (.isxd),
     extracting ROIs, their masks, and associated traces.
-    
+
     Parameters
     ----------
     file_path : FilePath
@@ -26,10 +27,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for Inscopix segmentation data from Inscopix proprietary format."
     keywords = ("segmentation", "roi", "inscopix", "cells")
-    
+
     def __init__(self, file_path: FilePath, plane_name: Optional[str] = None, verbose: bool = False):
         """Initialize the Inscopix segmentation interface.
-        
+
         Parameters
         ----------
         file_path : FilePath
@@ -46,16 +47,16 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "Installation instructions can be found at: "
                 "https://github.com/inscopix/pyisx?tab=readme-ov-file#install"
             )
-        
+
         # Initialize parent class with file_path and optional plane_name
         kwargs = {"file_path": file_path}
         if plane_name is not None:
             kwargs["plane_name"] = plane_name
-        
+
         # Initialize the parent class
         super().__init__(**kwargs)
         self.verbose = verbose
-        
+
         # Check if we need to raise an error about missing plane_name
         try:
             # Try to access the extractor to see if it fails due to missing plane_name
@@ -75,11 +76,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 ) from e
             # Otherwise, just re-raise the original error
             raise
-    
+
     def get_metadata(self) -> dict:
         """
         Retrieve metadata from the segmentation extractor and ensure it's not mutated.
-        
+
         Returns
         -------
         dict
@@ -87,10 +88,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         # Get metadata from parent class
         metadata = super().get_metadata()
-        
+
         # Return a deep copy to prevent mutation during subsequent processing
         return copy.deepcopy(metadata)
-    
+
     def add_to_nwbfile(
         self,
         nwbfile,
@@ -106,7 +107,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     ):
         """
         Add the segmentation data to an NWB file.
-        
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -133,11 +134,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Ensure metadata is not mutated by making a deep copy if provided
         if metadata is not None:
             metadata = copy.deepcopy(metadata)
-            
+
         # Validate mask_type
         if mask_type not in ["image", "pixel", "voxel", None]:
             raise ValueError(f"Invalid mask_type: {mask_type}. Must be one of: 'image', 'pixel', 'voxel', or None")
-        
+
         # Call the parent class implementation with validated parameters
         super().add_to_nwbfile(
             nwbfile=nwbfile,

@@ -1,4 +1,3 @@
-import copy
 import importlib
 import platform
 
@@ -227,7 +226,7 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
     data_interface_cls = InscopixSegmentationInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"),
-        plane_name="plane0"  # Explicitly specify the plane name to avoid ambiguity
+        plane_name="plane0",  # Explicitly specify the plane name to avoid ambiguity
     )
     save_directory = OUTPUT_PATH
 
@@ -263,24 +262,25 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         # Check basic NWB metadata
         assert "NWBFile" in metadata
         assert "Ophys" in metadata
-        
+
         # Check device metadata
         assert "Device" in metadata["Ophys"]
-        
+
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) > 0
-        
+
         # Check image segmentation metadata
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
-        
+
         # Check cell metadata from CellSet
         plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert "name" in plane_segmentation
-        
+
         # Check fluorescence metadata
         assert "Fluorescence" in metadata["Ophys"]
+
 
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed
