@@ -29,72 +29,77 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Initialize parent class with the file path
         super().__init__(file_path=self.file_path, verbose=verbose)
         
-        # Store a mapping between integer IDs and cell IDs (strings like "C0", "C1")
-        self._id_mapping = {}
-        for i in range(self.segmentation_extractor.get_num_rois()):
-            cell_name = self.segmentation_extractor.cell_set.get_cell_name(i)
-            self._id_mapping[i] = cell_name
-        
-        # Store the original methods
-        original_get_roi_ids = self.segmentation_extractor.get_roi_ids
-        original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-        original_get_traces = self.segmentation_extractor.get_traces
-        original_get_accepted_list = self.segmentation_extractor.get_accepted_list
-        original_get_rejected_list = self.segmentation_extractor.get_rejected_list
-        
-        # Override get_roi_ids to return integer IDs
-        def new_get_roi_ids():
-            return list(range(len(self._id_mapping)))
-        
-        # Override get_roi_image_masks to handle integer IDs
-        def new_get_roi_image_masks(roi_ids=None):
-            if roi_ids is None:
-                return original_get_roi_image_masks(roi_ids)
+        # Create a custom subclass of SegmentationExtractor that handles integer ROI IDs
+        # but maintains compatibility with Inscopix's string-based cell names
+        class IntegerIDInscopixSegmentationExtractor(self.segmentation_extractor.__class__):
+            def __init__(self, parent_extractor):
+                # Copy all attributes from the parent extractor
+                for attr_name in dir(parent_extractor):
+                    if not attr_name.startswith('__') and not callable(getattr(parent_extractor, attr_name)):
+                        setattr(self, attr_name, getattr(parent_extractor, attr_name))
+                
+                # Store the parent extractor
+                self._parent = parent_extractor
+                
+                # Create a mapping from integer ID to Inscopix cell name
+                self._id_to_cell_name = {}
+                for i in range(self._parent.get_num_rois()):
+                    self._id_to_cell_name[i] = self._parent.cell_set.get_cell_name(i)
             
-            # Convert integer IDs to string cell names
-            str_roi_ids = []
-            for roi_id in roi_ids:
-                if isinstance(roi_id, int):
-                    # Use the mapping to get the original cell name
-                    str_roi_ids.append(self._id_mapping.get(roi_id, f"C{roi_id}"))
-                else:
-                    str_roi_ids.append(roi_id)
-            
-            return original_get_roi_image_masks(str_roi_ids)
+            def get_roi_ids(self):
+                """Return integer ROI IDs instead of string cell names."""
+                return list(range(len(self._id_to_cell_name)))
+                
+            def get_roi_image_masks(self, roi_ids=None):
+                """Get ROI image masks using integer or string IDs."""
+                if roi_ids is None:
+                    return self._parent.get_roi_image_masks(None)
+                    
+                # Convert integer IDs to string cell names recognized by Inscopix
+                str_roi_ids = []
+                for roi_id in roi_ids:
+                    if isinstance(roi_id, int):
+                        # Use our mapping to get the original cell name
+                        str_roi_ids.append(self._id_to_cell_name[roi_id])
+                    else:
+                        str_roi_ids.append(roi_id)
+                        
+                return self._parent.get_roi_image_masks(str_roi_ids)
+                
+            def get_traces(self, roi_ids=None, start_frame=None, end_frame=None, name="raw"):
+                """Get traces using integer or string IDs."""
+                if roi_ids is None:
+                    return self._parent.get_traces(None, start_frame, end_frame, name)
+                    
+                # Convert integer IDs to string cell names
+                str_roi_ids = []
+                for roi_id in roi_ids:
+                    if isinstance(roi_id, int):
+                        str_roi_ids.append(self._id_to_cell_name[roi_id])
+                    else:
+                        str_roi_ids.append(roi_id)
+                        
+                return self._parent.get_traces(str_roi_ids, start_frame, end_frame, name)
+                
+            def get_accepted_list(self):
+                """Return integer IDs of accepted ROIs."""
+                accepted_str_ids = self._parent.get_accepted_list()
+                # Convert string IDs to integer IDs
+                return [idx for idx, cell_name in self._id_to_cell_name.items() if cell_name in accepted_str_ids]
+                
+            def get_rejected_list(self):
+                """Return integer IDs of rejected ROIs."""
+                rejected_str_ids = self._parent.get_rejected_list()
+                # Convert string IDs to integer IDs
+                return [idx for idx, cell_name in self._id_to_cell_name.items() if cell_name in rejected_str_ids]
+
+            # Pass through all other methods to the parent extractor
+            def __getattr__(self, name):
+                return getattr(self._parent, name)
         
-        # Override get_traces to handle integer IDs
-        def new_get_traces(roi_ids=None, start_frame=None, end_frame=None, name="raw"):
-            if roi_ids is None:
-                return original_get_traces(roi_ids, start_frame, end_frame, name)
-            
-            # Convert integer IDs to string cell names
-            str_roi_ids = []
-            for roi_id in roi_ids:
-                if isinstance(roi_id, int):
-                    str_roi_ids.append(self._id_mapping.get(roi_id, f"C{roi_id}"))
-                else:
-                    str_roi_ids.append(roi_id)
-            
-            return original_get_traces(str_roi_ids, start_frame, end_frame, name)
-        
-        # Override get_accepted_list to return integer IDs
-        def new_get_accepted_list():
-            str_ids = original_get_accepted_list()
-            # Convert string IDs to integer IDs
-            return [i for i, cell_name in self._id_mapping.items() if cell_name in str_ids]
-        
-        # Override get_rejected_list to return integer IDs
-        def new_get_rejected_list():
-            str_ids = original_get_rejected_list()
-            # Convert string IDs to integer IDs
-            return [i for i, cell_name in self._id_mapping.items() if cell_name in str_ids]
-        
-        # Replace all methods
-        self.segmentation_extractor.get_roi_ids = new_get_roi_ids
-        self.segmentation_extractor.get_roi_image_masks = new_get_roi_image_masks
-        self.segmentation_extractor.get_traces = new_get_traces
-        self.segmentation_extractor.get_accepted_list = new_get_accepted_list
-        self.segmentation_extractor.get_rejected_list = new_get_rejected_list
+        # Replace the segmentation extractor with our custom version
+        self.segmentation_extractor = IntegerIDInscopixSegmentationExtractor(self.segmentation_extractor)
+
     def get_metadata(self) -> dict:
         """
         Extract metadata from the Inscopix file.
