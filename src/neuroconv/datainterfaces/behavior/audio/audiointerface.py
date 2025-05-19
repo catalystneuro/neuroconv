@@ -1,5 +1,5 @@
 import json
-import wave
+import struct
 from pathlib import Path
 from typing import Literal
 
@@ -191,6 +191,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         -------
         NWBFile
         """
+
+        metadata = metadata or self.get_metadata()
+
         file_paths = self.source_data["file_paths"]
         audio_metadata = metadata["Behavior"]["Audio"]
         _check_audio_names_are_unique(metadata=audio_metadata)
@@ -236,21 +239,23 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return nwbfile
 
     @staticmethod
-    def _get_wav_bit_depth(file_path):
+    def _get_wav_bit_depth(file_path: FilePath) -> int:
         """
         Get the bit depth of a WAV file.
-
         Parameters
         ----------
         file_path : str or Path
             Path to the WAV file
-
         Returns
         -------
         int
             Bit depth of the WAV file (8, 16, 24, 32, etc.)
         """
-        with wave.open(str(file_path), "rb") as wav_file:
-            sample_width = wav_file.getsampwidth()
-            bit_depth = sample_width * 8
-        return bit_depth
+
+        struct_module_uint16 = "<H"  # < Is little-endian
+
+        with open(file_path, "rb") as f:
+            f.seek(34)
+            bits_per_sample = struct.unpack(struct_module_uint16, f.read(2))[0]
+
+            return bits_per_sample
