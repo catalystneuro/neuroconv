@@ -104,13 +104,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if "NWBFile" not in metadata:
             metadata["NWBFile"] = {}
 
-        # Add subject info from test requirements
-        metadata["NWBFile"]["Subject"] = {
-            "subject_id": "FV4581",
-            "species": "CaMKIICre",
-            "sex": "m",
-            "description": "Retrieval day",
-        }
 
         # Add ophys metadata if not already present
         if "Ophys" in metadata:
