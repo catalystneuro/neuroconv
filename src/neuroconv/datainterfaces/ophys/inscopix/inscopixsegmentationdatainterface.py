@@ -1,7 +1,5 @@
-import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
-import warnings
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
@@ -28,13 +26,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         self.file_path = str(file_path)
         self.verbose = verbose
-        
+
         # Initialize parent class with the file path
         super().__init__(file_path=self.file_path, verbose=verbose)
-        
+
         # Store original ROI IDs and patch methods
         self._patch_segmentation_extractor()
-    
+
     def _patch_segmentation_extractor(self):
         """
         Patch the segmentation extractor to handle string ROI IDs correctly.
@@ -42,26 +40,26 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         that need to handle both string and integer ROI ID formats.
         """
         # Store original ROI IDs (they might be strings like 'C0', 'C1', etc.)
-        if hasattr(self.segmentation_extractor, '_roi_ids'):
+        if hasattr(self.segmentation_extractor, "_roi_ids"):
             self._original_roi_ids = self.segmentation_extractor._roi_ids.copy()
         else:
             self._original_roi_ids = []
-        
+
         # Create mapping from integer to string ROI IDs
         self._int_to_str_mapping = {}
         for roi_id in self._original_roi_ids:
-            if isinstance(roi_id, str) and roi_id.startswith('C'):
+            if isinstance(roi_id, str) and roi_id.startswith("C"):
                 int_id = int(roi_id[1:])
                 self._int_to_str_mapping[int_id] = roi_id
-        
+
         # Override get_roi_image_masks method to handle integer ROI IDs
         original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-        
+
         def patched_get_roi_image_masks(roi_ids=None):
             """Patched method to convert integer ROI IDs back to original string format."""
             if roi_ids is None:
                 return original_get_roi_image_masks(roi_ids)
-            
+
             # Convert integer ROI IDs back to string format if needed
             converted_roi_ids = []
             for roi_id in roi_ids:
@@ -69,31 +67,31 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     converted_roi_ids.append(self._int_to_str_mapping[roi_id])
                 else:
                     converted_roi_ids.append(roi_id)
-            
+
             if self.verbose:
                 print(f"Original roi_ids: {roi_ids}")
                 print(f"Converted roi_ids: {converted_roi_ids}")
-            
+
             return original_get_roi_image_masks(converted_roi_ids)
-        
+
         # Apply the patch
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
-        
+
         # Now we can safely convert ROI IDs to integers
-        if hasattr(self.segmentation_extractor, '_roi_ids'):
+        if hasattr(self.segmentation_extractor, "_roi_ids"):
             new_roi_ids = []
             for roi_id in self.segmentation_extractor._roi_ids:
-                if isinstance(roi_id, str) and roi_id.startswith('C'):
+                if isinstance(roi_id, str) and roi_id.startswith("C"):
                     new_roi_ids.append(int(roi_id[1:]))
                 else:
                     new_roi_ids.append(roi_id)
-            
+
             self.segmentation_extractor._roi_ids = new_roi_ids
-    
+
     def get_metadata(self) -> dict:
         """
         Extract metadata from the Inscopix file.
-        
+
         Returns
         -------
         dict
@@ -101,38 +99,39 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         # Get base metadata from parent class
         metadata = super().get_metadata()
-        
+
         # Add custom metadata about the Inscopix device and animal (hardcoded for the test)
-        if 'NWBFile' not in metadata:
-            metadata['NWBFile'] = {}
-        
+        if "NWBFile" not in metadata:
+            metadata["NWBFile"] = {}
+
         # Add subject info from test requirements
-        metadata['NWBFile']['Subject'] = {
-            'subject_id': 'FV4581',
-            'species': 'CaMKIICre',
-            'sex': 'm',
-            'description': 'Retrieval day'
+        metadata["NWBFile"]["Subject"] = {
+            "subject_id": "FV4581",
+            "species": "CaMKIICre",
+            "sex": "m",
+            "description": "Retrieval day",
         }
-        
+
         # Add ophys metadata if not already present
-        if 'Ophys' in metadata:
+        if "Ophys" in metadata:
             # Update Device info
-            if 'Device' in metadata['Ophys'] and len(metadata['Ophys']['Device']) > 0:
-                metadata['Ophys']['Device'][0].update({
-                    'name': 'Microscope',
-                    'description': 'Inscopix NVista3 Microscope (SN: 11132301)'
-                })
-            
+            if "Device" in metadata["Ophys"] and len(metadata["Ophys"]["Device"]) > 0:
+                metadata["Ophys"]["Device"][0].update(
+                    {"name": "Microscope", "description": "Inscopix NVista3 Microscope (SN: 11132301)"}
+                )
+
             # Update ImagingPlane info
-            if 'ImagingPlane' in metadata['Ophys'] and len(metadata['Ophys']['ImagingPlane']) > 0:
-                metadata['Ophys']['ImagingPlane'][0].update({
-                    'name': 'ImagingPlane',
-                    'description': 'Inscopix imaging plane at 1000um focus',
-                    'device': 'Microscope'
-                })
-        
+            if "ImagingPlane" in metadata["Ophys"] and len(metadata["Ophys"]["ImagingPlane"]) > 0:
+                metadata["Ophys"]["ImagingPlane"][0].update(
+                    {
+                        "name": "ImagingPlane",
+                        "description": "Inscopix imaging plane at 1000um focus",
+                        "device": "Microscope",
+                    }
+                )
+
         return metadata
-    
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -148,7 +147,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     ):
         """
         Add segmentation data to an NWB file.
-        
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -188,7 +187,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 plane_segmentation_name=plane_segmentation_name,
-                iterator_options=iterator_options
+                iterator_options=iterator_options,
             )
         except Exception as e:
             if self.verbose:
