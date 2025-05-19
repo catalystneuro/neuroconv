@@ -1,4 +1,3 @@
-import numpy as np
 from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -38,7 +37,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             """Patched method to handle integer ROI IDs."""
             if ids is None:
                 return self._original_get_roi_image_masks(ids)
-            
+
             # Convert integer IDs to string format (e.g., 0 -> 'C0')
             str_roi_ids = []
             for roi_id in ids:
@@ -49,16 +48,18 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
             # Call original method with string IDs
             return self._original_get_roi_image_masks(str_roi_ids)
-        
+
         # Apply patched method with the correct 'self' binding
         import types
-        self.segmentation_extractor.get_roi_image_masks = types.MethodType(patched_get_roi_image_masks, 
-                                                                            self.segmentation_extractor)
-    
+
+        self.segmentation_extractor.get_roi_image_masks = types.MethodType(
+            patched_get_roi_image_masks, self.segmentation_extractor
+        )
+
     def get_metadata(self) -> dict:
         """
         Extract metadata from the Inscopix file.
-        
+
         Returns
         -------
         dict
