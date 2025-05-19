@@ -28,15 +28,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Initialize parent class with the file path
         super().__init__(file_path=self.file_path, verbose=verbose)
-    
+
         # Store the original method reference directly
         original_get_roi_image_masks = self.segmentation_extractor.get_roi_image_masks
-    
+
         # Define a replacement method that properly handles both string and integer IDs
         def patched_get_roi_image_masks(ids=None):
             if ids is None:
                 return original_get_roi_image_masks(ids)
-            
+
             # Convert integer IDs to string format (e.g., 0 -> 'C0')
             str_roi_ids = []
             for roi_id in ids:
@@ -44,10 +44,10 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     str_roi_ids.append(f"C{roi_id}")
                 else:
                     str_roi_ids.append(roi_id)
-                
+
             # Call with string IDs
             return original_get_roi_image_masks(str_roi_ids)
-    
+
         # Replace the method directly
         self.segmentation_extractor.get_roi_image_masks = patched_get_roi_image_masks
 
