@@ -104,7 +104,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if "NWBFile" not in metadata:
             metadata["NWBFile"] = {}
 
-
         # Add ophys metadata if not already present
         if "Ophys" in metadata:
             # Update Device info
