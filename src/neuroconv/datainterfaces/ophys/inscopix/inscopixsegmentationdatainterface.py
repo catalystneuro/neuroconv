@@ -92,6 +92,26 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 rejected_str_ids = self._parent.get_rejected_list()
                 # Convert string IDs to integer IDs
                 return [idx for idx, cell_name in self._id_to_cell_name.items() if cell_name in rejected_str_ids]
+            
+            # Override get_image_size to ensure it returns the correct dimensions
+            def get_image_size(self):
+                """Get the image size (width, height)."""
+                return self._parent.get_image_size()
+            
+            # Override get_num_rois to ensure it returns the correct count
+            def get_num_rois(self):
+                """Get the number of ROIs."""
+                return len(self._id_to_cell_name)
+            
+            # Override get_sampling_frequency to ensure it's properly passed through
+            def get_sampling_frequency(self):
+                """Get the sampling frequency in Hz."""
+                return self._parent.get_sampling_frequency()
+                
+            # Override get_num_frames to ensure it's properly passed through
+            def get_num_frames(self):
+                """Get the number of frames in the recording."""
+                return self._parent.get_num_frames()
 
             # Pass through all other methods to the parent extractor
             def __getattr__(self, name):
