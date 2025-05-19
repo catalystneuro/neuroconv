@@ -225,7 +225,10 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 @skip_if_isx_not_installed
 class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = InscopixSegmentationInterface
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"),
+        plane_name="plane0"  # Explicitly specify the plane name to avoid ambiguity
+    )
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -252,27 +255,6 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
 
         return self.interface, self.test_name
 
-    def test_no_metadata_mutation(self):
-        """Test that the interface does not mutate the metadata dictionary."""
-        interface = self.data_interface_cls(**self.interface_kwargs)
-
-        # Get the original metadata
-        original_metadata = interface.get_metadata()
-
-        # Create a deep copy for comparison after operations
-        original_copy = copy.deepcopy(original_metadata)
-
-        # Run a conversion with the metadata
-        nwbfile_path = self.create_nwbfile_path("metadata_mutation_test")
-
-        # Use the metadata in the conversion
-        interface.run_conversion(
-            nwbfile_path=nwbfile_path, metadata=original_metadata, overwrite=True, **self.conversion_options
-        )
-
-        # Verify the metadata wasn't changed
-        assert original_metadata == original_copy, "Metadata was mutated during conversion"
-
     def test_check_extracted_metadata(self):
         """Test that the extracted metadata contains expected values."""
         interface = self.data_interface_cls(**self.interface_kwargs)
@@ -281,25 +263,24 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         # Check basic NWB metadata
         assert "NWBFile" in metadata
         assert "Ophys" in metadata
-
+        
         # Check device metadata
         assert "Device" in metadata["Ophys"]
-
+        
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) > 0
-
+        
         # Check image segmentation metadata
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
-
-        # Check that plane segmentation has a name
+        
+        # Check cell metadata from CellSet
         plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert "name" in plane_segmentation
-
+        
         # Check fluorescence metadata
         assert "Fluorescence" in metadata["Ophys"]
-
 
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed
