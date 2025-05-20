@@ -1,10 +1,10 @@
+import importlib
 import platform
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pytest
-import importlib
 from dateutil.tz import tzoffset
 from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
@@ -914,7 +914,6 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             AssertionError, match="The main folder should contain at least one subfolder named 'Miniscope'."
         ):
             self.data_interface_cls(folder_path=folder_path)
-
 
 
 @skip_on_darwin_arm64
