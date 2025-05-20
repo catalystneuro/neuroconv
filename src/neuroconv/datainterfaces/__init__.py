@@ -84,6 +84,7 @@ from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
+from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -159,6 +160,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     InscopixImagingInterface,
+    InscopixSegmentationInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
     ScanImageMultiFileImagingInterface,
