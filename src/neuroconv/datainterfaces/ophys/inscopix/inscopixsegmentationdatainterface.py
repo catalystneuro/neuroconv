@@ -192,7 +192,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                         mapped_ids = [self._roi_id_mapping.get(id, i) for i, id in enumerate(original_ids)]
                         plane_seg["roi_table"]["ids"] = mapped_ids
         
-        # Call the parent class implementation with validated parameters
+
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
