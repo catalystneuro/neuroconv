@@ -2083,10 +2083,10 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
         The length of the stub recording in frames.
     """
 
-    # Stub the recordings
     number_of_segments = recording.get_num_segments()
     recording_segments = [recording.select_segments([index]) for index in range(number_of_segments)]
 
+    # We clip the stub_samples if they are more than the number of samples in the segment
     end_frame_list = [min(stub_samples, segment.get_num_samples()) for segment in recording_segments]
     recording_segments_stubbed = [
         segment.frame_slice(start_frame=0, end_frame=end_frame)

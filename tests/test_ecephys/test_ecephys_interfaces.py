@@ -127,12 +127,15 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         metadata = interface.get_metadata()
         interface.create_nwbfile(stub_test=True, metadata=metadata)
 
-    def test_no_slash_in_name(self, setup_interface):
-        interface = self.interface
-        metadata = interface.get_metadata()
-        metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
-        with pytest.raises(jsonschema.exceptions.ValidationError):
-            interface.validate_metadata(metadata)
+    def test_stub_with_starting_time(self, setup_interface):
+
+        interface = MockRecordingInterface(durations=[1.0])
+
+        recording = interface.recording_extractor
+        recording._recording_segments[0].t_start = 0.0
+        recording.shift_times(2.0)
+
+        interface.create_nwbfile(stub_test=True)
 
     def test_stub_multi_segment(self):
 
@@ -186,6 +189,13 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 overwrite=True,
                 append_on_disk_nwbfile=True,
             )
+
+    def test_no_slash_in_name(self, setup_interface):
+        interface = self.interface
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
+        with pytest.raises(jsonschema.exceptions.ValidationError):
+            interface.validate_metadata(metadata)
 
 
 class TestAssertions(TestCase):
