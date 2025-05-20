@@ -1,5 +1,7 @@
 import importlib
 import platform
+import copy
+import datetime
 
 import pytest
 
@@ -246,12 +248,102 @@ class TestInscopixSegmentationInterface(SegmentationExtractorInterfaceTestMixin)
         ],
     )
     def setup_interface(self, request):
+        """Set up the interface with appropriate parameters for each test."""
         test_id = request.node.callspec.id
         self.test_name = test_id
         self.conversion_options = request.param
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
+
+    def test_no_metadata_mutation(self, setup_interface):
+        """Test that the metadata object is not altered by `add_to_nwbfile` method."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface, _ = setup_interface
+        nwbfile = mock_NWBFile()
+
+        # Get original metadata
+        metadata = interface.get_metadata()
+        
+        # Ensure we have a session_start_time to avoid issues
+        if "NWBFile" in metadata and "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"]["session_start_time"] = datetime.datetime.now().astimezone()
+            
+        metadata_before_add_method = copy.deepcopy(metadata)
+
+        # Call add_to_nwbfile
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+        
+        # Verify the metadata wasn't changed
+        assert metadata == metadata_before_add_method, "Metadata was mutated during add_to_nwbfile"
+
+    @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+    def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend):
+        """Test running conversion with different backends."""
+        interface, _ = setup_interface
+        nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}-{self.test_name}.nwb")
+
+        # Get metadata and ensure session_start_time is set
+        metadata = interface.get_metadata()
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.datetime.now().astimezone())
+
+        # Make a deep copy to ensure the original isn't modified
+        metadata_copy = copy.deepcopy(metadata)
+        
+        # Run conversion
+        interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata_copy,
+            backend=backend,
+            **self.conversion_options,
+        )
+
+        # If we're using zarr, verify we can open it
+        if backend == "zarr":
+            from hdmf_zarr import NWBZarrIO
+            with NWBZarrIO(path=nwbfile_path, mode="r") as io:
+                io.read()
+
+    def test_check_extracted_metadata(self, setup_interface):
+        """Test that the extracted metadata contains expected values."""
+        interface, _ = setup_interface
+        metadata = interface.get_metadata()
+
+        # Check basic NWB metadata
+        assert "NWBFile" in metadata
+        assert "Ophys" in metadata
+        
+        # Check device metadata
+        assert "Device" in metadata["Ophys"]
+        
+        # Check imaging plane metadata
+        assert "ImagingPlane" in metadata["Ophys"]
+        assert len(metadata["Ophys"]["ImagingPlane"]) > 0
+        
+        # Check image segmentation metadata
+        assert "ImageSegmentation" in metadata["Ophys"]
+        assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
+        
+        # Check plane segmentation name
+        plane_segmentation = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        assert "name" in plane_segmentation
+        
+        # Check fluorescence metadata
+        assert "Fluorescence" in metadata["Ophys"]
+        
+        # Verify ROI IDs are properly handled
+        if "roi_table" in plane_segmentation:
+            # Verify ROI IDs are present
+            assert "ids" in plane_segmentation["roi_table"]
+            
+            # Check that we have the expected 4 cells from the CellSet metadata
+            roi_ids = plane_segmentation["roi_table"]["ids"]
+            # The IDs might be either original strings (C0, C1, etc.) or mapped integers
+            # We just check the count is correct
+            assert len(roi_ids) == 4, f"Expected 4 ROIs but found {len(roi_ids)}"
     
 # @skip_on_darwin_arm64
 # @skip_if_isx_not_installed

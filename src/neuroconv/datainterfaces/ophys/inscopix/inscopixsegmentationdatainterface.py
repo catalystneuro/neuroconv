@@ -1,18 +1,17 @@
+from pydantic import FilePath
 import copy
 import platform
-from typing import Optional
-
-from pydantic import FilePath
+import numpy as np
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Inscopix segmentation extractor.
-
+    
     This interface handles segmentation data from Inscopix's proprietary format (.isxd),
     extracting ROIs, their masks, and associated traces.
-
+    
     Parameters
     ----------
     file_path : FilePath
@@ -28,7 +27,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """Initialize the Inscopix segmentation interface.
-
+        
         Parameters
         ----------
         file_path : FilePath
@@ -44,43 +43,68 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "https://github.com/inscopix/pyisx?tab=readme-ov-file#install"
             )
         
-        # Initialize the parent class with just file_path
-        # Note: Do NOT pass plane_name here as InscopixSegmentationExtractor doesn't accept it
+        # Initialize the parent class with file_path
         super().__init__(file_path=file_path)
         self.verbose = verbose
         
-        # Access the extractor to verify it initialized correctly
+        # Validate that we have a working segmentation extractor
         self._check_extractor()
+        
+        # Create ROI ID mapping (str -> int) if needed
+        self._roi_id_mapping = None
+        self._initialize_roi_id_mapping()
     
     def _check_extractor(self):
-        """
-        Check if the segmentation extractor was properly initialized.
-        
-        This method verifies that the extractor is accessible and contains valid data.
-        It's called during initialization to catch potential issues early.
-        """
+        """Verify that the segmentation extractor is initialized correctly."""
         try:
-            # Try to access the extractor
             extractor = self.segmentation_extractor
-            
-            # Perform some basic checks
             num_rois = extractor.get_num_rois()
-            if num_rois == 0:
-                # This is not an error, but might be unexpected in some cases
-                if self.verbose:
-                    print("Warning: No ROIs found in the segmentation data.")
-                    
+            if num_rois == 0 and self.verbose:
+                print("Warning: No ROIs found in the segmentation data.")
         except Exception as e:
-            # If we hit an issue, provide a clear error message
             raise ValueError(
                 f"Error initializing Inscopix segmentation extractor from {self.source_data.get('file_path')}: {str(e)}. "
                 f"Please check that the file exists and is a valid Inscopix Cell Set file (.isxd)."
             ) from e
     
+    def _initialize_roi_id_mapping(self):
+        """Create a mapping from string ROI IDs to integer IDs if needed."""
+        roi_ids = self.segmentation_extractor.get_roi_ids()
+        
+        # Check if any ROI IDs are non-integer - if so, create a mapping
+        if not all(isinstance(id, int) for id in roi_ids):
+            self._roi_id_mapping = {roi_id: i for i, roi_id in enumerate(roi_ids)}
+            if self.verbose:
+                print(f"Created mapping from ROI IDs to integers: {self._roi_id_mapping}")
+    
+    def _map_roi_ids(self, roi_ids):
+        """Map ROI IDs to integers if needed."""
+        if self._roi_id_mapping is None:
+            return roi_ids
+        
+        # Map the IDs
+        return [self._roi_id_mapping[roi_id] for roi_id in roi_ids if roi_id in self._roi_id_mapping]
+    
+    def _filter_valid_roi_ids(self, roi_ids=None):
+        """Filter ROI IDs to include only valid ones."""
+        all_ids = self.segmentation_extractor.get_roi_ids()
+        
+        if roi_ids is None:
+            return all_ids
+        
+        # Filter to only include valid IDs
+        valid_ids = [roi_id for roi_id in roi_ids if roi_id in all_ids]
+        
+        if len(valid_ids) < len(roi_ids) and self.verbose:
+            print(f"Warning: Some requested ROI IDs are not valid. Valid IDs: {all_ids}")
+            print(f"Using only valid IDs: {valid_ids}")
+        
+        return valid_ids
+    
     def get_metadata(self) -> dict:
         """
-        Retrieve metadata from the segmentation extractor and ensure it's not mutated.
-
+        Retrieve metadata from the segmentation extractor and ensure it's properly formatted.
+        
         Returns
         -------
         dict
@@ -88,10 +112,21 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         # Get metadata from parent class
         metadata = super().get_metadata()
-
-        # Return a deep copy to prevent mutation during subsequent processing
+        
+        # Ensure ROI IDs are properly handled in the metadata
+        if "Ophys" in metadata and "ImageSegmentation" in metadata["Ophys"]:
+            if "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]:
+                for plane_seg in metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]:
+                    if "roi_table" in plane_seg and "ids" in plane_seg["roi_table"]:
+                        # Ensure ROI IDs are integers
+                        original_ids = plane_seg["roi_table"]["ids"]
+                        if self._roi_id_mapping is not None:
+                            mapped_ids = [self._roi_id_mapping.get(id, i) for i, id in enumerate(original_ids)]
+                            plane_seg["roi_table"]["ids"] = mapped_ids
+        
+        # Return a deep copy to prevent mutation
         return copy.deepcopy(metadata)
-
+    
     def add_to_nwbfile(
         self,
         nwbfile,
@@ -107,7 +142,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     ):
         """
         Add the segmentation data to an NWB file.
-
+        
         Parameters
         ----------
         nwbfile : NWBFile
@@ -129,16 +164,34 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added
         iterator_options : dict, optional
-            Options to use when iterating over the image masks
+            Options to use when iterating over the image masks of the segmentation extractor
         """
         # Ensure metadata is not mutated by making a deep copy if provided
         if metadata is not None:
             metadata = copy.deepcopy(metadata)
-
+            
         # Validate mask_type
         if mask_type not in ["image", "pixel", "voxel", None]:
             raise ValueError(f"Invalid mask_type: {mask_type}. Must be one of: 'image', 'pixel', 'voxel', or None")
-
+            
+        # Get the segmentation extractor, either full or stubbed
+        if stub_test:
+            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
+            segmentation_extractor = self.segmentation_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+        else:
+            segmentation_extractor = self.segmentation_extractor
+            
+        # Apply ROI ID mapping to make sure we have integer IDs for NWB
+        if self._roi_id_mapping is not None:
+            # We can't modify the extractor directly, but we can ensure the metadata is correct
+            if metadata is not None and "Ophys" in metadata and "ImageSegmentation" in metadata["Ophys"]:
+                for plane_seg in metadata["Ophys"]["ImageSegmentation"].get("plane_segmentations", []):
+                    if "roi_table" in plane_seg and "ids" in plane_seg["roi_table"]:
+                        # Map string IDs to integers
+                        original_ids = plane_seg["roi_table"]["ids"]
+                        mapped_ids = [self._roi_id_mapping.get(id, i) for i, id in enumerate(original_ids)]
+                        plane_seg["roi_table"]["ids"] = mapped_ids
+        
         # Call the parent class implementation with validated parameters
         super().add_to_nwbfile(
             nwbfile=nwbfile,
