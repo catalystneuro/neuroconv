@@ -10,13 +10,13 @@ First, create a clean environment and type the following commands in your termin
 
   git clone https://github.com/catalystneuro/neuroconv
   cd neuroconv
-  pip install -e .[docs]
+  pip install --editable .[docs]
 
 These commands install both the latest version of the repo and the dependencies necessary to build the documentation.
 
 .. note::
 
-  The argument ``-e`` makes you install `editable <https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs>`_
+  The argument ``--editable`` makes you install `editable <https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs>`_
 
 Use the following command to build the documentation locally.
 
