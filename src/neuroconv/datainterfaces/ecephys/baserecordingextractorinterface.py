@@ -376,7 +376,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         from ...tools.spikeinterface import _stub_recording, add_recording_to_nwbfile
 
         recording = self.recording_extractor
-        if stub_test or self.subset_channels is not None:
+        if stub_test:
             recording = _stub_recording(recording=recording)
 
         metadata = metadata or self.get_metadata()
