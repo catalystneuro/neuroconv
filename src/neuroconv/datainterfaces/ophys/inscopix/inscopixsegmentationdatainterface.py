@@ -1,8 +1,9 @@
-from pydantic import validate_call, FilePath
+from pydantic import FilePath, validate_call
 
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     """Conversion interface for Inscopix segmentation data."""

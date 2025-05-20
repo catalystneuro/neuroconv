@@ -207,7 +207,6 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     conversion_options = dict(stub_test=True)
 
 
-
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface."""
 

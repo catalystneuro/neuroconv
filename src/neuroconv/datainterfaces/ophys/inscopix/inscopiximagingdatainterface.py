@@ -38,7 +38,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         self.optical_series_name = photon_series_type
 
-
     def add_to_nwbfile(self, nwbfile, metadata=None, **kwargs):
         """
         Add the Inscopix data to the NWB file.
