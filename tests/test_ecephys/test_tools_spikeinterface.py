@@ -2021,7 +2021,7 @@ class TestWriteSortingAnalyzer(TestCase):
 
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
-    recording = generate_recording()
+    recording = generate_recording(durations=[1.0])
     recording._recording_segments[0].t_start = 0.0
     recording.shift_times(2.0)
 
