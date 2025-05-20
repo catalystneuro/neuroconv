@@ -209,15 +209,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 stacklevel=2,
             )
 
-        if stub_test:
-            end_time = self.recording_extractor.get_end_time()
-            end_time = min(end_time, 0.100)
-            recording = self.recording_extractor.time_slice(start_time=0, end_time=end_time)
-        else:
-            recording = self.recording_extractor
+        from ....tools.spikeinterface import _stub_recording
 
-        if metadata is None:
-            metadata = self.get_metadata()
+        recording = self.recording_extractor
+        if stub_test:
+            recording = _stub_recording(recording=self.recording_extractor)
+
+        metadata = metadata or self.get_metadata()
 
         # Add devices
         device_metadata = metadata.get("Devices", [])
