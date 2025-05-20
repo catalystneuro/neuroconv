@@ -108,8 +108,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             file_path=file_path,
         )
 
-        self.subset_channels = None
-
         signal_info_key = (0, "nidq")  # Key format is (segment_index, stream_id)
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]

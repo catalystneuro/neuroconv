@@ -43,7 +43,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.recording_extractor.set_property("channel_name", channel_names)
             self.recording_extractor.delete_property("channel_names")
 
-        self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
