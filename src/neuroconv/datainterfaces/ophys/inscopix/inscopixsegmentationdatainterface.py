@@ -24,7 +24,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for Inscopix segmentation data from Inscopix proprietary format."
     keywords = ("segmentation", "roi", "inscopix", "cells")
-    
+
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """Initialize the Inscopix segmentation interface.
         
