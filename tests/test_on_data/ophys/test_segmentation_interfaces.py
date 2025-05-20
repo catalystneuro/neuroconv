@@ -1,7 +1,3 @@
-import importlib
-import platform
-import copy
-import datetime
 
 import pytest
 
@@ -211,13 +207,14 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
+
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface."""
-    
+
     data_interface_cls = InscopixSegmentationInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
-    
+
     # Add conversion options with a valid mask_type
     conversion_options = dict(mask_type="pixel")
 
@@ -225,27 +222,27 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-        
+
         # Expected values from the metadata inspection
         cls.expected_roi_ids = [0, 1, 2, 3]  # Integer IDs
-        cls.expected_original_roi_ids = ['C0', 'C1', 'C2', 'C3']  # Original IDs from CellNames
+        cls.expected_original_roi_ids = ["C0", "C1", "C2", "C3"]  # Original IDs from CellNames
         cls.expected_num_rois = 4
         cls.expected_num_frames = 5444
         cls.expected_sampling_rate = 9.998700165  # 1/(100013/1000000) = 9.998700165 Hz
         cls.expected_image_size = (398, 366)  # From spacingInfo.numPixels
-        
+
         # Expected ROI centroids and metrics from cellMetrics
         cls.expected_centroids = [
             (147, 306),  # C0
             (171, 176),  # C1
             (124, 295),  # C2
-            (97, 213),   # C3
+            (97, 213),  # C3
         ]
-        
+
         # From CellStatuses: 0 = accepted, 2 = rejected
         cls.expected_accepted_ids = [0, 1, 2]  # C0, C1, C2
         cls.expected_rejected_ids = [3]  # C3
-        
+
         # NWB component names
         cls.imaging_plane_name = "ImagingPlane"
         cls.plane_segmentation_name = "PlaneSegmentation"
@@ -258,20 +255,20 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert "Ophys" in metadata
         assert "Device" in metadata["Ophys"]
         assert "ImageSegmentation" in metadata["Ophys"]
-        
+
         # Check if the sampling rate is correctly extracted
         if "imaging_rate" in metadata["Ophys"]["ImageSegmentation"]:
             rate = metadata["Ophys"]["ImageSegmentation"]["imaging_rate"]
             assert abs(rate - self.expected_sampling_rate) < 0.0001
-            
+
         # Additional checks for Inscopix-specific metadata
         if "ImagingPlane" in metadata["Ophys"]:
             # Should have one imaging plane
             assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-            
+
             # Check imaging plane name
             assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_name
-            
+
             # Check image dimensions
             if "field_of_view" in metadata["Ophys"]["ImagingPlane"][0]:
                 fov = metadata["Ophys"]["ImagingPlane"][0]["field_of_view"]
@@ -279,93 +276,96 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
                     # Convert dimensions to float for comparison
                     width, height = float(fov[0]), float(fov[1])
                     assert width > 0 and height > 0  # Basic validation
-        
+
         # Check ImageSegmentation metadata
         if "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]:
             plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
             assert plane_segmentation_metadata["name"] == self.plane_segmentation_name
-            
+
         # Check Fluorescence metadata
         if "Fluorescence" in metadata["Ophys"] and self.plane_segmentation_name in metadata["Ophys"]["Fluorescence"]:
             if "raw" in metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]:
                 raw_traces_metadata = metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]["raw"]
                 assert raw_traces_metadata["name"] == self.roi_response_series_name
-    
+
     def test_check_extracted_metadata(self):
         """Test the extracted metadata against expected values."""
         self.interface = self.data_interface_cls(**self.interface_kwargs)
         metadata = self.interface.get_metadata()
-        
+
         assert "Ophys" in metadata
-        
+
         if "ImagingPlane" in metadata["Ophys"]:
             assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_name
-            
+
         if "ImageSegmentation" in metadata["Ophys"] and "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]:
             plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
             assert plane_segmentation_metadata["name"] == self.plane_segmentation_name
-            
+
         if "Fluorescence" in metadata["Ophys"] and self.plane_segmentation_name in metadata["Ophys"]["Fluorescence"]:
             if "raw" in metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]:
                 raw_traces_metadata = metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]["raw"]
                 assert raw_traces_metadata["name"] == self.roi_response_series_name
-    
+
     def test_inscopix_specific_properties(self):
         """Test specific properties of the Inscopix segmentation extractor."""
         interface = self.data_interface_cls(**self.interface_kwargs)
         extractor = interface.segmentation_extractor
-        
+
         # Test ROI count
         assert extractor.get_num_rois() == self.expected_num_rois
-        
+
         # Test frame count
         assert extractor.get_num_frames() == self.expected_num_frames
-        
+
         # Test sampling frequency
         sampling_freq = extractor.get_sampling_frequency()
         if sampling_freq is not None:
             assert abs(sampling_freq - self.expected_sampling_rate) < 0.0001
-            
+
         # Test ROI IDs
         assert extractor.get_roi_ids() == self.expected_roi_ids
-        
+
         # Test original ROI IDs
         if hasattr(extractor, "get_original_roi_ids"):
             assert extractor.get_original_roi_ids() == self.expected_original_roi_ids
-            
+
         # Test accepted/rejected lists
         accepted = extractor.get_accepted_list()
         rejected = extractor.get_rejected_list()
         assert set(accepted) == set(self.expected_accepted_ids)
         assert set(rejected) == set(self.expected_rejected_ids)
-        
+
         # Test image size
         image_size = extractor.get_image_size()
         assert image_size == self.expected_image_size
-        
+
         # Test that we can get image masks
         image_masks = extractor.get_roi_image_masks()
         assert image_masks.shape[0] == self.expected_num_rois
-        
+
         # Test that we can get pixel masks
         pixel_masks = extractor.get_roi_pixel_masks()
         assert len(pixel_masks) == self.expected_num_rois
         # Each pixel mask should have the format (N, 3) for x, y, weight
         for mask in pixel_masks:
             assert mask.shape[1] == 3
-            
+
         # Test that we can get traces
         traces = extractor.get_traces()
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
 
+
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface with the cellset_series_part1 dataset."""
-    
+
     data_interface_cls = InscopixSegmentationInterface
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
+    )
     save_directory = OUTPUT_PATH
-    
+
     # Add conversion options with a valid mask_type
     conversion_options = dict(mask_type="pixel")
 
@@ -373,26 +373,26 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-        
+
         # Expected values from the metadata inspection
         cls.expected_roi_ids = [0, 1, 2, 3, 4, 5]  # Integer IDs
-        cls.expected_original_roi_ids = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']  # Original IDs from CellNames
+        cls.expected_original_roi_ids = ["C0", "C1", "C2", "C3", "C4", "C5"]  # Original IDs from CellNames
         cls.expected_num_rois = 6
         cls.expected_num_frames = 100
         cls.expected_sampling_rate = 10.0  # 1/(100/1000) = 10.0 Hz
         cls.expected_image_size = (21, 21)  # From spacingInfo.numPixels
-        
-        # From CellStatuses: 1 likely means something other than "accepted" 
+
+        # From CellStatuses: 1 likely means something other than "accepted"
         # Based on the test failure, it appears no ROIs are considered "accepted"
         cls.expected_accepted_ids = []  # No accepted ROIs
         cls.expected_rejected_ids = []  # Likely not rejected either, but in some other state
-        
+
         # NWB component names
         cls.imaging_plane_name = "ImagingPlane"
         cls.plane_segmentation_name = "PlaneSegmentation"
         cls.fluorescence_name = "Fluorescence"
         cls.roi_response_series_name = "RoiResponseSeries"
-        
+
         # Additional dataset-specific metadata
         cls.spatial_downsampling = 2  # From extraProperties.idps.spatialDownsampling
         cls.temporal_downsampling = 1  # From extraProperties.idps.temporalDownsampling
@@ -404,20 +404,20 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         assert "Ophys" in metadata
         assert "Device" in metadata["Ophys"]
         assert "ImageSegmentation" in metadata["Ophys"]
-        
+
         # Check if the sampling rate is correctly extracted
         if "imaging_rate" in metadata["Ophys"]["ImageSegmentation"]:
             rate = metadata["Ophys"]["ImageSegmentation"]["imaging_rate"]
             assert abs(rate - self.expected_sampling_rate) < 0.0001
-            
+
         # Additional checks for Inscopix-specific metadata
         if "ImagingPlane" in metadata["Ophys"]:
             # Should have one imaging plane
             assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-            
+
             # Check imaging plane name
             assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_name
-            
+
             # Check image dimensions
             if "field_of_view" in metadata["Ophys"]["ImagingPlane"][0]:
                 fov = metadata["Ophys"]["ImagingPlane"][0]["field_of_view"]
@@ -425,96 +425,99 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
                     # Convert dimensions to float for comparison
                     width, height = float(fov[0]), float(fov[1])
                     assert width > 0 and height > 0  # Basic validation
-        
+
         # Check ImageSegmentation metadata
         if "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]:
             plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
             assert plane_segmentation_metadata["name"] == self.plane_segmentation_name
-            
+
         # Check Fluorescence metadata
         if "Fluorescence" in metadata["Ophys"] and self.plane_segmentation_name in metadata["Ophys"]["Fluorescence"]:
             if "raw" in metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]:
                 raw_traces_metadata = metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]["raw"]
                 assert raw_traces_metadata["name"] == self.roi_response_series_name
-    
+
     def test_check_extracted_metadata(self):
         """Test the extracted metadata against expected values."""
         self.interface = self.data_interface_cls(**self.interface_kwargs)
         metadata = self.interface.get_metadata()
-        
+
         assert "Ophys" in metadata
-        
+
         if "ImagingPlane" in metadata["Ophys"]:
             assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_name
-            
+
         if "ImageSegmentation" in metadata["Ophys"] and "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]:
             plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
             assert plane_segmentation_metadata["name"] == self.plane_segmentation_name
-            
+
         if "Fluorescence" in metadata["Ophys"] and self.plane_segmentation_name in metadata["Ophys"]["Fluorescence"]:
             if "raw" in metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]:
                 raw_traces_metadata = metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]["raw"]
                 assert raw_traces_metadata["name"] == self.roi_response_series_name
-    
+
     def test_inscopix_series_specific_properties(self):
         """Test specific properties of the Inscopix segmentation extractor for the series dataset."""
         interface = self.data_interface_cls(**self.interface_kwargs)
         extractor = interface.segmentation_extractor
-        
+
         # Test ROI count
         assert extractor.get_num_rois() == self.expected_num_rois
-        
+
         # Test frame count
         assert extractor.get_num_frames() == self.expected_num_frames
-        
+
         # Test sampling frequency
         sampling_freq = extractor.get_sampling_frequency()
         if sampling_freq is not None:
             assert abs(sampling_freq - self.expected_sampling_rate) < 0.0001
-            
+
         # Test ROI IDs
         assert extractor.get_roi_ids() == self.expected_roi_ids
-        
+
         # Test original ROI IDs
         if hasattr(extractor, "get_original_roi_ids"):
             assert extractor.get_original_roi_ids() == self.expected_original_roi_ids
-            
+
         # Test accepted/rejected lists
         accepted = extractor.get_accepted_list()
         rejected = extractor.get_rejected_list()
-        
-        # Based on test failure, all ROIs in this dataset appear to be in some state 
+
+        # Based on test failure, all ROIs in this dataset appear to be in some state
         # other than "accepted" or "rejected"
         assert len(accepted) == len(self.expected_accepted_ids)  # Should be 0
         assert len(rejected) == len(self.expected_rejected_ids)  # Should also be 0 based on test output
-        
+
         # Test image size
         image_size = extractor.get_image_size()
         assert image_size == self.expected_image_size
-        
+
         # Test that we can get image masks
         image_masks = extractor.get_roi_image_masks()
         assert image_masks.shape[0] == self.expected_num_rois
-        
+
         # Test that we can get pixel masks
         pixel_masks = extractor.get_roi_pixel_masks()
         assert len(pixel_masks) == self.expected_num_rois
         # Each pixel mask should have the format (N, 3) for x, y, weight
         for mask in pixel_masks:
             assert mask.shape[1] == 3
-            
+
         # Test that we can get traces
         traces = extractor.get_traces()
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
 
+
 class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface with an empty cellset dataset."""
-    
+
     data_interface_cls = InscopixSegmentationInterface
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd"))
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
+    )
     save_directory = OUTPUT_PATH
-    
+
     # Add conversion options with a valid mask_type
     conversion_options = dict(mask_type="pixel")
 
@@ -522,7 +525,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-        
+
         # Expected values from the metadata inspection
         cls.expected_num_rois = 0  # No ROIs in this dataset
         cls.expected_num_frames = 7  # From timingInfo.numTimes
@@ -533,62 +536,63 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
         """Test the properties of an empty Inscopix dataset."""
         interface = self.data_interface_cls(**self.interface_kwargs)
         extractor = interface.segmentation_extractor
-        
+
         # Check that there are no ROIs
         assert extractor.get_num_rois() == self.expected_num_rois
-        
+
         # Check frame count
         assert extractor.get_num_frames() == self.expected_num_frames
-        
+
         # Check sampling frequency
         sampling_freq = extractor.get_sampling_frequency()
         if sampling_freq is not None:
             assert abs(sampling_freq - self.expected_sampling_rate) < 0.0001
-        
+
         # Check image size
         image_size = extractor.get_image_size()
         assert image_size == self.expected_image_size
-        
+
         # Check empty lists
         assert extractor.get_roi_ids() == []
         assert extractor.get_accepted_list() == []
         assert extractor.get_rejected_list() == []
-        
+
         # Getting image masks should raise a ValueError when trying to stack empty list
         with pytest.raises(ValueError, match="need at least one array to stack"):
             extractor.get_roi_image_masks()
-            
+
         # Getting pixel masks should raise a ValueError when trying to stack empty list
         with pytest.raises(ValueError, match="need at least one array to stack"):
             extractor.get_roi_pixel_masks()
-    
+
     def test_no_metadata_mutation(self, setup_interface):
         """Override test_no_metadata_mutation to handle the expected ValueError."""
-        from pynwb.testing.mock.file import mock_NWBFile
         from copy import deepcopy
-        
+
+        from pynwb.testing.mock.file import mock_NWBFile
+
         nwbfile = mock_NWBFile()
-        
+
         metadata = self.interface.get_metadata()
         metadata_before_add_method = deepcopy(metadata)
-        
+
         # We expect ValueError when trying to add segmentation with no ROIs
         with pytest.raises(ValueError, match="need at least one array to stack"):
             self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
-        
+
         # Check that metadata wasn't modified even though an error was raised
         assert metadata == metadata_before_add_method
-        
+
     def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend="hdf5"):
         """Override test_run_conversion_with_backend to handle the expected ValueError."""
         from datetime import datetime
-        
+
         nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}-{self.test_name}.nwb")
-        
+
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        
+
         # We expect ValueError when trying to convert with no ROIs
         with pytest.raises(ValueError, match="need at least one array to stack"):
             self.interface.run_conversion(
@@ -598,13 +602,13 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
                 backend=backend,
                 **self.conversion_options,
             )
-    
+
     # Overriding other tests that would fail with ValueError
     def test_run_conversion_with_backend_configuration(self, setup_interface, tmp_path, backend="hdf5"):
         pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
-    
+
     def test_configure_backend_for_equivalent_nwbfiles(self, setup_interface, backend="hdf5"):
         pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
-    
+
     def test_all_conversion_checks(self, setup_interface, tmp_path):
         pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
