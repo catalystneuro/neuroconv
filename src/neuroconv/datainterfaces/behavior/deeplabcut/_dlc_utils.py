@@ -9,6 +9,7 @@ from pydantic import FilePath
 from ruamel.yaml import YAML
 
 from ....tools import get_module
+from ....utils import DeepDict
 from ....utils.checks import calculate_regular_series_rate
 
 
@@ -251,7 +252,7 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
     return video_file_path, image_shape
 
 
-def _write_pes_to_nwbfile(
+def _add_pose_estimation_to_nwbfile(
     nwbfile,
     df_animal,
     timestamps,
@@ -260,7 +261,7 @@ def _write_pes_to_nwbfile(
     metadata: dict | None = None,
 ):
     """
-    Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
+    Updated version of _add_pose_estimation_to_nwbfile to work with ndx-pose v0.2.0+
 
     Parameters
     ----------
@@ -276,9 +277,6 @@ def _write_pes_to_nwbfile(
         The metadata dictionary containing additional information for the pose estimation.
     """
     from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
-    from pynwb.file import Subject
-
-    from ....utils import DeepDict
 
     # Extract keypoints from the DataFrame
     keypoints = df_animal.columns.get_level_values("bodyparts").unique()
@@ -330,25 +328,21 @@ def _write_pes_to_nwbfile(
     skeleton_metadata_key = container_metadata["skeleton"]
     skeleton_metadata = pose_estimation_metadata["Skeletons"][skeleton_metadata_key]
 
-    # Get animal/subject from skeleton metadata
-    animal = skeleton_metadata["subject"]
-
-    # Create or get subject
-    if nwbfile.subject is None and animal:
-        subject = Subject(subject_id=animal)
-        nwbfile.subject = subject
-    else:
+    # If the skeleton name is identical to the subject id then link the skeleton to the subject
+    skeleton_subject = skeleton_metadata["subject"]
+    if nwbfile.subject is not None and skeleton_subject != nwbfile.subject.subject_id:
         subject = nwbfile.subject
+    else:
+        subject = None
 
     # Create skeleton
     skeleton = Skeleton(
         name=skeleton_metadata["name"],
         nodes=skeleton_metadata["nodes"],
         edges=np.array(skeleton_metadata["edges"]) if skeleton_metadata["edges"] else None,
-        subject=subject if animal == getattr(subject, "subject_id", "") else None,
+        subject=subject,
     )
 
-    # Add skeleton to processing module
     behavior_processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
     if "Skeletons" not in behavior_processing_module.data_interfaces:
         skeletons = Skeletons(skeletons=[skeleton])
