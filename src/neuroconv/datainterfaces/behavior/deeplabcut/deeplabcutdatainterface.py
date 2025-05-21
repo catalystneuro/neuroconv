@@ -432,8 +432,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Add a series for each bodypart
         for bodypart in bodyparts:
             pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][bodypart] = {
-                "name": bodypart,
-                "description": f"Keypoint {bodypart}.",
+                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                "description": f"Pose estimation series for {bodypart}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                 "confidence_definition": "Softmax output of the deep neural network.",

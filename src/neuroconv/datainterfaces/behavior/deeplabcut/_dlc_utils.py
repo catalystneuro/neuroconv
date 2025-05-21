@@ -371,8 +371,8 @@ def _write_pes_to_nwbfile(
 
         # Default series kwargs
         pose_estimation_series_kwargs = dict(
-            name=keypoint,
-            description=f"Keypoint {keypoint}.",
+            name=f"PoseEstimationSeries{keypoint.capitalize()}",
+            description=f"Pose estimation series for {keypoint}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
