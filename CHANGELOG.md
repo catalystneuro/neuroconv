@@ -25,6 +25,7 @@
 * Add installation instructions on the documentation for `neuroconv` [PR #1344](https://github.com/catalystneuro/neuroconv/pull/1344)
 * Separate dailies and dev-dailies workflows [PR #1343](https://github.com/catalystneuro/neuroconv/pull/1343)
 * Added support for renaming Skeletons with DeepLabCutInterface [PR #1359](https://github.com/catalystneuro/neuroconv/pull/1359)
+* Updated pose_estimation series names [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
 
 # v0.7.3 (April 25, 2025)
 
