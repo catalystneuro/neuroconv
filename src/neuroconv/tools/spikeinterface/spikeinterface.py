@@ -985,7 +985,7 @@ def _recording_traces_to_hdmf_iterator(
     iterator_opts = dict() if iterator_opts is None else iterator_opts
 
     if iterator_type is None:
-        check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
+        _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
         traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
     elif iterator_type == "v2":
         traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(

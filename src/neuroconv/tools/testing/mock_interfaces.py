@@ -226,6 +226,10 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         channel_ids_as_strings = [str(id) for id in channel_ids]
         self.recording_extractor = self.recording_extractor.rename_channels(new_channel_ids=channel_ids_as_strings)
 
+        # Set channel gains and offsets to avoid warnings about missing scaling information
+        self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
+        self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+
     def get_metadata(self) -> dict:
         """
         Get metadata for the recording interface.
