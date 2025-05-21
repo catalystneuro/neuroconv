@@ -7,6 +7,7 @@
 * Set minimum version requirement for `ndx-pose` to 0.2.0 [PR #1322](https://github.com/catalystneuro/neuroconv/pull/1322)
 * Set minimum version for roiextractors as 0.5.13. [PR #1339](https://github.com/catalystneuro/neuroconv/pull/1339)
 * Removed automatic subject addition for DeepLabCutInterface. A link is now created only if the skeleton metadata matches the subject ID.  [PR #1362](https://github.com/catalystneuro/neuroconv/pull/1362)
+* ndx-events is now a required dependency by spikeglx [PR #1353](https://github.com/catalystneuro/neuroconv/pull/1353)
 
 ## Bug Fixes
 * Fix `AudioInterface` to correctly handle WAV filenames with multiple dots by validating only the last suffix. [PR #1327](https://github.com/catalystneuro/neuroconv/pull/1327)
@@ -16,15 +17,16 @@
 * `AudioInterface` Adding support for IEEE float in WAV format [PR #1325](https://github.com/catalystneuro/neuroconv/pull/1325)
 * Added a RecordingInterface for WhiteMatter ephys data [PR #1297](https://github.com/catalystneuro/neuroconv/pull/1297) [PR #1333](https://github.com/catalystneuro/neuroconv/pull/1333)
 * Improved `ScanImageInteface` to support both single and multi-file data [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330)
+* `DeepDict` now behaves as a python dict when printed in notebooks [PR #1351](https://github.com/catalystneuro/neuroconv/pull/1351)
 * Enable chunking for `InternalVideoInterface` [PR #1338](https://github.com/catalystneuro/neuroconv/pull/1338)
 * `ImageSeries` and `TwoPhotonSeries` now are chunked by default even if the data is passed as a plain array [PR #1338](https://github.com/catalystneuro/neuroconv/pull/1338)
-
 
 ## Improvements
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
 * Add installation instructions on the documentation for `neuroconv` [PR #1344](https://github.com/catalystneuro/neuroconv/pull/1344)
 * Separate dailies and dev-dailies workflows [PR #1343](https://github.com/catalystneuro/neuroconv/pull/1343)
 * Added support for renaming Skeletons with DeepLabCutInterface [PR #1359](https://github.com/catalystneuro/neuroconv/pull/1359)
+* Updated pose_estimation series names [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
 
 # v0.7.3 (April 25, 2025)
 

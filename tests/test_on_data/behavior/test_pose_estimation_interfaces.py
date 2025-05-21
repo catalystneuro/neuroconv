@@ -506,7 +506,12 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
             pose_estimation_container = processing_module_interfaces["PoseEstimationDeepLabCut"]
             pose_estimation_series_in_nwb = pose_estimation_container.pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesLeftear",
+                "PoseEstimationSeriesRightear",
+                "PoseEstimationSeriesSnout",
+                "PoseEstimationSeriesTailbase",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -550,7 +555,12 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             pose_estimation_series_in_nwb = processing_module_interfaces[
                 "PoseEstimationDeepLabCut"
             ].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesLeftear",
+                "PoseEstimationSeriesRightear",
+                "PoseEstimationSeriesSnout",
+                "PoseEstimationSeriesTailbase",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -642,7 +652,12 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
             pose_estimation_series_in_nwb = processing_module_interfaces[
                 "PoseEstimationDeepLabCut"
             ].pose_estimation_series
-            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesRedled",
+                "PoseEstimationSeriesShoulder",
+                "PoseEstimationSeriesHaunch",
+                "PoseEstimationSeriesBaseoftail",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
