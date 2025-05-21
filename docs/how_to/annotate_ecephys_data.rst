@@ -49,13 +49,13 @@ NeuroConv correctly assigns them during data conversion.
     )
 
     # Create the NWBFile with the updated metadata
-    nwbfile = interface.add_to_nwbfile(metadata=metadata)
+    nwbfile = interface.create_nwbfile(metadata=metadata)
 
     # You can check that your electrodes are correctly representing here
     nwbfile.electrode_groups
 
     # And that they are mapped correctly to the channels/electrodes
-    nwbfile.electrodes
+    nwbfile.electrodes.to_dataframe()
 
     nwbfile_path = "your_annotated_file.nwb"
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
@@ -95,6 +95,7 @@ When working to annotate the electrodes table keep in mind the `best practices f
     }
 
     # Set the brain_area property on the recording extractor using the dictionary
+    # It is important the property is named brain area as that is what we use to map this to the electrodes table
     recording_extractor.set_property(
         key="brain_area",
         values=list(channel_id_to_brain_area.values()),
@@ -102,13 +103,13 @@ When working to annotate the electrodes table keep in mind the `best practices f
     )
 
     # Create the NWBFile with the updated metadata
-    nwbfile = interface.add_to_nwbfile(metadata=metadata)
+    nwbfile = interface.create_nwbfile(metadata=metadata)
 
     # You can verify that the brain_area property was added to the electrodes table
-    nwbfile.electrodes
+    nwbfile.electrodes.to_dataframe()
 
     # Write the NWB file to disk
     nwbfile_path = "your_annotated_file.nwb"
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
 
-This approach allows you to add specific location information for each electrode, which will be included in the NWB file's electrodes table. The property name "brain_area" is used in this example, but you can use any property name that makes sense for your data.
+This approach allows you to add specific location information for each electrode, which will be included in the NWB file's electrodes table.
