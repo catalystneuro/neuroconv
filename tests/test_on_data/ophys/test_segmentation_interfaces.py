@@ -1,4 +1,3 @@
-import importlib
 import platform
 import sys
 
@@ -214,15 +213,16 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 skip_on_darwin_arm64 = pytest.mark.skipif(
     platform.system() == "Darwin" and platform.machine() == "arm64",
     reason="The isx package is currently not natively supported on macOS with Apple Silicon. "
-                "Installation instructions can be found at: "
-                "https://github.com/inscopix/pyisx?tab=readme-ov-file#install",
+    "Installation instructions can be found at: "
+    "https://github.com/inscopix/pyisx?tab=readme-ov-file#install",
 )
 skip_on_python_313 = pytest.mark.skipif(
     sys.version_info >= (3, 13),
-    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module " 
-                "Requires: Python <3.13, >=3.9)"
-                "See:https://github.com/inscopix/pyisx/issues",
+    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module "
+    "Requires: Python <3.13, >=3.9)"
+    "See:https://github.com/inscopix/pyisx/issues",
 )
+
 
 @skip_on_darwin_arm64
 @skip_on_python_313
