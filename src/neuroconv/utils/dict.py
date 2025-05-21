@@ -255,4 +255,10 @@ class DeepDict(defaultdict):
         return DeepDict(deepcopy(self.to_dict()))
 
     def __repr__(self) -> str:
-        return "DeepDict: " + dict.__repr__(self.to_dict())
+        return f"DeepDict({repr(self.to_dict())})"
+
+    def _repr_pretty_(self, p, cycle):
+        "This is used by IPython to pretty-print the object and used here to achieve printing parity with dicts."
+        p.text("DeepDict(\n")
+        p.pretty(self.to_dict())
+        p.text("\n)")

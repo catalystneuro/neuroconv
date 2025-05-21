@@ -422,7 +422,8 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         behavior_module = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
 
         # Create custom metadata
-        custom_container_name = "CustomPoseEstimation"
+        custom_pose_estimation_metadata_key = "CustomPoseEstimationKey"
+        custom_pose_estimation_name = "CustomPoseEstimationName"
         custom_reference_frame = "Custom reference frame for testing"
         custom_unit = "custom_units"
 
@@ -432,24 +433,26 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         pose_metadata = metadata["PoseEstimation"]
 
         # Get the first skeleton name
-        skeleton_name = next(iter(pose_metadata["Skeletons"].keys()))
+        skeleton_key = next(iter(pose_metadata["Skeletons"].keys()))
 
         # Get the first device name
         device_name = next(iter(pose_metadata["Devices"].keys()))
 
-        pose_metadata["PoseEstimationContainers"][custom_container_name] = {
-            "name": custom_container_name,
+        pose_metadata["PoseEstimationContainers"][custom_pose_estimation_metadata_key] = {
+            "name": custom_pose_estimation_name,
             "description": "Custom description for testing",
-            "skeleton": skeleton_name,
+            "skeleton": skeleton_key,
             "devices": [device_name],
             "reference_frame": custom_reference_frame,
             "PoseEstimationSeries": {},
         }
 
         # Add custom settings for each bodypart
-        bodyparts = pose_metadata["Skeletons"][skeleton_name]["nodes"]
+        bodyparts = pose_metadata["Skeletons"][skeleton_key]["nodes"]
         for bodypart in bodyparts:
-            pose_metadata["PoseEstimationContainers"][custom_container_name]["PoseEstimationSeries"][bodypart] = {
+            pose_metadata["PoseEstimationContainers"][custom_pose_estimation_metadata_key]["PoseEstimationSeries"][
+                bodypart
+            ] = {
                 "name": f"{self.interface_kwargs['subject_name']}_{bodypart}",
                 "description": (
                     f"Custom description for {bodypart}"
@@ -461,12 +464,16 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
                 "confidence_definition": "Softmax output of the deep neural network.",
             }
 
+        # Add custom skeleton name
+        custom_skeleton_name = "CustomSkeletonName"
+        pose_metadata["Skeletons"][skeleton_key]["name"] = custom_skeleton_name
+
         # Create a new interface with the custom container name
         new_interface = DeepLabCutInterface(
             file_path=self.interface.source_data["file_path"],
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
-            pose_estimation_metadata_key=custom_container_name,
+            pose_estimation_metadata_key=custom_pose_estimation_metadata_key,
         )
 
         # Use add_to_nwbfile with the new interface
@@ -474,9 +481,13 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
         # Verify the custom metadata was applied
         assert "behavior" in nwbfile.processing
-        assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
+        assert custom_pose_estimation_name in nwbfile.processing["behavior"].data_interfaces
+        assert (
+            custom_skeleton_name
+            == nwbfile.processing["behavior"].data_interfaces[custom_pose_estimation_name].skeleton.name
+        )
 
-        container = nwbfile.processing["behavior"].data_interfaces[custom_container_name]
+        container = nwbfile.processing["behavior"].data_interfaces[custom_pose_estimation_name]
 
         # Check that all series have the custom unit and reference_frame
         for series in container.pose_estimation_series.values():
@@ -497,7 +508,12 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
             pose_estimation_container = processing_module_interfaces["PoseEstimationDeepLabCut"]
             pose_estimation_series_in_nwb = pose_estimation_container.pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesLeftear",
+                "PoseEstimationSeriesRightear",
+                "PoseEstimationSeriesSnout",
+                "PoseEstimationSeriesTailbase",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -541,7 +557,12 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             pose_estimation_series_in_nwb = processing_module_interfaces[
                 "PoseEstimationDeepLabCut"
             ].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesLeftear",
+                "PoseEstimationSeriesRightear",
+                "PoseEstimationSeriesSnout",
+                "PoseEstimationSeriesTailbase",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -633,7 +654,12 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
             pose_estimation_series_in_nwb = processing_module_interfaces[
                 "PoseEstimationDeepLabCut"
             ].pose_estimation_series
-            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesRedled",
+                "PoseEstimationSeriesShoulder",
+                "PoseEstimationSeriesHaunch",
+                "PoseEstimationSeriesBaseoftail",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
