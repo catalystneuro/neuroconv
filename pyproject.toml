@@ -297,6 +297,10 @@ extract = [
 hdf5 = [
     "roiextractors>=0.5.13",
 ]
+inscopix = [
+    "isx>=2.0",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@inscopix_fix",
+]
 micromanagertiff = [
     "roiextractors>=0.5.13",
     "tifffile>=2023.3.21",
@@ -341,6 +345,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[hdf5]",
+    "neuroconv[inscopix]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
     "neuroconv[sbx]",
