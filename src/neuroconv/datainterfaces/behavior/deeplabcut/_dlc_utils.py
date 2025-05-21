@@ -261,7 +261,7 @@ def _add_pose_estimation_to_nwbfile(
     metadata: dict | None = None,
 ):
     """
-    Updated version of _add_pose_estimation_to_nwbfile to work with ndx-pose v0.2.0+
+    Adds pose estimation data to an nwbfile using ndx-pose v0.2.0+
 
     Parameters
     ----------
@@ -330,7 +330,7 @@ def _add_pose_estimation_to_nwbfile(
 
     # If the skeleton name is identical to the subject id then link the skeleton to the subject
     skeleton_subject = skeleton_metadata["subject"]
-    if nwbfile.subject is not None and skeleton_subject != nwbfile.subject.subject_id:
+    if nwbfile.subject is not None and skeleton_subject == nwbfile.subject.subject_id:
         subject = nwbfile.subject
     else:
         subject = None
