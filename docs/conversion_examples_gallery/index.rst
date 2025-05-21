@@ -70,6 +70,7 @@ Imaging
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
+    Inscopix <imaging/inscopiximaging>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
     Thor <imaging/thor>
