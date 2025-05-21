@@ -132,7 +132,8 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         interface = MockRecordingInterface(durations=[1.0])
 
         recording = interface.recording_extractor
-        recording._recording_segments[0].t_start = 0.0
+        # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
+        # See https://github.com/SpikeInterface/spikeinterface/pull/3940        recording._recording_segments[0].t_start = 0.0
         recording.shift_times(2.0)
 
         interface.create_nwbfile(stub_test=True)
