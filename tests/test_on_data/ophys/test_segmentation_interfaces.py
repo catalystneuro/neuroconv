@@ -1,7 +1,8 @@
-import pytest
+import importlib
 import platform
 import sys
-import importlib
+
+import pytest
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -526,6 +527,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         traces = extractor.get_traces()
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
+
 
 @skip_if_isx_not_installed
 @skip_on_darwin_arm64
