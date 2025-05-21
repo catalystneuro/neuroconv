@@ -1,9 +1,9 @@
 import importlib
 import platform
+import sys
 from datetime import datetime
 from pathlib import Path
 
-import sys
 import numpy as np
 import pytest
 from dateutil.tz import tzoffset
@@ -920,6 +920,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
@@ -1052,6 +1053,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 @skip_if_isx_not_installed
@@ -1167,6 +1169,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
             ), f"OnePhotonSeries unit mismatch: expected '{self.photon_series_metadata['unit']}', got '{one_photon_series.unit}'"
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
 
 @skip_on_python_313
 @skip_on_darwin_arm64
