@@ -1,4 +1,7 @@
 import pytest
+import platform
+import sys
+import importlib
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -16,6 +19,18 @@ try:
 except ImportError:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
+skip_on_darwin_arm64 = pytest.mark.skipif(
+    platform.system() == "Darwin" and platform.machine() == "arm64",
+    reason="Tests are skipped on macOS ARM64 because of incompatibility with the 'isx' module",
+)
+skip_if_isx_not_installed = pytest.mark.skipif(
+    not importlib.util.find_spec("isx"),
+    reason="Tests are skipped because the 'isx' module is not installed.",
+)
+skip_on_python_313 = pytest.mark.skipif(
+    sys.version_info >= (3, 13),
+    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module (Requires: Python <3.13, >=3.9) ",
+)
 
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
@@ -206,7 +221,9 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
-
+@skip_if_isx_not_installed
+@skip_on_darwin_arm64
+@skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface."""
 
@@ -355,7 +372,9 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
 
-
+@skip_if_isx_not_installed
+@skip_on_darwin_arm64
+@skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface with the cellset_series_part1 dataset."""
 
@@ -507,7 +526,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
 
-
+@skip_if_isx_not_installed
+@skip_on_darwin_arm64
+@skip_on_python_313
 class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface with an empty cellset dataset."""
 
