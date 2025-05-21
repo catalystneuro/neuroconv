@@ -19,18 +19,6 @@ try:
 except ImportError:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
-skip_on_darwin_arm64 = pytest.mark.skipif(
-    platform.system() == "Darwin" and platform.machine() == "arm64",
-    reason="Tests are skipped on macOS ARM64 because of incompatibility with the 'isx' module",
-)
-skip_if_isx_not_installed = pytest.mark.skipif(
-    not importlib.util.find_spec("isx"),
-    reason="Tests are skipped because the 'isx' module is not installed.",
-)
-skip_on_python_313 = pytest.mark.skipif(
-    sys.version_info >= (3, 13),
-    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module (Requires: Python <3.13, >=3.9) ",
-)
 
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
@@ -221,7 +209,20 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
-@skip_if_isx_not_installed
+
+skip_on_darwin_arm64 = pytest.mark.skipif(
+    platform.system() == "Darwin" and platform.machine() == "arm64",
+    reason="The isx package is currently not natively supported on macOS with Apple Silicon. "
+                "Installation instructions can be found at: "
+                "https://github.com/inscopix/pyisx?tab=readme-ov-file#install",
+)
+skip_on_python_313 = pytest.mark.skipif(
+    sys.version_info >= (3, 13),
+    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module " 
+                "Requires: Python <3.13, >=3.9)"
+                "See:https://github.com/inscopix/pyisx/issues",
+)
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -372,7 +373,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
 
-@skip_if_isx_not_installed
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
