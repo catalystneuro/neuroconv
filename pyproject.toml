@@ -37,7 +37,6 @@ dependencies = [
     "numpy>=1.26.0; python_version >= '3.12'",
     "jsonschema>=3.2.0",
     "PyYAML>=5.4",
-    "scipy>=1.4.1",
     "h5py>=3.9.0",
     "hdmf>=4.0.0",
     "hdmf_zarr>=0.11",
@@ -47,11 +46,11 @@ dependencies = [
     "psutil>=5.8.0",
     "tqdm>=4.60.0",
     "pandas",
-    "parse>=1.20.0",  # For the path expansion
+    "parse>=1.20.0",  # For the path expansion functionality
     "click",
-    "docstring-parser",
+    "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
-    "referencing", # for the json schema
+    "referencing", # for the json schema references
     "numcodecs<0.16.0", # For supporting zarr < 3
 ]
 
@@ -70,9 +69,7 @@ test = [
     "pytest",
     "pytest-cov",
     "parameterized>=0.8.1",
-    "ndx-miniscope",
-    "zarr",
-    "pytest-xdist"
+    "pytest-xdist"  # Runs tests on parallel
 ]
 
 docs = [
