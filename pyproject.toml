@@ -299,7 +299,7 @@ hdf5 = [
 ]
 inscopix = [
     "isx>=2.0",
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@inscopix_fix",
+    "roiextractors>=0.5.13",
 ]
 micromanagertiff = [
     "roiextractors>=0.5.13",
