@@ -92,15 +92,15 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                             "devices": ["device_name"],  # References to devices
                             "PoseEstimationSeries": {
                                 "PoseEstimationSeriesBodyPart1": {
-                                    "name": "subject_bodypart1",
-                                    "description": "Keypoint bodypart1 from individual subject.",
+                                    "name": "bodypart1",
+                                    "description": "Keypoint bodypart1.",
                                     "unit": "pixels",
                                     "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                                     "confidence_definition": "Softmax output of the deep neural network."
                                 },
                                 "PoseEstimationSeriesBodyPart2": {
-                                    "name": "subject_bodypart2",
-                                    "description": "Keypoint bodypart2 from individual subject.",
+                                    "name": "bodypart2",
+                                    "description": "Keypoint bodypart2.",
                                     "unit": "pixels",
                                     "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                                     "confidence_definition": "Softmax output of the deep neural network."
@@ -432,8 +432,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Add a series for each bodypart
         for bodypart in bodyparts:
             pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][bodypart] = {
-                "name": f"{self.subject_name}_{bodypart}",
-                "description": f"Keypoint {bodypart} from individual {self.subject_name}.",
+                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                "description": f"Pose estimation series for {bodypart}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                 "confidence_definition": "Softmax output of the deep neural network.",
