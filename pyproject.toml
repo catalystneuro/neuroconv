@@ -143,83 +143,83 @@ behavior = [
 
 
 ## Ecephys
-_ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
+ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.102.3",
     "neo>=0.14.1"
 ]
 alphaomega = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 axona = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 biocam = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 blackrock = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 cellexplorer = [
     "pymatreader>=0.0.32",
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 edf = [
     "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 intan = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 kilosort = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 
 maxwell = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 mcsraw = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 mearec = [
     "MEArec>=1.8.0",
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 neuroscope = [
     "lxml>=4.6.5",
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 openephys = [
     "lxml>=4.9.4",
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 phy = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 plexon = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 spikegadgets = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 spikeglx = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
     "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 whitematter = [
-    "neuroconv[_ecephys_minimal]",
+    "neuroconv[ecephys_minimal]",
 ]
 ecephys = [  # Note that this the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
@@ -260,61 +260,61 @@ image = [
 ]
 
 ## Ophys
-_ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
+ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
     "roiextractors>=0.5.13",
 ]
 brukertiff = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 cnmfe = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 extract = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 hdf5 = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 sbx = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 scanimage = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
     "natsort",
 ]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 suite2p = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
     "tdt",
 ]
 thor = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 tiff = [
-    "neuroconv[_ophys_minimal]",
+    "neuroconv[ophys_minimal]",
     "tiffile>=2018.10.18",
 ]
 ophys = [
