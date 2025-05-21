@@ -143,99 +143,83 @@ behavior = [
 
 
 ## Ecephys
+_ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
+    "spikeinterface>=0.102.3",
+    "neo>=0.14.1"
+]
 alphaomega = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 axona = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 biocam = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 blackrock = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 cellexplorer = [
-    "neo>=0.14",
     "pymatreader>=0.0.32",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 edf = [
-    "neo>=0.14",
     "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 intan = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 kilosort = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 
 maxwell = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 mcsraw = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 mearec = [
     "MEArec>=1.8.0",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 neuroscope = [
     "lxml>=4.6.5",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 openephys = [
     "lxml>=4.9.4",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 phy = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 plexon = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "neo>=0.14",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 spikegadgets = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 spikeglx = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
     "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[_ecephys_minimal]",
 ]
 whitematter = [
-    "spikeinterface>=0.102.3",
+    "neuroconv[_ecephys_minimal]",
 ]
 ecephys = [  # Note that this the requirements of the extracts as they are on pipy
     "neuroconv[alphaomega]",
@@ -276,58 +260,61 @@ image = [
 ]
 
 ## Ophys
-brukertiff = [
+_ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
     "roiextractors>=0.5.13",
+]
+brukertiff = [
+    "neuroconv[_ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 cnmfe = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 extract = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 hdf5 = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 sbx = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 scanimage = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
     "natsort",
 ]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 suite2p = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
     "tdt",
 ]
 thor = [
-    "roiextractors>=0.5.13",
+    "neuroconv[_ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 tiff = [
-    "roiextractors>=0.5.9",
+    "neuroconv[_ophys_minimal]",
     "tiffile>=2018.10.18",
 ]
 ophys = [
