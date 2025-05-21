@@ -8,9 +8,13 @@ This guide provides instructions on how to annotate extracellular electrophysiol
 How to Set ElectrodeGroup Metadata
 ----------------------------------
 
-When working with extracellular electrophysiology data, you may need to define multiple electrode groups with different metadata (such as location) based on channel names.
-By default, NeuroConv creates a single ElectrodeGroup that is associated with all channels.
-This guide demonstrates how to define multiple distinct electrode groups and link them to the channels/electrodes.
+When working with extracellular electrophysiology data, it can be helpful to segment electrodes into different
+groups based on properties such as location (e.g., brain region, probe, or brain area), type (e.g., tetrode, silicon probe), or other relevant metadata.
+
+By default, NeuroConv creates a single ElectrodeGroup that includes all channels.
+This guide demonstrates how to define multiple distinct electrode groups and annotate them so that
+NeuroConv correctly assigns them during data conversion.
+
 
 .. code-block:: python
 
@@ -61,9 +65,13 @@ This guide demonstrates how to define multiple distinct electrode groups and lin
 This approach allows you to associate different channels with different electrode groups, each with its own metadata such as location.
 
 How to Add Location to the Electrodes Table
-------------------------------------------
+-------------------------------------------
 
-In addition to setting electrode group metadata, you may want to add specific location information for each individual electrode in the electrodes table. This is particularly useful when electrodes within the same group are in slightly different brain areas or when you want to provide more detailed anatomical information.
+In addition to setting electrode group metadata, you may want to add specific location information for each individual electrode in the electrodes table.
+This is particularly useful when electrodes within the same group are in slightly different brain areas or when you want to provide more detailed anatomical information.
+
+When working to annotate the electrodes table keep in mind the `best practices for the electrode table in NWB files <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_.
+
 
 .. code-block:: python
 
