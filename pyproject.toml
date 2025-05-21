@@ -47,11 +47,11 @@ dependencies = [
     "psutil>=5.8.0",
     "tqdm>=4.60.0",
     "pandas",
-    "parse>=1.20.0",
+    "parse>=1.20.0",  # For the path expansion
     "click",
     "docstring-parser",
     "packaging",  # Issue 903
-    "referencing",
+    "referencing", # for the json schema
     "numcodecs<0.16.0", # For supporting zarr < 3
 ]
 
@@ -69,7 +69,6 @@ neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_spec
 test = [
     "pytest",
     "pytest-cov",
-    "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
     "ndx-miniscope",
     "zarr",
@@ -109,7 +108,8 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.0",
+    "ndx-sound>=0.2.2",
+    "scipy", # for scipy.io.wavfile
 ]
 sleap = [
     "av>=10.0.0",
@@ -232,6 +232,7 @@ spikegadgets = [
 spikeglx = [
     "neo>=0.14",
     "spikeinterface>=0.102.2",
+    "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [
     "neo>=0.14",

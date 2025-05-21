@@ -1,10 +1,10 @@
 from typing import Iterable
 
-import numpy as np
 from spikeinterface import BaseRecording
 from tqdm import tqdm
 
 from neuroconv.tools.hdmf import GenericDataChunkIterator
+from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
 
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
@@ -106,46 +106,3 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
     def _get_maxshape(self):
         return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
-
-
-def get_electrical_series_chunk_shape(
-    number_of_channels: int, number_of_frames: int, dtype: np.dtype, chunk_mb: float = 10.0
-) -> tuple[int, int]:
-    """
-    Estimate good chunk shape for an ElectricalSeries dataset.
-
-    This function gives good estimates for cloud access patterns.
-
-    Parameters
-    ----------
-    number_of_channels : int
-        The number of channels in the ElectricalSeries dataset.
-    number_of_frames : int
-        The number of frames in the ElectricalSeries dataset.
-    dtype : np.dtype
-        The data type of the ElectricalSeries dataset.
-    chunk_mb : float, optional
-        The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
-        The chunk_shape will be set implicitly by this argument.
-
-    Returns
-    -------
-    tuple[int, int]
-        The chunk shape for the ElectricalSeries dataset.
-    """
-    assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
-
-    # We use 64 channels as that gives enough time for common sampling rates when chunk_mb == 10.0
-    # See # from https://github.com/flatironinstitute/neurosift/issues/52#issuecomment-1671405249
-    chunk_channels = min(64, number_of_channels)
-
-    size_of_chunk_channels_bytes = chunk_channels * dtype.itemsize
-    total_chunk_space_bytes = chunk_mb * 1e6
-
-    # We allocate as many frames as possible with the remaining space of the chunk
-    chunk_frames = total_chunk_space_bytes // size_of_chunk_channels_bytes
-
-    # We clip by the number of frames if the samples are too small
-    chunk_frames = min(chunk_frames, number_of_frames)
-
-    return (chunk_frames, chunk_channels)
