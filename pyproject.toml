@@ -109,7 +109,8 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.0",
+    "ndx-sound>=0.2.2",
+    "scipy", # for scipy.io.wavfile
 ]
 sleap = [
     "av>=10.0.0",
