@@ -47,7 +47,7 @@ jobs:
           git config --global user.name "CI Almighty"
 
       - name: Install NeuroConv with minimal requirements
-        run: pip install .
+        run: pip install "."
       - name: Test initial import of all non-lazy dependencies
         run: |  # Minimal installation should allow for lazy imports on main modules
           python -c "import neuroconv"
@@ -61,7 +61,7 @@ jobs:
           os: ${{ runner.os }}
 
       - name: Install NeuroConv with testing requirements
-        run: pip install .[test]
+        run: pip install ".[test]"
       - name: Run import tests
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
@@ -71,23 +71,84 @@ jobs:
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
+      - name: Run ecephys tests in separate environment
+        shell: bash
+        run: |
+          # Create ecephys environment
+          python -m venv env_ecephys
+          # Activate ecephys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_ecephys/Scripts/activate
+          else
+            source env_ecephys/bin/activate
+          fi
+          pip install -U pip
+          pip install ".[test,ecephys]"
+          python -m pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
+      - name: Run ophys tests in separate environment
+        shell: bash
+        run: |
+          # Create ophys environment
+          python -m venv env_ophys
+          # Activate ophys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_ophys/Scripts/activate
+          else
+            source env_ophys/bin/activate
+          fi
+          pip install -U pip
+          pip install ".[test,ophys]"
+          python -m pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
-      - name: Install with behavior requirements
-        run: pip install .[behavior]
-      - name: Run behavior tests
-        run: pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
+      - name: Run behavior tests in separate environment
+        shell: bash
+        run: |
+          # Create behavior environment
+          python -m venv env_behavior
+          # Activate behavior environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_behavior/Scripts/activate
+          else
+            source env_behavior/bin/activate
+          fi
+          pip install -U pip
+          pip install ".[test,behavior]"
+          python -m pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
-      - name: Install with icephys requirements
-        run: pip install .[icephys]
+      - name: Install icephys requirements in separate environment
+        shell: bash
+        run: |
+          # Create icephys environment
+          python -m venv env_icephys
+          # Activate icephys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_icephys/Scripts/activate
+          else
+            source env_icephys/bin/activate
+          fi
+          pip install -U pip
+          pip install ".[test,icephys]"
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
       #- name: Run icephys tests  # There are no icephys specific tests without data
       #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
@@ -100,8 +161,8 @@ jobs:
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
           os: ${{ matrix.os }}
 
-      - name: Install full requirements
-        run: pip install .[full]
+      - name: Install full requirements in base environment
+        run: pip install ".[full]"
 
       - name: Run full pytest with coverage
         run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml

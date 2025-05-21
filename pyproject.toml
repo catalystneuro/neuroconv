@@ -163,7 +163,6 @@ cellexplorer = [
     "neo>=0.14",
     "pymatreader>=0.0.32",
     "spikeinterface>=0.102.2",
-    "setuptools; python_version >= '3.12'"
 ]
 edf = [
     "neo>=0.14",
