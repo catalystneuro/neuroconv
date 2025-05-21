@@ -374,7 +374,9 @@ addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
-    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file"
+    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
+    "ignore:The recording extractor does not have gains and offsets to convert to volts.:UserWarning",   # Fix on spikeinterface
+    "ignore:The recording extractor has heterogeneous units or is lacking scaling factors.:UserWarning"  # Fix on spikeinterface
 ]
 
 [tool.black]
