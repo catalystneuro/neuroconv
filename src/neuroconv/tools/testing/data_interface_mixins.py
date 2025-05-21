@@ -13,7 +13,6 @@ from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
-from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
 from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -396,6 +395,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.core.testing import check_recordings_equal
         from spikeinterface.extractors import NwbRecordingExtractor
 
         recording = self.interface.recording_extractor
@@ -621,6 +621,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         self.interface.register_recording(recording_interface=recording_interface)
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.core.testing import check_sortings_equal
         from spikeinterface.extractors import NwbSortingExtractor
 
         sorting = self.interface.sorting_extractor
