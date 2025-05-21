@@ -1,7 +1,8 @@
-import pytest
+import importlib
 import platform
 import sys
-import importlib
+
+import pytest
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -31,6 +32,7 @@ skip_on_python_313 = pytest.mark.skipif(
     sys.version_info >= (3, 13),
     reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module (Requires: Python <3.13, >=3.9) ",
 )
+
 
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
@@ -221,6 +223,7 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
 
+
 @skip_if_isx_not_installed
 @skip_on_darwin_arm64
 @skip_on_python_313
@@ -371,6 +374,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         traces = extractor.get_traces()
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
+
 
 @skip_if_isx_not_installed
 @skip_on_darwin_arm64
@@ -525,6 +529,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         traces = extractor.get_traces()
         assert traces.shape[0] == self.expected_num_rois
         assert traces.shape[1] == self.expected_num_frames
+
 
 @skip_if_isx_not_installed
 @skip_on_darwin_arm64
