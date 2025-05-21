@@ -221,7 +221,7 @@ tdt = [
 whitematter = [
     "neuroconv[_ecephys_minimal]",
 ]
-ecephys = [  # Note that this the requirements of the extracts as they are on pipy
+ecephys = [  # Note that this the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
