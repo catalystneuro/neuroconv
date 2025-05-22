@@ -83,7 +83,7 @@ jobs:
             source env_ecephys/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[test,ecephys_minimal]"
+          python -m pip install ".[test,ecephys_minimal, test_ecephys]"
           python -m pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
@@ -103,7 +103,7 @@ jobs:
             source env_ophys/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[test,ophys_minimal]"
+          python -m pip install ".[test,test_ophys,ophys_minimal]"
           python -m pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate

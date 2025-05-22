@@ -5,8 +5,6 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
 
-ndx_fp_available = pytest.importorskip("ndx_fiber_photometry", reason="ndx_fiber_photometry is not installed")
-
 
 @pytest.mark.parametrize(
     "device_type, device_metadata",

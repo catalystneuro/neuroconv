@@ -1734,15 +1734,6 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
-from neuroconv.tools import get_package_version
-
-spike_interface_version = get_package_version("spikeinterface")
-
-
-# Use pytest.importorskip directly without skipif
-pytest.importorskip("scipy", reason="scipy is not available")
-
-
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):

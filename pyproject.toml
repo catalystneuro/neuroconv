@@ -71,6 +71,13 @@ test = [
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
 ]
+test_ecephys = [
+    "scipy",
+]
+
+test_ophys = [
+    "ndx-fiber-photometry",
+]
 
 docs = [
     "Sphinx==8.2.3",  # Latest as of April 2025.
