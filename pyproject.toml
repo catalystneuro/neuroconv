@@ -35,9 +35,7 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.22.0; python_version <= '3.11'",
     "numpy>=1.26.0; python_version >= '3.12'",
-    "jsonschema>=3.2.0",
     "PyYAML>=5.4",
-    "scipy>=1.4.1",
     "h5py>=3.9.0",
     "hdmf>=4.0.0",
     "hdmf_zarr>=0.11",
@@ -47,11 +45,12 @@ dependencies = [
     "psutil>=5.8.0",
     "tqdm>=4.60.0",
     "pandas",
-    "parse>=1.20.0",
-    "click",
-    "docstring-parser",
+    "parse>=1.20.0",  # For the path expansion functionality
+    "click",  # for CLI access point in the yaml conversion specificatio
+    "jsonschema>=3.2.0",
+    "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
-    "referencing",
+    "referencing", # for the json schema references
     "numcodecs<0.16.0", # For supporting zarr < 3
 ]
 
@@ -69,13 +68,13 @@ neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_spec
 test = [
     "pytest",
     "pytest-cov",
-    "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
     "parameterized>=0.8.1",
-    "ndx-miniscope",
-    "spikeinterface[qualitymetrics]>=0.102.2",
-    "zarr",
-    "pytest-xdist"
+    "pytest-xdist"  # Runs tests on parallel
 ]
+sorting_analyzer = [
+    "scipy",
+]
+
 
 docs = [
     "Sphinx==8.2.3",  # Latest as of April 2025.
@@ -88,7 +87,7 @@ docs = [
     "pytest" # used to build the documentation for tools.testing
 ]
 
-dandi = ["dandi>=0.66.5", "dandischema>=0.11"]
+dandi = ["dandi>=0.66.5,<0.68.0", "dandischema==0.11.0"]  # Temporary, pin, see https://github.com/dandi/dandi-archive/pull/2383
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
@@ -110,7 +109,8 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.0",
+    "ndx-sound>=0.2.2",
+    "scipy", # for scipy.io.wavfile
 ]
 sleap = [
     "av>=10.0.0",
@@ -147,101 +147,85 @@ behavior = [
 
 
 ## Ecephys
+ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
+    "spikeinterface>=0.102.3",
+    "neo>=0.14.1"
+]
 alphaomega = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 axona = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 biocam = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 blackrock = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 cellexplorer = [
-    "neo>=0.14",
     "pymatreader>=0.0.32",
-    "spikeinterface>=0.102.2",
-    "setuptools; python_version >= '3.12'"
+    "neuroconv[ecephys_minimal]",
 ]
 edf = [
-    "neo>=0.14",
-    "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
-    "spikeinterface>=0.102.2",
+    "pyedflib>=0.1.36",
+    "neuroconv[ecephys_minimal]",
 ]
 intan = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 kilosort = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 
 maxwell = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 mcsraw = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 mearec = [
     "MEArec>=1.8.0",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
     "natsort>=7.1.1",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 neuroscope = [
     "lxml>=4.6.5",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 openephys = [
     "lxml>=4.9.4",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 phy = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 plexon = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "neo>=0.14",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 spikegadgets = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 spikeglx = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
+    "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 whitematter = [
-    "spikeinterface>=0.102.3",
+    "neuroconv[ecephys_minimal]",
 ]
-ecephys = [  # Note that this the requirements of the extracts as they are on pipy
+ecephys = [  # Note that this the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
@@ -279,60 +263,71 @@ image = [
     "pillow>=10.0.0",
 ]
 
+## Fiber Photometry
+fiber_photometry = [
+    "ndx-fiber-photometry",
+]
+
+
 ## Ophys
-brukertiff = [
+ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
     "roiextractors>=0.5.13",
+]
+brukertiff = [
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 caiman = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
+    "scipy",
 ]
 cnmfe = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
+    "scipy",
 ]
 extract = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 hdf5 = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 sbx = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 scanimage = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "natsort",
 ]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
 ]
 sima = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 suite2p = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
     "ndx-fiber-photometry",
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "tdt",
 ]
 thor = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 tiff = [
-    "roiextractors>=0.5.9",
-    "tiffile>=2018.10.18",
+    "neuroconv[ophys_minimal]",
+    "tifffile>=2018.10.18",
 ]
 ophys = [
     "neuroconv[brukertiff]",
@@ -373,7 +368,7 @@ addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
-    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file"
+    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
 ]
 
 [tool.black]

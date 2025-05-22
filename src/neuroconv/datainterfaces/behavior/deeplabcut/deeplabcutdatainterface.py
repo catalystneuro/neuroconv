@@ -92,15 +92,15 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                             "devices": ["device_name"],  # References to devices
                             "PoseEstimationSeries": {
                                 "PoseEstimationSeriesBodyPart1": {
-                                    "name": "subject_bodypart1",
-                                    "description": "Keypoint bodypart1 from individual subject.",
+                                    "name": "bodypart1",
+                                    "description": "Keypoint bodypart1.",
                                     "unit": "pixels",
                                     "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                                     "confidence_definition": "Softmax output of the deep neural network."
                                 },
                                 "PoseEstimationSeriesBodyPart2": {
-                                    "name": "subject_bodypart2",
-                                    "description": "Keypoint bodypart2 from individual subject.",
+                                    "name": "bodypart2",
+                                    "description": "Keypoint bodypart2.",
                                     "unit": "pixels",
                                     "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                                     "confidence_definition": "Softmax output of the deep neural network."
@@ -432,8 +432,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Add a series for each bodypart
         for bodypart in bodyparts:
             pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][bodypart] = {
-                "name": f"{self.subject_name}_{bodypart}",
-                "description": f"Keypoint {bodypart} from individual {self.subject_name}.",
+                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                "description": f"Pose estimation series for {bodypart}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                 "confidence_definition": "Softmax output of the deep neural network.",
@@ -491,15 +491,16 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         import warnings
 
         # Use the pose_estimation_metadata_key from the instance if container_name not provided
-        if container_name is None:
-            container_name = self.pose_estimation_metadata_key
-        else:
+        if container_name is not None:
             warnings.warn(
                 "The container_name parameter in add_to_nwbfile is deprecated and will be removed on or after October 2025. "
                 "Use the pose_estimation_metadata_key parameter when initializing the interface instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
+            pose_estimation_metadata_key = container_name
+        else:
+            pose_estimation_metadata_key = self.pose_estimation_metadata_key
         from pathlib import Path
 
         import pandas as pd
@@ -513,15 +514,21 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        # Set the container name in the metadata, remove this once  container_name is deprecated
-        if "PoseEstimation" in default_metadata and "PoseEstimationContainers" in default_metadata["PoseEstimation"]:
-            if container_name in default_metadata["PoseEstimation"]["PoseEstimationContainers"]:
-                default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name]["name"] = container_name
-            else:
-                # If the container doesn't exist in the metadata, create it with the name
-                default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name] = {
-                    "name": container_name
-                }
+        # Set the container name in the metadata, remove this once container_name is deprecated
+        if container_name is not None:
+            if (
+                "PoseEstimation" in default_metadata
+                and "PoseEstimationContainers" in default_metadata["PoseEstimation"]
+            ):
+                if container_name in default_metadata["PoseEstimation"]["PoseEstimationContainers"]:
+                    default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name][
+                        "name"
+                    ] = container_name
+                else:
+                    # If the container doesn't exist in the metadata, create it with the name
+                    default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name] = {
+                        "name": container_name
+                    }
 
         # Process the DLC file
         file_path = Path(self.source_data["file_path"])
@@ -550,5 +557,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             timestamps=timestamps,
             exclude_nans=False,
             metadata=default_metadata,
-            pose_estimation_metadata_key=container_name,
+            pose_estimation_metadata_key=pose_estimation_metadata_key,
         )
