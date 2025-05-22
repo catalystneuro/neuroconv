@@ -71,13 +71,10 @@ test = [
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
 ]
-test_ecephys = [
+sorting_analyzer = [
     "scipy",
 ]
 
-test_ophys = [
-    "ndx-fiber-photometry",
-]
 
 docs = [
     "Sphinx==8.2.3",  # Latest as of April 2025.
@@ -265,6 +262,12 @@ icephys = [
 image = [
     "pillow>=10.0.0",
 ]
+
+## Fiber Photometry
+fiber_photometry = [
+    "ndx-fiber-photometry",
+]
+
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
