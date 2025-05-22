@@ -132,6 +132,7 @@ class ImageInterface(BaseDataInterface):
         "RGB": RGBImage,
         "RGBA": RGBAImage,
         "LA": RGBAImage,  # LA will be converted to RGBA
+        "I;16": GrayscaleImage,  # 16-bit grayscale image
     }
 
     @classmethod
