@@ -35,7 +35,6 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.22.0; python_version <= '3.11'",
     "numpy>=1.26.0; python_version >= '3.12'",
-    "jsonschema>=3.2.0",
     "PyYAML>=5.4",
     "h5py>=3.9.0",
     "hdmf>=4.0.0",
@@ -47,7 +46,8 @@ dependencies = [
     "tqdm>=4.60.0",
     "pandas",
     "parse>=1.20.0",  # For the path expansion functionality
-    "click",
+    "click",  # for CLI access point in the yaml conversion specificatio
+    "jsonschema>=3.2.0",
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
@@ -164,7 +164,7 @@ cellexplorer = [
     "neuroconv[ecephys_minimal]",
 ]
 edf = [
-    "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
+    "pyedflib>=0.1.36",
     "neuroconv[ecephys_minimal]",
 ]
 intan = [
