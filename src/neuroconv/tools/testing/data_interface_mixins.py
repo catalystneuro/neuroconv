@@ -13,7 +13,6 @@ from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
-from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
 from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -396,6 +395,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.core.testing import check_recordings_equal
         from spikeinterface.extractors import NwbRecordingExtractor
 
         recording = self.interface.recording_extractor
@@ -621,6 +621,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         self.interface.register_recording(recording_interface=recording_interface)
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.core.testing import check_sortings_equal
         from spikeinterface.extractors import NwbSortingExtractor
 
         sorting = self.interface.sorting_extractor
@@ -1143,7 +1144,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             times_from_extractor = imaging_extractor._times
             assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
 
-            data_from_extractor = imaging_extractor.get_video()
+            data_from_extractor = imaging_extractor.get_series()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
@@ -1172,7 +1173,7 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             assert two_photon_series.starting_time == self.expected_starting_time
 
             imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_video()
+            data_from_extractor = imaging_extractor.get_series()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel

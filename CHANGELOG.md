@@ -27,6 +27,8 @@
 * Separate dailies and dev-dailies workflows [PR #1343](https://github.com/catalystneuro/neuroconv/pull/1343)
 * Added support for renaming Skeletons with DeepLabCutInterface [PR #1359](https://github.com/catalystneuro/neuroconv/pull/1359)
 * Updated pose_estimation series names [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
+* Testing dependencies include only testing packages (.e.g pytest, pytest-cov) [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
+* Testing modalities now run in their separated environment to avoid sequence contamination of dependencies [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
 
 # v0.7.3 (April 25, 2025)
 
