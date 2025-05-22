@@ -269,9 +269,11 @@ brukertiff = [
 ]
 caiman = [
     "neuroconv[ophys_minimal]",
+    "scipy",
 ]
 cnmfe = [
     "neuroconv[ophys_minimal]",
+    "scipy",
 ]
 extract = [
     "neuroconv[ophys_minimal]",
@@ -356,7 +358,7 @@ addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
-    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file"
+    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
 ]
 
 [tool.black]

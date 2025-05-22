@@ -1739,7 +1739,10 @@ from neuroconv.tools import get_package_version
 spike_interface_version = get_package_version("spikeinterface")
 
 
-@pytest.mark.skipif(pytest.importorskip("scipy", reason="scipy is not available"), reason="scipy is not available")
+# Use pytest.importorskip directly without skipif
+pytest.importorskip("scipy", reason="scipy is not available")
+
+
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):

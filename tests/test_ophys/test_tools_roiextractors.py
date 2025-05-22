@@ -1493,7 +1493,7 @@ class TestAddPhotonSeries(TestCase):
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
-        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
         # Check device
@@ -1523,18 +1523,20 @@ class TestAddPhotonSeries(TestCase):
         # Estimate num of frames required to exceed memory capabilities
         dtype = self.imaging_extractor.get_dtype()
         element_size_in_bytes = dtype.itemsize
-        image_size = self.imaging_extractor.get_image_size()
+        sample_shape = self.imaging_extractor.get_sample_shape()
 
         available_memory_in_bytes = psutil.virtual_memory().available
 
         excess = 1.5  # Of what is available in memory
-        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * math.prod(image_size))
+        num_samples_to_overflow = (available_memory_in_bytes * excess) / (
+            element_size_in_bytes * math.prod(sample_shape)
+        )
 
-        # Mock recording extractor with as many frames as necessary to overflow memory
+        # Mock recording extractor with as many samples as necessary to overflow memory
         mock_imaging = Mock()
         mock_imaging.get_dtype.return_value = dtype
-        mock_imaging.get_image_size.return_value = image_size
-        mock_imaging.get_num_frames.return_value = num_frames_to_overflow
+        mock_imaging.get_sample_shape.return_value = sample_shape
+        mock_imaging.get_num_samples.return_value = num_samples_to_overflow
 
         reg_expression = "Memory error, full TwoPhotonSeries data is (.*?) are available! Please use iterator_type='v2'"
 
@@ -1581,7 +1583,7 @@ class TestAddPhotonSeries(TestCase):
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
-        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
     def test_iterator_options_propagation(self):
