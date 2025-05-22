@@ -805,7 +805,7 @@ def add_plane_segmentation_to_nwbfile(
             f"or None (to not write any masks)! Received '{mask_type}'."
         )
     if include_roi_centroids:
-        tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_shape()) == 2 else (1, 0, 2)
+        tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
         roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :].T
     else:
         roi_locations = None
