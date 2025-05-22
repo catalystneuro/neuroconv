@@ -12,11 +12,7 @@ Convert Inscopix imaging data to NWB using :py:class:`~neuroconv.datainterfaces.
 .. code-block:: python
 
     >>> import sys, platform
-    >>> if sys.version_info >= (3, 13) or (platform.system() == "Darwin" and platform.machine() == "arm64"):
-    ...     skip_test = True
-    >>> else:
-    ...     skip_test = False
-    >>> if not skip_test:
+    >>> if not (sys.version_info >= (3, 13) or (platform.system() == "Darwin" and platform.machine() == "arm64")):
     ...     from datetime import datetime
     ...     from zoneinfo import ZoneInfo
     ...     from pathlib import Path
@@ -33,9 +29,4 @@ Convert Inscopix imaging data to NWB using :py:class:`~neuroconv.datainterfaces.
     ...     # Run the conversion
     ...     nwbfile_path = f"{path_to_save_nwbfile}"
     ...     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>> else:
-    ...     print("Skipped: incompatible environment for Inscopix interface. "
-    ...           "The isx package is currently not natively supported on macOS with Apple Silicon "
-    ...           "(see: https://github.com/inscopix/pyisx?tab=readme-ov-file#install) "
-    ...           "The isx package has incompatibility with Python 3.13 - requires Python <3.13, >=3.9 "
-    ...           "(see: https://github.com/inscopix/pyisx/issues)")
+    >>> else: print("Skipped: incompatible environment for Inscopix interface.")
