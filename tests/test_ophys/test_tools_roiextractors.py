@@ -1560,7 +1560,7 @@ class TestAddPhotonSeries(TestCase):
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
-        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
     def test_v1_iterator(self):

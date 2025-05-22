@@ -1144,7 +1144,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             times_from_extractor = imaging_extractor._times
             assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
 
-            data_from_extractor = imaging_extractor.get_video()
+            data_from_extractor = imaging_extractor.get_series()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
@@ -1173,7 +1173,7 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             assert two_photon_series.starting_time == self.expected_starting_time
 
             imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_video()
+            data_from_extractor = imaging_extractor.get_series()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
