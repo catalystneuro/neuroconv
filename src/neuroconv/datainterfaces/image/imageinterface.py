@@ -128,7 +128,7 @@ class ImageInterface(BaseDataInterface):
 
     # Mapping from PIL mode to NWB image class
     IMAGE_MODE_TO_NWB_TYPE_MAP = {
-        "L": GrayscaleImage,
+        "L": GrayscaleImage,  # 8 bit grayscale image
         "RGB": RGBImage,
         "RGBA": RGBAImage,
         "LA": RGBAImage,  # LA will be converted to RGBA
