@@ -17,10 +17,10 @@ Convert Inscopix segmentation data to NWB using :py:class:`~neuroconv.datainterf
    >>>
    >>> # Check Python version and platform compatibility
    >>> if not (sys.version_info >= (3, 13) or (platform.system() == "Darwin" and platform.machine() == "arm64")):
-   ...     from neuroconv.datainterfaces import InscopixImagingInterface
+   ...     from neuroconv.datainterfaces import InscopixSegmentationInterface
    ...
    ...     file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"
-   ...     interface = InscopixImagingInterface(file_path=file_path, verbose=False)
+   ...     interface = InscopixSegmentationInterface(file_path=file_path, verbose=False)
    ...
    ...     metadata = interface.get_metadata()
    ...     # For data provenance we add the time zone information to the conversion
