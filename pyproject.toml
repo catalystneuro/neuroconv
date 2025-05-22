@@ -298,7 +298,7 @@ hdf5 = [
     "roiextractors>=0.5.13",
 ]
 inscopix = [
-    "isx>=2.0; python_version < '3.13'",
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
     "roiextractors>=0.5.13",
 ]
 micromanagertiff = [
