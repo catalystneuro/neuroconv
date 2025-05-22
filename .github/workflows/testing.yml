@@ -68,7 +68,7 @@ jobs:
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
-      - name: Run ecephys tests in separate environment
+      - name: Test ecephys machinery
         shell: bash
         run: |
           # Create ecephys environment
@@ -88,7 +88,7 @@ jobs:
             deactivate
           fi
 
-      - name: Run ophys tests in separate environment
+      - name: Test ophys machinery
         shell: bash
         run: |
           # Create ophys environment
@@ -101,23 +101,23 @@ jobs:
           fi
           python -m pip install -U pip
           python -m pip install ".[test,ophys_minimal]"
-          python -m pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_ophys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
             deactivate
           fi
 
-      - name: Run fiber-photometry tests in separate environment
+      - name: Test Fiber Photometry machinery
         shell: bash
         run: |
-          # Create ophys environment
-          python -m venv env_ophys
-          # Activate ophys environment and install requirements
+          # Create fiber_photometry environment
+          python -m venv env_fiber_photometry
+          # Activate fiber_photometry environment and install requirements
           if [ "${{ runner.os }}" == "Windows" ]; then
-            . env_ophys/Scripts/activate
+            . env_fiber_photometry/Scripts/activate
           else
-            source env_ophys/bin/activate
+            source env_fiber_photometry/bin/activate
           fi
           python -m pip install -U pip
           python -m pip install ".[test,fiber_photometry]"
@@ -127,7 +127,8 @@ jobs:
           else
             deactivate
           fi
-      - name: Run behavior tests in separate environment
+
+      - name: Test behavior machinery
         shell: bash
         run: |
           # Create behavior environment
