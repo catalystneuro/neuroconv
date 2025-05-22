@@ -327,7 +327,7 @@ thor = [
 ]
 tiff = [
     "neuroconv[ophys_minimal]",
-    "tiffile>=2018.10.18",
+    "tifffile>=2018.10.18",
 ]
 ophys = [
     "neuroconv[brukertiff]",
