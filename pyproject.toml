@@ -87,7 +87,7 @@ docs = [
     "pytest" # used to build the documentation for tools.testing
 ]
 
-dandi = ["dandi>=0.69", "dandischema>=0.11.1"]
+dandi = ["dandi>=0.69"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
