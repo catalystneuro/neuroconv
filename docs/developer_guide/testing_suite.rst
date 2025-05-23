@@ -10,11 +10,11 @@ result of contaminated dependencies.
 
 There are several categories of tests in the NeuroConv codebase:
 
-1. **Minimal Tests**: Core functionality tests with minimal dependencies
-2. **Modality Tests**: Tests for specific data modalities (ecephys, ophys, etc.)
-3. **Example Data Tests**: Tests that run on real data examples
+1. **Minimal Tests**: Core functionality tests. These tests should work only with base dependencies.
+2. **Modality Tests**: Tests for machinery of the different data modalities (ecephys, ophys, etc.).
+3. **Example Data Tests**: Tests that run on real data examples. This needs the full dependencies and data downloaded from gin.
 4. **Remote Transfer Services**: Tests for external cloud service integrations
-5. **Import Structure Tests**: Tests that verify the import structure of the package
+5. **Import Structure Tests**: Tests that verify the import structure of the package and ensure that top level packages can be imported with minimal instalation.
 
 Run all tests
 -------------
@@ -162,10 +162,10 @@ Since these tests are not automatically collected, you need to run them explicit
     pip install --editable ".[test,aws]"
 
     # Run specific service tests
-    pytest tests/remote_transfer_services/dandi_transfer_services.py
-    pytest tests/remote_transfer_services/aws_services.py
-    pytest tests/remote_transfer_services/globus_services.py
-    pytest tests/remote_transfer_services/yaml_dandi_services.py
+    pytest tests/remote_transfer_services/dandi_transfer_tools.py
+    pytest tests/remote_transfer_services/aws_tools_tests.py
+    pytest tests/remote_transfer_services/globus_transfer_tools.py
+    pytest tests/remote_transfer_services/yaml_dandi_transfer_tools.py
 
 Import Structure Tests
 ----------------------
