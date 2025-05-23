@@ -24,6 +24,7 @@ from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     _add_electrode_groups_to_nwbfile,
     _check_if_recording_traces_fit_into_memory,
+    _stub_recording,
     add_electrodes_to_nwbfile,
     add_recording_as_time_series_to_nwbfile,
     add_recording_to_nwbfile,
@@ -2011,6 +2012,17 @@ class TestWriteSortingAnalyzer(TestCase):
                 write_as="units",
                 units_name="units1",
             )
+
+
+def test_stub_recording_with_t_start():
+    """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
+    recording = generate_recording(durations=[1.0])
+    # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
+    # See https://github.com/SpikeInterface/spikeinterface/pull/3940
+    recording._recording_segments[0].t_start = 0.0
+    recording.shift_times(2.0)
+
+    _stub_recording(recording=recording)
 
 
 if __name__ == "__main__":
