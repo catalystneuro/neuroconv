@@ -1,3 +1,13 @@
+# v0.7.5 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
 # v0.7.4 (May 23, 2025)
 
 ## Removals, Deprecations and Changes
