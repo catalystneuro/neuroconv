@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -488,7 +489,10 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             the content of the metadata.
 
         """
-        import warnings
+        from ._dlc_utils import (
+            _add_pose_estimation_to_nwbfile,
+            _ensure_individuals_in_header,
+        )
 
         # Use the pose_estimation_metadata_key from the instance if container_name not provided
         if container_name is not None:
@@ -501,11 +505,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             pose_estimation_metadata_key = container_name
         else:
             pose_estimation_metadata_key = self.pose_estimation_metadata_key
-        from pathlib import Path
-
-        import pandas as pd
-
-        from ._dlc_utils import _ensure_individuals_in_header, _write_pes_to_nwbfile
 
         # Get default metadata
         default_metadata = DeepDict(self.get_metadata())
@@ -530,7 +529,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                         "name": container_name
                     }
 
-        # Process the DLC file
         file_path = Path(self.source_data["file_path"])
 
         # Read the data
@@ -547,11 +545,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if timestamps is None:
             timestamps = df.index.tolist()  # Use index as dummy timestamps if not provided
 
-        # Extract data for the subject
         df_animal = df.xs(self.subject_name, level="individuals", axis=1)
 
-        # Write to NWB file
-        _write_pes_to_nwbfile(
+        _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             df_animal=df_animal,
             timestamps=timestamps,
