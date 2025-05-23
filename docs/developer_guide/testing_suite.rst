@@ -14,7 +14,7 @@ There are several categories of tests in the NeuroConv codebase:
 2. **Modality Tests**: Tests for machinery of the different data modalities (ecephys, ophys, etc.).
 3. **Example Data Tests**: Tests that run on real data examples. This needs the full dependencies and data downloaded from gin.
 4. **Remote Transfer Services**: Tests for external cloud service integrations
-5. **Import Structure Tests**: Tests that verify the import structure of the package and ensure that top level packages can be imported with minimal instalation.
+5. **Import Structure Tests**: Tests that verify the import structure of the package and ensure that top level packages can be imported with minimal installation.
 
 Run all tests
 -------------
