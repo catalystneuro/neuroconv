@@ -1,6 +1,6 @@
-## v0.7.4 (Upcoming)
+## v0.7.4 (May 23, 2025)
 
-## Deprecations and Changes
+## Removals, Deprecations and Changes
 * Drop support for python 3.9 [PR #1313](https://github.com/catalystneuro/neuroconv/pull/1313)
 * Updated type hints to take advantage of the | operator [PR #1316](https://github.com/catalystneuro/neuroconv/pull/1313)
 * Deprecated the following ScanImage interfaces: `ScanImageMultiFileImagingInterface`, `ScanImageMultiPlaneImagingInterface`, `ScanImageMultiPlaneMultiFileImagingInterface`, `ScanImageSinglePlaneImagingInterface`, and `ScanImageSinglePlaneMultiFileImagingInterface`. These interfaces will be removed in or after October 2025. Use `ScanImageImagingInterface` for all those cases instead. [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330) [PR #1331](https://github.com/catalystneuro/neuroconv/pull/1331)
@@ -13,7 +13,7 @@
 * Fix a stubbing bug in `SpikeGLXNIDQInterface` and `OpenEphysBinaryAnalogInterface` [PR #1360](https://github.com/catalystneuro/neuroconv/pull/1360)
 
 ## Features
-* Add metadata support for `DeepLabCutInterface` [PR #1319](https://github.com/catalystneuro/neuroconv/pull/1319)
+* Add metadata support for `DeepLabCutInterface`. [PR #1319](https://github.com/catalystneuro/neuroconv/pull/1319)
 * `AudioInterface` Adding support for IEEE float in WAV format [PR #1325](https://github.com/catalystneuro/neuroconv/pull/1325)
 * Added a RecordingInterface for WhiteMatter ephys data [PR #1297](https://github.com/catalystneuro/neuroconv/pull/1297) [PR #1333](https://github.com/catalystneuro/neuroconv/pull/1333)
 * Improved `ScanImageInteface` to support both single and multi-file data [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330)
@@ -26,8 +26,8 @@
 * Make metadata optional in `NWBConverter.add_to_nwbfile` [PR #1309](https://github.com/catalystneuro/neuroconv/pull/1309)
 * Add installation instructions on the documentation for `neuroconv` [PR #1344](https://github.com/catalystneuro/neuroconv/pull/1344)
 * Separate dailies and dev-dailies workflows [PR #1343](https://github.com/catalystneuro/neuroconv/pull/1343)
-* Added support for renaming Skeletons with DeepLabCutInterface [PR #1359](https://github.com/catalystneuro/neuroconv/pull/1359)
-* Updated pose_estimation series names [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
+* Added support for renaming Skeletons with `DeepLabCutInterface` [PR #1359](https://github.com/catalystneuro/neuroconv/pull/1359)
+* Updated default `PoseEstimationSeries` names in `DeepLabCutInterface` [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
 * Testing dependencies include only testing packages (.e.g pytest, pytest-cov) [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
 * Testing modalities now run in their separated environment to avoid sequence contamination of dependencies [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
 
