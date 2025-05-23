@@ -2094,15 +2094,5 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
     ]
     recording_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
-    times_stubbed = [
-        recording.get_times(segment_index=segment_index)[:end_frame]
-        for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
-    ]
-    for segment_index in range(number_of_segments):
-        recording_stubbed.set_times(
-            times=times_stubbed[segment_index],
-            segment_index=segment_index,
-            with_warning=False,
-        )
 
     return recording_stubbed
