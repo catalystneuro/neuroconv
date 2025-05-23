@@ -2094,5 +2094,4 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
     ]
     recording_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
-
     return recording_stubbed
