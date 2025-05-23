@@ -36,6 +36,13 @@ body:
 
         This section will be automatically formatted into code, so no need for backticks.
       render: python
+      value: |
+        <details>
+        <summary>Click to show traceback</summary>
+
+        Copy and paste your traceback here.
+
+        </details>
   - type: dropdown
     id: os
     attributes:
