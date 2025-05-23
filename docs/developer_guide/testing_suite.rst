@@ -1,10 +1,20 @@
-Running GIN tests locally
-=========================
+.. _testing_suite:
+
+Testing Suite
+=============
 
 NeuroConv verifies the integrity of all code changes by running a full test suite on short examples of real data from
 the formats we support. The testing suite is broken up into sub-folders based on the scope of functionalities and
 dependencies you wish to test. We recommend always running tests in a fresh environment to ensure errors are not the
-result of contaminated dependencies. There are three broad classes of tests in this regard.
+result of contaminated dependencies.
+
+There are several categories of tests in the NeuroConv codebase:
+
+1. **Minimal Tests**: Core functionality tests with minimal dependencies
+2. **Modality Tests**: Tests for specific data modalities (ecephys, ophys, etc.)
+3. **Example Data Tests**: Tests that run on real data examples
+4. **Remote Transfer Services**: Tests for external cloud service integrations
+5. **Import Structure Tests**: Tests that verify the import structure of the package
 
 Run all tests
 -------------
@@ -20,7 +30,7 @@ Then install all required and optional dependencies in a fresh environment.
 
 .. code:: bash
 
-  pip install -e .[test,full]
+  pip install --editable ".[test,full]"
 
 
 Then simply run all tests with pytest
@@ -34,29 +44,35 @@ Then simply run all tests with pytest
   You will likely observe many failed tests if the test data is not available. See the section 'Testing on Example Data' for instructions on how to download the test data.
 
 
-Minimal
--------
+Minimal Tests
+-------------
 
 These test internal functionality using only minimal dependencies or pre-downloaded data.
 
-Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`
+Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`_
 
-These can be run using only ``pip install -e neuroconv[test]`` and calling ``pytest tests/test_minimal``
+These can be run using only ``pip install --editable ".[test]"`` and calling ``pytest tests/test_minimal``
 
 
-Modality
---------
+Modality Tests
+--------------
 
-These test the functionality of our write tools tailored to certain external dependencies.
+These test the functionality of our write tools tailored to specific modalities such as electrophysiology, optical physiology, behavior, etc.
+The tests are broken up into sub-folders based on the modality being tested.
 
-Sub-folders: `tests/test_ophys <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_ophys>`_,
-`tests/test_ecephys <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_ecephys>`_,
-`tests/test_behavior <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_behavior>`_, and
-`tests/test_text <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_text>`_
+Modalities:
 
-These can be run in isolation using ``pip install -e neuroconv[test,<modality>]`` and calling
-``pytest tests/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``ecephys``, ``text``, or ``behavior``.
+* `ophys <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_ophys>`_
+* `fiber_photometry <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_fiber_photometry>`_
+* `image <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_image>`_
+* `ecephys <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_ecephys>`_
+* `behavior <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_behavior>`_
+* `text <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_text>`_
 
+These can be run in isolation using ``pip install --editable ".[test,<modality>]"`` and calling
+``pytest tests/test_modalities/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``fiber_photometry``, ``ecephys``, ``image``, ``text``, or ``behavior``.
+
+Ideally, these tests should not require data and run in mock testing interfaces but there are exceptions.
 
 .. _example_data:
 
@@ -95,7 +111,7 @@ Once the data is downloaded to your system, you must manually modify the testing
 located and named as ``tests/test_on_data/gin_test_config.json`` whenever ``neuroconv`` is installed in editable
 ``-e`` mode). The ``LOCAL_PATH`` field points to the folder on your system that contains the dataset folder (*e.g.*,
 ``ephy_testing_data`` for testing ``ecephys``). The code will automatically detect that the tests are being run
-locally, so all you need to do ensure the path is correct to your specific system.
+locally, so all you need to do ensure the path is correct in your specific system.
 
 The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish
 running. To examine these files for quality assessment purposes, set the flag ``SAVE_OUTPUTS=true`` in the
@@ -103,10 +119,9 @@ running. To examine these files for quality assessment purposes, set the flag ``
 
 Sub-folders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_on_data>`_
 
-These can be run in total using ``pip install -e neuroconv[test,full]`` and calling ``pytest tests/test_on_data`` or
+These can be run in total using ``pip install --editable ".[test,full]"`` and calling ``pytest tests/test_on_data`` or
 in isolation by installing the required ``<modality>`` as in the previous section and calling
-``pytest tests/test_on_data/test_gin_<modality>``.
-
+``pytest tests/test_on_data/<modality>``.
 
 
 Update existing test data
@@ -118,4 +133,55 @@ to update and run
 
     datalad update --how=ff-only --reobtain-data
 
-To update GIN data, run ``datalad update --how=ff-only --reobtain-data`` within the repository you would like to update.
+To update GIN data, run the command above within the repository you would like to update.
+
+Remote Transfer Services
+------------------------
+
+These tests verify the functionality of tools that interact with external cloud services for data transfer and storage operations. They require actual credentials and API keys to communicate with live services such as AWS, DANDI, and Globus.
+
+**Important**: These tests are not automatically collected by pytest's default collection mechanism because they don't follow the "test_" naming convention in their filenames. This is intentional to prevent them from running during regular test runs, as they require specific credentials and can take longer to execute.
+
+Sub-folders: `tests/remote_transfer_services <https://github.com/catalystneuro/neuroconv/tree/main/tests/remote_transfer_services>`_
+
+Required credentials
+""""""""""""""""""""
+To run these tests, you need to set up the following environment variables:
+
+* For DANDI tests: ``DANDI_API_KEY``
+* For AWS tests: ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY``
+* For Globus tests: Appropriate credentials as documented in the test files
+
+Running remote transfer tests
+"""""""""""""""""""""""""""""
+Since these tests are not automatically collected, you need to run them explicitly:
+
+.. code:: bash
+
+    # Install required dependencies
+    pip install --editable ".[test,aws]"
+
+    # Run specific service tests
+    pytest tests/remote_transfer_services/dandi_transfer_services.py
+    pytest tests/remote_transfer_services/aws_services.py
+    pytest tests/remote_transfer_services/globus_services.py
+    pytest tests/remote_transfer_services/yaml_dandi_services.py
+
+Import Structure Tests
+----------------------
+
+The `tests/imports.py` file contains tests that verify the import structure of the NeuroConv package. These tests ensure that the package can be imported correctly and that all expected modules and attributes are available in the correct namespaces.
+
+These tests are particularly important for ensuring that the package's public API remains stable and that dependencies are correctly managed. They verify that:
+
+1. The top-level package imports expose the expected classes and functions
+2. The tools submodule contains all required utilities
+3. The datainterfaces submodule correctly exposes all interface classes
+
+To run these tests specifically:
+
+.. code:: bash
+
+    pytest tests/imports.py::TestImportStructure::test_top_level
+    pytest tests/imports.py::TestImportStructure::test_tools
+    pytest tests/imports.py::TestImportStructure::test_datainterfaces
