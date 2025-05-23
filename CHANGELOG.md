@@ -1,4 +1,4 @@
-## v0.7.4 (May 23, 2025)
+# v0.7.4 (May 23, 2025)
 
 ## Removals, Deprecations and Changes
 * Drop support for python 3.9 [PR #1313](https://github.com/catalystneuro/neuroconv/pull/1313)
