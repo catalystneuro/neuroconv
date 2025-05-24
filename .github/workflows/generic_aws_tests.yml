@@ -39,4 +39,4 @@ jobs:
         run: pip install .[aws,test]
 
       - name: Run generic AWS tests
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools_tests.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/neuroconv_deployment_aws_tools_tests.py

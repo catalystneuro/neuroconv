@@ -43,4 +43,4 @@ jobs:
         run: pip install .[aws,test]
 
       - name: Run NeuroConv Deployment on AWS tests
-        run: pytest -rsx -n auto tests/test_on_data/test_yaml/neuroconv_deployment_aws_tools_tests.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/neuroconv_deployment_aws_tools_tests.py

@@ -18,7 +18,7 @@ from hdmf.testing import TestCase
 
 from neuroconv.tools import deploy_process
 
-from .test_on_data.setup_paths import OUTPUT_PATH
+from ..test_on_data.setup_paths import OUTPUT_PATH
 
 RCLONE_DRIVE_ACCESS_TOKEN = os.environ["RCLONE_DRIVE_ACCESS_TOKEN"]
 RCLONE_DRIVE_REFRESH_TOKEN = os.environ["RCLONE_DRIVE_REFRESH_TOKEN"]

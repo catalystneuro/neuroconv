@@ -7,7 +7,7 @@ import boto3
 
 from neuroconv.tools.aws import rclone_transfer_batch_job
 
-from ..setup_paths import OUTPUT_PATH
+from ..test_on_data.setup_paths import OUTPUT_PATH
 
 _RETRY_STATES = ["RUNNABLE", "PENDING", "STARTING", "RUNNING"]
 
