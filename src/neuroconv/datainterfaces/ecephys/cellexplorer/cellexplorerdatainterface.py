@@ -308,7 +308,6 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         # No super here, we need to do everything by hand
         self.verbose = verbose
         self.es_key = es_key
-        self.subset_channels = None
         self.source_data = dict(folder_path=folder_path)
         self._number_of_segments = 1  # CellExplorer is mono segment
 

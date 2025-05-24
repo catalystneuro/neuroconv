@@ -213,6 +213,35 @@ class TestLAtoRGBAImageInterface(DataInterfaceTestMixin):
                 assert np.all(image.data[..., 1] == image.data[..., 2])
 
 
+@pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support 16-bit
+class TestI16GrayscaleImageInterface(DataInterfaceTestMixin):
+    """Test suite for ImageInterface with 16-bit grayscale (mode I;16) images."""
+
+    data_interface_cls = ImageInterface
+    mode = "I;16"
+
+    @pytest.fixture(autouse=True)
+    def make_interface(self, tmp_path, format):
+        """Create interface with 16-bit grayscale test images."""
+        # Generate test 16-bit grayscale images
+        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
+        self.interface_kwargs = dict(folder_path=tmp_path)
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+    def check_read_nwb(self, nwbfile_path):
+        """Test adding 16-bit grayscale images to NWBFile."""
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            # Check images were added correctly
+            assert "images" in nwbfile.acquisition
+            images_container = nwbfile.acquisition["images"]
+            assert len(images_container.images) == 5
+            for image in images_container.images.values():
+                assert isinstance(image, GrayscaleImage)
+
+
 class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with mixed image modes and formats."""
 
@@ -227,16 +256,18 @@ class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
         gray_dir = tmp_path / "gray"
         rgba_dir = tmp_path / "rgba"
         la_dir = tmp_path / "la"
+        i16_dir = tmp_path / "i16"
 
         # Generate test images in different directories
         generate_random_images(num_images=2, mode="RGB", output_dir_path=rgb_dir, format="PNG")
         generate_random_images(num_images=2, mode="L", output_dir_path=gray_dir, format="PNG")
         generate_random_images(num_images=2, mode="RGBA", output_dir_path=rgba_dir, format="TIFF")
         generate_random_images(num_images=2, mode="LA", output_dir_path=la_dir, format="PNG")
+        generate_random_images(num_images=2, mode="I;16", output_dir_path=i16_dir, format="TIFF")
 
         # Collect all image paths
         file_paths = []
-        for dir_path in [rgb_dir, gray_dir, rgba_dir, la_dir]:
+        for dir_path in [rgb_dir, gray_dir, rgba_dir, la_dir, i16_dir]:
             file_paths.extend([str(p) for p in dir_path.glob("*.*")])
 
         self.interface_kwargs = dict(file_paths=file_paths)
@@ -251,7 +282,7 @@ class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
             # Check images were added correctly
             assert "images" in nwbfile.acquisition
             images_container = nwbfile.acquisition["images"]
-            assert len(images_container.images) == 8
+            assert len(images_container.images) == 10
 
             # Count instances of each image type
             num_image_types = {
@@ -265,5 +296,5 @@ class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
 
             # Verify we have the expected number of each type
             assert num_image_types[RGBImage] == 2  # RGB images
-            assert num_image_types[GrayscaleImage] == 2  # L images
+            assert num_image_types[GrayscaleImage] == 4  # 2 L images + 2 I;16 images
             assert num_image_types[RGBAImage] == 4  # 2 RGBA + 2 LA converted to RGBA
