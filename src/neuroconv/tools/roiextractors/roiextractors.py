@@ -189,7 +189,7 @@ def get_nwb_imaging_metadata(
         description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
         unit="n.a.",
         imaging_plane=imaging_plane["name"],
-        dimension=list(imgextractor.get_image_size()),
+        dimension=list(imgextractor.get_sample_shape()),
     )
     metadata["Ophys"].update({photon_series_type: [photon_series_metadata]})
 
@@ -433,7 +433,7 @@ def add_photon_series_to_nwbfile(
     photon_series_kwargs.update(data=frames_to_iterator)
 
     # Add dimension
-    photon_series_kwargs.update(dimension=imaging.get_image_size())
+    photon_series_kwargs.update(dimension=imaging.get_sample_shape())
 
     # Add timestamps or rate
     if always_write_timestamps:
@@ -485,10 +485,10 @@ def _check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     MemoryError
     """
     element_size_in_bytes = imaging.get_dtype().itemsize
-    image_size = imaging.get_image_size()
-    num_frames = imaging.get_num_frames()
+    sample_shape = imaging.get_sample_shape()
+    num_samples = imaging.get_num_samples()
 
-    traces_size_in_bytes = num_frames * math.prod(image_size) * element_size_in_bytes
+    traces_size_in_bytes = num_samples * math.prod(sample_shape) * element_size_in_bytes
     available_memory_in_bytes = psutil.virtual_memory().available
 
     if traces_size_in_bytes > available_memory_in_bytes:
@@ -878,7 +878,7 @@ def _add_plane_segmentation(
 
     ophys = get_module(nwbfile, "ophys")
     image_segmentation_name = image_segmentation_metadata["name"]
-    image_segmentation = ophys.get_data_interface(image_segmentation_name)
+    image_segmentation = ophys[image_segmentation_name]
 
     # Check if the plane segmentation already exists in the image segmentation
     if plane_segmentation_name not in image_segmentation.plane_segmentations:
@@ -1222,7 +1222,7 @@ def _create_roi_table_region(
 
     image_segmentation_name = image_segmentation_metadata["name"]
     ophys = get_module(nwbfile, "ophys")
-    image_segmentation = ophys.get_data_interface(image_segmentation_name)
+    image_segmentation = ophys[image_segmentation_name]
 
     # Get plane segmentation from the image segmentation
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
