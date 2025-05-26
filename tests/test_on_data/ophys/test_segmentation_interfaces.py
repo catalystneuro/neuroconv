@@ -1,9 +1,9 @@
 import platform
 import sys
-
-import pytest
 from datetime import datetime
+
 import numpy as np
+import pytest
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -225,6 +225,7 @@ skip_on_python_313 = pytest.mark.skipif(
     "See:https://github.com/inscopix/pyisx/issues",
 )
 
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -303,12 +304,12 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        
+
         assert imaging_plane["name"] == self.imaging_plane_name
         assert "optical_channel" in imaging_plane
         assert "device" in imaging_plane
         assert imaging_plane["device"] == self.expected_device_name
-        
+
         # Check imaging rate extraction
         assert "imaging_rate" in imaging_plane
         np.testing.assert_allclose(imaging_plane["imaging_rate"], self.expected_sampling_rate, rtol=1e-3)
@@ -320,7 +321,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
             optical_channel = optical_channels[0]
         else:
             optical_channel = optical_channels
-        
+
         assert "description" in optical_channel
         assert optical_channel["name"] == "OpticalChannelGreen"
 
@@ -353,10 +354,10 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-        
+
         # Expected sampling rate for this dataset
         cls.expected_sampling_rate = 10.0
-        
+
         # NWB component names
         cls.imaging_plane_name = "ImagingPlane"
         cls.plane_segmentation_name = "PlaneSegmentation"
@@ -375,7 +376,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == self.imaging_plane_name
-        
+
         # Check sampling rate extraction
         assert "imaging_rate" in imaging_plane
         np.testing.assert_allclose(imaging_plane["imaging_rate"], self.expected_sampling_rate, rtol=1e-3)
@@ -409,7 +410,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-        
+
         # Expected sampling rate for this empty dataset
         cls.expected_sampling_rate = 40.0
 
@@ -425,7 +426,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        
+
         # Check sampling rate extraction even for empty dataset
         assert "imaging_rate" in imaging_plane
         np.testing.assert_allclose(imaging_plane["imaging_rate"], self.expected_sampling_rate, rtol=1e-3)
@@ -433,6 +434,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     def test_no_metadata_mutation(self, setup_interface):
         """Override test_no_metadata_mutation to handle the expected ValueError."""
         from copy import deepcopy
+
         from pynwb.testing.mock.file import mock_NWBFile
 
         nwbfile = mock_NWBFile()
