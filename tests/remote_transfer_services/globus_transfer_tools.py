@@ -14,7 +14,7 @@ from neuroconv.tools.data_transfers import (
     transfer_globus_content,
 )
 
-HAVE_GLOBUS = importlib.util.find_spec(name="globus_cli") is None
+HAVE_GLOBUS = importlib.util.find_spec(name="globus_cli") is not None
 LOGGED_INTO_GLOBUS = os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read()
 
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
