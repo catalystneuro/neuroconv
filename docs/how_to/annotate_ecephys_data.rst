@@ -3,13 +3,20 @@
 How to Annotate Extracellular Electrophysiology Data
 ====================================================
 
-This guide provides instructions on how to annotate extracellular electrophysiology data in NeuroConv.
+This guide provides instructions for annotating extracellular electrophysiology data using NeuroConv.
+
+Most of the key metadata related to extracellular electrophysiology is stored in the electrodes table of the NWB file.
+The electrode table contains a row per electrode where electrode specific metadata can be stored.
+Two of the most important properties are the ``ElectrodeGroup`` assignments and the anatomical localization of the electrodes, both of which are required by the NWB format.
+
+When annotating the electrodes table, be sure to follow the `best practices for the electrode table in NWB files <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_.
+
 
 How to Set ElectrodeGroup Metadata
 ----------------------------------
 
-When working with extracellular electrophysiology data, it can be helpful to segment electrodes into different
-groups based on properties such as location (e.g., brain region, probe, or brain area), type (e.g., tetrode, silicon probe), or other relevant metadata.
+When working with extracellular electrophysiology data, it can be helpful to segment electrodes into different groups for analysis (e.g., spike sorting).
+Electrodes are typically grouped by physical proximity (e.g., tetrodes, probe shanks) or by probe.
 
 By default, NeuroConv creates a single ElectrodeGroup that includes all channels.
 This guide demonstrates how to define multiple distinct electrode groups and annotate them so that
@@ -33,7 +40,8 @@ NeuroConv correctly assigns them during data conversion.
     electrode_groups = [electrode_group_A, electrode_group_B, electrode_group_C]
     metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
 
-    # Map channel ids to group names
+    # Map channel ids to group names, note that you can get the channel ids of the interface with:
+    # interface.channel_ids
     recording = interface.recording_extractor
     channel_id_to_group_names = {
         "0": "ElectrodeGroupA",
@@ -68,9 +76,8 @@ How to Add Location to the Electrodes Table
 -------------------------------------------
 
 In addition to setting electrode group metadata, you may want to add specific location information for each individual electrode in the electrodes table.
-This is particularly useful when electrodes within the same group are in slightly different brain areas or when you want to provide more detailed anatomical information.
-
-When working to annotate the electrodes table keep in mind the `best practices for the electrode table in NWB files <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_.
+This is particularly useful when electrodes are located in different brain areas or when you want to provide more detailed anatomical information.
+Use standard atlas names for anatomical regions when possible.
 
 
 .. code-block:: python
@@ -86,6 +93,7 @@ When working to annotate the electrodes table keep in mind the `best practices f
 
     # Define brain areas for each channel using a dictionary
     # Each ID of the recording should be mapped to a specific brain area
+    # Note that you can get the channel ids of the interface with: interface.channel_ids
     channel_id_to_brain_area = {
         "0": "CA1",
         "1": "CA1",
@@ -95,7 +103,7 @@ When working to annotate the electrodes table keep in mind the `best practices f
     }
 
     # Set the brain_area property on the recording extractor using the dictionary
-    # It is important the property is named brain area as that is what we use to map this to the electrodes table
+    # It is very important the property is named brain area as that is what we use to map this to the electrodes table
     recording_extractor.set_property(
         key="brain_area",
         values=list(channel_id_to_brain_area.values()),
@@ -113,3 +121,20 @@ When working to annotate the electrodes table keep in mind the `best practices f
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
 
 This approach allows you to add specific location information for each electrode, which will be included in the NWB file's electrodes table.
+Note that any other property of the electrodes can be added in a similar way such as impedance, filtering, stereotaxic coordinates, etc.
+
+Current limitations
+-------------------
+
+Currently, the NWB format does not provide a standard way to distinguish between
+channel properties (e.g., how data is recorded by the acquisition system) and
+electrode properties (e.g., the characteristics of the physical electrodes).
+There is ongoing work to address this here:
+
+https://github.com/catalystneuro/ndx-extracellular-channels
+
+We are also working on improving the specification of anatomical coordinates in:
+
+https://github.com/catalystneuro/ndx-anatomical-localization
+
+We welcome suggestions and use cases to help improve the format.
