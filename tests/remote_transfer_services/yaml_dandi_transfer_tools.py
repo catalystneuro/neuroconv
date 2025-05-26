@@ -10,7 +10,7 @@ from packaging.version import Version
 
 from neuroconv import run_conversion_from_yaml
 
-from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+from ..test_on_data.setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks

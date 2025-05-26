@@ -41,6 +41,8 @@
 * Updated default `PoseEstimationSeries` names in `DeepLabCutInterface` [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
 * Testing dependencies include only testing packages (.e.g pytest, pytest-cov) [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
 * Testing modalities now run in their separated environment to avoid sequence contamination of dependencies [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
+* Improved testing documentation [PR #1367](https://github.com/catalystneuro/neuroconv/pull/1367)
+* Reorganized tests for external cloud services into a dedicated `remote_transfer_services` directory to improve test organization and prevent automatic collection by pytest [PR #1367](https://github.com/catalystneuro/neuroconv/pull/1367)
 
 # v0.7.3 (April 25, 2025)
 
