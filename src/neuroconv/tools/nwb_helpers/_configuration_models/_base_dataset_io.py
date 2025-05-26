@@ -302,7 +302,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
             compression_method = "gzip"
 
         elif isinstance(neurodata_object, ImageSeries) and dataset_name == "data":
-            from ....tools.roiextractors.imagingextractordatachunkiterator import (
+            from ....tools.iterative_write import (
                 get_image_series_chunk_shape,
             )
 

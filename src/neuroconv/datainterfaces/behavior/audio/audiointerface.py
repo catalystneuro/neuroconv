@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Literal
 
 import numpy as np
-import scipy
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
@@ -191,6 +190,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         -------
         NWBFile
         """
+        import scipy
 
         metadata = metadata or self.get_metadata()
 
