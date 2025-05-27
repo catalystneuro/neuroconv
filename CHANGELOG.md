@@ -3,6 +3,7 @@
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
+* Fix a bug for avoiding loading the sync stream in `SpikeGLXConverterPipe` [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
 
 ## Features
 * Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)

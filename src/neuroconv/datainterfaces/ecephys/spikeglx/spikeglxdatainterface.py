@@ -71,6 +71,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
             )
 
+        if "SYNC" in stream_id:
+            raise ValueError(
+                "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. Open an issue if you need this functionality."
+            )
+
         if file_path is not None:
             warnings.warn(
                 "file_path is deprecated and will be removed by the end of 2025. "
