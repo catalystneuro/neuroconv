@@ -30,13 +30,13 @@ os = platform.system()
 def pytest_runtest_setup(item):
     if isinstance(item, pytest.DoctestItem):
         test_file = Path(item.fspath)
-        
+
         # Check if we are running the doctest from deeplabcut.rst
         if test_file.name == "deeplabcut.rst":
             # Check if Python version is 3.9 and platform is Darwin (macOS)
             if version.parse(python_version) < version.parse("3.10") and os == "Darwin":
                 pytest.skip("Skipping doctests for deeplabcut.rst on Python 3.9 and macOS")
-        
+
         # Check if we are running the doctest from inscopixsegmentation.rst
         if test_file.name == "inscopixsegmentation.rst":
             # Skip on macOS ARM64
