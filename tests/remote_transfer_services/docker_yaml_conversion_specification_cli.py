@@ -85,7 +85,8 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             assert "spike_times" in nwbfile.units
 
     def test_run_conversion_from_yaml_variable(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
+        root_file_path = Path(__file__).parent.parent.parent
+        path_to_test_yml_files = root_file_path / "tests" / "test_on_data" / "test_yaml" / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
         with open(file=yaml_file_path, mode="r") as io:
