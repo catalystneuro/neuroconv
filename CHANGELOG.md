@@ -8,6 +8,7 @@
 * Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
 
 ## Improvements
+* Improved the docker dailies [PR #1372](https://github.com/catalystneuro/neuroconv/pull/1372)
 
 # v0.7.4 (May 23, 2025)
 

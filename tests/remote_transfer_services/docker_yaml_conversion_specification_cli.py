@@ -25,16 +25,19 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
     root_file_path = Path(__file__).parent.parent.parent
     conversion_spec_path = root_file_path / "tests" / "test_on_data" / "test_yaml" / "conversion_specifications"
+    yaml_file_path = conversion_spec_path / "GIN_conversion_specification.yml"
 
-    def test_run_conversion_from_yaml_cli(self):
-        assert self.conversion_spec_path.exists()
-        yaml_file_path = self.conversion_spec_path / "GIN_conversion_specification.yml"
-        assert yaml_file_path.exists(), f"YAML file not found at {yaml_file_path}"
+    def test_paths_set_correctly(self):
+        assert (
+            self.conversion_spec_path.is_dir()
+        ), f"Conversion specification path is not a directory: {self.conversion_spec_path}"
+        assert self.yaml_file_path.is_file(), f"YAML file not found at {self.yaml_file_path}"
 
-        print(self.source_volume)
-
+        # Test that the source volume is set correctly and the test data is available
         spikeglx_folder = self.source_volume / DATA_PATH / "spikeglx"
         assert spikeglx_folder.exists(), f"SpikeGLX folder not found at {spikeglx_folder}"
+
+    def test_run_conversion_from_yaml_cli(self):
 
         if self.source_volume == "/home/runner/work/neuroconv/neuroconv":  # in CI
             command = (
@@ -42,7 +45,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
                 f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
-                f"neuroconv {yaml_file_path} "
+                f"neuroconv {self.yaml_file_path} "
                 f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         else:  # running locally
@@ -52,7 +55,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 f"--volume {self.test_folder}:{self.test_folder} "
                 f"--volume {DATA_PATH}:{DATA_PATH} "
                 f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
-                f"neuroconv {yaml_file_path} "
+                f"neuroconv {self.yaml_file_path} "
                 f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
 
@@ -95,11 +98,8 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             assert "spike_times" in nwbfile.units
 
     def test_run_conversion_from_yaml_variable(self):
-        assert self.conversion_spec_path.exists()
-        yaml_file_path = self.conversion_spec_path / "GIN_conversion_specification.yml"
-        assert yaml_file_path.exists(), f"YAML file not found at {yaml_file_path}"
 
-        with open(file=yaml_file_path, mode="r") as io:
+        with open(file=self.yaml_file_path, mode="r") as io:
             yaml_lines = io.readlines()
 
         yaml_string = "".join(yaml_lines)
