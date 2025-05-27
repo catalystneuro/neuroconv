@@ -24,8 +24,17 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
     # If running locally, export NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME=/path/to/neuroconv
 
     def test_run_conversion_from_yaml_cli(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
+        root_file_path = Path(__file__).parent.parent.parent
+        conversion_spec_path = root_file_path / "tests" / "test_on_data" / "test_yaml" / "conversion_specifications"
+        assert conversion_spec_path.exists()
+        yaml_file_path = conversion_spec_path / "GIN_conversion_specification.yml"
+        assert yaml_file_path.exists(), f"YAML file not found at {yaml_file_path}"
+
+        print(self.source_volume)
+
+        spikeglx_folder = self.source_volume / DATA_PATH / "spikeglx"
+        assert spikeglx_folder.exists(), f"SpikeGLX folder not found at {spikeglx_folder}"
+
         if self.source_volume == "/home/runner/work/neuroconv/neuroconv":  # in CI
             command = (
                 "docker run -t "
