@@ -38,7 +38,6 @@ python_version = version.parse(python_version())
 ndx_pose_version = version.parse(importlib_version("ndx-pose"))
 
 
-@pytest.mark.skipif(ndx_pose_version < version.parse("0.2.0"), reason="Interface requires ndx-pose version >= 0.2.0")
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -158,7 +157,6 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
 
 
-@pytest.mark.skipif(ndx_pose_version < version.parse("0.2.0"), reason="Interface requires ndx-pose version >= 0.2.0")
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
