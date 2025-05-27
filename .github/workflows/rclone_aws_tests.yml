@@ -43,4 +43,4 @@ jobs:
         run: pip install .[aws,test]
 
       - name: Run RClone on AWS tests
-        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_aws_tools_tests.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/yaml_aws_tools_tests.py

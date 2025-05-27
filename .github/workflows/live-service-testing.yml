@@ -62,8 +62,8 @@ jobs:
           os: ${{ matrix.os }}
 
       - name: Run subset of tests that use DANDI live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/dandi_transfer_tools.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/dandi_transfer_tools.py
       - name: Run subset of tests that use DANDI live services with YAML
-        run: pytest -rsx -n auto tests/test_on_data/test_yaml/yaml_dandi_transfer_tools.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/yaml_dandi_transfer_tools.py
       - name: Run subset of tests that use Globus live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/globus_transfer_tools.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/globus_transfer_tools.py

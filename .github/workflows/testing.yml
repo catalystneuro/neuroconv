@@ -108,7 +108,7 @@ jobs:
             deactivate
           fi
 
-      - name: Test Fiber Photometry machinery
+      - name: Test fiber photometry machinery
         shell: bash
         run: |
           # Create fiber_photometry environment
