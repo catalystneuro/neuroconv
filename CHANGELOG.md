@@ -3,11 +3,14 @@
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
+* Fix a bug for avoiding loading the sync stream in `SpikeGLXConverterPipe` [PR #1373](https://github.com/catalystneuro/neuroconv/pull/1373)
 
 ## Features
+* Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
 
 ## Improvements
 * Add a `how to` documentation for adding extracellular electrophysiology metadata [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
+* Improved the docker dailies [PR #1372](https://github.com/catalystneuro/neuroconv/pull/1372)
 
 # v0.7.4 (May 23, 2025)
 

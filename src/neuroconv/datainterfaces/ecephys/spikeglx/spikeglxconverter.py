@@ -88,8 +88,10 @@ class SpikeGLXConverterPipe(ConverterPipe):
         data_interfaces = dict()
 
         nidq_streams = [stream_id for stream_id in streams_ids if stream_id == "nidq"]
-        electrical_streams = [stream_id for stream_id in streams_ids if stream_id not in nidq_streams]
-        for stream_id in electrical_streams:
+        sync_streams = [stream_id for stream_id in streams_ids if "SYNC" in stream_id]
+        stream_is_neural = lambda stream_id: stream_id not in nidq_streams and "SYNC" not in sync_streams
+        neural_streams = [stream_id for stream_id in streams_ids if stream_is_neural(stream_id)]
+        for stream_id in neural_streams:
             data_interfaces[stream_id] = SpikeGLXRecordingInterface(folder_path=folder_path, stream_id=stream_id)
 
         for stream_id in nidq_streams:
