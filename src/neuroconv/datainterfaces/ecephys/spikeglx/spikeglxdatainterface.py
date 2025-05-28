@@ -71,7 +71,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
             )
 
-        if "SYNC" in stream_id:
+        if stream_id is not None and "SYNC" in stream_id:
             raise ValueError(
                 "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. Open an issue if you need this functionality."
             )
