@@ -291,6 +291,10 @@ extract = [
 hdf5 = [
     "neuroconv[ophys_minimal]",
 ]
+inscopix = [
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "roiextractors>=0.5.13",
+]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -335,6 +339,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[hdf5]",
+    "neuroconv[inscopix]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
     "neuroconv[sbx]",
