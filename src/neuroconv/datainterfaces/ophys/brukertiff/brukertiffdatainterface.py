@@ -285,7 +285,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             frame
             for frame in self.imaging_extractor._xml_root.findall(".//Frame")
             for file in frame.findall("File")
-            if stream_name in file.attrib["filename"]
+            if stream_name == file.attrib["channelName"]
         ]
 
         # general positionCurrent
