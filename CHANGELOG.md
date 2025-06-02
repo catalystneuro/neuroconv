@@ -5,6 +5,7 @@
 ## Bug Fixes
 * Fix a bug for avoiding loading the sync stream in `SpikeGLXConverterPipe` [PR #1373](https://github.com/catalystneuro/neuroconv/pull/1373)
 * Fixed a bug in the `BrukerTiffSinglePlaneImagingInterface` where the criteria to identify frames belonging to a specific stream relied on the file name instead of the stream name. [PR #1375](https://github.com/catalystneuro/neuroconv/pull/1375)
+
 ## Features
 * Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
 
