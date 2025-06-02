@@ -10,6 +10,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
@@ -324,8 +325,8 @@ class CustomTestSLEAPInterface(TestCase):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterface(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -526,10 +527,25 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             skeleton = pose_estimation_container.skeleton
             assert skeleton.nodes[:].tolist() == ["snout", "leftear", "rightear", "tailbase"]
 
+    def test_subject_not_linked(self, setup_interface):
+        """
+        Test that the interface raises an error if the subject is not linked to the config file.
+        """
+
+        nwbfile = mock_NWBFile()
+
+        subject = mock_Subject(subject_id="MockSubject")
+        nwbfile.subject = subject
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        skeletons = nwbfile.processing["behavior"]["Skeletons"]
+        skeleton = skeletons["SkeletonPoseEstimationDeepLabCut_Ind1"]
+        assert skeleton.subject is None
+
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -570,8 +586,8 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -626,7 +642,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
 
 @pytest.mark.skipif(
     platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -675,7 +691,7 @@ def clean_pose_extension_import():
 
 @pytest.mark.skipif(
     platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
     """
