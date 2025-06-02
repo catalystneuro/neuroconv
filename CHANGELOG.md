@@ -10,8 +10,6 @@
 * Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
 
 ## Improvements
-* Improved testing documentation [PR #1367](https://github.com/catalystneuro/neuroconv/pull/1367)
-* Reorganized tests for external cloud services into a dedicated `remote_transfer_services` directory to improve test organization and prevent automatic collection by pytest [PR #1367](https://github.com/catalystneuro/neuroconv/pull/1367)
 * Improved the docker dailies [PR #1372](https://github.com/catalystneuro/neuroconv/pull/1372)
 
 # v0.7.4 (May 23, 2025)
