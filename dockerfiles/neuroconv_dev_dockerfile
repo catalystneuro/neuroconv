@@ -3,6 +3,7 @@ LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
 LABEL org.opencontainers.image.description="A docker image for the most recent daily build of the main branch."
 
 # Install build dependencies required for compiling Python packages with C extensions (ex. pyedflib)
+# TODO: Figure out which dependencies actually require this fix -- see https://github.com/catalystneuro/neuroconv/pull/1377
 RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
