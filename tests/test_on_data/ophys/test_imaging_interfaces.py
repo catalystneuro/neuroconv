@@ -937,6 +937,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         session_start_time = metadata["NWBFile"].get("session_start_time")
         assert session_start_time == "1970-01-01T00:00:00"
 
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
@@ -947,8 +948,8 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
     )
-    optical_series_name = "OnePhotonSeries" 
-    
+    optical_series_name = "OnePhotonSeries"
+
     def check_extracted_metadata(self, metadata: dict):
         # NWBFile checks
         nwbfile = metadata["NWBFile"]
@@ -983,6 +984,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         assert "Subject" in metadata
         assert metadata["Subject"].get("sex") == "M"
 
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
@@ -993,7 +995,6 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     optical_series_name = "OnePhotonSeries"
 
-    
     def check_extracted_metadata(self, metadata: dict):
         session_start_time = metadata["NWBFile"].get("session_start_time")
         assert session_start_time == "1970-01-01T00:00:00"

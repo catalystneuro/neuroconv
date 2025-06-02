@@ -1,5 +1,5 @@
-from typing import Literal
 from datetime import datetime
+from typing import Literal
 
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
@@ -32,7 +32,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         super().__init__(
             file_path=file_path,
             verbose=verbose,
-            photon_series_type="OnePhotonSeries", 
+            photon_series_type="OnePhotonSeries",
         )
 
     def get_metadata(self) -> DeepDict:
@@ -50,15 +50,15 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         # Get timing information (only session start time if present)
         timing = extractor.get_timing()
-        if timing and hasattr(timing, 'start'):
+        if timing and hasattr(timing, "start"):
             session_start_time = timing.start
-            if hasattr(session_start_time, 'to_datetime'):
+            if hasattr(session_start_time, "to_datetime"):
                 session_start_time = session_start_time.to_datetime()
             elif not isinstance(session_start_time, datetime):
-                session_start_time = datetime.fromisoformat(str(session_start_time).replace('Z', '+00:00'))
+                session_start_time = datetime.fromisoformat(str(session_start_time).replace("Z", "+00:00"))
             metadata["NWBFile"]["session_start_time"] = session_start_time.isoformat()
-    
-        # Get acquisition information 
+
+        # Get acquisition information
         acquisition_info = extractor.get_acquisition_info()
         if acquisition_info:
             device_metadata = metadata["Ophys"]["Device"][0]
@@ -83,14 +83,18 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             if "efocus" in acquisition_info:
                 acquisition_details.append(f"eFocus: {acquisition_info['efocus']}")
             if "Microscope EX LED Power (mw/mm^2)" in acquisition_info:
-                acquisition_details.append(f"EX LED Power (mw/mm^2): {acquisition_info['Microscope EX LED Power (mw/mm^2)']}")
+                acquisition_details.append(
+                    f"EX LED Power (mw/mm^2): {acquisition_info['Microscope EX LED Power (mw/mm^2)']}"
+                )
             if "Microscope OG LED Power (mw/mm^2)" in acquisition_info:
-                acquisition_details.append(f"OG LED Power (mw/mm^2): {acquisition_info['Microscope OG LED Power (mw/mm^2)']}")
+                acquisition_details.append(
+                    f"OG LED Power (mw/mm^2): {acquisition_info['Microscope OG LED Power (mw/mm^2)']}"
+                )
 
             if acquisition_details:
                 current_description = imaging_plane_metadata.get("description", "Inscopix Imaging Plane")
                 imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
-            
+
             # session and subject information
             if "Session Name" in acquisition_info and acquisition_info["Session Name"]:
                 metadata["NWBFile"]["session_id"] = acquisition_info["Session Name"]
