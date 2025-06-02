@@ -4,7 +4,6 @@ LABEL org.opencontainers.image.description="A docker image for the most recent d
 
 # Install build dependencies required for compiling Python packages with C extensions (ex. pyedflib)
 RUN apt-get update && apt-get install -y \
-    gcc \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
