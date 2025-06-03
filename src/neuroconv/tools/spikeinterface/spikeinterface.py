@@ -223,7 +223,6 @@ def _add_recording_segment_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
-    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
@@ -240,16 +239,6 @@ def _add_recording_segment_to_nwbfile(
             "The 'write_scaled' parameter is deprecated and will be removed in October 2025. "
             "The function will automatically handle channel conversion and offsets using "
             "'gain_to_physical_unit' and 'offset_to_physical_unit' properties.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-    if starting_time is not None:
-        warnings.warn(
-            "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
-            "Use the time alignment methods or set the recording times directlyfor modifying the starting time or timestamps "
-            "of the data if needed: "
-            "https://neuroconv.readthedocs.io/en/main/user_guide/temporal_alignment.html",
             DeprecationWarning,
             stacklevel=2,
         )
