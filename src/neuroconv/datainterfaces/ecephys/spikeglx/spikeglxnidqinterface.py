@@ -91,7 +91,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         super().__init__(
             verbose=verbose,
-            load_sync_channel=load_sync_channel,
             es_key=es_key,
             folder_path=self.folder_path,
             file_path=file_path,
