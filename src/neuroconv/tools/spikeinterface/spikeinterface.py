@@ -989,7 +989,7 @@ def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment
     """
     element_size_in_bytes = recording.get_dtype().itemsize
     num_channels = recording.get_num_channels()
-    num_frames = recording.get_num_frames(segment_index=segment_index)
+    num_frames = recording.get_num_samples(segment_index=segment_index)
 
     traces_size_in_bytes = element_size_in_bytes * num_channels * num_frames
     available_memory_in_bytes = psutil.virtual_memory().available
