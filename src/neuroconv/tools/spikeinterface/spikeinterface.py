@@ -189,7 +189,6 @@ def add_electrical_series_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
-    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
@@ -201,11 +200,16 @@ def add_electrical_series_to_nwbfile(
     Deprecated. Call `add_recording_to_nwbfile` instead.
     """
 
+    warnings.warn(
+        "This function is deprecated and will be removed in or October 2025. "
+        "Use the 'add_recording_metadata_to_nwbfile' function instead.",
+        DeprecationWarning,
+    )
+
     _add_recording_segment_to_nwbfile(
         recording=recording,
         nwbfile=nwbfile,
         segment_index=segment_index,
-        starting_time=starting_time,
         metadata=metadata,
         write_as=write_as,
         es_key=es_key,
@@ -1306,7 +1310,6 @@ def write_recording_to_nwbfile(
     metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    starting_time: float | None = None,
     write_as: str | None = "raw",
     es_key: str | None = None,
     write_electrical_series: bool = True,
@@ -1370,8 +1373,6 @@ def write_recording_to_nwbfile(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-    starting_time : float, optional
-        Sets the starting time of the ElectricalSeries to a manually set value.
     write_as: {'raw', 'processed', 'lfp'}, optional
         How to save the traces data in the nwb file.
         - 'raw' will save it in acquisition
@@ -1417,7 +1418,6 @@ def write_recording_to_nwbfile(
         add_recording_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile_out,
-            starting_time=starting_time,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
