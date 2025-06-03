@@ -529,7 +529,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
     def test_subject_not_linked(self, setup_interface):
         """
-        Test that the interface raises an error if the subject is not linked to the config file.
+        Test that skeleton.subject is None if the subject_id in the metadata doesn't match the nwbfile.
         """
 
         nwbfile = mock_NWBFile()
