@@ -326,11 +326,9 @@ def _add_recording_segment_to_nwbfile(
     )
     eseries_kwargs.update(data=ephys_data_iterator)
 
-    starting_time = starting_time if starting_time is not None else 0
     if always_write_timestamps:
         timestamps = recording.get_times(segment_index=segment_index)
-        shifted_timestamps = starting_time + timestamps
-        eseries_kwargs.update(timestamps=shifted_timestamps)
+        eseries_kwargs.update(timestamps=timestamps)
     else:
         # By default we write the rate if the timestamps are regular
         recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
@@ -342,15 +340,13 @@ def _add_recording_segment_to_nwbfile(
             rate = recording.get_sampling_frequency()
             recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
-        # Shift timestamps if starting_time is set
         if rate:
-            starting_time = float(starting_time + recording_t_start)
+            starting_time = float(recording_t_start)
             # Note that we call the sampling frequency again because the estimated rate might be different from the
             # sampling frequency of the recording extractor by some epsilon.
             eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
         else:
-            shifted_timestamps = starting_time + timestamps
-            eseries_kwargs.update(timestamps=shifted_timestamps)
+            eseries_kwargs.update(timestamps=timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
