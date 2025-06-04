@@ -224,8 +224,6 @@ skip_on_python_313 = pytest.mark.skipif(
     "Requires: Python <3.13, >=3.9)"
     "See:https://github.com/inscopix/pyisx/issues",
 )
-
-
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -244,11 +242,13 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         # Expected session and device metadata from Inscopix file
         cls.expected_session_name = "FV4581_Ret"
         cls.expected_experimenter_name = "Bei-Xuan"
-        cls.expected_device_name = "NVista3"
+        cls.expected_device_name = "NVista3"  # Actual device name from metadata
         cls.expected_device_serial = "11132301"
         cls.expected_animal_id = "FV4581"
-        cls.expected_species = "CaMKIICre"
-        cls.expected_sampling_rate = 9.9987
+        cls.expected_species = "Unknown species"  # This gets processed into strain
+        cls.expected_strain = "CaMKIICre"
+        cls.expected_sex = "M"  
+        cls.expected_sampling_rate = 9.998700168978033
 
         # NWB component names
         cls.imaging_plane_name = "ImagingPlane"
@@ -257,11 +257,6 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 
     def check_extracted_metadata(self, metadata):
         """Check that the extracted metadata contains expected Inscopix-specific items."""
-        # Basic structure validation
-        assert "NWBFile" in metadata
-        assert "Ophys" in metadata
-        assert "Device" in metadata["Ophys"]
-        assert "ImageSegmentation" in metadata["Ophys"]
 
         # Check session start time extraction
         assert "session_start_time" in metadata["NWBFile"]
@@ -269,11 +264,12 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert isinstance(session_start_time, datetime)
         assert session_start_time.year == 2021
         assert session_start_time.month == 4
+        assert session_start_time.day == 1
 
         # Check session description includes key information
         assert "session_description" in metadata["NWBFile"]
         session_desc = metadata["NWBFile"]["session_description"]
-        assert self.expected_session_name in session_desc or "Inscopix" in session_desc
+        assert self.expected_session_name in session_desc
 
         # Check experimenter information
         assert "experimenter" in metadata["NWBFile"]
@@ -292,17 +288,22 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 
         assert device_metadata["name"] == self.expected_device_name
         assert "description" in device_metadata
+        assert "Inscopix" in device_metadata["description"]
+        assert self.expected_device_serial in device_metadata["description"]
 
         # Check subject information extraction
         assert "Subject" in metadata
         subject = metadata["Subject"]
         assert subject["subject_id"] == self.expected_animal_id
-        # assert "species" in subject
-        # assert self.expected_species in subject["species"]
+        assert subject["species"] == self.expected_species
+        assert "strain" in subject
+        assert subject["strain"] == self.expected_strain
+        assert subject["sex"] == self.expected_sex
 
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
 
         assert imaging_plane["name"] == self.imaging_plane_name
@@ -314,6 +315,10 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert "imaging_rate" in imaging_plane
         np.testing.assert_allclose(imaging_plane["imaging_rate"], self.expected_sampling_rate, rtol=1e-3)
 
+        # Check field of view is included in description
+        assert "field of view" in imaging_plane["description"]
+        assert "398x366 pixels" in imaging_plane["description"]
+
         # Check optical channel information
         optical_channels = imaging_plane["optical_channel"]
         if isinstance(optical_channels, list):
@@ -324,11 +329,18 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 
         assert "description" in optical_channel
         assert optical_channel["name"] == "OpticalChannelGreen"
+        assert "LED power" in optical_channel["description"]
 
         # Check plane segmentation naming
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert plane_segmentation_metadata["name"] == self.plane_segmentation_name
+
+        # Check segmentation description includes method and ROI count
+        segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
+        assert "Inscopix cell segmentation" in segmentation_desc
+        assert "cnmfe" in segmentation_desc
+        assert "4 ROIs" in segmentation_desc
 
         # Check fluorescence metadata
         assert "Fluorescence" in metadata["Ophys"]
@@ -357,6 +369,13 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
         # Expected sampling rate for this dataset
         cls.expected_sampling_rate = 10.0
+        cls.expected_device_name = "Microscope" 
+        cls.expected_roi_count = 6
+
+        # Expected session and device metadata from Inscopix file
+        cls.expected_subject_id = "Unknown"
+        cls.expected_species = "Unknown species"
+        cls.expected_sex = "U"  
 
         # NWB component names
         cls.imaging_plane_name = "ImagingPlane"
@@ -365,26 +384,54 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
     def check_extracted_metadata(self, metadata):
         """Check that the extracted metadata contains expected items."""
-        # Basic structure validation
-        assert "NWBFile" in metadata
-        assert "Ophys" in metadata
-        assert "Device" in metadata["Ophys"]
-        assert "ImageSegmentation" in metadata["Ophys"]
+
+        # Check device has proper default name
+        device_list = metadata["Ophys"]["Device"]
+        if isinstance(device_list, list):
+            device_metadata = device_list[0]
+        else:
+            device_metadata = device_list
+        assert device_metadata["name"] == self.expected_device_name
+
+        # Check subject has defaults
+        assert "Subject" in metadata
+        subject = metadata["Subject"]
+        assert subject["subject_id"] == self.expected_subject_id
+        assert subject["species"] == self.expected_species
+        assert subject["sex"] == self.expected_sex
 
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == self.imaging_plane_name
+        assert imaging_plane["device"] == self.expected_device_name
+
+        # Check field of view is included in description
+        assert "field of view" in imaging_plane["description"]
+        assert "21x21 pixels" in imaging_plane["description"]
 
         # Check sampling rate extraction
         assert "imaging_rate" in imaging_plane
         np.testing.assert_allclose(imaging_plane["imaging_rate"], self.expected_sampling_rate, rtol=1e-3)
 
+        # Check optical channel has default name
+        optical_channels = imaging_plane["optical_channel"]
+        if isinstance(optical_channels, list):
+            optical_channel = optical_channels[0]
+        else:
+            optical_channel = optical_channels
+        assert optical_channel["name"] == "OpticalChannelDefault"
+
         # Check plane segmentation naming
         assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         assert plane_segmentation_metadata["name"] == self.plane_segmentation_name
+
+        # Check segmentation description includes ROI count
+        segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
+        assert "Inscopix cell segmentation" in segmentation_desc
+        assert f"{self.expected_roi_count}" in segmentation_desc
 
         # Check fluorescence metadata
         assert "Fluorescence" in metadata["Ophys"]
@@ -393,7 +440,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         raw_traces_metadata = metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]["raw"]
         assert raw_traces_metadata["name"] == self.roi_response_series_name
 
-
+ 
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -410,7 +457,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-
+        
         # Expected sampling rate for this empty dataset
         cls.expected_sampling_rate = 40.0
 
