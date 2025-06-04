@@ -48,79 +48,123 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata()
         extractor = self.imaging_extractor
 
-        # Get timing information (only session start time if present)
-        timing = extractor.get_timing()
-        if timing and hasattr(timing, "start"):
-            session_start_time = timing.start
-            if hasattr(session_start_time, "to_datetime"):
-                session_start_time = session_start_time.to_datetime()
-            elif not isinstance(session_start_time, datetime):
-                session_start_time = datetime.fromisoformat(str(session_start_time).replace("Z", "+00:00"))
+        # Get session information using new extractor methods
+        session_info = extractor.get_session_info()
+        
+        # Session start time
+        start_time = session_info.get("start_time")
+        if start_time:
+            # Convert ISX time to datetime if needed
+            if hasattr(start_time, 'to_datetime'):
+                session_start_time = start_time.to_datetime()
+            elif hasattr(start_time, 'secs_float'):
+                session_start_time = datetime.fromtimestamp(start_time.secs_float)
+            elif not isinstance(start_time, datetime):
+                session_start_time = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
+            else:
+                session_start_time = start_time
             metadata["NWBFile"]["session_start_time"] = session_start_time.isoformat()
 
-        # Get acquisition information
-        acquisition_info = extractor.get_acquisition_info()
-        if acquisition_info:
+        # Session name and experimenter
+        if session_info.get("session_name"):
+            metadata["NWBFile"]["session_id"] = session_info["session_name"]
+        if session_info.get("experimenter_name"):
+            metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
+
+        # Get device information using new extractor methods
+        device_info = extractor.get_device_info()
+        if device_info:
             device_metadata = metadata["Ophys"]["Device"][0]
+            
+            # Update the actual device name
+            if device_info.get("device_name"):
+                device_metadata["name"] = device_info["device_name"]
+            
+            # Build device description
             microscope_info = []
-            if "Microscope Type" in acquisition_info:
-                microscope_info.append(f"Type: {acquisition_info['Microscope Type']}")
-            if "Microscope Serial Number" in acquisition_info:
-                microscope_info.append(f"Serial: {acquisition_info['Microscope Serial Number']}")
-            if "Acquisition SW Version" in acquisition_info:
-                microscope_info.append(f"Software: {acquisition_info['Acquisition SW Version']}")
+            if device_info.get("device_serial_number"):
+                microscope_info.append(f"Serial: {device_info['device_serial_number']}")
+            if device_info.get("acquisition_software_version"):
+                microscope_info.append(f"Software: {device_info['acquisition_software_version']}")
+            
             if microscope_info:
                 device_metadata["description"] = f"Inscopix Microscope ({', '.join(microscope_info)})"
 
+            # Update imaging plane metadata with acquisition details
             imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            
+            # Update imaging plane device reference to match the actual device name
+            if device_info.get("device_name"):
+                imaging_plane_metadata["device"] = device_info["device_name"]
+            
             acquisition_details = []
-            if "Exposure Time (ms)" in acquisition_info:
-                acquisition_details.append(f"Exposure Time (ms): {acquisition_info['Exposure Time (ms)']}")
-            if "Microscope Gain" in acquisition_info:
-                acquisition_details.append(f"Gain: {acquisition_info['Microscope Gain']}")
-            if "Microscope Focus" in acquisition_info:
-                acquisition_details.append(f"Focus: {acquisition_info['Microscope Focus']}")
-            if "efocus" in acquisition_info:
-                acquisition_details.append(f"eFocus: {acquisition_info['efocus']}")
-            if "Microscope EX LED Power (mw/mm^2)" in acquisition_info:
-                acquisition_details.append(
-                    f"EX LED Power (mw/mm^2): {acquisition_info['Microscope EX LED Power (mw/mm^2)']}"
-                )
-            if "Microscope OG LED Power (mw/mm^2)" in acquisition_info:
-                acquisition_details.append(
-                    f"OG LED Power (mw/mm^2): {acquisition_info['Microscope OG LED Power (mw/mm^2)']}"
-                )
+            if device_info.get("exposure_time_ms"):
+                acquisition_details.append(f"Exposure Time (ms): {device_info['exposure_time_ms']}")
+            if device_info.get("microscope_gain"):
+                acquisition_details.append(f"Gain: {device_info['microscope_gain']}")
+            if device_info.get("microscope_focus"):
+                acquisition_details.append(f"Focus: {device_info['microscope_focus']}")
+            if device_info.get("efocus"):
+                acquisition_details.append(f"eFocus: {device_info['efocus']}")
+            if device_info.get("led_power_ex_mw_per_mm2"):
+                acquisition_details.append(f"EX LED Power (mw/mm^2): {device_info['led_power_ex_mw_per_mm2']}")
+            if device_info.get("led_power_og_mw_per_mm2"):
+                acquisition_details.append(f"OG LED Power (mw/mm^2): {device_info['led_power_og_mw_per_mm2']}")
 
             if acquisition_details:
-                current_description = imaging_plane_metadata.get("description", "Inscopix Imaging Plane")
+                current_description = imaging_plane_metadata.get("description", "The plane or volume being imaged by the microscope.")
                 imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
 
-            # session and subject information
-            if "Session Name" in acquisition_info and acquisition_info["Session Name"]:
-                metadata["NWBFile"]["session_id"] = acquisition_info["Session Name"]
-            if "Experimenter Name" in acquisition_info and acquisition_info["Experimenter Name"]:
-                metadata["NWBFile"]["experimenter"] = [acquisition_info["Experimenter Name"]]
-
-            # Subject information
-            species = acquisition_info.get("Animal Species", "")
-            if not species:
-                species = "Unknown species"  # or another appropriate default
-            subject_info = {
-                "subject_id": acquisition_info.get("Animal ID", ""),
-                "sex": acquisition_info.get("Animal Sex", "").upper(),
-                "species": species,
-            }
-            if "Animal Description" in acquisition_info and acquisition_info["Animal Description"]:
-                subject_info["description"] = acquisition_info["Animal Description"]
-            if "Animal Weight" in acquisition_info and acquisition_info["Animal Weight"]:
-                subject_info["weight"] = str(acquisition_info["Animal Weight"])
-            if "Animal Date of Birth" in acquisition_info and acquisition_info["Animal Date of Birth"]:
-                subject_info["date_of_birth"] = acquisition_info["Animal Date of Birth"]
-
-            if "Subject" in metadata and isinstance(metadata["Subject"], dict):
-                metadata["Subject"].update(subject_info)
+        # Get subject information using new extractor methods
+        subject_info = extractor.get_subject_info()
+        
+        # Build subject metadata with required fields
+        subject_metadata = {}
+        
+        # Subject ID - required field
+        if subject_info and subject_info.get("animal_id"):
+            subject_metadata["subject_id"] = subject_info["animal_id"]
+        else:
+            subject_metadata["subject_id"] = "Unknown"
+        
+        # Species validation - check if it matches expected format
+        species_value = None
+        strain_value = None
+        
+        if subject_info and subject_info.get("species"):
+            species_raw = subject_info["species"]
+            # If it contains genotype info or doesn't match format, put it in strain instead
+            if " " in species_raw and species_raw[0].isupper() and species_raw.split()[1][0].islower():
+                species_value = species_raw
             else:
-                metadata["Subject"] = subject_info
+                strain_value = species_raw
+        
+        subject_metadata["species"] = species_value if species_value else "Unknown species"
+        if strain_value:
+            subject_metadata["strain"] = strain_value
+        
+        # Sex mapping
+        sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
+        if subject_info and subject_info.get("sex"):
+            subject_metadata["sex"] = sex_mapping.get(subject_info["sex"].lower(), "U")
+        else:
+            subject_metadata["sex"] = "U"
+        
+        # Optional subject fields
+        if subject_info:
+            if subject_info.get("description"):
+                subject_metadata["description"] = subject_info["description"]
+            if subject_info.get("date_of_birth"):
+                subject_metadata["date_of_birth"] = subject_info["date_of_birth"]
+            if subject_info.get("weight") and subject_info["weight"] > 0:
+                subject_metadata["weight"] = str(subject_info["weight"])
+
+        # Update or create Subject metadata
+        if "Subject" in metadata and isinstance(metadata["Subject"], dict):
+            metadata["Subject"].update(subject_metadata)
+        else:
+            metadata["Subject"] = subject_metadata
+
         return metadata
 
     def add_to_nwbfile(
