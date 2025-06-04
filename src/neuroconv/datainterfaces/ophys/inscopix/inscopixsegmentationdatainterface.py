@@ -1,5 +1,5 @@
+
 from pydantic import FilePath, validate_call
-import warnings
 
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
@@ -26,22 +26,22 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             device_info = self.segmentation_extractor.get_device_info()
         except AttributeError:
             device_info = {}
-        
+
         try:
             session_info = self.segmentation_extractor.get_session_info()
         except AttributeError:
             session_info = {}
-            
+
         try:
             subject_info = self.segmentation_extractor.get_subject_info()
         except AttributeError:
             subject_info = {}
-        
+
         try:
             analysis_info = self.segmentation_extractor.get_analysis_info()
         except AttributeError:
             analysis_info = {}
-        
+
         try:
             probe_info = self.segmentation_extractor.get_probe_info()
         except AttributeError:
@@ -51,7 +51,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             session_start_time = self.segmentation_extractor.get_session_start_time()
         except AttributeError:
             session_start_time = None
-        
+
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
@@ -102,7 +102,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if device_info and device_info.get("field_of_view_pixels"):
             fov = device_info["field_of_view_pixels"]
             plane_desc += f" with field of view {fov[1]}x{fov[0]} pixels"
-        
+
         desc_parts = [plane_desc]
         if device_info and device_info.get("microscope_focus"):
             desc_parts.append(f"Focus: {device_info['microscope_focus']} µm")
@@ -110,15 +110,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             desc_parts.append(f"Exposure: {device_info['exposure_time_ms']} ms")
         if device_info and device_info.get("microscope_gain"):
             desc_parts.append(f"Gain: {device_info['microscope_gain']}")
-        
+
         imaging_plane["description"] = "; ".join(desc_parts)
 
-        #Sampling frequency
+        # Sampling frequency
         try:
             sampling_frequency = self.segmentation_extractor.get_sampling_frequency()
         except AttributeError:
             sampling_frequency = None
-        
+
         if sampling_frequency:
             imaging_plane["imaging_rate"] = sampling_frequency
 
@@ -132,12 +132,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             channel = device_info["channel"]
             optical_channel["name"] = f"OpticalChannel{channel.capitalize()}"
             optical_channel["description"] = f"Inscopix {channel} channel"
-        
+
         # LED power
         if device_info and device_info.get("led_power_1_mw_per_mm2"):
             led_power = device_info["led_power_1_mw_per_mm2"]
             optical_channel["description"] += f" (LED power: {led_power} mW/mm²)"
-        
+
         imaging_plane["optical_channel"] = [optical_channel]
 
         # Image segmentation
@@ -146,11 +146,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             segmentation_desc += f" using {analysis_info['cell_identification_method']}"
         if analysis_info and analysis_info.get("trace_units"):
             segmentation_desc += f" with traces in {analysis_info['trace_units']}"
-        
+
         # Add number of ROIs to description
         num_rois = self.segmentation_extractor.get_num_rois()
         segmentation_desc += f" ({num_rois} ROIs identified)"
-        
+
         metadata["Ophys"]["ImageSegmentation"]["description"] = segmentation_desc
 
         # Subject
@@ -164,7 +164,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         # Species validation - check if it matches expected format
         species_value = None
         strain_value = None
-        
+
         if subject_info and subject_info.get("species"):
             species_raw = subject_info["species"]
             # If it contains genotype info or doesn't match format, put it in strain instead
@@ -172,8 +172,8 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 species_value = species_raw
             else:
                 strain_value = species_raw
-        
-        subject["species"] = species_value if species_value else "Unknown species" 
+
+        subject["species"] = species_value if species_value else "Unknown species"
         if strain_value:
             subject["strain"] = strain_value
 

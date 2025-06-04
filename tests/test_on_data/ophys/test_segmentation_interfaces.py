@@ -224,6 +224,8 @@ skip_on_python_313 = pytest.mark.skipif(
     "Requires: Python <3.13, >=3.9)"
     "See:https://github.com/inscopix/pyisx/issues",
 )
+
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -247,7 +249,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         cls.expected_animal_id = "FV4581"
         cls.expected_species = "Unknown species"  # This gets processed into strain
         cls.expected_strain = "CaMKIICre"
-        cls.expected_sex = "M"  
+        cls.expected_sex = "M"
         cls.expected_sampling_rate = 9.998700168978033
 
         # NWB component names
@@ -369,13 +371,13 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
         # Expected sampling rate for this dataset
         cls.expected_sampling_rate = 10.0
-        cls.expected_device_name = "Microscope" 
+        cls.expected_device_name = "Microscope"
         cls.expected_roi_count = 6
 
         # Expected session and device metadata from Inscopix file
         cls.expected_subject_id = "Unknown"
         cls.expected_species = "Unknown species"
-        cls.expected_sex = "U"  
+        cls.expected_sex = "U"
 
         # NWB component names
         cls.imaging_plane_name = "ImagingPlane"
@@ -440,7 +442,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         raw_traces_metadata = metadata["Ophys"]["Fluorescence"][self.plane_segmentation_name]["raw"]
         assert raw_traces_metadata["name"] == self.roi_response_series_name
 
- 
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfaceTestMixin):
@@ -457,7 +459,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     def setup_metadata(self, request):
         """Set up expected metadata values."""
         cls = request.cls
-        
+
         # Expected sampling rate for this empty dataset
         cls.expected_sampling_rate = 40.0
 
