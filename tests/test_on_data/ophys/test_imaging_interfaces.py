@@ -919,11 +919,13 @@ skip_on_python_313 = pytest.mark.skipif(
     "Requires: Python <3.13, >=3.9)"
     "See:https://github.com/inscopix/pyisx/issues",
 )
+
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd (minimal metadata file)."""
-    
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -933,38 +935,38 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for file with minimal acquisition info."""
-        
+
         # NWBFile checks - should have default epoch time
         nwbfile = metadata["NWBFile"]
         assert nwbfile["session_start_time"] == "1970-01-01T00:00:00"
         assert "session_id" not in nwbfile
         assert "experimenter" not in nwbfile
-        
-        # Device checks 
+
+        # Device checks
         device = metadata["Ophys"]["Device"][0]
         assert device["name"] == "Microscope"
         assert "description" not in device or device.get("description", "") == ""
-        
+
         # ImagingPlane checks
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "Microscope"  
+        assert imaging_plane["device"] == "Microscope"
         assert imaging_plane["description"] == "The plane or volume being imaged by the microscope."
-        
+
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == "channel_0"
         assert optical_channel["description"] == "An optical channel of the microscope."
-        
+
         # OnePhotonSeries checks
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
         assert ops["name"] == "OnePhotonSeries"
         assert ops["description"] == "Imaging data from one-photon excitation microscopy."
         assert ops["unit"] == "n.a."
         assert ops["imaging_plane"] == "ImagingPlane"
-        assert ops["dimension"] == [128, 128]  
-        
-        # Subject checks 
+        assert ops["dimension"] == [128, 128]
+
+        # Subject checks
         subject = metadata["Subject"]
         assert subject["subject_id"] == "Unknown"
         assert subject["species"] == "Unknown species"
@@ -974,12 +976,11 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert "date_of_birth" not in subject
 
 
-
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (rich metadata file)."""
-    
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
@@ -989,13 +990,13 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for file with rich acquisition info."""
-        
-        # NWBFile checks 
+
+        # NWBFile checks
         nwbfile = metadata["NWBFile"]
         assert isinstance(nwbfile["session_start_time"], str)
         assert nwbfile["session_start_time"].startswith("2019-10-07T16:22:01")
         assert nwbfile["session_id"] == "4D_SAAV_PFC_IM7_20191007"
-        
+
         # Device checks
         device = metadata["Ophys"]["Device"][0]
         device_desc = device.get("description", "")
@@ -1003,11 +1004,11 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
             assert "Inscopix Microscope" in device_desc
             assert "Serial: FA-11092903" in device_desc
             assert "Software: 1.3.0" in device_desc
-        
+
         # ImagingPlane checks
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "NVista3"  
+        assert imaging_plane["device"] == "NVista3"
 
         desc = imaging_plane.get("description", "")
         assert "The plane or volume being imaged by the microscope." in desc
@@ -1017,23 +1018,23 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         assert "eFocus: 370" in desc
         assert "EX LED Power (mw/mm^2): 0.4" in desc
         assert "OG LED Power (mw/mm^2): 0.2" in desc
-        
+
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == "channel_0"
         assert optical_channel["description"] == "An optical channel of the microscope."
-        
+
         # OnePhotonSeries checks
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
         assert ops["name"] == "OnePhotonSeries"
         assert ops["description"] == "Imaging data from one-photon excitation microscopy."
         assert ops["unit"] == "n.a."
         assert ops["imaging_plane"] == "ImagingPlane"
-        assert ops["dimension"] == [33, 29]  
-        
-        # Subject checks 
+        assert ops["dimension"] == [33, 29]
+
+        # Subject checks
         subject = metadata["Subject"]
-        assert subject["subject_id"] == "Unknown" 
+        assert subject["subject_id"] == "Unknown"
         assert subject["species"] == "Unknown species"
         assert subject["sex"] == "M"
         assert "description" not in subject
@@ -1041,56 +1042,53 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         assert "date_of_birth" not in subject
 
 
-
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_u8.isxd (minimal metadata file, uint8 dtype)."""
-    
+
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd")
-    )
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     optical_series_name = "OnePhotonSeries"
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for uint8 file with minimal acquisition info."""
-        
-        # NWBFile checks 
+
+        # NWBFile checks
         nwbfile = metadata["NWBFile"]
         assert nwbfile["session_start_time"] == "1970-01-01T00:00:00"
         assert "session_id" not in nwbfile
         assert "experimenter" not in nwbfile
-        
-        # Device checks 
+
+        # Device checks
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "Microscope"  
+        assert device["name"] == "Microscope"
         assert "description" not in device or device.get("description", "") == ""
-        
+
         # ImagingPlane checks
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == "ImagingPlane"
         assert imaging_plane["device"] == "Microscope"
         assert imaging_plane["description"] == "The plane or volume being imaged by the microscope."
-        
+
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == "channel_0"
         assert optical_channel["description"] == "An optical channel of the microscope."
-        
+
         # OnePhotonSeries checks
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
         assert ops["name"] == "OnePhotonSeries"
         assert ops["description"] == "Imaging data from one-photon excitation microscopy."
         assert ops["unit"] == "n.a."
         assert ops["imaging_plane"] == "ImagingPlane"
-        assert ops["dimension"] == [3, 4] 
+        assert ops["dimension"] == [3, 4]
 
-        # Subject checks 
+        # Subject checks
         subject = metadata["Subject"]
         assert subject["subject_id"] == "Unknown"
         assert subject["species"] == "Unknown species"
-        assert subject["sex"] == "U"  
+        assert subject["sex"] == "U"
         assert "weight" not in subject
         assert "date_of_birth" not in subject

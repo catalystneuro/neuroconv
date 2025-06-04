@@ -27,4 +27,3 @@ Convert Inscopix imaging data to NWB using :py:class:`~neuroconv.datainterfaces.
     >>> # Run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-

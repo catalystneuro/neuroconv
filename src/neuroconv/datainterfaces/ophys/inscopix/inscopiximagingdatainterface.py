@@ -50,17 +50,17 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         # Get session information using new extractor methods
         session_info = extractor.get_session_info()
-        
+
         # Session start time
         start_time = session_info.get("start_time")
         if start_time:
             # Convert ISX time to datetime if needed
-            if hasattr(start_time, 'to_datetime'):
+            if hasattr(start_time, "to_datetime"):
                 session_start_time = start_time.to_datetime()
-            elif hasattr(start_time, 'secs_float'):
+            elif hasattr(start_time, "secs_float"):
                 session_start_time = datetime.fromtimestamp(start_time.secs_float)
             elif not isinstance(start_time, datetime):
-                session_start_time = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
+                session_start_time = datetime.fromisoformat(str(start_time).replace("Z", "+00:00"))
             else:
                 session_start_time = start_time
             metadata["NWBFile"]["session_start_time"] = session_start_time.isoformat()
@@ -75,28 +75,28 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         device_info = extractor.get_device_info()
         if device_info:
             device_metadata = metadata["Ophys"]["Device"][0]
-            
+
             # Update the actual device name
             if device_info.get("device_name"):
                 device_metadata["name"] = device_info["device_name"]
-            
+
             # Build device description
             microscope_info = []
             if device_info.get("device_serial_number"):
                 microscope_info.append(f"Serial: {device_info['device_serial_number']}")
             if device_info.get("acquisition_software_version"):
                 microscope_info.append(f"Software: {device_info['acquisition_software_version']}")
-            
+
             if microscope_info:
                 device_metadata["description"] = f"Inscopix Microscope ({', '.join(microscope_info)})"
 
             # Update imaging plane metadata with acquisition details
             imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-            
+
             # Update imaging plane device reference to match the actual device name
             if device_info.get("device_name"):
                 imaging_plane_metadata["device"] = device_info["device_name"]
-            
+
             acquisition_details = []
             if device_info.get("exposure_time_ms"):
                 acquisition_details.append(f"Exposure Time (ms): {device_info['exposure_time_ms']}")
@@ -112,25 +112,27 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 acquisition_details.append(f"OG LED Power (mw/mm^2): {device_info['led_power_og_mw_per_mm2']}")
 
             if acquisition_details:
-                current_description = imaging_plane_metadata.get("description", "The plane or volume being imaged by the microscope.")
+                current_description = imaging_plane_metadata.get(
+                    "description", "The plane or volume being imaged by the microscope."
+                )
                 imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
 
         # Get subject information using new extractor methods
         subject_info = extractor.get_subject_info()
-        
+
         # Build subject metadata with required fields
         subject_metadata = {}
-        
+
         # Subject ID - required field
         if subject_info and subject_info.get("animal_id"):
             subject_metadata["subject_id"] = subject_info["animal_id"]
         else:
             subject_metadata["subject_id"] = "Unknown"
-        
+
         # Species validation - check if it matches expected format
         species_value = None
         strain_value = None
-        
+
         if subject_info and subject_info.get("species"):
             species_raw = subject_info["species"]
             # If it contains genotype info or doesn't match format, put it in strain instead
@@ -138,18 +140,18 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 species_value = species_raw
             else:
                 strain_value = species_raw
-        
+
         subject_metadata["species"] = species_value if species_value else "Unknown species"
         if strain_value:
             subject_metadata["strain"] = strain_value
-        
+
         # Sex mapping
         sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
         if subject_info and subject_info.get("sex"):
             subject_metadata["sex"] = sex_mapping.get(subject_info["sex"].lower(), "U")
         else:
             subject_metadata["sex"] = "U"
-        
+
         # Optional subject fields
         if subject_info:
             if subject_info.get("description"):
