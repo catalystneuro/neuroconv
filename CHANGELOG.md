@@ -1,18 +1,34 @@
-## v0.7.4 (Upcoming)
+# v0.7.5 (Upcoming)
 
-## Deprecations and Changes
+## Removals, Deprecations and Changes
+* Removed automatic subject addition for DeepLabCutInterface. A link is now created only if the skeleton metadata matches the subject ID.  [PR #1362](https://github.com/catalystneuro/neuroconv/pull/1362)
+
+## Bug Fixes
+* Fix a bug for avoiding loading the sync stream in `SpikeGLXConverterPipe` [PR #1373](https://github.com/catalystneuro/neuroconv/pull/1373)
+* Fixed a bug with the Docker dev build [PR #1376](https://github.com/catalystneuro/neuroconv/pull/1376)
+
+## Features
+* Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
+
+## Improvements
+* Improved the docker dailies [PR #1372](https://github.com/catalystneuro/neuroconv/pull/1372)
+
+# v0.7.4 (May 23, 2025)
+
+## Removals, Deprecations and Changes
 * Drop support for python 3.9 [PR #1313](https://github.com/catalystneuro/neuroconv/pull/1313)
 * Updated type hints to take advantage of the | operator [PR #1316](https://github.com/catalystneuro/neuroconv/pull/1313)
 * Deprecated the following ScanImage interfaces: `ScanImageMultiFileImagingInterface`, `ScanImageMultiPlaneImagingInterface`, `ScanImageMultiPlaneMultiFileImagingInterface`, `ScanImageSinglePlaneImagingInterface`, and `ScanImageSinglePlaneMultiFileImagingInterface`. These interfaces will be removed in or after October 2025. Use `ScanImageImagingInterface` for all those cases instead. [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330) [PR #1331](https://github.com/catalystneuro/neuroconv/pull/1331)
 * Set minimum version requirement for `ndx-pose` to 0.2.0 [PR #1322](https://github.com/catalystneuro/neuroconv/pull/1322)
-* Set minimum version for roiextractors as 0.5.13 [PR #1339](https://github.com/catalystneuro/neuroconv/pull/1339)
+* Set minimum version for roiextractors as 0.5.13. [PR #1339](https://github.com/catalystneuro/neuroconv/pull/1339)
 * ndx-events is now a required dependency by spikeglx [PR #1353](https://github.com/catalystneuro/neuroconv/pull/1353)
 
 ## Bug Fixes
 * Fix `AudioInterface` to correctly handle WAV filenames with multiple dots by validating only the last suffix. [PR #1327](https://github.com/catalystneuro/neuroconv/pull/1327)
+* Fix a stubbing bug in `SpikeGLXNIDQInterface` and `OpenEphysBinaryAnalogInterface` [PR #1360](https://github.com/catalystneuro/neuroconv/pull/1360)
 
 ## Features
-* Add metadata support for `DeepLabCutInterface` [PR #1319](https://github.com/catalystneuro/neuroconv/pull/1319)
+* Add metadata support for `DeepLabCutInterface`. [PR #1319](https://github.com/catalystneuro/neuroconv/pull/1319)
 * `AudioInterface` Adding support for IEEE float in WAV format [PR #1325](https://github.com/catalystneuro/neuroconv/pull/1325)
 * Added a RecordingInterface for WhiteMatter ephys data [PR #1297](https://github.com/catalystneuro/neuroconv/pull/1297) [PR #1333](https://github.com/catalystneuro/neuroconv/pull/1333)
 * Improved `ScanImageInteface` to support both single and multi-file data [PR #1330](https://github.com/catalystneuro/neuroconv/pull/1330)
@@ -26,9 +42,11 @@
 * Add installation instructions on the documentation for `neuroconv` [PR #1344](https://github.com/catalystneuro/neuroconv/pull/1344)
 * Separate dailies and dev-dailies workflows [PR #1343](https://github.com/catalystneuro/neuroconv/pull/1343)
 * Added support for renaming Skeletons with `DeepLabCutInterface` [PR #1359](https://github.com/catalystneuro/neuroconv/pull/1359)
-* Updated pose_estimation series names in `DeepLabCutInterface` metadata [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
+* Updated default `PoseEstimationSeries` names in `DeepLabCutInterface` [PR #1363](https://github.com/catalystneuro/neuroconv/pull/1363)
 * Testing dependencies include only testing packages (.e.g pytest, pytest-cov) [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
 * Testing modalities now run in their separated environment to avoid sequence contamination of dependencies [PR #1357](https://github.com/catalystneuro/neuroconv/pull/1357)
+* Improved testing documentation [PR #1367](https://github.com/catalystneuro/neuroconv/pull/1367)
+* Reorganized tests for external cloud services into a dedicated `remote_transfer_services` directory to improve test organization and prevent automatic collection by pytest [PR #1367](https://github.com/catalystneuro/neuroconv/pull/1367)
 
 # v0.7.3 (April 25, 2025)
 

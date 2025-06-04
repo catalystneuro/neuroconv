@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.4"
+version = "0.7.5"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -417,6 +417,6 @@ known-first-party = ["neuroconv"]
 
 
 [tool.codespell]
-skip = '.git*,*.pdf,*.css'
+skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
 ignore-words-list = 'assertin'
