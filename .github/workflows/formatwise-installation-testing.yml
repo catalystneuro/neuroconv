@@ -87,6 +87,7 @@ jobs:
       # and creates format strings in the format "category:format_name"
       - name: Discover formats from gallery
         id: discover_formats
+        shell: bash
         run: |
           chmod +x .github/scripts/discover_formats.py
           FORMATS_JSON=$(python .github/scripts/discover_formats.py)
