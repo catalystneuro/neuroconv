@@ -3,23 +3,6 @@ on:
   schedule:
     - cron: "0 16 * * 1"  # Every Monday at noon EST
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      python-versions:
-        description: 'List of Python versions to use in matrix, as JSON string'
-        required: false
-        type: string
-      os-versions:
-        description: 'List of OS versions to use in matrix, as JSON string'
-        required: false
-        type: string
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        required: false
-      AWS_SECRET_ACCESS_KEY:
-        required: false
-      S3_GIN_BUCKET:
-        required: false
 
 jobs:
   load_python_and_os_versions:
@@ -45,8 +28,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJson(inputs.python-versions || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
-        os: ${{ fromJson(inputs.os-versions || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
+        python-version: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
+        os: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python ${{ matrix.python-version }}
