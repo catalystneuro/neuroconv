@@ -303,6 +303,7 @@ miniscope = [
 scanimage = [
     "neuroconv[ophys_minimal]",
     "natsort",
+    "tifffile>=2023.3.21",
 ]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
