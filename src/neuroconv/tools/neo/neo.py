@@ -1,4 +1,3 @@
-import distutils.version
 import uuid
 import warnings
 from copy import deepcopy
@@ -528,10 +527,6 @@ def write_neo_to_nwb(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
-    assert (
-        distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
-    ), "'write_neo_to_nwb' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 

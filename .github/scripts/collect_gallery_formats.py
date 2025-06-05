@@ -41,6 +41,7 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
         "spike2.rst",  # Only supporte for python 3.9 and earlier
         "medpc.rst",  # Not being tested at the moment
         "mearec.rst",  # Setuptools problems and I want to discuss this with Ben
+        "edf.rst",  # The neo reader does not allow parallel acccess to the same file, so we don't test it
     }
 
     for category_dir in gallery_path.iterdir():
