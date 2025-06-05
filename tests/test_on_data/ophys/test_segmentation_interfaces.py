@@ -244,10 +244,10 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         # Expected session and device metadata from Inscopix file
         cls.expected_session_name = "FV4581_Ret"
         cls.expected_experimenter_name = "Bei-Xuan"
-        cls.expected_device_name = "NVista3"  
+        cls.expected_device_name = "NVista3"
         cls.expected_device_serial = "11132301"
         cls.expected_animal_id = "FV4581"
-        cls.expected_species = "Unknown species" 
+        cls.expected_species = "Unknown species"
         cls.expected_strain = "CaMKIICre"
         cls.expected_sex = "M"
         cls.expected_sampling_rate = 9.998700168978033
@@ -397,7 +397,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
         # Check subject has defaults
         assert "Subject" not in metadata
-      
+
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
@@ -449,7 +449,6 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(mask_type="pixel")
- 
 
     def check_extracted_metadata(self, metadata):
         """Check that the extracted metadata contains expected items for empty dataset."""

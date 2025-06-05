@@ -1,6 +1,7 @@
 from pydantic import FilePath, validate_call
-from ....utils import DeepDict
+
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ....utils import DeepDict
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
@@ -13,7 +14,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     @validate_call
     def __init__(
         self,
-        file_path: FilePath, 
+        file_path: FilePath,
         verbose: bool = False,
     ):
         """
@@ -24,10 +25,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         verbose : bool, optional
             If True, outputs additional information during processing.
         """
-        super().__init__(
-            file_path=file_path, 
-            verbose=verbose
-        )
+        super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:
         """
@@ -58,7 +56,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             if subject_info and subject_info.get("description"):
                 session_desc += f"; {subject_info['description']}"
             metadata["NWBFile"]["session_description"] = session_desc
-            
+
         if session_info.get("experimenter_name"):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
@@ -79,7 +77,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 device_desc_parts.append(f"Serial: {device_info['device_serial_number']}")
             if device_info.get("acquisition_software_version"):
                 device_desc_parts.append(f"Software version {device_info['acquisition_software_version']}")
-            
+
             # Add probe information specific to segmentation
             probe_info = extractor.get_probe_info()
             if probe_info:
@@ -94,7 +92,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     value = probe_info.get(field)
                     if value is not None:
                         device_desc_parts.append(f"{field}: {value}")
-            
+
             if device_desc_parts:
                 device_metadata["description"] = "; ".join(device_desc_parts)
 
