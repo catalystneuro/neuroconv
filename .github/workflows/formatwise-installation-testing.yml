@@ -16,14 +16,10 @@ jobs:
         run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
       - id: load_os_versions
         run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
-      - name: Debugging
-        run: |
-          echo "Loaded Python versions: ${{ steps.load_python_versions.outputs.python_versions }}"
-          echo "Loaded OS versions: ${{ steps.load_os_versions.outputs.os_versions }}"
 
   run:
     needs: load_python_and_os_versions
-    name: Format tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    name: OS ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -60,7 +56,23 @@ jobs:
           chmod +x .github/scripts/collect_gallery_formats.py
           FORMATS_JSON=$(python .github/scripts/collect_gallery_formats.py)
           echo "formats_json=$FORMATS_JSON" >> $GITHUB_OUTPUT
-          echo "Discovered $(echo "$FORMATS_JSON" | jq length) formats"
+
+          # Initialize Job Summary
+          echo "# 🧪 NeuroConv Format Testing Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** ${{ matrix.os }} | **Python:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          FORMAT_COUNT=$(echo "$FORMATS_JSON" | jq length)
+          echo "**Total Formats Discovered:** $FORMAT_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Create progress table header
+          echo "## 📊 Test Progress" >> $GITHUB_STEP_SUMMARY
+          echo "| Format | Category | Status | Duration | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|--------|----------|---------|" >> $GITHUB_STEP_SUMMARY
+
+          echo "Discovered $FORMAT_COUNT formats"
           echo "Formats: $FORMATS_JSON"
 
       # Run all format tests in sequence
@@ -114,14 +126,20 @@ jobs:
               echo "❌ Gallery file not found: $gallery_file"
               OVERALL_SUCCESS=false
               FAILED_FORMATS+=("$type:$name (file not found)")
+              # Update Job Summary
+              echo "| $name | $type | ❌ Failed | - | File not found |" >> $GITHUB_STEP_SUMMARY
             else
               # Run test
               if pytest --doctest-glob="*.rst" "$gallery_file"; then
                 echo "✅ $type:$name test passed"
+                # Update Job Summary
+                echo "| $name | $type | ✅ Passed | - | All doctests successful |" >> $GITHUB_STEP_SUMMARY
               else
                 echo "❌ $type:$name test failed"
                 OVERALL_SUCCESS=false
                 FAILED_FORMATS+=("$type:$name")
+                # Update Job Summary
+                echo "| $name | $type | ❌ Failed | - | Doctest failures |" >> $GITHUB_STEP_SUMMARY
               fi
             fi
 
@@ -134,7 +152,32 @@ jobs:
             echo ""
           done
 
-          # Report results
+          # Count results for summary
+          TOTAL_FORMATS=${#FORMATS[@]}
+          FAILED_COUNT=${#FAILED_FORMATS[@]}
+          PASSED_COUNT=$((TOTAL_FORMATS - FAILED_COUNT))
+
+          # Add final summary to Job Summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Final Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Formats Tested:** $TOTAL_FORMATS" >> $GITHUB_STEP_SUMMARY
+          echo "- **✅ Passed:** $PASSED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **❌ Failed:** $FAILED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$OVERALL_SUCCESS" = true ]; then
+            echo "🎉 **All format tests passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Some format tests failed:**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Failed Formats:" >> $GITHUB_STEP_SUMMARY
+            for failed in "${FAILED_FORMATS[@]}"; do
+              echo "- $failed" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+          # Report results to console
           echo "===================================================="
           if [ "$OVERALL_SUCCESS" = true ]; then
             echo "✅ All format tests passed!"

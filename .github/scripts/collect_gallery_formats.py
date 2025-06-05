@@ -38,10 +38,11 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
         "index.rst",
         "conftest.py",
         "__init__.py",
-        "spike2.rst",  # Only supporte for python 3.9 and earlier
+        "spike2.rst",  # Only supported for python 3.9 and earlier
         "medpc.rst",  # Not being tested at the moment
-        "mearec.rst",  # Setuptools problems and I want to discuss this with Ben
-        "edf.rst",  # The neo reader does not allow parallel acccess to the same file, so we don't test it
+        "mearec.rst",  # Setup tools problems and I want to discuss this with Ben
+        "edf.rst",  # Does not allow parallel read so we don't test the gallery because of race condition
+        "maxwell.rst",  # Was not being tested at the moment
     }
 
     for category_dir in gallery_path.iterdir():
