@@ -3,7 +3,6 @@ on:
   schedule:
     - cron: "0 16 * * 1"  # Every Monday at noon EST
   workflow_dispatch:
-  # Add trigger for workflow_call to be used by auto-publish
   workflow_call:
     inputs:
       python-versions:
@@ -84,29 +83,44 @@ jobs:
           path: ./behavior_testing_data
           key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
-      # Install virtualenv for creating clean environments
-      - name: Install virtualenv
-        run: python -m pip install --upgrade virtualenv
+      # Install required tools
+      - name: Install virtualenv and jq
+        run: |
+          python -m pip install --upgrade virtualenv
+          # Install jq for JSON parsing (if not already available)
+          if ! command -v jq &> /dev/null; then
+            if [ "${{ runner.os }}" == "Linux" ]; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif [ "${{ runner.os }}" == "macOS" ]; then
+              brew install jq
+            elif [ "${{ runner.os }}" == "Windows" ]; then
+              choco install jq
+            fi
+          fi
+
+      # Discover formats dynamically from conversion gallery
+      # This automatically finds all .rst files in docs/conversion_examples_gallery/
+      # and creates format strings in the format "category:format_name"
+      - name: Discover formats from gallery
+        id: discover_formats
+        run: |
+          chmod +x .github/scripts/discover_formats.py
+          FORMATS_JSON=$(python .github/scripts/discover_formats.py)
+          echo "formats_json=$FORMATS_JSON" >> $GITHUB_OUTPUT
+          echo "Discovered $(echo "$FORMATS_JSON" | jq length) formats"
+          echo "Formats: $FORMATS_JSON"
 
       # Run all format tests in sequence
       - name: Run all format tests in sequence
         shell: bash
         run: |
-          # Define all formats to test
-          FORMATS=(
-            "recording:spikeglx"
-            "recording:edf"
-            "recording:intan"
-            "recording:neuralynx"
-            "recording:neuroscope"
-            "recording:openephys"
-            "sorting:cellexplorer"
-            "sorting:neuralynx"
-            "sorting:neuroscope"
-            "imaging:scanimage"
-            "imaging:tiff"
-            "behavior:deeplabcut"
-          )
+          # Get formats from discovery step and convert to bash array
+          FORMATS_JSON='${{ steps.discover_formats.outputs.formats_json }}'
+          readarray -t FORMATS < <(echo "$FORMATS_JSON" | jq -r '.[]')
+
+          echo "Testing ${#FORMATS[@]} formats:"
+          printf '%s\n' "${FORMATS[@]}"
+          echo ""
 
           # Track overall success
           OVERALL_SUCCESS=true
