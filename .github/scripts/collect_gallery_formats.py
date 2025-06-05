@@ -9,31 +9,26 @@ import sys
 from pathlib import Path
 
 
-def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
+def discover_gallery_formats() -> list[str]:
     """
     Discover all formats from the conversion examples gallery.
-
-    Parameters
-    ----------
-    gallery_path : Path, optional
-        Path to the conversion examples gallery. If None, uses the default path
-        relative to this script's location.
 
     Returns
     -------
     list[str]
         list of format strings in the format "category:format_name"
     """
-    if gallery_path is None:
-        # Get path relative to this script: .github/scripts/../../docs/conversion_examples_gallery
-        root_repo_path = Path(__file__).resolve().parent.parent.parent
-        gallery_path = root_repo_path / "docs" / "conversion_examples_gallery"
+
+    repo_root_path = Path(__file__).resolve().parent.parent.parent
+    gallery_path = repo_root_path / "docs" / "conversion_examples_gallery"
 
     if not gallery_path.exists():
         raise FileNotFoundError(f"Gallery path not found: {gallery_path}")
 
     formats = []
-    excluded_dirs = {"__pycache__", ".pytest_cache", "combinations"}
+    excluded_dirs = {
+        "combinations",  # These do not have an associated installation extra
+    }
     excluded_files = {
         "index.rst",
         "conftest.py",
@@ -46,15 +41,19 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
         "plexon2.rst",  # Not being tested because of wine issues on the CI
     }
 
-    for category_dir in gallery_path.iterdir():
-        if category_dir.is_dir() and category_dir.name not in excluded_dirs:
-            category = category_dir.name
+    # The conversion gallery is organized in folders per category: recordings, behavior, ophys, etc.
+    category_folder_paths = [path for path in gallery_path.iterdir() if path.is_dir()]
+    valid_category_folder_paths = [path for path in category_folder_paths if path.name not in excluded_dirs]
 
-            # Find all .rst files in the category
-            for rst_file in category_dir.glob("*.rst"):
-                if rst_file.name not in excluded_files:
-                    format_name = rst_file.stem
-                    formats.append(f"{category}:{format_name}")
+    for category_folder_path in valid_category_folder_paths:
+        category = category_folder_path.name
+
+        # Find all .rst files in the category
+        rst_files = list(category_folder_path.glob("*.rst"))
+        valid_rst_files = [rst_file for rst_file in rst_files if rst_file.name not in excluded_files]
+        for rst_file in valid_rst_files:
+            format_name = rst_file.stem
+            formats.append(f"{category}:{format_name}")
 
     return sorted(formats)
 
