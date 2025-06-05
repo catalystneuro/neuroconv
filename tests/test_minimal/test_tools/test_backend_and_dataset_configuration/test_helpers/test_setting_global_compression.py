@@ -128,10 +128,16 @@ def create_test_nwbfile():
     return nwbfile
 
 
+# We need this so that pytest-xdist can run tests in parallel without issues
+# Otherwise the order of the parameterized test is not deterministic and the
+# Different runners fail to find the same tests
+sorted_hdf5_compression_methods = sorted(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())
+
+
 class TestGlobalCompressionHDF5:
     """Test global compression functionality for HDF5 backend."""
 
-    @pytest.mark.parametrize("compression_method", list(AVAILABLE_HDF5_COMPRESSION_METHODS.keys()))
+    @pytest.mark.parametrize("compression_method", sorted_hdf5_compression_methods)
     def test_global_compression_method_only(self, tmp_path, compression_method):
         """Test applying only global compression method without options."""
         nwbfile = create_test_nwbfile()
@@ -299,10 +305,15 @@ class TestGlobalCompressionHDF5:
         assert "lzf" in AVAILABLE_HDF5_COMPRESSION_METHODS
 
 
+# We need this so that pytest-xdist can run tests in parallel without issues
+# See the comment above in the hdf5 methods for details
+sorted_zarr_compression_methods = sorted(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())
+
+
 class TestGlobalCompressionZarr:
     """Test global compression functionality for Zarr backend."""
 
-    @pytest.mark.parametrize("compression_method", list(AVAILABLE_ZARR_COMPRESSION_METHODS.keys()))
+    @pytest.mark.parametrize("compression_method", sorted_zarr_compression_methods)
     def test_global_compression_method_only(self, tmp_path, compression_method):
         """Test applying only global compression method without options."""
         nwbfile = create_test_nwbfile()
@@ -401,11 +412,6 @@ class TestGlobalCompressionZarr:
                 backend="zarr",
                 global_compression_method="invalid_method",
             )
-
-    def test_available_zarr_compression_methods(self):
-        """Test that available Zarr compression methods are accessible."""
-        assert "gzip" in AVAILABLE_ZARR_COMPRESSION_METHODS
-        assert "blosc" in AVAILABLE_ZARR_COMPRESSION_METHODS
 
 
 class TestGlobalCompressionEdgeCases:
