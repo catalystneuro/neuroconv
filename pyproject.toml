@@ -51,7 +51,9 @@ dependencies = [
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
-    "numcodecs<0.16.0", # For supporting zarr < 3
+    "numcodecs>=0.15.0,<0.16.0", # We need the floor because otherwise pcodec is erroneously imported and
+    # messes with AVAILABLE_COMPRESSION_METHODS, see https://numcodecs.readthedocs.io/en/stable/release.html#id9
+    # upper bound needed because 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
 ]
 
 
