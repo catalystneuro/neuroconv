@@ -13,6 +13,13 @@ on:
         description: 'List of OS versions to use in matrix, as JSON string'
         required: false
         type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      S3_GIN_BUCKET:
+        required: false
 
 jobs:
   load_python_and_os_versions:
@@ -52,35 +59,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade virtualenv
 
-
-      # Only rely on caches in matrix - absolutely no S3 transfer in a matrix this large.
-      - name: Get ephy_testing_data current head hash
-        id: ephys
-        run: echo "HASH_EPHY_DATASET=$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
-      - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v4
-        id: cache-ephys-datasets
+      - name: Prepare data for tests
+        uses: ./.github/actions/load-data
         with:
-          path: ./ephy_testing_data
-          key: ephys-datasets-2024-08-30-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-      - name: Get ophys_testing_data current head hash
-        id: ophys
-        run: echo "HASH_OPHYS_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
-      - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v4
-        id: cache-ophys-datasets
-        with:
-          path: ./ophys_testing_data
-          key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-      - name: Get behavior_testing_data current head hash
-        id: behavior
-        run: echo "HASH_BEHAVIOR_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
-      - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v4
-        id: cache-behavior-datasets
-        with:
-          path: ./behavior_testing_data
-          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
+          os: ${{ matrix.os }}
 
       # Discover formats dynamically from conversion gallery
       # This automatically finds all .rst files in docs/conversion_examples_gallery/

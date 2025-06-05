@@ -40,4 +40,4 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 .. note::
-    For older ScanImage files (v3.8 and earlier), use the :doc:`ScanImage Legacy <scanimage_legacy>` interface instead.
+    For older ScanImage files (v3.8 and earlier), use the :doc:`ScanImageLegacyImagingInterface <scanimage_legacy>` interface instead.

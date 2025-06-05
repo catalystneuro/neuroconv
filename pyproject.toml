@@ -293,7 +293,7 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
-hdf5 = [
+hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
@@ -312,6 +312,7 @@ scanimage = [
     "tifffile>=2023.3.21",
 ]
 scanimage_legacy = [
+    "neuroconv[ophys_minimal]",
     "scanimage-tiff-reader>=1.4.1",
 ]
 scanbox = [
@@ -321,6 +322,7 @@ sima = [
     "neuroconv[ophys_minimal]",
 ]
 suite2p = [
+    "natsort",
     "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
