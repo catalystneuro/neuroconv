@@ -300,15 +300,15 @@ miniscope = [
     "ndx-miniscope>=0.5.1",
     "neuroconv[ophys_minimal]",
 ]
-sbx = [
-    "neuroconv[ophys_minimal]",
-]
 scanimage = [
     "neuroconv[ophys_minimal]",
     "natsort",
 ]
 scanimage_legacy = [
     "scanimage-tiff-reader>=1.4.1",
+]
+scanbox = [
+    "neuroconv[ophys_minimal]",
 ]
 sima = [
     "neuroconv[ophys_minimal]",

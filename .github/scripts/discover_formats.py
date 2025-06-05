@@ -49,26 +49,6 @@ def discover_gallery_formats(gallery_path: Path = None) -> List[str]:
     return sorted(formats)
 
 
-def validate_against_pyproject(formats: List[str], pyproject_path: Path = None) -> None:
-    """
-    Optional: Validate discovered formats against pyproject.toml extras.
-
-    This function can be extended in the future to ensure synchronization
-    between the gallery and the pyproject.toml extras.
-
-    Parameters
-    ----------
-    formats : List[str]
-        List of discovered formats
-    pyproject_path : Path, optional
-        Path to pyproject.toml file
-    """
-    # TODO: Implement validation logic
-    # This could check that all gallery formats have corresponding extras
-    # and vice versa
-    pass
-
-
 def main():
     """Main function to discover and output formats."""
     try:
