@@ -23,15 +23,14 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         Parameters
         ----------
-        file_path : str
+        file_path : FilePath
             Path to the .isxd Inscopix file.
         verbose : bool, optional
             If True, outputs additional information during processing.
         """
         super().__init__(
             file_path=file_path,
-            verbose=verbose,
-            photon_series_type="OnePhotonSeries",
+            verbose=verbose, 
         )
 
     def get_metadata(self) -> DeepDict:
@@ -61,7 +60,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         if session_info.get("experimenter_name"):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
-        # Get device information using new extractor methods
+        # Get device information 
         device_info = extractor.get_device_info()
         if device_info:
             device_metadata = metadata["Ophys"]["Device"][0]
@@ -170,28 +169,3 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 metadata["Subject"] = subject_metadata
 
         return metadata
-
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",
-    ):
-        """
-        Add the Inscopix data to the NWB file.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            NWB file to add the data to.
-        metadata : dict, optional
-            Metadata dictionary.
-        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
-            Specifies the type of photon series to be used. Defaults to "OnePhotonSeries"
-            for Inscopix data.
-        """
-        super().add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            photon_series_type=photon_series_type,
-        )

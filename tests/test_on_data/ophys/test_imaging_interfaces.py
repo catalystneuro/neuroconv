@@ -929,14 +929,15 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"),
     )
     optical_series_name = "OnePhotonSeries"
+    conversion_options = dict(photon_series_type="OnePhotonSeries")
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for file with minimal acquisition info."""
 
-        # NWBFile checks - should have default epoch time
+        # NWBFile checks 
         nwbfile = metadata["NWBFile"]
         assert nwbfile["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
         assert "session_id" not in nwbfile
@@ -944,25 +945,25 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
         # Device checks
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "Microscope"
+        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
         assert "description" not in device or device.get("description", "") == ""
 
         # ImagingPlane checks
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "Microscope"
-        assert imaging_plane["description"] == "The plane or volume being imaged by the microscope."
+        assert imaging_plane["name"] == "ImagingPlane" 
+        assert imaging_plane["device"] == "Microscope" # Default metadata because this was not included in the source metadata
+        assert imaging_plane["description"] == "The plane or volume being imaged by the microscope."  # Default metadata because this was not included in the source metadata
 
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "channel_0"
-        assert optical_channel["description"] == "An optical channel of the microscope."
+        assert optical_channel["name"] == "channel_0"  # Default metadata because this was not included in the source metadata
+        assert optical_channel["description"] == "An optical channel of the microscope."  # Default metadata because this was not included in the source metadata
 
         # OnePhotonSeries checks
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
         assert ops["name"] == "OnePhotonSeries"
-        assert ops["description"] == "Imaging data from one-photon excitation microscopy."
-        assert ops["unit"] == "n.a."
+        assert ops["description"] == "Imaging data from one-photon excitation microscopy."  # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a." # Default metadata because this was not included in the source metadata
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [128, 128]
 
@@ -975,9 +976,10 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"), 
     )
     optical_series_name = "OnePhotonSeries"
+    conversion_options = dict(photon_series_type="OnePhotonSeries")
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for file with rich acquisition info."""
@@ -1012,13 +1014,13 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == "channel_0"
-        assert optical_channel["description"] == "An optical channel of the microscope."
+        assert optical_channel["description"] == "An optical channel of the microscope."  # Default metadata because this was not included in the source metadata
 
         # OnePhotonSeries checks
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
         assert ops["name"] == "OnePhotonSeries"
-        assert ops["description"] == "Imaging data from one-photon excitation microscopy."
-        assert ops["unit"] == "n.a."
+        assert ops["description"] == "Imaging data from one-photon excitation microscopy."  # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a." # Default metadata because this was not included in the source metadata
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [33, 29]
 
@@ -1041,6 +1043,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     optical_series_name = "OnePhotonSeries"
+    conversion_options = dict(photon_series_type="OnePhotonSeries")
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for uint8 file with minimal acquisition info."""
@@ -1053,24 +1056,24 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
 
         # Device checks
         device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "Microscope"
+        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
         assert "description" not in device or device.get("description", "") == ""
 
         # ImagingPlane checks
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "Microscope"
-        assert imaging_plane["description"] == "The plane or volume being imaged by the microscope."
+        assert imaging_plane["device"] == "Microscope" # Default metadata because this was not included in the source metadata
+        assert imaging_plane["description"] == "The plane or volume being imaged by the microscope." # Default metadata because this was not included in the source metadata
 
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "channel_0"
-        assert optical_channel["description"] == "An optical channel of the microscope."
+        assert optical_channel["name"] == "channel_0" # Default metadata because this was not included in the source metadata
+        assert optical_channel["description"] == "An optical channel of the microscope." # Default metadata because this was not included in the source metadata
 
         # OnePhotonSeries checks
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
         assert ops["name"] == "OnePhotonSeries"
-        assert ops["description"] == "Imaging data from one-photon excitation microscopy."
-        assert ops["unit"] == "n.a."
-        assert ops["imaging_plane"] == "ImagingPlane"
+        assert ops["description"] == "Imaging data from one-photon excitation microscopy." # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
+        assert ops["imaging_plane"] == "ImagingPlane" # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
