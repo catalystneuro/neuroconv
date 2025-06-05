@@ -52,18 +52,9 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         session_info = extractor.get_session_info()
 
         # Session start time
-        start_time = session_info.get("start_time")
-        if start_time:
-            # Convert ISX time to datetime if needed
-            if hasattr(start_time, "to_datetime"):
-                session_start_time = start_time.to_datetime()
-            elif hasattr(start_time, "secs_float"):
-                session_start_time = datetime.fromtimestamp(start_time.secs_float)
-            elif not isinstance(start_time, datetime):
-                session_start_time = datetime.fromisoformat(str(start_time).replace("Z", "+00:00"))
-            else:
-                session_start_time = start_time
-            metadata["NWBFile"]["session_start_time"] = session_start_time.isoformat()
+        session_start_time = extractor.get_session_start_time()
+        if session_start_time:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Session name and experimenter
         if session_info.get("session_name"):
@@ -117,55 +108,68 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 )
                 imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
 
-        # Get subject information using new extractor methods
+        # Subject
         subject_info = extractor.get_subject_info()
 
-        # Build subject metadata with required fields
+        # Build subject metadata 
         subject_metadata = {}
+        has_any_subject_data = False
 
-        # Subject ID - required field
+        # Subject ID
         if subject_info and subject_info.get("animal_id"):
             subject_metadata["subject_id"] = subject_info["animal_id"]
-        else:
-            subject_metadata["subject_id"] = "Unknown"
+            has_any_subject_data = True
 
-        # Species validation - check if it matches expected format
         species_value = None
         strain_value = None
 
         if subject_info and subject_info.get("species"):
             species_raw = subject_info["species"]
-            # If it contains genotype info or doesn't match format, put it in strain instead
+            # If it contains genotype info or doesn't NWB match format, put it in strain instead
             if " " in species_raw and species_raw[0].isupper() and species_raw.split()[1][0].islower():
                 species_value = species_raw
             else:
                 strain_value = species_raw
 
-        subject_metadata["species"] = species_value if species_value else "Unknown species"
-        if strain_value:
-            subject_metadata["strain"] = strain_value
+            if species_value:
+                subject_metadata["species"] = species_value
+                has_any_subject_data = True
+            if strain_value:
+                subject_metadata["strain"] = strain_value
+                has_any_subject_data = True
 
-        # Sex mapping
+        # Sex 
         sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
         if subject_info and subject_info.get("sex"):
-            subject_metadata["sex"] = sex_mapping.get(subject_info["sex"].lower(), "U")
-        else:
-            subject_metadata["sex"] = "U"
+            mapped_sex = sex_mapping.get(subject_info["sex"].lower(), "U")
+            subject_metadata["sex"] = mapped_sex
+            has_any_subject_data = True
 
-        # Optional subject fields
+
         if subject_info:
             if subject_info.get("description"):
                 subject_metadata["description"] = subject_info["description"]
+                has_any_subject_data = True
             if subject_info.get("date_of_birth"):
                 subject_metadata["date_of_birth"] = subject_info["date_of_birth"]
+                has_any_subject_data = True
             if subject_info.get("weight") and subject_info["weight"] > 0:
                 subject_metadata["weight"] = str(subject_info["weight"])
+                has_any_subject_data = True
 
-        # Update or create Subject metadata
-        if "Subject" in metadata and isinstance(metadata["Subject"], dict):
-            metadata["Subject"].update(subject_metadata)
-        else:
-            metadata["Subject"] = subject_metadata
+        # Add Subject if we have ANY subject information, filling required fields with defaults
+        if has_any_subject_data:
+            if "subject_id" not in subject_metadata:
+                subject_metadata["subject_id"] = "Unknown"
+            if "species" not in subject_metadata:
+                subject_metadata["species"] = "Unknown species"
+            if "sex" not in subject_metadata:
+                subject_metadata["sex"] = "U"
+
+            if "Subject" in metadata and isinstance(metadata["Subject"], dict):
+                metadata["Subject"].update(subject_metadata)
+            else:
+                metadata["Subject"] = subject_metadata
 
         return metadata
 
@@ -173,7 +177,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",  # Default is OnePhoton
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",  
     ):
         """
         Add the Inscopix data to the NWB file.
