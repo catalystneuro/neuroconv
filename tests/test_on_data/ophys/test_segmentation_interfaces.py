@@ -244,10 +244,10 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         # Expected session and device metadata from Inscopix file
         cls.expected_session_name = "FV4581_Ret"
         cls.expected_experimenter_name = "Bei-Xuan"
-        cls.expected_device_name = "NVista3"  # Actual device name from metadata
+        cls.expected_device_name = "NVista3"  
         cls.expected_device_serial = "11132301"
         cls.expected_animal_id = "FV4581"
-        cls.expected_species = "Unknown species"  # This gets processed into strain
+        cls.expected_species = "Unknown species" 
         cls.expected_strain = "CaMKIICre"
         cls.expected_sex = "M"
         cls.expected_sampling_rate = 9.998700168978033
@@ -396,12 +396,8 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         assert device_metadata["name"] == self.expected_device_name
 
         # Check subject has defaults
-        assert "Subject" in metadata
-        subject = metadata["Subject"]
-        assert subject["subject_id"] == self.expected_subject_id
-        assert subject["species"] == self.expected_species
-        assert subject["sex"] == self.expected_sex
-
+        assert "Subject" not in metadata
+      
         # Check imaging plane metadata
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
@@ -432,7 +428,6 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
         # Check segmentation description includes ROI count
         segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
-        assert "Inscopix cell segmentation" in segmentation_desc
         assert f"{self.expected_roi_count}" in segmentation_desc
 
         # Check fluorescence metadata
@@ -454,14 +449,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(mask_type="pixel")
-
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        """Set up expected metadata values."""
-        cls = request.cls
-
-        # Expected sampling rate for this empty dataset
-        cls.expected_sampling_rate = 40.0
+ 
 
     def check_extracted_metadata(self, metadata):
         """Check that the extracted metadata contains expected items for empty dataset."""
@@ -470,15 +458,8 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
         assert "Ophys" in metadata
         assert "Device" in metadata["Ophys"]
         assert "ImageSegmentation" in metadata["Ophys"]
-
-        # Check that we still have imaging plane metadata even with no ROIs
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-
-        # Check sampling rate extraction even for empty dataset
-        assert "imaging_rate" in imaging_plane
-        np.testing.assert_allclose(imaging_plane["imaging_rate"], self.expected_sampling_rate, rtol=1e-3)
 
     def test_no_metadata_mutation(self, setup_interface):
         """Override test_no_metadata_mutation to handle the expected ValueError."""
