@@ -7,10 +7,9 @@ Outputs a JSON array of format strings in the format "category:format_name".
 import json
 import sys
 from pathlib import Path
-from typing import List
 
 
-def discover_gallery_formats(gallery_path: Path = None) -> List[str]:
+def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
     """
     Discover all formats from the conversion examples gallery.
 
@@ -22,18 +21,19 @@ def discover_gallery_formats(gallery_path: Path = None) -> List[str]:
 
     Returns
     -------
-    List[str]
-        List of format strings in the format "category:format_name"
+    list[str]
+        list of format strings in the format "category:format_name"
     """
     if gallery_path is None:
         # Get path relative to this script: .github/scripts/../../docs/conversion_examples_gallery
-        gallery_path = Path(__file__).parent.parent.parent / "docs" / "conversion_examples_gallery"
+        root_repo_path = Path(__file__).resolve().parent.parent.parent
+        gallery_path = root_repo_path / "docs" / "conversion_examples_gallery"
 
     if not gallery_path.exists():
         raise FileNotFoundError(f"Gallery path not found: {gallery_path}")
 
     formats = []
-    excluded_dirs = {"__pycache__", ".pytest_cache"}
+    excluded_dirs = {"__pycache__", ".pytest_cache", "combinations"}
     excluded_files = {"index.rst", "conftest.py", "__init__.py"}
 
     for category_dir in gallery_path.iterdir():
