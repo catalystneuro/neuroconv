@@ -22,13 +22,13 @@ Convert MedPC output data to NWB using
     >>> # Change the folder_path to the appropriate location in your system
     >>> session_conditions = {"Start Date": "04/18/19", "Start Time": "10:41:42"}
     >>> start_variable = "Start Date",
-    >>> metadata_medpc_name_to_info_dict = dict(
+    >>> metadata_medpc_name_to_info_dict = {
     ...     "Start Date": {"name": "start_date", "is_array": False},
     ...     "Start Time": {"name": "start_time", "is_array": False},
     ...     "Subject": {"name": "subject", "is_array": False},
     ...     "Box": {"name": "box", "is_array": False},
     ...     "MSN": {"name": "MSN", "is_array": False},
-    ... )
+    ... }
     >>> interface = MedPCInterface(
     ...     file_path=file_path,
     ...     session_conditions=session_conditions,
