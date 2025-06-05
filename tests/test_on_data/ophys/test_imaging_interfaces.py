@@ -966,16 +966,6 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [128, 128]
 
-        # Subject checks
-        # subject = metadata["Subject"]
-        # assert subject["subject_id"] == "Unknown"
-        # assert subject["species"] == "Unknown species"
-        # assert subject["sex"] == "U"  # Unknown
-        # assert "description" not in subject
-        # assert "weight" not in subject
-        # assert "date_of_birth" not in subject
-
-
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
