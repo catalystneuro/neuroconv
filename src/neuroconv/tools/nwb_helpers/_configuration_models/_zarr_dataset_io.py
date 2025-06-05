@@ -26,6 +26,8 @@ _excluded_zarr_codecs = set(
         "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
         "base64",  # unsure what this would ever be used for
         "n5_wrapper",  # different data format
+        "pco"
+        "pcodec",  # is erroneously imported before numcodecs 0.15, see https://numcodecs.readthedocs.io/en/stable/release.html?utm_source=chatgpt.com#id9
     )
 )
 
