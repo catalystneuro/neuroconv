@@ -20,7 +20,7 @@ Convert MedPC output data to NWB using
     >>> # For this data interface we need to pass the output file from MedPC
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/example_medpc_file_06_06_2024.txt"
     >>> # Change the folder_path to the appropriate location in your system
-    >>> session_conditions = {"Start Date": "04/18/19", "Start Time": "10:41:42"}
+    >>> session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
     >>> start_variable = "Start Date"
     >>> metadata_medpc_name_to_info_dict = {
     ...     "Start Date": {"name": "start_date", "is_array": False},
@@ -39,7 +39,7 @@ Convert MedPC output data to NWB using
     >>> # Extract what metadata we can from the source file
     >>> metadata = interface.get_metadata()
     >>> # We add the time zone information, which is required by NWB
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2019, 4, 9, 10, 34, 30).replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["MedPC"]["medpc_name_to_info_dict"] = {
     ...         "A": {"name": "left_nose_poke_times", "is_array": True},
