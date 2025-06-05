@@ -281,6 +281,7 @@ ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
 brukertiff = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
+    "natsort",
 ]
 caiman = [
     "neuroconv[ophys_minimal]",
