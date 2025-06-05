@@ -127,7 +127,7 @@ How to Add Custom Properties to the Electrodes Table
 ----------------------------------------------------
 
 You can add any arbitrary property to the electrodes table by setting custom properties on the recording extractor.
-This is useful for storing additional metadata such as impedance values, depth measurements, or any other electrode-specific information.
+The following example demonstrates how to add a custom property called "quality" to the electrodes table.
 
 .. code-block:: python
 
