@@ -69,8 +69,8 @@ jobs:
 
           # Create progress table header
           echo "## 📊 Test Progress" >> $GITHUB_STEP_SUMMARY
-          echo "| Format | Category | Status | Duration | Details |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|----------|--------|----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Format | Category | Status | Reason |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
 
           echo "Discovered $FORMAT_COUNT formats"
           echo "Formats: $FORMATS_JSON"
@@ -127,19 +127,19 @@ jobs:
               OVERALL_SUCCESS=false
               FAILED_FORMATS+=("$type:$name (file not found)")
               # Update Job Summary
-              echo "| $name | $type | ❌ Failed | - | File not found |" >> $GITHUB_STEP_SUMMARY
+              echo "| $name | $type | ❌ Failed | File not found |" >> $GITHUB_STEP_SUMMARY
             else
               # Run test
               if pytest --doctest-glob="*.rst" "$gallery_file"; then
                 echo "✅ $type:$name test passed"
                 # Update Job Summary
-                echo "| $name | $type | ✅ Passed | - | All doctests successful |" >> $GITHUB_STEP_SUMMARY
+                echo "| $name | $type | ✅ Passed | All doctests successful |" >> $GITHUB_STEP_SUMMARY
               else
                 echo "❌ $type:$name test failed"
                 OVERALL_SUCCESS=false
                 FAILED_FORMATS+=("$type:$name")
                 # Update Job Summary
-                echo "| $name | $type | ❌ Failed | - | Doctest failures |" >> $GITHUB_STEP_SUMMARY
+                echo "| $name | $type | ❌ Failed | Doctest failures |" >> $GITHUB_STEP_SUMMARY
               fi
             fi
 
