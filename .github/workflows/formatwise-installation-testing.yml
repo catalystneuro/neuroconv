@@ -34,7 +34,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: false
 
       - name: Prepare data for tests
         uses: ./.github/actions/load-data
@@ -65,12 +68,6 @@ jobs:
           echo "**Total Formats Discovered:** $FORMAT_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Create progress table header with proper formatting
-          echo "## Test Progress" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Format | Category | Status | Reason |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
-
           echo "Discovered $FORMAT_COUNT formats"
           echo "Formats: $FORMATS_JSON"
 
@@ -89,6 +86,12 @@ jobs:
           echo "Testing ${#FORMATS[@]} formats:"
           printf '%s\n' "${FORMATS[@]}"
           echo ""
+
+          # Initialize table in Job Summary
+          echo "## Test Progress" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Format | Category | Status | Reason |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
 
           # Track overall success
           OVERALL_SUCCESS=true
