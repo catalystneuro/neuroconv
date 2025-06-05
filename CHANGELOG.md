@@ -13,6 +13,7 @@
 ## Improvements
 * Add a `how to` documentation for adding extracellular electrophysiology metadata [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
 * Improved the docker dailies [PR #1372](https://github.com/catalystneuro/neuroconv/pull/1372)
+* Re-enable and improve conversion gallery testing [PR #1380](https://github.com/catalystneuro/neuroconv/pull/1380)
 
 # v0.7.4 (May 23, 2025)
 
