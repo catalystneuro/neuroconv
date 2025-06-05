@@ -204,7 +204,12 @@ openephys = [
 phy = [
     "neuroconv[ecephys_minimal]",
 ]
+
 plexon = [
+    "neuroconv[ecephys_minimal]",
+]
+
+plexon2 = [
     "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]

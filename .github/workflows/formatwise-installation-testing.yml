@@ -86,11 +86,11 @@ jobs:
       # This automatically finds all .rst files in docs/conversion_examples_gallery/
       # and creates format strings in the format "category:format_name"
       - name: Discover formats from gallery
-        id: discover_formats
+        id: collect_gallery_formats
         shell: bash
         run: |
-          chmod +x .github/scripts/discover_formats.py
-          FORMATS_JSON=$(python .github/scripts/discover_formats.py)
+          chmod +x .github/scripts/collect_gallery_formats.py
+          FORMATS_JSON=$(python .github/scripts/collect_gallery_formats.py)
           echo "formats_json=$FORMATS_JSON" >> $GITHUB_OUTPUT
           echo "Discovered $(echo "$FORMATS_JSON" | jq length) formats"
           echo "Formats: $FORMATS_JSON"
@@ -101,7 +101,7 @@ jobs:
         run: |
           # Get formats from discovery step and convert to bash array
           # Using while loop for macOS compatibility (readarray not available in older bash)
-          FORMATS_JSON='${{ steps.discover_formats.outputs.formats_json }}'
+          FORMATS_JSON='${{ steps.collect_gallery_formats.outputs.formats_json }}'
           FORMATS=()
           while IFS= read -r format; do
             FORMATS+=("$format")
@@ -140,13 +140,21 @@ jobs:
             # Install dependencies
             pip install ".[test,$name]"
 
-            # Run test
-            if pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/$type/$name.rst; then
-              echo "✅ $type:$name test passed"
-            else
-              echo "❌ $type:$name test failed"
+            # Check if the gallery file exists before running pytest
+            gallery_file="docs/conversion_examples_gallery/$type/$name.rst"
+            if [ ! -f "$gallery_file" ]; then
+              echo "❌ Gallery file not found: $gallery_file"
               OVERALL_SUCCESS=false
-              FAILED_FORMATS+=("$type:$name")
+              FAILED_FORMATS+=("$type:$name (file not found)")
+            else
+              # Run test
+              if pytest --doctest-glob="*.rst" "$gallery_file"; then
+                echo "✅ $type:$name test passed"
+              else
+                echo "❌ $type:$name test failed"
+                OVERALL_SUCCESS=false
+                FAILED_FORMATS+=("$type:$name")
+              fi
             fi
 
             # Deactivate environment

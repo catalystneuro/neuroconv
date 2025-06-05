@@ -34,9 +34,14 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
 
     formats = []
     excluded_dirs = {"__pycache__", ".pytest_cache", "combinations"}
-    excluded_files = {"index.rst", "conftest.py", "__init__.py"}
+    excluded_files = {
+        "index.rst",
+        "conftest.py",
+        "__init__.py",
+        "spike2.rst",  # Only supporte for python 3.9 and earlier
+    }
 
-    for category_dir in gallery_path.iteirdir():
+    for category_dir in gallery_path.iterdir():
         if category_dir.is_dir() and category_dir.name not in excluded_dirs:
             category = category_dir.name
 
