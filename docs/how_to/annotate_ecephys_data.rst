@@ -77,7 +77,7 @@ How to Add Location to the Electrodes Table
 
 In addition to setting electrode group metadata, you may want to add specific location information for each individual electrode in the electrodes table.
 This is particularly useful when electrodes are located in different brain areas or when you want to provide more detailed anatomical information.
-Use standard atlas names for anatomical regions when possible.
+Use standard atlas names (e.g. Allen Brain Atlas) for anatomical regions when possible.
 
 
 .. code-block:: python
