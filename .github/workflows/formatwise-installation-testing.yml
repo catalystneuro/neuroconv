@@ -33,10 +33,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Global Setup
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade virtualenv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Prepare data for tests
         uses: ./.github/actions/load-data
@@ -67,8 +65,9 @@ jobs:
           echo "**Total Formats Discovered:** $FORMAT_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Create progress table header
+          # Create progress table header with proper formatting
           echo "## 📊 Test Progress" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Format | Category | Status | Reason |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
 
@@ -107,8 +106,8 @@ jobs:
             echo "Testing $type:$name"
             echo "===================================================="
 
-            # Create fresh virtual environment
-            python -m virtualenv clean_env_$name
+            # Create fresh virtual environment with uv (much faster)
+            uv venv clean_env_$name
 
             # Activate environment
             if [ "${{ runner.os }}" == "Windows" ]; then
@@ -117,8 +116,8 @@ jobs:
               source clean_env_$name/bin/activate
             fi
 
-            # Install dependencies
-            pip install --quiet ".[test,$name]"
+            # Install dependencies with uv (much faster than pip)
+            uv pip install --quiet ".[test,$name]"
 
             # Check if the gallery file exists before running pytest
             gallery_file="docs/conversion_examples_gallery/$type/$name.rst"
