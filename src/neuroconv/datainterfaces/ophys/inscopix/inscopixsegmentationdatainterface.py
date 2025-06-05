@@ -1,4 +1,3 @@
-
 from pydantic import FilePath, validate_call
 
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
