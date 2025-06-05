@@ -39,40 +39,5 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-Convert ScanImage legacy data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For older ScanImage files (v3.8 and earlier), you need to install the legacy dependencies.
-
-.. code-block:: bash
-
-    pip install "neuroconv[scanimage_legacy]"
-
-And use the `ScanImageLegacyImagingInterface`:
-
-For ScanImage v3.8 files, you need to specify the fallback sampling frequency if it cannot be extracted from the file metadata.
-
-.. code-block:: python
-
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import ScanImageLegacyImagingInterface
-    >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"
-    >>>
-    >>> # The fallback_sampling_frequency is only needed if the sampling frequency
-    >>> # cannot be extracted from the file metadata
-    >>> interface = ScanImageLegacyImagingInterface(
-    ...     file_path=file_path,
-    ...     fallback_sampling_frequency=30.0,  # Optional: only if not in metadata
-    ... )
-    >>>
-    >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>>
-    >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+.. note::
+    For older ScanImage files (v3.8 and earlier), use the :doc:`ScanImage Legacy <scanimage_legacy>` interface instead.

@@ -36,7 +36,7 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
     excluded_dirs = {"__pycache__", ".pytest_cache", "combinations"}
     excluded_files = {"index.rst", "conftest.py", "__init__.py"}
 
-    for category_dir in gallery_path.iterdir():
+    for category_dir in gallery_path.iteirdir():
         if category_dir.is_dir() and category_dir.name not in excluded_dirs:
             category = category_dir.name
 

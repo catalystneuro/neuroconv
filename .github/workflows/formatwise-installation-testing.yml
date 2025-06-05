@@ -100,8 +100,12 @@ jobs:
         shell: bash
         run: |
           # Get formats from discovery step and convert to bash array
+          # Using while loop for macOS compatibility (readarray not available in older bash)
           FORMATS_JSON='${{ steps.discover_formats.outputs.formats_json }}'
-          readarray -t FORMATS < <(echo "$FORMATS_JSON" | jq -r '.[]')
+          FORMATS=()
+          while IFS= read -r format; do
+            FORMATS+=("$format")
+          done < <(echo "$FORMATS_JSON" | jq -r '.[]')
 
           echo "Testing ${#FORMATS[@]} formats:"
           printf '%s\n' "${FORMATS[@]}"
@@ -113,8 +117,11 @@ jobs:
 
           # Loop through each format
           for format in "${FORMATS[@]}"; do
-            # Split type and name
+            # Split type and name, and trim any whitespace/carriage returns
             IFS=':' read -r type name <<< "$format"
+            # Remove any trailing whitespace or carriage returns (Windows compatibility)
+            type=$(echo "$type" | tr -d '\r\n' | xargs)
+            name=$(echo "$name" | tr -d '\r\n' | xargs)
 
             echo "===================================================="
             echo "Testing $type:$name"
@@ -123,7 +130,7 @@ jobs:
             # Create fresh virtual environment
             python -m virtualenv clean_env_$name
 
-            # Activate environment (OS-specific)
+            # Activate environment
             if [ "${{ runner.os }}" == "Windows" ]; then
               source clean_env_$name/Scripts/activate
             else
