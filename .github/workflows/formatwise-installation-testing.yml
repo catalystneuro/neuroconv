@@ -42,7 +42,6 @@ jobs:
         os: ${{ fromJson(inputs.os-versions || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
       - uses: actions/checkout@v4
-      - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -51,8 +50,8 @@ jobs:
       - name: Global Setup
         run: |
           python -m pip install --upgrade pip
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
+          python -m pip install --upgrade virtualenv
+
 
       # Only rely on caches in matrix - absolutely no S3 transfer in a matrix this large.
       - name: Get ephy_testing_data current head hash
@@ -82,21 +81,6 @@ jobs:
         with:
           path: ./behavior_testing_data
           key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-
-      # Install required tools
-      - name: Install virtualenv and jq
-        run: |
-          python -m pip install --upgrade virtualenv
-          # Install jq for JSON parsing (if not already available)
-          if ! command -v jq &> /dev/null; then
-            if [ "${{ runner.os }}" == "Linux" ]; then
-              sudo apt-get update && sudo apt-get install -y jq
-            elif [ "${{ runner.os }}" == "macOS" ]; then
-              brew install jq
-            elif [ "${{ runner.os }}" == "Windows" ]; then
-              choco install jq
-            fi
-          fi
 
       # Discover formats dynamically from conversion gallery
       # This automatically finds all .rst files in docs/conversion_examples_gallery/
