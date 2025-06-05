@@ -207,6 +207,7 @@ phy = [
 
 plexon = [
     "neuroconv[ecephys_minimal]",
+    "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 
 plexon2 = [
@@ -247,7 +248,6 @@ ecephys = [  # Note that this the requirements of the extractors as they are on 
     "neuroconv[openephys]",
     "neuroconv[phy]",
     "neuroconv[plexon]",
-    "neuroonv[plexon2]",
     "neuroconv[spike2]",
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
@@ -345,10 +345,8 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
-    "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
-    "neuroconv[scanbox]",
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",

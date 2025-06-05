@@ -56,7 +56,7 @@ jobs:
           echo "formats_json=$FORMATS_JSON" >> $GITHUB_OUTPUT
 
           # Initialize Job Summary
-          echo "# 🧪 NeuroConv Format Testing Report" >> $GITHUB_STEP_SUMMARY
+          echo "# NeuroConv Format Testing Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Platform:** ${{ matrix.os }} | **Python:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -66,7 +66,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Create progress table header with proper formatting
-          echo "## 📊 Test Progress" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Progress" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Format | Category | Status | Reason |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
@@ -122,23 +122,23 @@ jobs:
             # Check if the gallery file exists before running pytest
             gallery_file="docs/conversion_examples_gallery/$type/$name.rst"
             if [ ! -f "$gallery_file" ]; then
-              echo "❌ Gallery file not found: $gallery_file"
+              echo "Gallery file not found: $gallery_file"
               OVERALL_SUCCESS=false
               FAILED_FORMATS+=("$type:$name (file not found)")
               # Update Job Summary
-              echo "| $name | $type | ❌ Failed | File not found |" >> $GITHUB_STEP_SUMMARY
+              echo "| $name | $type | Failed | File not found |" >> $GITHUB_STEP_SUMMARY
             else
               # Run test
               if pytest --doctest-glob="*.rst" "$gallery_file"; then
-                echo "✅ $type:$name test passed"
+                echo "$type:$name test passed"
                 # Update Job Summary
-                echo "| $name | $type | ✅ Passed | All doctests successful |" >> $GITHUB_STEP_SUMMARY
+                echo "| $name | $type | Passed | All doctests successful |" >> $GITHUB_STEP_SUMMARY
               else
-                echo "❌ $type:$name test failed"
+                echo "$type:$name test failed"
                 OVERALL_SUCCESS=false
                 FAILED_FORMATS+=("$type:$name")
                 # Update Job Summary
-                echo "| $name | $type | ❌ Failed | Doctest failures |" >> $GITHUB_STEP_SUMMARY
+                echo "| $name | $type | Failed | Doctest failures |" >> $GITHUB_STEP_SUMMARY
               fi
             fi
 
@@ -158,17 +158,17 @@ jobs:
 
           # Add final summary to Job Summary
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 📋 Final Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Final Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Formats Tested:** $TOTAL_FORMATS" >> $GITHUB_STEP_SUMMARY
-          echo "- **✅ Passed:** $PASSED_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "- **❌ Failed:** $FAILED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passed:** $PASSED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed:** $FAILED_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "$OVERALL_SUCCESS" = true ]; then
-            echo "🎉 **All format tests passed!**" >> $GITHUB_STEP_SUMMARY
+            echo "**All format tests passed!**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ **Some format tests failed:**" >> $GITHUB_STEP_SUMMARY
+            echo "**Some format tests failed:**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Failed Formats:" >> $GITHUB_STEP_SUMMARY
             for failed in "${FAILED_FORMATS[@]}"; do
@@ -179,9 +179,9 @@ jobs:
           # Report results to console
           echo "===================================================="
           if [ "$OVERALL_SUCCESS" = true ]; then
-            echo "✅ All format tests passed!"
+            echo "All format tests passed!"
           else
-            echo "❌ Some format tests failed:"
+            echo "Some format tests failed:"
             for failed in "${FAILED_FORMATS[@]}"; do
               echo "   - $failed"
             done
