@@ -1,7 +1,5 @@
-from typing import Literal
 
 from pydantic import FilePath, validate_call
-from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -30,7 +28,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         super().__init__(
             file_path=file_path,
-            verbose=verbose, 
+            verbose=verbose,
         )
 
     def get_metadata(self) -> DeepDict:
@@ -60,7 +58,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         if session_info.get("experimenter_name"):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
-        # Get device information 
+        # Get device information
         device_info = extractor.get_device_info()
         if device_info:
             device_metadata = metadata["Ophys"]["Device"][0]
