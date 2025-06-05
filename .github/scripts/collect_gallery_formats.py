@@ -39,6 +39,7 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
         "conftest.py",
         "__init__.py",
         "spike2.rst",  # Only supporte for python 3.9 and earlier
+        "medpc.rst",  # Not being tested at the moment
     }
 
     for category_dir in gallery_path.iterdir():
