@@ -21,7 +21,7 @@ Convert MedPC output data to NWB using
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/example_medpc_file_06_06_2024.txt"
     >>> # Change the folder_path to the appropriate location in your system
     >>> session_conditions = {"Start Date": "04/18/19", "Start Time": "10:41:42"}
-    >>> start_variable = "Start Date",
+    >>> start_variable = "Start Date"
     >>> metadata_medpc_name_to_info_dict = {
     ...     "Start Date": {"name": "start_date", "is_array": False},
     ...     "Start Time": {"name": "start_time", "is_array": False},
