@@ -123,6 +123,53 @@ Use standard atlas names (e.g. Allen Brain Atlas) for anatomical regions when po
 This approach allows you to add specific location information for each electrode, which will be included in the NWB file's electrodes table.
 Note that any other property of the electrodes can be added in a similar way such as impedance, filtering, stereotaxic coordinates, etc.
 
+How to Add Custom Properties to the Electrodes Table
+----------------------------------------------------
+
+You can add any arbitrary property to the electrodes table by setting custom properties on the recording extractor.
+This is useful for storing additional metadata such as impedance values, depth measurements, or any other electrode-specific information.
+
+.. code-block:: python
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+    from neuroconv.tools import configure_and_write_nwbfile
+
+    interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+    metadata = interface.get_metadata()
+
+    # Get the recording extractor from the interface
+    recording_extractor = interface.recording_extractor
+
+    # Define custom properties for each channel
+    channel_id_to_quality = {
+        "0": "good",
+        "1": "excellent",
+        "2": "fair",
+        "3": "good",
+        "4": "excellent",
+    }
+
+    recording_extractor.set_property(
+        key="quality",
+        values=list(channel_id_to_quality.values()),
+        ids=list(channel_id_to_quality.keys())
+    )
+
+    # Create the NWBFile with the updated metadata
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+
+    # Verify that the custom properties were added to the electrodes table
+    electrodes_df = nwbfile.electrodes.to_dataframe()
+    print("Electrodes table with custom properties:")
+    print(electrodes_df[['impedance', 'depth', 'quality']])
+
+    # Write the NWB file to disk
+    nwbfile_path = "your_annotated_file.nwb"
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
+
+This approach allows you to store any type of electrode-specific metadata in the NWB file.
+The property names you choose will become column names in the electrodes table, so use descriptive names that follow NWB naming conventions.
+
 Current limitations
 -------------------
 
