@@ -14,6 +14,7 @@
 ## Improvements
 * Add a `how to` documentation for adding extracellular electrophysiology metadata [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
 * Improved the docker dailies [PR #1372](https://github.com/catalystneuro/neuroconv/pull/1372)
+* Implemented cross-OS caches in GitHub Actions load-data action to enable cache sharing between Ubuntu, Windows, and macOS runners, reducing cache storage usage and improving CI efficiency [PR #1385](https://github.com/catalystneuro/neuroconv/pull/1385)
 
 # v0.7.4 (May 23, 2025)
 

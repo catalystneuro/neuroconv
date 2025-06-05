@@ -34,7 +34,6 @@ jobs:
         os: ${{ fromJson(inputs.os-versions) }}
     steps:
       - uses: actions/checkout@v4
-      - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -43,8 +42,6 @@ jobs:
       - name: Global Setup
         run: |
           python -m pip install -U pip  # Official recommended way
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
 
       - name: Install NeuroConv with minimal requirements
         run: python -m pip install "."
