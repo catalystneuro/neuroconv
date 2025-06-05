@@ -1031,7 +1031,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [33, 29]
 
-        #Subject checks
+        # Subject checks
         subject = metadata["Subject"]
         assert subject["subject_id"] == "Unknown"
         assert subject["species"] == "Unknown species"

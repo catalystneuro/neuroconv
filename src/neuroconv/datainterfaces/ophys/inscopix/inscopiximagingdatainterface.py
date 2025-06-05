@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Literal
 
 from pydantic import FilePath, validate_call
@@ -111,7 +110,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         # Subject
         subject_info = extractor.get_subject_info()
 
-        # Build subject metadata 
+        # Build subject metadata
         subject_metadata = {}
         has_any_subject_data = False
 
@@ -138,13 +137,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 subject_metadata["strain"] = strain_value
                 has_any_subject_data = True
 
-        # Sex 
+        # Sex
         sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
         if subject_info and subject_info.get("sex"):
             mapped_sex = sex_mapping.get(subject_info["sex"].lower(), "U")
             subject_metadata["sex"] = mapped_sex
             has_any_subject_data = True
-
 
         if subject_info:
             if subject_info.get("description"):
@@ -177,7 +175,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",  
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",
     ):
         """
         Add the Inscopix data to the NWB file.
