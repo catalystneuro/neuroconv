@@ -43,6 +43,7 @@ def discover_gallery_formats(gallery_path: Path = None) -> list[str]:
         "mearec.rst",  # Setup tools problems and I want to discuss this with Ben
         "edf.rst",  # Does not allow parallel read so we don't test the gallery because of race condition
         "maxwell.rst",  # Was not being tested at the moment
+        "plexon2.rst",  # Not being tested because of wine issues on the CI
     }
 
     for category_dir in gallery_path.iterdir():
