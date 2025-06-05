@@ -7,14 +7,14 @@ Instead, the tests must be invoked directly from the file. This is designed most
 import os
 from datetime import datetime
 from pathlib import Path
+from unittest import TestCase
 
-from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
 from neuroconv.tools import deploy_process
 
-from .test_on_data.setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .test_on_data.setup_paths import OUTPUT_PATH
+from ..test_on_data.setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+from ..test_on_data.setup_paths import OUTPUT_PATH
 
 
 class TestLatestDockerYAMLConversionSpecification(TestCase):
@@ -23,16 +23,29 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
     source_volume = os.getenv("NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME", "/home/runner/work/neuroconv/neuroconv")
     # If running locally, export NEUROCONV_DOCKER_TESTS_SOURCE_VOLUME=/path/to/neuroconv
 
+    root_file_path = Path(__file__).parent.parent.parent
+    conversion_spec_path = root_file_path / "tests" / "test_on_data" / "test_yaml" / "conversion_specifications"
+    yaml_file_path = conversion_spec_path / "GIN_conversion_specification.yml"
+
+    def test_paths_set_correctly(self):
+        assert (
+            self.conversion_spec_path.is_dir()
+        ), f"Conversion specification path is not a directory: {self.conversion_spec_path}"
+        assert self.yaml_file_path.is_file(), f"YAML file not found at {self.yaml_file_path}"
+
+        # Test that the source volume is set correctly and the test data is available
+        spikeglx_folder = self.source_volume / DATA_PATH / "spikeglx"
+        assert spikeglx_folder.exists(), f"SpikeGLX folder not found at {spikeglx_folder}"
+
     def test_run_conversion_from_yaml_cli(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
+
         if self.source_volume == "/home/runner/work/neuroconv/neuroconv":  # in CI
             command = (
                 "docker run -t "
                 f"--volume {self.source_volume}:{self.source_volume} "
                 f"--volume {self.test_folder}:{self.test_folder} "
                 f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
-                f"neuroconv {yaml_file_path} "
+                f"neuroconv {self.yaml_file_path} "
                 f"--data-folder-path {self.source_volume}/{DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         else:  # running locally
@@ -42,7 +55,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
                 f"--volume {self.test_folder}:{self.test_folder} "
                 f"--volume {DATA_PATH}:{DATA_PATH} "
                 f"ghcr.io/catalystneuro/neuroconv:{self.tag} "
-                f"neuroconv {yaml_file_path} "
+                f"neuroconv {self.yaml_file_path} "
                 f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
 
@@ -85,10 +98,8 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
             assert "spike_times" in nwbfile.units
 
     def test_run_conversion_from_yaml_variable(self):
-        path_to_test_yml_files = Path(__file__).parent / "test_on_data" / "test_yaml" / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
 
-        with open(file=yaml_file_path, mode="r") as io:
+        with open(file=self.yaml_file_path, mode="r") as io:
             yaml_lines = io.readlines()
 
         yaml_string = "".join(yaml_lines)

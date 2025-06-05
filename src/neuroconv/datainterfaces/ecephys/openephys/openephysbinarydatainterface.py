@@ -103,9 +103,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
         )
 
-        if stub_test:
-            self.subset_channels = [0, 1]
-
         # Check if the recording has ADC channels
         recording = self.recording_extractor
         channel_ids = recording.get_channel_ids()

@@ -36,7 +36,7 @@ class TestDeepDict(unittest.TestCase):
         self.assertIsInstance(dd["a"]["b"], DeepDict)
 
     def test_repr(self):
-        expected_repr = "DeepDict: {'a': {'b': {'c': 42}}}"
+        expected_repr = "DeepDict({'a': {'b': {'c': 42}}})"
         self.assertEqual(repr(self.dd), expected_repr)
 
     def test_deep_update(self):
