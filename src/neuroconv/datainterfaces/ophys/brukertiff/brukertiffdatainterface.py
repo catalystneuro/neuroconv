@@ -288,6 +288,19 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             if stream_name == file.attrib["channelName"]
         ]
 
+        if len(frames_per_stream) == 0:
+            # If no frames, fall back to the old logic which matches by file name
+            # At the moment this is used because the stream name is not only for channels
+            # But also for planes in the case of multi-plane imaging with disjoint planes
+            # For this case, the stream name for the plane is made-up from the file name
+            # And we need to match the stream (e.g.  "Ch2_000001") to the file name instead.
+            frames_per_stream = [
+                frame
+                for frame in self.imaging_extractor._xml_root.findall(".//Frame")
+                for file in frame.findall("File")
+                if stream_name in file.attrib["filename"]
+            ]
+
         # general positionCurrent
         position_values = []
         default_position_element = self.imaging_extractor._xml_root.find(".//PVStateValue[@key='positionCurrent']")
