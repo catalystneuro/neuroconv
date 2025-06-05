@@ -966,6 +966,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [128, 128]
 
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
