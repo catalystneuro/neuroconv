@@ -118,7 +118,7 @@ jobs:
             fi
 
             # Install dependencies
-            pip install ".[test,$name]"
+            pip install --quiet ".[test,$name]"
 
             # Check if the gallery file exists before running pytest
             gallery_file="docs/conversion_examples_gallery/$type/$name.rst"
