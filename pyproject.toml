@@ -369,6 +369,7 @@ testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
+    "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
 ]
 
 [tool.black]

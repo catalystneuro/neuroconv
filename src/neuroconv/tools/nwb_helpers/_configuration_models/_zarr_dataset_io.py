@@ -46,7 +46,23 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     compression_method: (
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec] | None
+        Literal[
+            "jenkins_lookup3",
+            "zstd",
+            "lzma",
+            "lz4",
+            "zlib",
+            "delta",
+            "gzip",
+            "blosc",
+            "bz2",
+            "categorize",
+            "fletcher32",
+            "packbits",
+            "shuffle",
+        ]
+        | InstanceOf[numcodecs.abc.Codec]
+        | None
     ) = Field(
         default="gzip",  # TODO: would like this to be 'auto'
         description=(
@@ -61,9 +77,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
-    filter_methods: (
-        list[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]] | None
-    ) = Field(
+    filter_methods: list[str | InstanceOf[numcodecs.abc.Codec]] | None = Field(
         default=None,
         description=(
             "The ordered collection of filtering methods to apply to this dataset prior to compression. "
