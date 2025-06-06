@@ -9,6 +9,7 @@
 * Fixed a bug with the Docker dev build [PR #1376](https://github.com/catalystneuro/neuroconv/pull/1376)
 
 ## Features
+* Added `InscopixImagingInterface` for converting Inscopix imaging data. [PR #707](https://github.com/catalystneuro/neuroconv/issues/707)
 * Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
 
 ## Improvements

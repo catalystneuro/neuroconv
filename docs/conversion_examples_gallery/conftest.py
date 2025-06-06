@@ -35,3 +35,20 @@ def pytest_runtest_setup(item):
             # Check if Python version is 3.9 and platform is Darwin (macOS)
             if version.parse(python_version) < version.parse("3.10") and os == "Darwin":
                 pytest.skip("Skipping doctests for deeplabcut.rst on Python 3.9 and macOS")
+
+       # Check if we are running the doctest from inscopixsegmentation.rst
+        if test_file.name == "inscopiximaging.rst":
+            # Skip on macOS ARM64
+            if os == "Darwin" and platform.machine() == "arm64":
+                pytest.skip(
+                    "The isx package is currently not natively supported on macOS with Apple Silicon. "
+                    "Installation instructions can be found at: "
+                    "https://github.com/inscopix/pyisx?tab=readme-ov-file#install"
+                )
+            # Skip on Python 3.13+
+            if version.parse(python_version) >= version.parse("3.13"):
+                pytest.skip(
+                    "Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module "
+                    "Requires: Python <3.13, >=3.9) "
+                    "See: https://github.com/inscopix/pyisx/issues"
+                )
