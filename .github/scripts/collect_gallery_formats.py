@@ -34,7 +34,6 @@ def discover_gallery_formats() -> list[str]:
         "conftest.py",
         "__init__.py",
         "spike2.rst",  # Only supported for python 3.9 and earlier
-        "medpc.rst",  # Not being tested at the moment
         "mearec.rst",  # Setup tools problems and I want to discuss this with Ben
         "edf.rst",  # Does not allow parallel read so we don't test the gallery because of race condition
         "maxwell.rst",  # Was not being tested at the moment

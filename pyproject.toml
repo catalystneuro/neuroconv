@@ -207,7 +207,7 @@ phy = [
 
 plexon = [
     "neuroconv[ecephys_minimal]",
-    "zugbruecke >= 0.2.1; platform_system != 'Windows'",
+    "zugbruecke >= 0.2.1; platform_system != 'Windows'",  # Here for backwards compatibility with older versions of the gallery. Remove in 0.8
 ]
 
 plexon2 = [
@@ -295,6 +295,11 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
+hdf5 = [
+    "neuroconv[ophys_minimal]",  # change to neuroconv[hdf5imaging] in 0.8
+]
 hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
@@ -308,6 +313,14 @@ miniscope = [
     "neuroconv[ophys_minimal]",
     "neuroconv[video]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
+sbx = [
+    "neuroconv[ophys_minimal]",  # change to neuroconv[scanbox] in 0.8
+]
+scanbox = [
+    "neuroconv[ophys_minimal]",
+]
 scanimage = [
     "neuroconv[ophys_minimal]",
     "natsort",
@@ -317,9 +330,8 @@ scanimage_legacy = [
     "neuroconv[ophys_minimal]",
     "scanimage-tiff-reader>=1.4.1",
 ]
-scanbox = [
-    "neuroconv[ophys_minimal]",
-]
+
+
 sima = [
     "neuroconv[ophys_minimal]",
 ]
@@ -345,8 +357,10 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
+    "neuroconv[hdf5]",  # Here for backwards compatibility, change to neuroconv[hdf5imaging] in 0.8
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
+    "neuroconv[sbx]",  # Here for backwards compatibility, change to neuroconv[scanbox] in 0.8
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
