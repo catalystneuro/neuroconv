@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 
 .. code-block:: bash
 
-    pip install neuroconv[plexon]
+    pip install neuroconv[plexon2]
 
 .. warning::
     When running plexon2 conversion on platforms other than Windows, you also need to install `wine <https://www.winehq.org/>`_.
