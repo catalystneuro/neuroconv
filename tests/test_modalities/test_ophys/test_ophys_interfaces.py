@@ -20,7 +20,7 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)
         two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
         imaging = self.interface.imaging_extractor
-        expected_timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        expected_timestamps = imaging.frame_to_time(np.arange(imaging.get_num_samples()))
 
         np.testing.assert_array_equal(two_photon_series.timestamps[:], expected_timestamps)
 

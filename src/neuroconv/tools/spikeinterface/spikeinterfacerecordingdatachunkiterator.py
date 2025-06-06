@@ -83,7 +83,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         number_of_channels = self.recording.get_num_channels()
-        number_of_frames = self.recording.get_num_frames(segment_index=self.segment_index)
+        number_of_frames = self.recording.get_num_samples(segment_index=self.segment_index)
         dtype = self.recording.get_dtype()
 
         chunk_shape = get_electrical_series_chunk_shape(

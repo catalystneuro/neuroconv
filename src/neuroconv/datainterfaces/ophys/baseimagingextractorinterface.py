@@ -129,10 +129,10 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
-        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_samples()))
 
     def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
+        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_samples()))
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.imaging_extractor.set_times(times=aligned_timestamps)
@@ -180,7 +180,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
+            stub_frames = min([stub_frames, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
             imaging_extractor = self.imaging_extractor
