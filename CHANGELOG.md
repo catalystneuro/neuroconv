@@ -9,7 +9,8 @@
 * Fixed a bug with the Docker dev build [PR #1376](https://github.com/catalystneuro/neuroconv/pull/1376)
 
 ## Features
-* Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
+* Added global compression parameters (`global_compression_method` and `global_compression_options`) to `configure_and_write_nwbfile`. This allows setting compression method and options for all datasets at once, eliminating the need to manually configure each dataset individually. [PR #1379](https://github.com/catalystneuro/neuroconv/pull/1379)
+* Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #1290](https://github.com/catalystneuro/neuroconv/pull/1290)
 
 ## Improvements
 * Add a `how to` documentation for adding extracellular electrophysiology metadata [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)

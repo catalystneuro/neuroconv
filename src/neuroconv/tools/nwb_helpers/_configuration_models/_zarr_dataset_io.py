@@ -26,6 +26,7 @@ _excluded_zarr_codecs = set(
         "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
         "base64",  # unsure what this would ever be used for
         "n5_wrapper",  # different data format
+        "pcodec",  # is erroneously imported before numcodecs 0.15, see https://numcodecs.readthedocs.io/en/stable/release.html?utm_source=chatgpt.com#id9
     )
 )
 
@@ -33,10 +34,6 @@ _excluded_zarr_codecs = set(
 # (Users can always initialize and pass explicitly via code)
 _available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
 
-# TODO: would like to eventually (as separate feature) add an 'auto' method to Zarr
-# to harness the wider range of potential methods that are ideal for certain dtypes or structures
-# E.g., 'packbits' for boolean (logical) VectorData columns
-# | set(("auto",))
 AVAILABLE_ZARR_COMPRESSION_METHODS = {
     codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
 }

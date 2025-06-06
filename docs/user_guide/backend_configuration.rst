@@ -219,6 +219,36 @@ If you do not intend to make any alterations to the default configuration for th
 and all datasets in the NWB file will automatically use the default configurations!
 
 
+Global Compression Settings
+---------------------------
+
+For convenience, NeuroConv provides global compression parameters that allow you to set compression method and options for all datasets at once, without having to modify each dataset configuration individually.
+
+This is particularly useful when you want to apply the same compression settings to all datasets in your NWB file.
+
+**Using Global Compression with configure_and_write_nwbfile**
+
+You can use the ``global_compression_method`` and ``global_compression_options`` parameters with the :py:meth:`~neuroconv.tools.nwb_helpers.configure_and_write_nwbfile` function:
+
+.. code-block:: python
+
+    from neuroconv.tools import configure_and_write_nwbfile
+
+    # Create an in-memory NWBFile object from a converter or a data interface
+    nwbfile = Converter.create_nwbfile()  # nwbfile = data_interface.create_nwbfile()
+
+    # Apply Blosc compression with zstd compressor to all datasets
+    configure_and_write_nwbfile(
+        nwbfile=nwbfile,
+        nwbfile_path="compressed_file.nwb",
+        backend="hdf5",
+        global_compression_method="Blosc",
+        global_compression_options={
+            "cname": "zstd",
+            "clevel": 5,
+        }
+    )
+
 FAQ
 ---
 
