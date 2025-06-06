@@ -10,9 +10,6 @@ inputs:
   s3-gin-bucket:
     description: 'S3 GIN Bucket URL'
     required: true
-  os:
-    description: 'Operating system'
-    required: true
 runs:
   using: 'composite'
   steps:
@@ -28,7 +25,8 @@ runs:
       id: cache-ephys-datasets
       with:
         path: ./ephy_testing_data
-        key: ephys-datasets-${{ inputs.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+        key: ephys-datasets-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+        enableCrossOsArchive: true
 
     - name: Get ophys_testing_data current head hash
       id: ophys
@@ -42,7 +40,8 @@ runs:
       id: cache-ophys-datasets
       with:
         path: ./ophys_testing_data
-        key: ophys-datasets-${{ inputs.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+        key: ophys-datasets-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+        enableCrossOsArchive: true
 
     - name: Get behavior_testing_data current head hash
       id: behavior
@@ -56,7 +55,8 @@ runs:
       id: cache-behavior-datasets
       with:
         path: ./behavior_testing_data
-        key: behavior-datasets-${{ inputs.os }}-${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+        key: behavior-datasets-${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+        enableCrossOsArchive: true
 
     - name: Determine if downloads are required
       id: download-check
