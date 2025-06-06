@@ -56,7 +56,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
-          os: ${{ matrix.os }}
 
       - name: Run subset of tests that use DANDI live services
         run: pytest -rsx -n auto tests/remote_transfer_services/dandi_transfer_tools.py

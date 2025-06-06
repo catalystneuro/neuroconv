@@ -10,9 +10,6 @@ inputs:
   s3-gin-bucket:
     description: 'S3 GIN Bucket URL'
     required: true
-  os:
-    description: 'Operating system'
-    required: true
 runs:
   using: 'composite'
   steps:
