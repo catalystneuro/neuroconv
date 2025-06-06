@@ -10,6 +10,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
@@ -38,7 +39,6 @@ python_version = version.parse(python_version())
 ndx_pose_version = version.parse(importlib_version("ndx-pose"))
 
 
-@pytest.mark.skipif(ndx_pose_version < version.parse("0.2.0"), reason="Interface requires ndx-pose version >= 0.2.0")
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -158,7 +158,6 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
 
 
-@pytest.mark.skipif(ndx_pose_version < version.parse("0.2.0"), reason="Interface requires ndx-pose version >= 0.2.0")
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
@@ -326,8 +325,8 @@ class CustomTestSLEAPInterface(TestCase):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterface(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -422,7 +421,8 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         behavior_module = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
 
         # Create custom metadata
-        custom_container_name = "CustomPoseEstimation"
+        custom_pose_estimation_metadata_key = "CustomPoseEstimationKey"
+        custom_pose_estimation_name = "CustomPoseEstimationName"
         custom_reference_frame = "Custom reference frame for testing"
         custom_unit = "custom_units"
 
@@ -432,24 +432,26 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         pose_metadata = metadata["PoseEstimation"]
 
         # Get the first skeleton name
-        skeleton_name = next(iter(pose_metadata["Skeletons"].keys()))
+        skeleton_key = next(iter(pose_metadata["Skeletons"].keys()))
 
         # Get the first device name
         device_name = next(iter(pose_metadata["Devices"].keys()))
 
-        pose_metadata["PoseEstimationContainers"][custom_container_name] = {
-            "name": custom_container_name,
+        pose_metadata["PoseEstimationContainers"][custom_pose_estimation_metadata_key] = {
+            "name": custom_pose_estimation_name,
             "description": "Custom description for testing",
-            "skeleton": skeleton_name,
+            "skeleton": skeleton_key,
             "devices": [device_name],
             "reference_frame": custom_reference_frame,
             "PoseEstimationSeries": {},
         }
 
         # Add custom settings for each bodypart
-        bodyparts = pose_metadata["Skeletons"][skeleton_name]["nodes"]
+        bodyparts = pose_metadata["Skeletons"][skeleton_key]["nodes"]
         for bodypart in bodyparts:
-            pose_metadata["PoseEstimationContainers"][custom_container_name]["PoseEstimationSeries"][bodypart] = {
+            pose_metadata["PoseEstimationContainers"][custom_pose_estimation_metadata_key]["PoseEstimationSeries"][
+                bodypart
+            ] = {
                 "name": f"{self.interface_kwargs['subject_name']}_{bodypart}",
                 "description": (
                     f"Custom description for {bodypart}"
@@ -461,12 +463,16 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
                 "confidence_definition": "Softmax output of the deep neural network.",
             }
 
+        # Add custom skeleton name
+        custom_skeleton_name = "CustomSkeletonName"
+        pose_metadata["Skeletons"][skeleton_key]["name"] = custom_skeleton_name
+
         # Create a new interface with the custom container name
         new_interface = DeepLabCutInterface(
             file_path=self.interface.source_data["file_path"],
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
-            pose_estimation_metadata_key=custom_container_name,
+            pose_estimation_metadata_key=custom_pose_estimation_metadata_key,
         )
 
         # Use add_to_nwbfile with the new interface
@@ -474,9 +480,13 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
         # Verify the custom metadata was applied
         assert "behavior" in nwbfile.processing
-        assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
+        assert custom_pose_estimation_name in nwbfile.processing["behavior"].data_interfaces
+        assert (
+            custom_skeleton_name
+            == nwbfile.processing["behavior"].data_interfaces[custom_pose_estimation_name].skeleton.name
+        )
 
-        container = nwbfile.processing["behavior"].data_interfaces[custom_container_name]
+        container = nwbfile.processing["behavior"].data_interfaces[custom_pose_estimation_name]
 
         # Check that all series have the custom unit and reference_frame
         for series in container.pose_estimation_series.values():
@@ -497,7 +507,12 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
             pose_estimation_container = processing_module_interfaces["PoseEstimationDeepLabCut"]
             pose_estimation_series_in_nwb = pose_estimation_container.pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesLeftear",
+                "PoseEstimationSeriesRightear",
+                "PoseEstimationSeriesSnout",
+                "PoseEstimationSeriesTailbase",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -512,10 +527,25 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             skeleton = pose_estimation_container.skeleton
             assert skeleton.nodes[:].tolist() == ["snout", "leftear", "rightear", "tailbase"]
 
+    def test_subject_not_linked(self, setup_interface):
+        """
+        Test that skeleton.subject is None if the subject_id in the metadata doesn't match the nwbfile.
+        """
+
+        nwbfile = mock_NWBFile()
+
+        subject = mock_Subject(subject_id="MockSubject")
+        nwbfile.subject = subject
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        skeletons = nwbfile.processing["behavior"]["Skeletons"]
+        skeleton = skeletons["SkeletonPoseEstimationDeepLabCut_Ind1"]
+        assert skeleton.subject is None
+
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -541,7 +571,12 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
             pose_estimation_series_in_nwb = processing_module_interfaces[
                 "PoseEstimationDeepLabCut"
             ].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesLeftear",
+                "PoseEstimationSeriesRightear",
+                "PoseEstimationSeriesSnout",
+                "PoseEstimationSeriesTailbase",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -551,8 +586,8 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -607,7 +642,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
 
 @pytest.mark.skipif(
     platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
@@ -633,7 +668,12 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
             pose_estimation_series_in_nwb = processing_module_interfaces[
                 "PoseEstimationDeepLabCut"
             ].pose_estimation_series
-            expected_pose_estimation_series = ["SL18_redled", "SL18_shoulder", "SL18_haunch", "SL18_baseoftail"]
+            expected_pose_estimation_series = [
+                "PoseEstimationSeriesRedled",
+                "PoseEstimationSeriesShoulder",
+                "PoseEstimationSeriesHaunch",
+                "PoseEstimationSeriesBaseoftail",
+            ]
 
             expected_pose_estimation_series_are_in_nwb_file = [
                 pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
@@ -651,7 +691,7 @@ def clean_pose_extension_import():
 
 @pytest.mark.skipif(
     platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0 and not supported on macOS with Python < 3.10",
+    reason="Interface requires ndx-pose version >= 0.2.0",
 )
 def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp_path):
     """

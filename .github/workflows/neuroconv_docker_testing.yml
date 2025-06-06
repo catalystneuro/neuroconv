@@ -85,4 +85,4 @@ jobs:
           docker pull ghcr.io/catalystneuro/neuroconv_yaml_variable:latest
 
       - name: Run docker tests
-        run: pytest tests/docker_yaml_conversion_specification_cli.py -vv -rsx
+        run: pytest tests/remote_transfer_services/docker_yaml_conversion_specification_cli.py -vv -rsx

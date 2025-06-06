@@ -167,7 +167,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         for data_chunk in data_chunk_iterator:
             data_chunks[data_chunk.selection] = data_chunk.data
 
-        expected_frames = imaging_extractor.get_video().transpose((0, 2, 1))
+        expected_frames = imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(data_chunks, expected_frames)
 
     def test_progress_bar(self):
