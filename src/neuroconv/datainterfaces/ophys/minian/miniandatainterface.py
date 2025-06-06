@@ -24,7 +24,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        folder_path : PathType
+        folder_path : str or Path
             Path to .zarr path.
         verbose : bool, default True
             Whether to print progress
