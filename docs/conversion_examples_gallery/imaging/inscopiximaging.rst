@@ -21,7 +21,7 @@ Convert Inscopix imaging data to NWB using :py:class:`~neuroconv.datainterfaces.
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(1970, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Run the conversion
