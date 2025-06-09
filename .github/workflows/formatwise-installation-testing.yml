@@ -1,7 +1,5 @@
 name: Formatwise gallery tests
 on:
-  schedule:
-    - cron: "0 16 * * 1"  # Every Monday at noon EST
   workflow_dispatch:
   workflow_call:
     secrets:
