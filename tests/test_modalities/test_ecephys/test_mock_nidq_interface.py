@@ -17,7 +17,7 @@ def test_current_default_inferred_ttl_times():
     expected_ttl_times = [[1.0 * (1 + 2 * period) + 0.1 * channel for period in range(3)] for channel in range(8)]
     for channel_index, channel_name in enumerate(channel_names):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
-        assert_array_almost_equal(x=inferred_ttl_times, y=expected_ttl_times[channel_index], decimal=4)
+        assert_array_almost_equal(inferred_ttl_times, expected_ttl_times[channel_index], decimal=4)
 
 
 def test_explicit_original_default_inferred_ttl_times():
@@ -27,7 +27,7 @@ def test_explicit_original_default_inferred_ttl_times():
     expected_ttl_times = [[1.0 * (1 + 2 * period) + 0.1 * channel for period in range(3)] for channel in range(8)]
     for channel_index, channel_name in enumerate(channel_names):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
-        assert_array_almost_equal(x=inferred_ttl_times, y=expected_ttl_times[channel_index], decimal=4)
+        assert_array_almost_equal(inferred_ttl_times, expected_ttl_times[channel_index], decimal=4)
 
 
 def test_custom_inferred_ttl_times():
@@ -37,7 +37,7 @@ def test_custom_inferred_ttl_times():
     channel_names = ["nidq#XA0", "nidq#XA1", "nidq#XA2", "nidq#XA3"]
     for channel_index, channel_name in enumerate(channel_names):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
-        assert_array_almost_equal(x=inferred_ttl_times, y=custom_ttl_times[channel_index], decimal=4)
+        assert_array_almost_equal(inferred_ttl_times, custom_ttl_times[channel_index], decimal=4)
 
 
 def test_mock_metadata():
