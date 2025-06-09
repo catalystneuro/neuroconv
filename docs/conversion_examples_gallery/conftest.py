@@ -36,8 +36,8 @@ def pytest_runtest_setup(item):
             if version.parse(python_version) < version.parse("3.10") and os == "Darwin":
                 pytest.skip("Skipping doctests for deeplabcut.rst on Python 3.9 and macOS")
 
-       # Check if we are running the doctest from inscopixsegmentation.rst
-        if test_file.name == "inscopiximaging.rst":
+       # Check if we are running the doctest from inscopix.rst
+        if test_file.name == "inscopix.rst":
             # Skip on macOS ARM64
             if os == "Darwin" and platform.machine() == "arm64":
                 pytest.skip(
