@@ -1,5 +1,5 @@
 from pydantic import FilePath, validate_call
-
+from typing import Literal
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
 
@@ -16,6 +16,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
+        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",
     ):
         """
         Parameters
@@ -28,6 +29,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         super().__init__(
             file_path=file_path,
             verbose=verbose,
+            photon_series_type=photon_series_type,
         )
 
     def get_metadata(self) -> DeepDict:

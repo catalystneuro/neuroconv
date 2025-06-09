@@ -366,7 +366,11 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
         metadata = interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        # Use conversion_options if available
+        conversion_options = getattr(self, 'conversion_options', {})
+        
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **conversion_options)
 
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()

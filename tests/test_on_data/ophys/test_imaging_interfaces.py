@@ -930,6 +930,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"),
+        photon_series_type="OnePhotonSeries",
     )
     optical_series_name = "OnePhotonSeries"
     conversion_options = dict(photon_series_type="OnePhotonSeries")
@@ -987,6 +988,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd"),
+        photon_series_type="OnePhotonSeries",
     )
     optical_series_name = "OnePhotonSeries"
     conversion_options = dict(photon_series_type="OnePhotonSeries")
@@ -1055,7 +1057,8 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
 
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
-    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"),
+                            photon_series_type="OnePhotonSeries",)
     optical_series_name = "OnePhotonSeries"
     conversion_options = dict(photon_series_type="OnePhotonSeries")
 
