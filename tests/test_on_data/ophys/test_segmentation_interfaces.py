@@ -504,7 +504,3 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
 
     def test_all_conversion_checks(self, setup_interface, tmp_path):
         pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
-
-    def check_read_nwb(self, nwbfile_path: str):
-        """Override to skip NWB read check for empty datasets."""
-        pytest.skip("Cannot read NWB file for empty datasets that raise ValueError during conversion")
