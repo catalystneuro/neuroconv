@@ -1,5 +1,7 @@
-from pydantic import FilePath, validate_call
 from typing import Literal
+
+from pydantic import FilePath, validate_call
+
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
 
