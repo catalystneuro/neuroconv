@@ -36,8 +36,7 @@ def discover_gallery_formats() -> list[str]:
         "spike2.rst",  # Only supported for python 3.9 and earlier
         "mearec.rst",  # Setup tools problems and I want to discuss this with Ben
         "edf.rst",  # Does not allow parallel read so we don't test the gallery because of race condition
-        "maxwell.rst",  # Was not being tested at the moment
-        "plexon2.rst",  # Not being tested because of wine issues on the CI
+        "plexon2.rst",  # Not being tested because it requires wine
     }
 
     # The conversion gallery is organized in folders per category: recordings, behavior, ophys, etc.
