@@ -84,7 +84,7 @@ Segmentation
     Caiman <segmentation/caiman>
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
-    Inscopix <segmentation/inscopixsegmentation>
+    Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
 Fiber Photometry
