@@ -461,7 +461,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet:
         """Test that metadata can be extracted even for empty cellsets."""
         interface, _ = setup_interface
         metadata = interface.get_metadata()
-        
+
         # Basic structure should still work
         assert "NWBFile" in metadata
         assert "Ophys" in metadata
@@ -469,7 +469,7 @@ class TestInscopixSegmentationInterfaceEmptyCellSet:
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-        
+
         # Should indicate 0 ROIs in description
         segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
         assert "0 ROIs" in segmentation_desc
@@ -477,19 +477,20 @@ class TestInscopixSegmentationInterfaceEmptyCellSet:
     def test_empty_cellset_add_to_nwbfile_error(self, setup_interface):
         """Test that add_to_nwbfile raises appropriate error for empty cellset."""
         interface, _ = setup_interface
-        
+
         from pynwb.testing.mock.file import mock_NWBFile
+
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
-        
+
         with pytest.raises(ValueError, match="Empty cellset detected"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
 
     def test_empty_cellset_run_conversion_error(self, setup_interface, tmp_path):
-        """Test that run_conversion raises appropriate error for empty cellset.""" 
+        """Test that run_conversion raises appropriate error for empty cellset."""
         interface, test_name = setup_interface
         nwbfile_path = str(tmp_path / f"empty_cellset_{test_name}.nwb")
-        
+
         metadata = interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
@@ -505,14 +506,15 @@ class TestInscopixSegmentationInterfaceEmptyCellSet:
     def test_meaningful_error_message(self, setup_interface):
         """Test that the error message is meaningful and actionable."""
         interface, _ = setup_interface
-        
+
         from pynwb.testing.mock.file import mock_NWBFile
+
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
-        
+
         with pytest.raises(ValueError) as exc_info:
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
-        
+
         error_message = str(exc_info.value)
         assert "Empty cellset detected" in error_message
         assert "No ROIs found" in error_message
@@ -522,8 +524,9 @@ class TestInscopixSegmentationInterfaceEmptyCellSet:
     def test_no_metadata_mutation(self, setup_interface):
         """Test that metadata isn't modified when conversion fails due to empty cellset."""
         interface, _ = setup_interface
-        
+
         from copy import deepcopy
+
         from pynwb.testing.mock.file import mock_NWBFile
 
         nwbfile = mock_NWBFile()

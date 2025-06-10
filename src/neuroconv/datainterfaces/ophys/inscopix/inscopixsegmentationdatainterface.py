@@ -224,7 +224,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     def add_to_nwbfile(self, nwbfile, metadata=None, **conversion_options):
         """
         Add Inscopix segmentation data to an NWB file.
-        
+
         Parameters
         ----------
         nwbfile : pynwb.NWBFile
@@ -233,7 +233,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             Metadata dictionary.
         **conversion_options
             Additional conversion options.
-            
+
         Raises
         ------
         ValueError
@@ -246,6 +246,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "Cell segmentation interfaces require at least one ROI to create valid NWB segmentation data. "
                 "Please verify that the cell segmentation was successful and identified cells in your data."
             )
-        
+
         # Proceed with normal conversion
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
