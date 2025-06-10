@@ -44,6 +44,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
+
     def get_metadata(self) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.
@@ -179,7 +180,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             else:
                 metadata["Subject"] = subject_metadata
 
-        
         # Get session information using new extractor methods
         session_info = extractor.get_session_info()
 
@@ -322,8 +322,4 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
             Specifies the type of photon series to be used. Defaults to "OnePhotonSeries" for Inscopix data.
         """
-        super().add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            photon_series_type=photon_series_type
-        )
+        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, photon_series_type=photon_series_type)
