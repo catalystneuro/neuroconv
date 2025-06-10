@@ -36,7 +36,8 @@ def get_image_series_chunk_shape(
     """
     assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
-    num_rows, num_columns = sample_shape[0], sample_shape[1]
+    num_rows = int(sample_shape[0])
+    num_columns = int(sample_shape[1])
     frame_size_bytes = num_rows * num_columns * dtype.itemsize
 
     chunk_size_bytes = chunk_mb * 1e6
@@ -91,7 +92,8 @@ def get_image_series_buffer_shape(
 
     # First we determined a minimal buffer shape, this is a chunk shape but we included
     # the full last dimension (note that chunk_shape last dimension is 1 or omitted)
-    num_frames_in_chunk = chunk_shape[0]
+    num_frames_in_chunk = int(chunk_shape[0])
+    sample_shape = tuple(int(dim) for dim in sample_shape)
     min_buffer_shape = (num_frames_in_chunk,) + sample_shape
 
     # The smallest the buffer could be is the size of a chunk
