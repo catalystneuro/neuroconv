@@ -205,7 +205,13 @@ openephys = [
 phy = [
     "neuroconv[ecephys_minimal]",
 ]
+
 plexon = [
+    "neuroconv[ecephys_minimal]",
+    "zugbruecke >= 0.2.1; platform_system != 'Windows'",  # Here for backwards compatibility with older versions of the gallery. Remove in 0.8
+]
+
+plexon2 = [
     "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
@@ -277,6 +283,7 @@ ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
 brukertiff = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
+    "natsort",
 ]
 caiman = [
     "neuroconv[ophys_minimal]",
@@ -289,7 +296,12 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
 hdf5 = [
+    "neuroconv[ophys_minimal]",  # change to neuroconv[hdf5imaging] in 0.8
+]
+hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
 inscopix = [
@@ -304,21 +316,32 @@ miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
     "neuroconv[ophys_minimal]",
+    "neuroconv[video]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
 sbx = [
+    "neuroconv[ophys_minimal]",  # change to neuroconv[scanbox] in 0.8
+]
+scanbox = [
     "neuroconv[ophys_minimal]",
 ]
 scanimage = [
     "neuroconv[ophys_minimal]",
     "natsort",
+    "tifffile>=2023.3.21",
 ]
 scanimage_legacy = [
+    "neuroconv[ophys_minimal]",
     "scanimage-tiff-reader>=1.4.1",
 ]
+
+
 sima = [
     "neuroconv[ophys_minimal]",
 ]
 suite2p = [
+    "natsort",
     "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
@@ -339,11 +362,11 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
-    "neuroconv[hdf5]",
     "neuroconv[inscopix]",
+    "neuroconv[hdf5]",  # Here for backwards compatibility, change to neuroconv[hdf5imaging] in 0.8
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
-    "neuroconv[sbx]",
+    "neuroconv[sbx]",  # Here for backwards compatibility, change to neuroconv[scanbox] in 0.8
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
