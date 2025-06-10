@@ -440,7 +440,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
 @skip_on_darwin_arm64
 @skip_on_python_313
-class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfaceTestMixin):
+class TestInscopixSegmentationInterfaceEmptyCellSet:
     """Tests for InscopixSegmentationInterface with an empty cellset dataset."""
 
     data_interface_cls = InscopixSegmentationInterface
@@ -450,57 +450,92 @@ class TestInscopixSegmentationInterfaceEmptyCellSet(SegmentationExtractorInterfa
     save_directory = OUTPUT_PATH
     conversion_options = dict(mask_type="pixel")
 
-    def check_extracted_metadata(self, metadata):
-        """Check that the extracted metadata contains expected items for empty dataset."""
-        # Basic structure validation - should work even for empty datasets
+    @pytest.fixture(scope="function")
+    def setup_interface(self):
+        """Setup interface for each test."""
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+        self.test_name = "empty_cellset"
+        return self.interface, self.test_name
+
+    def test_metadata_extraction_works(self, setup_interface):
+        """Test that metadata can be extracted even for empty cellsets."""
+        interface, _ = setup_interface
+        metadata = interface.get_metadata()
+        
+        # Basic structure should still work
         assert "NWBFile" in metadata
         assert "Ophys" in metadata
         assert "Device" in metadata["Ophys"]
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+        
+        # Should indicate 0 ROIs in description
+        segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
+        assert "0 ROIs" in segmentation_desc
 
-    def test_no_metadata_mutation(self, setup_interface):
-        """Override test_no_metadata_mutation to handle the expected ValueError."""
-        from copy import deepcopy
-
+    def test_empty_cellset_add_to_nwbfile_error(self, setup_interface):
+        """Test that add_to_nwbfile raises appropriate error for empty cellset."""
+        interface, _ = setup_interface
+        
         from pynwb.testing.mock.file import mock_NWBFile
-
         nwbfile = mock_NWBFile()
-        metadata = self.interface.get_metadata()
-        metadata_before_add_method = deepcopy(metadata)
+        metadata = interface.get_metadata()
+        
+        with pytest.raises(ValueError, match="Empty cellset detected"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
 
-        # We expect ValueError when trying to add segmentation with no ROIs
-        with pytest.raises(ValueError, match="need at least one array to stack"):
-            self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
-
-        # Check that metadata wasn't modified even though an error was raised
-        assert metadata == metadata_before_add_method
-
-    def test_run_conversion_with_backend(self, setup_interface, tmp_path, backend="hdf5"):
-        """Override test_run_conversion_with_backend to handle the expected ValueError."""
-        nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}-{self.test_name}.nwb")
-
-        metadata = self.interface.get_metadata()
+    def test_empty_cellset_run_conversion_error(self, setup_interface, tmp_path):
+        """Test that run_conversion raises appropriate error for empty cellset.""" 
+        interface, test_name = setup_interface
+        nwbfile_path = str(tmp_path / f"empty_cellset_{test_name}.nwb")
+        
+        metadata = interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
-        # We expect ValueError when trying to convert with no ROIs
-        with pytest.raises(ValueError, match="need at least one array to stack"):
-            self.interface.run_conversion(
+        with pytest.raises(ValueError, match="Empty cellset detected"):
+            interface.run_conversion(
                 nwbfile_path=nwbfile_path,
                 overwrite=True,
                 metadata=metadata,
-                backend=backend,
                 **self.conversion_options,
             )
 
-    # Override tests that would fail with ValueError for empty datasets
-    def test_run_conversion_with_backend_configuration(self, setup_interface, tmp_path, backend="hdf5"):
-        pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
+    def test_meaningful_error_message(self, setup_interface):
+        """Test that the error message is meaningful and actionable."""
+        interface, _ = setup_interface
+        
+        from pynwb.testing.mock.file import mock_NWBFile
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        
+        with pytest.raises(ValueError) as exc_info:
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+        
+        error_message = str(exc_info.value)
+        assert "Empty cellset detected" in error_message
+        assert "No ROIs found" in error_message
+        assert "segmentation interfaces require at least one ROI" in error_message
+        assert "verify that the cell segmentation was successful" in error_message
 
-    def test_configure_backend_for_equivalent_nwbfiles(self, setup_interface, backend="hdf5"):
-        pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
+    def test_no_metadata_mutation(self, setup_interface):
+        """Test that metadata isn't modified when conversion fails due to empty cellset."""
+        interface, _ = setup_interface
+        
+        from copy import deepcopy
+        from pynwb.testing.mock.file import mock_NWBFile
 
-    def test_all_conversion_checks(self, setup_interface, tmp_path):
-        pytest.skip("Test not applicable for empty datasets expected to raise ValueError")
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        metadata_before_add_method = deepcopy(metadata)
+
+        # We expect ValueError, which should not modify metadata
+        with pytest.raises(ValueError, match="Empty cellset detected"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
+
+        # Check that metadata wasn't modified
+        assert metadata == metadata_before_add_method
+
+    # Note: not inheriting from SegmentationExtractorInterfaceTestMixin because
+    # those tests expect successful conversion, but empty cellsets should fail.

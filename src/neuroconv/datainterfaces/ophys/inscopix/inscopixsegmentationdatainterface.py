@@ -220,3 +220,32 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 metadata["Subject"] = subject_metadata
 
         return metadata
+
+    def add_to_nwbfile(self, nwbfile, metadata=None, **conversion_options):
+        """
+        Add Inscopix segmentation data to an NWB file.
+        
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWB file to add data to.
+        metadata : dict, optional
+            Metadata dictionary.
+        **conversion_options
+            Additional conversion options.
+            
+        Raises
+        ------
+        ValueError
+            If the cellset has no ROIs to convert.
+        """
+        # Simple check for empty cellsets before conversion
+        if self.segmentation_extractor.get_num_rois() == 0:
+            raise ValueError(
+                "Empty cellset detected: No ROIs found in the segmentation data. "
+                "Cell segmentation interfaces require at least one ROI to create valid NWB segmentation data. "
+                "Please verify that the cell segmentation was successful and identified cells in your data."
+            )
+        
+        # Proceed with normal conversion
+        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
