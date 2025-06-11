@@ -139,15 +139,18 @@ class TestGlobalCompressionHDF5:
 
     @pytest.mark.parametrize("compression_method", sorted_hdf5_compression_methods)
     def test_global_compression_method_only(self, tmp_path, compression_method):
-        """Test applying only global compression method without options."""
+        """Test applying only global compression method without options using backend configuration."""
         nwbfile = create_test_nwbfile()
         nwbfile_path = tmp_path / f"test_global_compression_{compression_method}.nwb"
+
+        # Get default backend configuration and apply global compression
+        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+        backend_configuration.apply_global_compression(compression_method)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend="hdf5",
-            global_compression_method=compression_method,
+            backend_configuration=backend_configuration,
         )
 
         assert nwbfile_path.exists()
@@ -203,16 +206,18 @@ class TestGlobalCompressionHDF5:
                 pass
 
     def test_global_compression_with_options(self, tmp_path):
-        """Test applying global compression method with options."""
+        """Test applying global compression method with options using backend configuration."""
         nwbfile = create_test_nwbfile()
         nwbfile_path = tmp_path / "test_global_compression_options.nwb"
+
+        # Get default backend configuration and apply global compression with options
+        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+        backend_configuration.apply_global_compression("gzip", {"level": 9})
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend="hdf5",
-            global_compression_method="gzip",
-            global_compression_options={"level": 9},
+            backend_configuration=backend_configuration,
         )
 
         assert nwbfile_path.exists()
@@ -232,77 +237,13 @@ class TestGlobalCompressionHDF5:
             assert dataset2.compression == "gzip"
             assert dataset2.compression_opts == 9
 
-    def test_global_compression_invalid_method(self, tmp_path):
-        """Test that invalid compression method raises error."""
+    def test_global_compression_invalid_method(self):
+        """Test that invalid compression method raises error when using apply_global_compression."""
         nwbfile = create_test_nwbfile()
-        nwbfile_path = tmp_path / "test_invalid_compression.nwb"
+        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
 
         with pytest.raises(ValueError, match="Compression method 'invalid_method' is not available"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend="hdf5",
-                global_compression_method="invalid_method",
-            )
-
-    def test_global_compression_with_backend_configuration_raises_error(self, tmp_path):
-        """Test that using global compression with backend_configuration raises error."""
-        nwbfile = create_test_nwbfile()
-        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        nwbfile_path = tmp_path / "test_error.nwb"
-
-        with pytest.raises(ValueError, match="Global compression parameters cannot be used"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend_configuration=backend_configuration,
-                global_compression_method="gzip",
-            )
-
-    def test_global_compression_options_without_method_raises_error(self, tmp_path):
-        """Test that providing global compression options without method raises error."""
-        nwbfile = create_test_nwbfile()
-        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        nwbfile_path = tmp_path / "test_error.nwb"
-
-        with pytest.raises(ValueError, match="Global compression parameters cannot be used"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend_configuration=backend_configuration,
-                global_compression_options={"level": 5},
-            )
-
-    def test_global_compression_preserves_disabled_compression(self):
-        """Test that datasets with compression disabled remain disabled."""
-        nwbfile = create_test_nwbfile()
-        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-
-        # Disable compression for one dataset
-        dataset_configs = list(backend_configuration.dataset_configurations.values())
-        if dataset_configs:
-            dataset_configs[0].compression_method = None
-            original_compression_method = dataset_configs[0].compression_method
-
-        # Apply global compression using the internal function
-        from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import (
-            _apply_global_compression,
-        )
-
-        _apply_global_compression(
-            backend_configuration=backend_configuration,
-            global_compression_method="lzf",
-            global_compression_options=None,
-        )
-
-        # Check that the disabled dataset remains disabled
-        if dataset_configs:
-            assert dataset_configs[0].compression_method == original_compression_method  # Should still be None
-
-    def test_available_hdf5_compression_methods(self):
-        """Test that available HDF5 compression methods are accessible."""
-        assert "gzip" in AVAILABLE_HDF5_COMPRESSION_METHODS
-        assert "lzf" in AVAILABLE_HDF5_COMPRESSION_METHODS
+            backend_configuration.apply_global_compression("invalid_method")
 
 
 # We need this so that pytest-xdist can run tests in parallel without issues
@@ -315,7 +256,7 @@ class TestGlobalCompressionZarr:
 
     @pytest.mark.parametrize("compression_method", sorted_zarr_compression_methods)
     def test_global_compression_method_only(self, tmp_path, compression_method):
-        """Test applying only global compression method without options."""
+        """Test applying only global compression method without options using backend configuration."""
         nwbfile = create_test_nwbfile()
         nwbfile_path = tmp_path / f"test_global_compression_{compression_method}.zarr"
 
@@ -327,11 +268,14 @@ class TestGlobalCompressionZarr:
                 f"Compression method '{compression_method}' requires specific parameters and cannot be tested with default options"
             )
 
+        # Get default backend configuration and apply global compression
+        backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
+        backend_configuration.apply_global_compression(compression_method)
+
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend="zarr",
-            global_compression_method=compression_method,
+            backend_configuration=backend_configuration,
         )
 
         assert nwbfile_path.exists()
@@ -359,16 +303,18 @@ class TestGlobalCompressionZarr:
         assert expected_compression in str(dataset2.compressor).lower()
 
     def test_global_compression_with_options(self, tmp_path):
-        """Test applying global compression method with options."""
+        """Test applying global compression method with options using backend configuration."""
         nwbfile = create_test_nwbfile()
         nwbfile_path = tmp_path / "test_global_compression_options.zarr"
+
+        # Get default backend configuration and apply global compression with options
+        backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
+        backend_configuration.apply_global_compression("gzip", {"level": 6})
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend="zarr",
-            global_compression_method="gzip",
-            global_compression_options={"level": 6},
+            backend_configuration=backend_configuration,
         )
 
         assert nwbfile_path.exists()
@@ -401,81 +347,9 @@ class TestGlobalCompressionZarr:
             assert dataset2.compressor.level == 6
 
     def test_global_compression_invalid_method(self, tmp_path):
-        """Test that invalid compression method raises error."""
+        """Test that invalid compression method raises error when using apply_global_compression."""
         nwbfile = create_test_nwbfile()
-        nwbfile_path = tmp_path / "test_invalid_compression.zarr"
+        backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
 
         with pytest.raises(ValueError, match="Compression method 'invalid_method' is not available"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend="zarr",
-                global_compression_method="invalid_method",
-            )
-
-
-class TestGlobalCompressionEdgeCases:
-    """Test edge cases for global compression functionality."""
-
-    def test_empty_nwbfile_with_global_compression(self, tmp_path):
-        """Test global compression with an NWBFile that has no datasets."""
-        nwbfile = mock_NWBFile()  # Empty NWBFile
-        nwbfile_path = tmp_path / "test_empty.nwb"
-
-        # Should not raise an error even with no datasets
-        configure_and_write_nwbfile(
-            nwbfile=nwbfile,
-            nwbfile_path=nwbfile_path,
-            backend="hdf5",
-            global_compression_method="gzip",
-        )
-
-        assert nwbfile_path.exists()
-
-    def test_global_compression_options_without_method_should_error(self, tmp_path):
-        """Test that providing compression options without compression method should raise an error."""
-        nwbfile = create_test_nwbfile()
-        nwbfile_path = tmp_path / "test_options_only.nwb"
-
-        # This should raise an error - compression options without compression method
-        with pytest.raises(ValueError, match="Global compression options provided without global compression method"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend="hdf5",
-                global_compression_options={"level": 5},
-            )
-
-    def test_backend_configuration_validation(self, tmp_path):
-        """Test validation when both backend_configuration and global compression are provided."""
-        nwbfile = create_test_nwbfile()
-        backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        nwbfile_path = tmp_path / "test_validation.nwb"
-
-        # Test with global_compression_method
-        with pytest.raises(ValueError, match="Global compression parameters cannot be used"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend_configuration=backend_configuration,
-                global_compression_method="gzip",
-            )
-
-        # Test with global_compression_options
-        with pytest.raises(ValueError, match="Global compression parameters cannot be used"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend_configuration=backend_configuration,
-                global_compression_options={"level": 5},
-            )
-
-        # Test with both
-        with pytest.raises(ValueError, match="Global compression parameters cannot be used"):
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend_configuration=backend_configuration,
-                global_compression_method="gzip",
-                global_compression_options={"level": 5},
-            )
+            backend_configuration.apply_global_compression("invalid_method")

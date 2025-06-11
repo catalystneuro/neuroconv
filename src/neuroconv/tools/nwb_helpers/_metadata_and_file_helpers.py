@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
@@ -330,52 +330,6 @@ def make_or_load_nwbfile(
             _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
 
-def _apply_global_compression(
-    backend_configuration: BackendConfiguration,
-    global_compression_method: str,
-    global_compression_options: dict[str, Any] | None = None,
-) -> None:
-    """
-    Apply global compression settings to all datasets in the backend configuration that support compression.
-
-    Parameters
-    ----------
-    backend_configuration : BackendConfiguration
-        The backend configuration containing dataset configurations to modify.
-    global_compression_method : str
-        The compression method name to apply globally.
-    global_compression_options : dict, optional
-        The compression options to apply globally.
-    """
-    from . import AVAILABLE_HDF5_COMPRESSION_METHODS, AVAILABLE_ZARR_COMPRESSION_METHODS
-
-    # Validate compression method for the backend
-    if backend_configuration.backend == "hdf5":
-        available_methods = AVAILABLE_HDF5_COMPRESSION_METHODS
-    elif backend_configuration.backend == "zarr":
-        available_methods = AVAILABLE_ZARR_COMPRESSION_METHODS
-    else:
-        raise ValueError(f"Unknown backend: {backend_configuration.backend}")
-
-    if global_compression_method not in available_methods:
-        raise ValueError(
-            f"Compression method '{global_compression_method}' is not available for backend "
-            f"'{backend_configuration.backend}'. Available methods: {list(available_methods.keys())}"
-        )
-
-    # For global compression, we use the string name, not the class object
-    # The dataset configuration models handle the conversion to the appropriate object type
-    compression_method_value = global_compression_method
-
-    # Apply global compression to all datasets that currently have compression enabled
-    for dataset_configuration in backend_configuration.dataset_configurations.values():
-        # Only override compression for datasets that already have compression enabled
-        # (i.e., compression_method is not None)
-        if dataset_configuration.compression_method is not None:
-            dataset_configuration.compression_method = compression_method_value
-            dataset_configuration.compression_options = global_compression_options
-
-
 def _resolve_backend(
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
@@ -418,8 +372,6 @@ def configure_and_write_nwbfile(
     nwbfile_path: FilePath | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
-    global_compression_method: str | None = None,
-    global_compression_options: dict[str, Any] | None = None,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -439,13 +391,6 @@ def configure_and_write_nwbfile(
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
-    global_compression_method: str, optional
-        The compression method to apply globally to all datasets that support compression. This parameter can only
-        be used when ``backend_configuration`` is not provided. When specified, it overrides the default compression
-        method for all datasets that have compression enabled.
-    global_compression_options: dict, optional
-        The compression options to apply globally to all datasets that support compression. This parameter can only
-        be used when ``backend_configuration`` is not provided and ``global_compression_method`` is specified.
 
     """
 
@@ -465,35 +410,10 @@ def configure_and_write_nwbfile(
     if nwbfile_path is None:
         raise ValueError("The 'nwbfile_path' parameter must be specified.")
 
-    # Validate that global compression is only used when backend_configuration is None
-    if backend_configuration is not None and (
-        global_compression_method is not None or global_compression_options is not None
-    ):
-        raise ValueError(
-            "Global compression parameters cannot be used when 'backend_configuration' is provided. "
-            "Either use global compression with 'backend' only, or configure compression individually "
-            "within the 'backend_configuration'."
-        )
-
-    # Validate that compression options are not provided without compression method
-    if global_compression_options is not None and global_compression_method is None:
-        raise ValueError(
-            "Global compression options provided without global compression method. "
-            "Please specify 'global_compression_method' when using 'global_compression_options'."
-        )
-
     backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
 
     if backend is not None and backend_configuration is None:
         backend_configuration = get_default_backend_configuration(nwbfile, backend=backend)
-
-    # Apply global compression if specified
-    if global_compression_method is not None and backend_configuration is not None:
-        _apply_global_compression(
-            backend_configuration=backend_configuration,
-            global_compression_method=global_compression_method,
-            global_compression_options=global_compression_options,
-        )
 
     if backend_configuration is not None:
         configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
