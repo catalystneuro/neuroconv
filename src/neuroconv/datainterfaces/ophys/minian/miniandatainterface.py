@@ -19,7 +19,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         source_metadata["properties"]["folder_path"]["description"] = "Path to .zarr output."
         return source_metadata
 
-    def __init__(self, folder_path: PathType, verbose: bool = True):
+    def __init__(self, folder_path: PathType, verbose: bool = False):
         """
 
         Parameters
