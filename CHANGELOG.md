@@ -18,6 +18,7 @@
 * Implemented cross-OS caches in GitHub Actions load-data action to enable cache sharing between Ubuntu, Windows, and macOS runners, reducing cache storage usage and improving CI efficiency [PR #1385](https://github.com/catalystneuro/neuroconv/pull/1385)
 * `MedPC` format is now tested on the conversion gallery [PR #1382](https://github.com/catalystneuro/neuroconv/pull/1382)
 * Added conversion gallery testing to daily workflows [PR #1387](https://github.com/catalystneuro/neuroconv/pull/1387)
+* Added full metadata support for PoseEstimation container in DeepLabCutInterface [PR #1392](https://github.com/catalystneuro/neuroconv/pull/1392).
 
 # v0.7.4 (May 23, 2025)
 
