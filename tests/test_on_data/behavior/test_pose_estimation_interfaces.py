@@ -425,6 +425,10 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         custom_pose_estimation_name = "CustomPoseEstimationName"
         custom_reference_frame = "Custom reference frame for testing"
         custom_unit = "custom_units"
+        custom_source_software_version = "v2.3.11"
+        custom_original_videos = ["custom_video.mp4"]
+        custom_labeled_videos = ["custom_labeled_video.mp4"]
+        custom_dimensions = [[1, 2]]
 
         metadata = self.interface.get_metadata()
 
@@ -444,6 +448,10 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             "devices": [device_name],
             "reference_frame": custom_reference_frame,
             "PoseEstimationSeries": {},
+            "source_software_version": custom_source_software_version,
+            "original_videos": custom_original_videos,
+            "labeled_videos": custom_labeled_videos,
+            "dimensions": custom_dimensions,
         }
 
         # Add custom settings for each bodypart
@@ -496,6 +504,12 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         # Check that snout has the custom description
         snout_series = container.pose_estimation_series[f"{self.interface_kwargs['subject_name']}_snout"]
         assert "Custom description for snout" in snout_series.description
+
+        # Check custom attributes
+        assert container.source_software_version == custom_source_software_version
+        assert container.original_videos == custom_original_videos
+        assert container.labeled_videos == custom_labeled_videos
+        assert container.dimensions == custom_dimensions
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
