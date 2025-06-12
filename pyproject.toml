@@ -71,7 +71,7 @@ test = [
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
 ]
-sorting_analyzer = [
+sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
     "scipy",
 ]
 
@@ -185,21 +185,21 @@ mcsraw = [
     "neuroconv[ecephys_minimal]",
 ]
 mearec = [
-    "MEArec>=1.8.0",
     "neuroconv[ecephys_minimal]",
+    "MEArec>=1.8.0",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
-    "natsort>=7.1.1",
     "neuroconv[ecephys_minimal]",
+    "natsort>=7.1.1",
 ]
 neuroscope = [
-    "lxml>=4.6.5",
     "neuroconv[ecephys_minimal]",
+    "lxml>=4.6.5",
 ]
 openephys = [
-    "lxml>=4.9.4",
     "neuroconv[ecephys_minimal]",
+    "lxml>=4.9.4",
 ]
 phy = [
     "neuroconv[ecephys_minimal]",
@@ -215,8 +215,8 @@ plexon2 = [
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
     "neuroconv[ecephys_minimal]",
+    "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
 ]
 spikegadgets = [
     "neuroconv[ecephys_minimal]",
@@ -231,7 +231,7 @@ tdt = [
 whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
-ecephys = [  # Note that this the requirements of the extractors as they are on pipy
+ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
@@ -248,6 +248,7 @@ ecephys = [  # Note that this the requirements of the extractors as they are on 
     "neuroconv[openephys]",
     "neuroconv[phy]",
     "neuroconv[plexon]",
+    "neuroconv[plexon2]",
     "neuroconv[spike2]",
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
@@ -298,7 +299,7 @@ extract = [
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
 hdf5 = [
-    "neuroconv[ophys_minimal]",  # change to neuroconv[hdf5imaging] in 0.8
+    "neuroconv[hdf5imaging]",
 ]
 hdf5imaging = [
     "neuroconv[ophys_minimal]",
@@ -316,7 +317,7 @@ miniscope = [
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
 sbx = [
-    "neuroconv[ophys_minimal]",  # change to neuroconv[scanbox] in 0.8
+    "neuroconv[scanbox]",
 ]
 scanbox = [
     "neuroconv[ophys_minimal]",
@@ -357,10 +358,10 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
-    "neuroconv[hdf5]",  # Here for backwards compatibility, change to neuroconv[hdf5imaging] in 0.8
+    "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
-    "neuroconv[sbx]",  # Here for backwards compatibility, change to neuroconv[scanbox] in 0.8
+    "neuroconv[scanbox]",
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
