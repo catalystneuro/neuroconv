@@ -253,7 +253,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         The folder where the session data is located. It should contain a
         `{folder.name}.session.mat` file and the binary files `{folder.name}.dat`
         or `{folder.name}.lfp` for the LFP interface.
-    verbose : bool, default: Falsee
+    verbose : bool, default: False
             Whether to output verbose text.
     es_key : str, default: "ElectricalSeries" and "ElectricalSeriesLFP" for the LFP interface
 
