@@ -318,7 +318,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         if self.config_dict:

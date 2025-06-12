@@ -13,6 +13,7 @@ from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
 from ....utils import (
+    DeepDict,
     calculate_regular_series_rate,
     dict_deep_update,
     get_base_schema,
@@ -100,7 +101,7 @@ class ExternalVideoInterface(BaseDataInterface):
         }
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {

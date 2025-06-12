@@ -13,7 +13,7 @@ from .internalvideointerface import InternalVideoInterface
 from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 
 
 class VideoInterface(BaseDataInterface):
@@ -96,7 +96,7 @@ class VideoInterface(BaseDataInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [

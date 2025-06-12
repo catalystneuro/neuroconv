@@ -9,6 +9,7 @@ from dateutil.parser import parse as dateparse
 from pydantic import DirectoryPath, FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....utils import DeepDict
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
@@ -147,7 +148,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         times = self.imaging_extractor.get_times()
         self.imaging_extractor.set_times(times=times)
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -442,7 +443,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         self.sampling_frequency = sampling_frequency
         super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -639,7 +640,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -775,7 +776,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -923,7 +924,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -1073,7 +1074,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 

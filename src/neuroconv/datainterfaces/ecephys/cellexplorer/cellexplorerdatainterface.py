@@ -8,6 +8,7 @@ from pynwb import NWBFile
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
+from ....utils import DeepDict
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: DirectoryPath):
@@ -557,7 +558,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         return dummy_recording_extractor
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem

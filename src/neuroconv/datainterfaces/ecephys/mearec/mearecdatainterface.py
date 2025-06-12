@@ -3,6 +3,7 @@ import json
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import DeepDict
 from ....utils.json_schema import _NWBMetaDataEncoder
 
 
@@ -37,7 +38,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         # TODO: improve ProbeInterface integration in our writing procedures

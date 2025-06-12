@@ -7,7 +7,7 @@ from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
-from ...utils.dict import load_dict_from_file
+from ...utils.dict import DeepDict, load_dict_from_file
 
 
 class TimeIntervalsInterface(BaseDataInterface):
@@ -40,7 +40,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.dataframe = self._read_file(file_path, **read_kwargs)
         self.time_intervals = None
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         metadata["TimeIntervals"] = dict(
             trials=dict(

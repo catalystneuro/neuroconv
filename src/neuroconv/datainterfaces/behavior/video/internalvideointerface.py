@@ -15,7 +15,12 @@ from .video_utils import VideoCaptureContext, VideoDataChunkIterator
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
-from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_class
+from ....utils import (
+    DeepDict,
+    dict_deep_update,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 from ....utils.str_utils import human_readable_size
 
 
@@ -97,7 +102,7 @@ class InternalVideoInterface(BaseDataInterface):
         }
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {

@@ -10,6 +10,7 @@ from pynwb import NWBFile
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
 from ....utils import (
+    DeepDict,
     get_base_schema,
 )
 
@@ -89,7 +90,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [

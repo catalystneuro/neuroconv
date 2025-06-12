@@ -2,6 +2,7 @@ from dateutil.parser import parse
 from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....utils import DeepDict
 
 
 class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
@@ -45,7 +46,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         channel_name = self.imaging_extractor._channel_names[0]
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Micro-Manager TIFF imaging data.
 

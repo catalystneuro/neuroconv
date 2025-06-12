@@ -4,6 +4,7 @@ from warnings import warn
 from pydantic import DirectoryPath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import DeepDict
 
 
 class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
@@ -98,7 +99,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         neo_reader = self.recording_extractor.neo_reader
