@@ -1,4 +1,14 @@
-# v0.7.5 (Upcoming)
+# v0.7.0 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+# v0.7.5 (June 11, 2025)
 
 ## Removals, Deprecations and Changes
 * Removed automatic subject addition for DeepLabCutInterface. A link is now created only if the skeleton metadata matches the subject ID.  [PR #1362](https://github.com/catalystneuro/neuroconv/pull/1362)
@@ -9,7 +19,8 @@
 * Fixed a bug with the Docker dev build [PR #1376](https://github.com/catalystneuro/neuroconv/pull/1376)
 
 ## Features
-* Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #12](https://github.com/catalystneuro/neuroconv/pull/1290)
+* Added `apply_global_compression` method to `BackendConfiguration` classes to apply compression settings globally across all datasets in a backend configuration. This method allows users to easily configure compression options for all datasets at once rather than setting them individually. [PR #1379](https://github.com/catalystneuro/neuroconv/pull/1379)
+* Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #1290](https://github.com/catalystneuro/neuroconv/pull/1290)
 
 ## Improvements
 * Add a `how to` documentation for adding extracellular electrophysiology metadata [PR #1311](https://github.com/catalystneuro/neuroconv/pull/1311)
@@ -18,6 +29,7 @@
 * Implemented cross-OS caches in GitHub Actions load-data action to enable cache sharing between Ubuntu, Windows, and macOS runners, reducing cache storage usage and improving CI efficiency [PR #1385](https://github.com/catalystneuro/neuroconv/pull/1385)
 * `MedPC` format is now tested on the conversion gallery [PR #1382](https://github.com/catalystneuro/neuroconv/pull/1382)
 * Added conversion gallery testing to daily workflows [PR #1387](https://github.com/catalystneuro/neuroconv/pull/1387)
+* Added full metadata support for PoseEstimation container in DeepLabCutInterface [PR #1392](https://github.com/catalystneuro/neuroconv/pull/1392).
 
 # v0.7.4 (May 23, 2025)
 
