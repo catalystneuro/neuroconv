@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.5"
+version = "0.7.6"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -51,7 +51,7 @@ dependencies = [
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
-    "numcodecs<0.16.0", # For supporting zarr < 3
+    "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
 ]
 
 
@@ -71,7 +71,7 @@ test = [
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
 ]
-sorting_analyzer = [
+sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
     "scipy",
 ]
 
@@ -185,32 +185,38 @@ mcsraw = [
     "neuroconv[ecephys_minimal]",
 ]
 mearec = [
-    "MEArec>=1.8.0",
     "neuroconv[ecephys_minimal]",
+    "MEArec>=1.8.0",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
-    "natsort>=7.1.1",
     "neuroconv[ecephys_minimal]",
+    "natsort>=7.1.1",
 ]
 neuroscope = [
-    "lxml>=4.6.5",
     "neuroconv[ecephys_minimal]",
+    "lxml>=4.6.5",
 ]
 openephys = [
-    "lxml>=4.9.4",
     "neuroconv[ecephys_minimal]",
+    "lxml>=4.9.4",
 ]
 phy = [
     "neuroconv[ecephys_minimal]",
 ]
+
 plexon = [
+    "neuroconv[ecephys_minimal]",
+    "zugbruecke >= 0.2.1; platform_system != 'Windows'",  # Here for backwards compatibility with older versions of the gallery. Remove in 0.8
+]
+
+plexon2 = [
     "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
     "neuroconv[ecephys_minimal]",
+    "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
 ]
 spikegadgets = [
     "neuroconv[ecephys_minimal]",
@@ -225,7 +231,7 @@ tdt = [
 whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
-ecephys = [  # Note that this the requirements of the extractors as they are on pipy
+ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
@@ -242,6 +248,7 @@ ecephys = [  # Note that this the requirements of the extractors as they are on 
     "neuroconv[openephys]",
     "neuroconv[phy]",
     "neuroconv[plexon]",
+    "neuroconv[plexon2]",
     "neuroconv[spike2]",
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
@@ -276,6 +283,7 @@ ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
 brukertiff = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
+    "natsort",
 ]
 caiman = [
     "neuroconv[ophys_minimal]",
@@ -288,7 +296,12 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
 hdf5 = [
+    "neuroconv[hdf5imaging]",
+]
+hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
@@ -299,21 +312,32 @@ miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
     "neuroconv[ophys_minimal]",
+    "neuroconv[video]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
 sbx = [
+    "neuroconv[scanbox]",
+]
+scanbox = [
     "neuroconv[ophys_minimal]",
 ]
 scanimage = [
     "neuroconv[ophys_minimal]",
     "natsort",
+    "tifffile>=2023.3.21",
 ]
 scanimage_legacy = [
+    "neuroconv[ophys_minimal]",
     "scanimage-tiff-reader>=1.4.1",
 ]
+
+
 sima = [
     "neuroconv[ophys_minimal]",
 ]
 suite2p = [
+    "natsort",
     "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
@@ -334,10 +358,10 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
-    "neuroconv[hdf5]",
+    "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
-    "neuroconv[sbx]",
+    "neuroconv[scanbox]",
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
@@ -369,6 +393,7 @@ testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
+    "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
 ]
 
 [tool.black]

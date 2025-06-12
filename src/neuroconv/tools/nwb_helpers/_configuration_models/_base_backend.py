@@ -151,3 +151,56 @@ class BackendConfiguration(BaseModel):
         new_backend_configuration = self.model_copy(deep=True)
         new_backend_configuration.dataset_configurations.update(locations_to_remap)
         return new_backend_configuration
+
+    def apply_global_compression(
+        self,
+        compression_method: str,
+        compression_options: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Apply compression settings to all datasets in this backend configuration.
+
+        This method modifies the backend configuration in-place, applying the specified
+        compression method and options to ALL datasets, regardless of their current
+        compression settings.
+
+        Parameters
+        ----------
+        compression_method : str
+            The compression method to apply to all datasets (e.g., "gzip", "Blosc", "Zstd").
+        compression_options : dict, optional
+            Additional compression options to apply. The available options depend on the
+            compression method chosen.
+
+        Raises
+        ------
+        ValueError
+            If the compression method is not available for this backend type.
+
+        Examples
+        --------
+        >>> backend_config = get_default_backend_configuration(nwbfile, backend="hdf5")
+        >>> backend_config.apply_global_compression("Blosc", {"cname": "zstd", "clevel": 5})
+        """
+        # Import here to avoid circular imports
+        from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS
+        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS
+
+        # Validate compression method for the backend
+        if self.backend == "hdf5":
+            available_methods = AVAILABLE_HDF5_COMPRESSION_METHODS
+        elif self.backend == "zarr":
+            available_methods = AVAILABLE_ZARR_COMPRESSION_METHODS
+        else:
+            raise ValueError(f"Unknown backend: {self.backend}")
+
+        if compression_method not in available_methods:
+            raise ValueError(
+                f"Compression method '{compression_method}' is not available for backend "
+                f"'{self.backend}'. Available methods: {list(available_methods.keys())}"
+            )
+
+        # Apply global compression to ALL datasets
+        for dataset_configuration in self.dataset_configurations.values():
+            dataset_configuration.compression_method = compression_method
+            dataset_configuration.compression_options = compression_options

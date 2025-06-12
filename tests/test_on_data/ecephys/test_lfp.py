@@ -97,7 +97,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
             if not isinstance(recording, BaseRecording):
                 raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
-            npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
+            npt.assert_array_equal(recording.get_traces(return_scaled=False), nwb_lfp_unscaled)
             # This can only be tested if both gain and offset are present
             if recording.has_scaleable_traces():
                 channel_conversion = nwb_lfp_electrical_series.channel_conversion
