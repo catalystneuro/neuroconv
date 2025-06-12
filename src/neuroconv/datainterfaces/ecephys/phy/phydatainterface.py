@@ -38,7 +38,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
             Path to the output Phy folder (containing the params.py).
         exclude_cluster_groups : str or list of str, optional
             Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
         """
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
 

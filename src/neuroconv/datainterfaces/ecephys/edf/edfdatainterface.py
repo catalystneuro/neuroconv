@@ -48,7 +48,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the edf file
-        verbose : bool, default: Falseeeeee
+        verbose : bool, default: False
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
             Key for the ElectricalSeries metadata
