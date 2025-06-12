@@ -53,11 +53,13 @@ use the following structure:
     ...     "name": "PoseEstimationContainerName", # Edit to change the name and if you add multiple DLC containers for disambiguation
     ...     "description": "2D keypoint coordinates estimated using DeepLabCut.",
     ...     "source_software": "DeepLabCut",
-    ...     "dimensions": [0, 0],
+    ...     "source_software_version": "2.2.0",
+    ...     "dimensions": [[0, 0]],
     ...     "skeleton": "SubjectIDSkeleton",
     ...     "devices": ["CameraPoseEstimationContainerName"],
     ...     "scorer": "DLC_resnet50_openfieldAug20shuffle1_30000",
     ...     "original_videos": None,
+    ...     "labeled_videos": None,
     ...     "PoseEstimationSeries": {
     ...         "snout": {
     ...             "name": "PoseEstimationSeriesSnout",
@@ -114,11 +116,13 @@ The metadata structure for DeepLabCut includes:
    - ``name``: Name of the pose estimation container
    - ``description``: Description of the pose estimation data
    - ``source_software``: Software used for pose estimation (DeepLabCut)
-   - ``dimensions``: Video dimensions [height, width]
+   - ``source_software_version``: Version of the software used
+   - ``dimensions``: Video dimensions [height, width] for each video
    - ``skeleton``: Reference to a skeleton defined in Skeletons
    - ``devices``: List of devices used for recording
    - ``scorer``: Name of the DeepLabCut model used
    - ``original_videos``: Paths to original videos (if available)
+   - ``labeled_videos``: Paths to labeled videos (if available)
    - ``PoseEstimationSeries``: Dictionary of series for each bodypart
 
 2. **Skeletons** - Defines the skeleton structure:
