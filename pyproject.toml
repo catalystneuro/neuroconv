@@ -277,7 +277,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.5.13",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@roi_ids_can_be_strings",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -368,7 +368,7 @@ ophys = [
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@roi_ids_can_be_strings",  # GitHub branch
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@roi_ids_can_be_strings",
 ]
 # Note these are references to the package in pipy (not local)
 full = [

@@ -417,12 +417,6 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed=seed,
         )
 
-        # We need to test that roi ids strings work well in the pipelines
-        self.segmentation_extractor._roi_ids = [str(roi_id) for roi_id in self.segmentation_extractor._roi_ids]
-        self.segmentation_extractor._accepted_list = [
-            str(roi_id) for roi_id in self.segmentation_extractor._accepted_list
-        ]
-
     def get_metadata(self) -> dict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata()
