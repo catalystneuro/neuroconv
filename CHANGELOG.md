@@ -1,4 +1,4 @@
-# v0.7.5 (Upcoming)
+# v0.7.5 (June 11, 2025)
 
 ## Removals, Deprecations and Changes
 * Removed automatic subject addition for DeepLabCutInterface. A link is now created only if the skeleton metadata matches the subject ID.  [PR #1362](https://github.com/catalystneuro/neuroconv/pull/1362)
