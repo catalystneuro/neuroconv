@@ -51,7 +51,7 @@ dependencies = [
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
-    "numcodecs<0.16.0", # For supporting zarr < 3
+    "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
 ]
 
 
@@ -392,6 +392,7 @@ testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
+    "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
 ]
 
 [tool.black]
