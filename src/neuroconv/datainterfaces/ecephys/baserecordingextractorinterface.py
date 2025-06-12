@@ -310,7 +310,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
@@ -330,8 +329,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
 
-        starting_time : float, optional
-            Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as : {'raw', 'processed', 'lfp'}, default='raw'
@@ -385,7 +382,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,

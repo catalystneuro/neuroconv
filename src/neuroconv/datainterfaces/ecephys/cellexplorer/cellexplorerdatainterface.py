@@ -352,7 +352,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         )
 
     def get_original_timestamps(self):
-        num_frames = self.recording_extractor.get_num_frames()
+        num_frames = self.recording_extractor.get_num_samples()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
         timestamps = np.arange(num_frames) / sampling_frequency
         return timestamps
