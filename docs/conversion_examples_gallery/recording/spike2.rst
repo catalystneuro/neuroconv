@@ -1,7 +1,7 @@
 Spike2 data conversion
 ----------------------
 
-Install NeuroConv with the additional dependencies necessary for reading Spike2 data by CED.
+Install NeuroConv with the additional dependencies necessary for reading Spike2 data by Cambridge Electronic Design (CED).
 
 .. code-block:: bash
 
@@ -31,3 +31,9 @@ Convert Spike2 data to NWB using
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+.. note::
+    At the moment, Spike2 data conversion is not supported because the python API only supports python 3.9 which we no longer
+    support. We are in the process of updating the interface to support python 3.10 and above. Please fill an issue if you
+    require this feature so we can assess the priority of this feature. You can use a version an older version of NeuroConv (< 0.7.3>)
+    to converter this data in the meanwhile
