@@ -251,7 +251,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                 "dimensions": {
                     "type": ["array", "null"],
                     "description": "Dimensions [height, width] of the labeled video(s)",
-                    "items": {"type": "integer"},
+                    "items": {"type": "array", "items": {"type": "integer"}},
                 },
                 "original_videos": {
                     "type": ["array", "null"],
@@ -346,7 +346,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         individuals = df.columns.get_level_values("individuals").unique().tolist()
 
         # Get video dimensions from config if available
-        dimensions = [0, 0]
+        dimensions = None
         if self.source_data.get("config_file_path"):
             from ._dlc_utils import _get_video_info_from_config_file
 
@@ -358,7 +358,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             try:
                 shape_parts = [int(x.strip()) for x in image_shape.split(",")]
                 if len(shape_parts) == 4:
-                    dimensions = [shape_parts[3], shape_parts[1]]  # [height, width]
+                    dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
             except (ValueError, IndexError):
                 pass
 
