@@ -6,6 +6,7 @@ from warnings import warn
 from pydantic import FilePath, validate_call
 
 from ..baseicephysinterface import BaseIcephysInterface
+from ....utils import DeepDict
 
 
 def get_start_datetime(neo_reader):
@@ -87,7 +88,7 @@ class AbfInterface(BaseIcephysInterface):
             icephys_metadata_file_path=icephys_metadata_file_path,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
         metadata = super().get_metadata()

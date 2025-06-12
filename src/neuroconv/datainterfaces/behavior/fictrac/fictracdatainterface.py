@@ -10,7 +10,7 @@ from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
-from ....utils import calculate_regular_series_rate
+from ....utils import DeepDict, calculate_regular_series_rate
 
 
 class FicTracDataInterface(BaseTemporalAlignmentInterface):
@@ -192,7 +192,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self._timestamps = None
         self._starting_time = None
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         session_start_time = extract_session_start_time(

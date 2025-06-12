@@ -4,6 +4,7 @@ from pynwb import NWBFile
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
 from ....basedatainterface import BaseDataInterface
 from ....utils import (
+    DeepDict,
     get_json_schema_from_method_signature,
 )
 
@@ -96,7 +97,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         session_start_time = _get_session_start_time(element=self._xml_root)
