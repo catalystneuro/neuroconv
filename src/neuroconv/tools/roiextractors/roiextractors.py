@@ -790,10 +790,12 @@ def add_plane_segmentation_to_nwbfile(
     default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
     if include_roi_acceptance:
-        accepted_ids = [roi_id in segmentation_extractor.get_accepted_list() for roi_id in roi_ids]
-        rejected_ids = [roi_id in segmentation_extractor.get_rejected_list() for roi_id in roi_ids]
+        accepted_list = segmentation_extractor.get_accepted_list()
+        is_id_accepted = [int(roi_id in accepted_list) for roi_id in roi_ids]
+        rejected_list = segmentation_extractor.get_rejected_list()
+        is_id_rejected = [int(roi_id in rejected_list) for roi_id in roi_ids]
     else:
-        accepted_ids, rejected_ids = None, None
+        is_id_accepted, is_id_rejected = None, None
     if mask_type == "image":
         image_or_pixel_masks = segmentation_extractor.get_roi_image_masks()
     elif mask_type == "pixel" or mask_type == "voxel":
@@ -814,8 +816,8 @@ def add_plane_segmentation_to_nwbfile(
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
         image_or_pixel_masks=image_or_pixel_masks,
-        accepted_ids=accepted_ids,
-        rejected_ids=rejected_ids,
+        is_id_accepted=is_id_accepted,
+        is_id_rejected=is_id_rejected,
         roi_locations=roi_locations,
         default_plane_segmentation_index=default_plane_segmentation_index,
         nwbfile=nwbfile,
@@ -839,8 +841,8 @@ def _add_plane_segmentation(
     include_roi_centroids: bool = False,
     roi_locations: np.ndarray | None = None,
     include_roi_acceptance: bool = False,
-    accepted_ids: list | None = None,
-    rejected_ids: list | None = None,
+    is_id_accepted: list | None = None,
+    is_id_rejected: list | None = None,
     mask_type: str | None = "image",  # Literal["image", "pixel"] | None
     iterator_options: dict | None = None,
 ) -> NWBFile:
@@ -882,17 +884,16 @@ def _add_plane_segmentation(
     image_segmentation = ophys[image_segmentation_name]
 
     if plane_segmentation_name in image_segmentation.plane_segmentations:
-        # In this case we don't do anyyhthing
+        # At the moment, we don't support extending an existing PlaneSegmentation.
         return nwbfile
-
-    roi_names = [str(roi_id) for roi_id in background_or_roi_ids]
-    roi_indices = [background_or_roi_ids.index(roi_id) for roi_id in background_or_roi_ids]
 
     imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
     plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
     plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
     plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
 
+    roi_names = [str(roi_id) for roi_id in background_or_roi_ids]
+    roi_indices = [background_or_roi_ids.index(roi_id) for roi_id in background_or_roi_ids]
     plane_segmentation.add_column(
         name="roi_name",
         description="The unique identifier for each ROI.",
@@ -936,6 +937,14 @@ def _add_plane_segmentation(
             pixel_mask = pixel_masks[roi_index]
             pixel_mask_to_write = [tuple(x) for x in pixel_mask]
             plane_segmentation.add_roi(**{"id": roi_index, "roi_name": roi_name, mask_type_kwarg: pixel_mask_to_write})
+    else:
+
+        plane_segmentation = PlaneSegmentation(id=roi_indices, **plane_segmentation_kwargs)
+        plane_segmentation.add_column(
+            name="roi_name",
+            description="The unique identifier for each ROI.",
+            data=roi_names,
+        )
 
     if include_roi_centroids:
         # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
@@ -949,12 +958,12 @@ def _add_plane_segmentation(
         plane_segmentation.add_column(
             name="Accepted",
             description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-            data=accepted_ids,
+            data=is_id_accepted,
         )
         plane_segmentation.add_column(
             name="Rejected",
             description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-            data=rejected_ids,
+            data=is_id_rejected,
         )
 
     image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
