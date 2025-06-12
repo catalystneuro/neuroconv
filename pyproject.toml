@@ -304,6 +304,10 @@ hdf5 = [
 hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
+inscopix = [
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
+]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -358,6 +362,7 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
+    "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
