@@ -1,7 +1,7 @@
 from typing import Optional
 
-from pynwb import NWBFile
 from pydantic import DirectoryPath
+from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
