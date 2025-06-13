@@ -209,7 +209,9 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
 
 class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = MinianSegmentationInterface
-    interface_kwargs = dict(folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian")
+    interface_kwargs = dict(
+        folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian" / "segmented_data_3units_100frames"
+    )
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -245,7 +247,7 @@ class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 class TestMinianSegmentationInterfaceWithStubTest(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = MinianSegmentationInterface
     interface_kwargs = dict(
-        folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian",
+        folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian" / "segmented_data_3units_100frames",
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)

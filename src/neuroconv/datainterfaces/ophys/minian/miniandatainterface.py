@@ -1,5 +1,5 @@
 from typing import Optional
-
+import numpy as np
 from pynwb import NWBFile
 from roiextractors.extraction_tools import PathType
 
@@ -57,3 +57,23 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
         )
+
+    def get_metadata(self) -> dict:
+        """
+        Get metadata for the Minian segmentation data.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary containing imaging metadata from the Minian output.
+            This includes:
+            - session_id: Unique identifier for the session.
+            - subject_id: Unique identifier for the subject.
+        """
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_id"] = self.segmentation_extractor.get_session_id()
+        metadata["Subject"]["subject_id"] = self.segmentation_extractor.get_subject_id()
+
+    def get_original_timestamps(self) -> np.ndarray:
+        """Get the original timestamps from the segmentation extractor."""
+        return self.segmentation_extractor.get_original_timestamps()
