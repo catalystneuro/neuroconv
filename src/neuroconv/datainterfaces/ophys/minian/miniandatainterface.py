@@ -1,7 +1,7 @@
 from typing import Optional
 
 from pynwb import NWBFile
-from roiextractors.extraction_tools import PathType
+from pydantic import DirectoryPath
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
@@ -19,7 +19,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         source_metadata["properties"]["folder_path"]["description"] = "Path to .zarr output."
         return source_metadata
 
-    def __init__(self, folder_path: PathType, verbose: bool = False):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
 
         Parameters
@@ -73,3 +73,4 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_id"] = self.segmentation_extractor.get_session_id()
         metadata["Subject"]["subject_id"] = self.segmentation_extractor.get_subject_id()
+        return metadata
