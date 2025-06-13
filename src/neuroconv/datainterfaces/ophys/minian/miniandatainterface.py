@@ -74,7 +74,3 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_id"] = self.segmentation_extractor.get_session_id()
         metadata["Subject"]["subject_id"] = self.segmentation_extractor.get_subject_id()
-
-    def get_original_timestamps(self) -> np.ndarray:
-        """Get the original timestamps from the segmentation extractor."""
-        return self.segmentation_extractor.get_original_timestamps()
