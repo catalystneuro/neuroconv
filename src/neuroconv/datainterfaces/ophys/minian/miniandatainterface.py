@@ -1,4 +1,5 @@
 from typing import Optional
+
 import numpy as np
 from pynwb import NWBFile
 from roiextractors.extraction_tools import PathType
