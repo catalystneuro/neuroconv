@@ -471,14 +471,25 @@ class TestAddPlaneSegmentation(TestCase):
                 expected_rejected_roi_ids=[0] * 10,
             ),
             param(
-                rejected_list=list(np.arange(0, 10)),
+                rejected_list=[
+                    "roi_0",
+                    "roi_1",
+                    "roi_2",
+                    "roi_3",
+                    "roi_4",
+                    "roi_5",
+                    "roi_6",
+                    "roi_7",
+                    "roi_8",
+                    "roi_9",
+                ],
                 expected_rejected_roi_ids=[1] * 10,
             ),
             param(
                 rejected_list=[
-                    2,
-                    6,
-                    8,
+                    "roi_2",
+                    "roi_6",
+                    "roi_8",
                 ],
                 expected_rejected_roi_ids=[
                     0,

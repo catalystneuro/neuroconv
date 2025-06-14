@@ -790,10 +790,12 @@ def add_plane_segmentation_to_nwbfile(
     default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
     if include_roi_acceptance:
-        accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
-        rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
+        accepted_list = segmentation_extractor.get_accepted_list()
+        is_id_accepted = [int(roi_id in accepted_list) for roi_id in roi_ids]
+        rejected_list = segmentation_extractor.get_rejected_list()
+        is_id_rejected = [int(roi_id in rejected_list) for roi_id in roi_ids]
     else:
-        accepted_ids, rejected_ids = None, None
+        is_id_accepted, is_id_rejected = None, None
     if mask_type == "image":
         image_or_pixel_masks = segmentation_extractor.get_roi_image_masks()
     elif mask_type == "pixel" or mask_type == "voxel":
@@ -814,8 +816,8 @@ def add_plane_segmentation_to_nwbfile(
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
         image_or_pixel_masks=image_or_pixel_masks,
-        accepted_ids=accepted_ids,
-        rejected_ids=rejected_ids,
+        is_id_accepted=is_id_accepted,
+        is_id_rejected=is_id_rejected,
         roi_locations=roi_locations,
         default_plane_segmentation_index=default_plane_segmentation_index,
         nwbfile=nwbfile,
@@ -830,7 +832,7 @@ def add_plane_segmentation_to_nwbfile(
 
 
 def _add_plane_segmentation(
-    background_or_roi_ids: list,
+    background_or_roi_ids: list[int | str],
     image_or_pixel_masks: np.ndarray,
     default_plane_segmentation_index: int,
     nwbfile: NWBFile,
@@ -839,8 +841,8 @@ def _add_plane_segmentation(
     include_roi_centroids: bool = False,
     roi_locations: np.ndarray | None = None,
     include_roi_acceptance: bool = False,
-    accepted_ids: list | None = None,
-    rejected_ids: list | None = None,
+    is_id_accepted: list | None = None,
+    is_id_rejected: list | None = None,
     mask_type: str | None = "image",  # Literal["image", "pixel"] | None
     iterator_options: dict | None = None,
 ) -> NWBFile:
@@ -881,70 +883,90 @@ def _add_plane_segmentation(
     image_segmentation_name = image_segmentation_metadata["name"]
     image_segmentation = ophys[image_segmentation_name]
 
-    # Check if the plane segmentation already exists in the image segmentation
-    if plane_segmentation_name not in image_segmentation.plane_segmentations:
-        roi_ids = background_or_roi_ids
+    if plane_segmentation_name in image_segmentation.plane_segmentations:
+        # At the moment, we don't support extending an existing PlaneSegmentation.
+        return nwbfile
 
-        imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
-        plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
-        plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
-        if mask_type is None:
-            plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
-        elif mask_type == "image":
-            plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
-            plane_segmentation.add_column(
-                name="image_mask",
-                description="Image masks for each ROI.",
-                data=image_or_pixel_masks.T,
+    imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
+    plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
+    plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
+    plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
+
+    roi_names = [str(roi_id) for roi_id in background_or_roi_ids]
+    roi_indices = [background_or_roi_ids.index(roi_id) for roi_id in background_or_roi_ids]
+    plane_segmentation.add_column(
+        name="roi_name",
+        description="The unique identifier for each ROI.",
+    )
+
+    if mask_type == "image":
+        plane_segmentation.add_column(
+            name="image_mask",
+            description="Image masks for each ROI.",
+        )
+
+        image_mask_array = image_or_pixel_masks.T
+        for roi_index, roi_name in zip(roi_indices, roi_names):
+            image_mask = image_mask_array[roi_index]
+            plane_segmentation.add_roi(**{"id": roi_index, "roi_name": roi_name, "image_mask": image_mask})
+
+    elif mask_type == "pixel" or mask_type == "voxel":
+        pixel_masks = image_or_pixel_masks
+        num_pixel_dims = pixel_masks[0].shape[1]
+
+        assert num_pixel_dims in [3, 4], (
+            "The segmentation extractor returned a pixel mask that is not 3- or 4- dimensional! "
+            "Please open a ticket with https://github.com/catalystneuro/roiextractors/issues"
+        )
+        if mask_type == "pixel" and num_pixel_dims == 4:
+            warnings.warn(
+                "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
+                "Using mask_type='voxel' instead."
             )
-        elif mask_type == "pixel" or mask_type == "voxel":
-            pixel_masks = image_or_pixel_masks
-            num_pixel_dims = pixel_masks[0].shape[1]
-
-            assert num_pixel_dims in [3, 4], (
-                "The segmentation extractor returned a pixel mask that is not 3- or 4- dimensional! "
-                "Please open a ticket with https://github.com/catalystneuro/roiextractors/issues"
+            mask_type = "voxel"
+        if mask_type == "voxel" and num_pixel_dims == 3:
+            warnings.warn(
+                "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
+                "Using mask_type='pixel' instead."
             )
-            if mask_type == "pixel" and num_pixel_dims == 4:
-                warnings.warn(
-                    "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
-                    "Using mask_type='voxel' instead."
-                )
-                mask_type = "voxel"
-            if mask_type == "voxel" and num_pixel_dims == 3:
-                warnings.warn(
-                    "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
-                    "Using mask_type='pixel' instead."
-                )
-                mask_type = "pixel"
+            mask_type = "pixel"
 
-            mask_type_kwarg = f"{mask_type}_mask"
-            plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
+        mask_type_kwarg = f"{mask_type}_mask"
 
-            for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
-                plane_segmentation.add_roi(**{"id": roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
+        for roi_index, roi_name in zip(roi_indices, roi_names):
+            pixel_mask = pixel_masks[roi_index]
+            pixel_mask_to_write = [tuple(x) for x in pixel_mask]
+            plane_segmentation.add_roi(**{"id": roi_index, "roi_name": roi_name, mask_type_kwarg: pixel_mask_to_write})
+    else:
 
-        if include_roi_centroids:
-            # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
-            plane_segmentation.add_column(
-                name="ROICentroids",
-                description="The x, y, (z) centroids of each ROI.",
-                data=roi_locations,
-            )
+        plane_segmentation = PlaneSegmentation(id=roi_indices, **plane_segmentation_kwargs)
+        plane_segmentation.add_column(
+            name="roi_name",
+            description="The unique identifier for each ROI.",
+            data=roi_names,
+        )
 
-        if include_roi_acceptance:
-            plane_segmentation.add_column(
-                name="Accepted",
-                description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-                data=accepted_ids,
-            )
-            plane_segmentation.add_column(
-                name="Rejected",
-                description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-                data=rejected_ids,
-            )
+    if include_roi_centroids:
+        # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
+        plane_segmentation.add_column(
+            name="ROICentroids",
+            description="The x, y, (z) centroids of each ROI.",
+            data=roi_locations,
+        )
 
-        image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
+    if include_roi_acceptance:
+        plane_segmentation.add_column(
+            name="Accepted",
+            description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
+            data=is_id_accepted,
+        )
+        plane_segmentation.add_column(
+            name="Rejected",
+            description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
+            data=is_id_rejected,
+        )
+
+    image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
 
@@ -1227,13 +1249,15 @@ def _create_roi_table_region(
 
     # Get plane segmentation from the image segmentation
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
+    available_roi_names = list(plane_segmentation["roi_name"][:])
 
     # Create a reference for ROIs from the plane segmentation
-    id_list = list(plane_segmentation.id)
+    roi_names = [str(roi_id) for roi_id in background_or_roi_ids]
+    region = [available_roi_names.index(roi_name) for roi_name in roi_names]
 
     imaging_plane_name = plane_segmentation.imaging_plane.name
     roi_table_region = plane_segmentation.create_roi_table_region(
-        region=[id_list.index(id) for id in background_or_roi_ids],
+        region=region,
         description=f"The ROIs for {imaging_plane_name}.",
     )
 
