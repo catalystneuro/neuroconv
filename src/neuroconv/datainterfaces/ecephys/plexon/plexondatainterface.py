@@ -225,7 +225,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         neo_reader = self.sorting_extractor.neo_reader
 
