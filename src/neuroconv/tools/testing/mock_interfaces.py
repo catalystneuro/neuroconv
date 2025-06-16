@@ -22,6 +22,7 @@ from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
 from ...utils import ArrayType, get_json_schema_from_method_signature
+from ...utils.dict import DeepDict
 
 
 class MockInterface(BaseDataInterface):
@@ -33,7 +34,7 @@ class MockInterface(BaseDataInterface):
 
         super().__init__(verbose=verbose, **source_data)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -222,7 +223,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -283,7 +284,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         string_unit_ids = [str(id) for id in self.sorting_extractor.unit_ids]
         self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -345,7 +346,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -417,7 +418,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed=seed,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
