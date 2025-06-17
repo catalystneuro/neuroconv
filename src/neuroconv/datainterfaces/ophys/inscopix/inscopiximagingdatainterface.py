@@ -191,8 +191,4 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
             Specifies the type of photon series to be used. Defaults to "OnePhotonSeries" for Inscopix data.
         """
-        super().add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            photon_series_type=photon_series_type
-        )
+        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, photon_series_type=photon_series_type)

@@ -30,4 +30,4 @@ A simple to-do list for the Neuroconv release process:
 6. **Post-Release: Bump Version and Update Changelog**:
 
    - To comply with the one patch version ahead policy, bump the version after the release `Example <https://github.com/catalystneuro/neuroconv/commit/1f4c90d1d1a8095937f9a9bca883e89b36341d5c>`_.
-   - Update the changelog with a new Upcoming header and the empty sections `Example <https://github.com/catalystneuro/neuroconv/commit/207c02816a67577b7d138bf7fb74640dd388f790>`_.
+   - Update the changelog with a new Upcoming header and the empty sections `Example <https://github.com/catalystneuro/neuroconv/commit/bb555d04375f21a266d5bbe5e0eaece823f3393b>`_.

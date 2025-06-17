@@ -33,7 +33,24 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
     compression_method: (
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | InstanceOf[h5py._hl.filters.FilterRefBase] | None
+        Literal[
+            "szip",
+            "lzf",
+            "gzip",
+            "Bitshuffle",
+            "Blosc",
+            "Blosc2",
+            "BZip2",
+            "FciDecomp",
+            "LZ4",
+            "Sperr",
+            "SZ",
+            "SZ3",
+            "Zfp",
+            "Zstd",
+        ]
+        | InstanceOf[h5py._hl.filters.FilterRefBase]
+        | None
     ) = Field(
         default="gzip",
         description=(
@@ -62,10 +79,9 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             elif isinstance(self.compression_method, str):
                 compression_options = self.compression_options or dict()
                 # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
-                compression_bundle = dict(
-                    **getattr(hdf5plugin, self.compression_method)(**compression_options),
-                    allow_plugin_filters=True,
-                )
+                plugin_class = getattr(hdf5plugin, self.compression_method)
+                plugin_instance = plugin_class(**compression_options)
+                compression_bundle = dict(**plugin_instance, allow_plugin_filters=True)
             elif isinstance(self.compression_method, h5py._hl.filters.FilterRefBase):
                 compression_bundle = dict(**self.compression_method, allow_plugin_filters=True)
             elif self.compression_method is None:

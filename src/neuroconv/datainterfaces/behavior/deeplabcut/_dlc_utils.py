@@ -296,7 +296,6 @@ def _add_pose_estimation_to_nwbfile(
                 "scorer": "DeepLabCut",
                 "devices": [camera_default_name],
                 "PoseEstimationSeries": {},
-                "dimensions": [0, 0],
                 "skeleton": skeleton_default_name,
             }
         },
@@ -412,9 +411,12 @@ def _add_pose_estimation_to_nwbfile(
         pose_estimation_series=pose_estimation_series,
         description=container_metadata["description"],
         original_videos=container_metadata.get("original_videos", None),
+        labeled_videos=container_metadata.get("labeled_videos", None),
+        dimensions=container_metadata.get("dimensions", None),
         devices=[camera],
         scorer=container_metadata["scorer"],
         source_software=container_metadata["source_software"],
+        source_software_version=container_metadata.get("source_software_version", None),
         skeleton=skeleton,
     )
 
