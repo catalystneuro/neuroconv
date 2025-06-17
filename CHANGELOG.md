@@ -1,4 +1,4 @@
-# v0.7.0 (Upcoming)
+# v0.8.0 (Upcoming)
 
 ## Removals, Deprecations and Changes
 
