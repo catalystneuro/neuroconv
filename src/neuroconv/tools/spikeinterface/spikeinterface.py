@@ -202,7 +202,7 @@ def add_electrical_series_to_nwbfile(
 
     warnings.warn(
         "This function is deprecated and will be removed in or October 2025. "
-        "Use the 'add_recording_metadata_to_nwbfile' function instead.",
+        "Use the 'add_recording_to_nwbfile' function instead.",
         DeprecationWarning,
     )
 
