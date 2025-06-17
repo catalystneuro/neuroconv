@@ -40,11 +40,18 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata = super().get_metadata()
         extractor = self.segmentation_extractor
 
-        # Get session information using new extractor methods
-        session_info = extractor.get_session_info()
+        # Get all metadata from extractor using the consolidated method
+        extractor_metadata = extractor._get_metadata()
+        
+        # Extract individual components
+        session_info = extractor_metadata.get("session", {})
+        device_info = extractor_metadata.get("device", {})
+        subject_info = extractor_metadata.get("subject", {})
+        analysis_info = extractor_metadata.get("analysis", {})
+        probe_info = extractor_metadata.get("probe", {})
+        session_start_time = extractor_metadata.get("session_start_time")
 
         # Session start time
-        session_start_time = extractor.get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
@@ -52,7 +59,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if session_info.get("session_name"):
             session_desc = f"Session: {session_info['session_name']}"
             # Get subject info for potential description addition
-            subject_info = extractor.get_subject_info()
             if subject_info and subject_info.get("description"):
                 session_desc += f"; {subject_info['description']}"
             metadata["NWBFile"]["session_description"] = session_desc
@@ -60,8 +66,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if session_info.get("experimenter_name"):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
-        # Get device information
-        device_info = extractor.get_device_info()
+        # Device information
         if device_info:
             device_metadata = metadata["Ophys"]["Device"][0]
 
@@ -79,7 +84,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 device_desc_parts.append(f"Software version {device_info['acquisition_software_version']}")
 
             # Add probe information specific to segmentation
-            probe_info = extractor.get_probe_info()
             if probe_info:
                 for field in [
                     "Probe Diameter (mm)",
@@ -143,7 +147,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             imaging_plane_metadata["optical_channel"] = [optical_channel]
 
         # Image segmentation (specific to segmentation interface)
-        analysis_info = extractor.get_analysis_info()
         segmentation_desc = "Inscopix cell segmentation"
         if analysis_info and analysis_info.get("cell_identification_method"):
             segmentation_desc += f" using {analysis_info['cell_identification_method']}"
@@ -157,9 +160,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata["Ophys"]["ImageSegmentation"]["description"] = segmentation_desc
 
         # Subject metadata
-        subject_info = extractor.get_subject_info()
-
-        # Build subject metadata
         subject_metadata = {}
         has_any_subject_data = False
 
@@ -224,7 +224,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     def add_to_nwbfile(self, nwbfile, metadata=None, **conversion_options):
         """
         Add Inscopix segmentation data to an NWB file.
-
+        
         Parameters
         ----------
         nwbfile : pynwb.NWBFile
@@ -233,7 +233,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             Metadata dictionary.
         **conversion_options
             Additional conversion options.
-
+            
         Raises
         ------
         ValueError
@@ -246,6 +246,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 "Cell segmentation interfaces require at least one ROI to create valid NWB segmentation data. "
                 "Please verify that the cell segmentation was successful and identified cells in your data."
             )
-
+        
         # Proceed with normal conversion
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)

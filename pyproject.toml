@@ -307,7 +307,7 @@ hdf5imaging = [
 ]
 inscopix = [
     "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@inscopix_fix",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
 ]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",
