@@ -9,6 +9,7 @@ from .spikeglx_utils import get_session_start_time
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
+    DeepDict,
     get_json_schema_from_method_signature,
 )
 
@@ -100,7 +101,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         session_start_time = get_session_start_time(self.meta)
