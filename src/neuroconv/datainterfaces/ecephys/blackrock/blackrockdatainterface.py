@@ -6,7 +6,7 @@ from pydantic import FilePath
 from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -64,7 +64,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         self.stream_id = str(nsx_to_load)
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
@@ -123,7 +123,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])

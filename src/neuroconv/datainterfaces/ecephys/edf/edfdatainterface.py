@@ -2,6 +2,7 @@ from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
+from ....utils import DeepDict
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
@@ -91,7 +92,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)
