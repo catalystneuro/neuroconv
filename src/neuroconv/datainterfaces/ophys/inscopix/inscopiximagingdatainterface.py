@@ -49,7 +49,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         # Get all metadata from extractor using the consolidated method
         extractor_metadata = extractor._get_metadata()
-        
+
         # Extract individual components
         session_info = extractor_metadata.get("session", {})
         device_info = extractor_metadata.get("device", {})
