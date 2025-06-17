@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....utils import DeepDict
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):
@@ -36,7 +37,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             photon_series_type=photon_series_type,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Scanbox imaging data.
 
