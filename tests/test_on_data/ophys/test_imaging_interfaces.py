@@ -1003,10 +1003,9 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceT
         device = metadata["Ophys"]["Device"][0]
         assert device["name"] == "NVista3"
         device_desc = device.get("description", "")
-        if device_desc:
-            assert "Inscopix Microscope" in device_desc
-            assert "Serial: FA-11092903" in device_desc
-            assert "Software: 1.3.0" in device_desc
+        assert "Inscopix Microscope" in device_desc
+        assert "Serial: FA-11092903" in device_desc
+        assert "Software: 1.3.0" in device_desc
 
         # ImagingPlane checks
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]

@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import FilePath, validate_call
 
@@ -27,7 +27,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, optional
             If True, outputs additional information during processing.
         """
-        # Default to OnePhotonSeries for metadata generation, but allow override during conversion
         super().__init__(
             file_path=file_path,
             verbose=verbose,
@@ -44,7 +43,9 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
+        # Get metadata from parent (already configured for OnePhotonSeries)
         metadata = super().get_metadata()
+        
         extractor = self.imaging_extractor
 
         # Get all metadata from extractor using the consolidated method
@@ -166,7 +167,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             if "sex" not in subject_metadata:
                 subject_metadata["sex"] = "U"
 
-            if "Subject" in metadata and isinstance(metadata["Subject"], dict):
+            if "Subject" in metadata:
                 metadata["Subject"].update(subject_metadata)
             else:
                 metadata["Subject"] = subject_metadata
@@ -177,7 +178,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile,
         metadata: Optional[dict] = None,
-        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "OnePhotonSeries",
+        **kwargs,
     ):
         """
         Add the Inscopix data to the NWB file.
@@ -187,8 +188,10 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         nwbfile : NWBFile
             NWB file to add the data to.
         metadata : dict, optional
-            Metadata dictionary.
-        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, optional
-            Specifies the type of photon series to be used. Defaults to "OnePhotonSeries" for Inscopix data.
+            Metadata dictionary. If None, will be generated dynamically with OnePhotonSeries.
+        **kwargs
+            Additional keyword arguments passed to the parent add_to_nwbfile method.
         """
-        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, photon_series_type=photon_series_type)
+        kwargs['photon_series_type'] = "OnePhotonSeries"
+        
+        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **kwargs)
