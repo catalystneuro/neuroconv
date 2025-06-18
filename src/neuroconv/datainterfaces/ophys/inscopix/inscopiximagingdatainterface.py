@@ -45,7 +45,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         # Get metadata from parent (already configured for OnePhotonSeries)
         metadata = super().get_metadata()
-        
+
         extractor = self.imaging_extractor
 
         # Get all metadata from extractor using the consolidated method
@@ -192,6 +192,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         **kwargs
             Additional keyword arguments passed to the parent add_to_nwbfile method.
         """
-        kwargs['photon_series_type'] = "OnePhotonSeries"
-        
+        kwargs["photon_series_type"] = "OnePhotonSeries"
+
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **kwargs)
