@@ -1015,7 +1015,6 @@ def add_fluorescence_traces_to_nwbfile(
     plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
     iterator_options: dict | None = None,
-    compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -1042,17 +1041,6 @@ def add_fluorescence_traces_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
-    # TODO: remove completely after 10/1/2024
-    if compression_options is not None:
-        warnings.warn(
-            message=(
-                "Specifying compression methods and their options at the level of tool functions has been deprecated. "
-                "Please use the `configure_backend` tool function for this purpose."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-
     default_plane_segmentation_index = 0
 
     traces_to_add = segmentation_extractor.get_traces_dict()
