@@ -932,7 +932,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
     )
     optical_series_name = "OnePhotonSeries"
-  
+
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for file with minimal acquisition info."""
 
@@ -981,19 +981,19 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min:
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
-    
+
     def test_multiplane_not_implemented_error(self):
         """Test that multiplane ISXD files raise NotImplementedError with proper message."""
         from neuroconv.datainterfaces import InscopixImagingInterface
-        
+
         interface_kwargs = dict(
             file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
         )
-        
+
         # Test that initialization raises NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
             InscopixImagingInterface(**interface_kwargs)
-        
+
         # Verify the error message contains expected information
         error_message = str(exc_info.value)
         assert "Multiplane ISXD file detected but not supported" in error_message
@@ -1006,7 +1006,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
         assert "Loading as 2D would result in incorrect data interpretation" in error_message
         assert "https://github.com/catalystneuro/roiextractors/issues" in error_message
 
-        
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
@@ -1016,7 +1016,6 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     optical_series_name = "OnePhotonSeries"
-
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for uint8 file with minimal acquisition info."""

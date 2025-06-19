@@ -1,6 +1,6 @@
-from typing import Optional
 import json
 from pathlib import Path
+from typing import Optional
 
 from pydantic import FilePath, validate_call
 
@@ -10,64 +10,64 @@ from ....utils import DeepDict
 
 def _check_multiplane_file(file_path):
     """Check if file contains multiplane configuration and raise error if detected."""
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         content = f.read()
-    
-    content_str = content.decode('utf-8', errors='ignore')
-    
+
+    content_str = content.decode("utf-8", errors="ignore")
+
     # Simple check: if no multiplane keyword, it's safe
-    if 'multiplane' not in content_str:
+    if "multiplane" not in content_str:
         return
-    
+
     # Find the multiplane position
-    multiplane_pos = content_str.find('multiplane')
-    
+    multiplane_pos = content_str.find("multiplane")
+
     # Find the JSON containing multiplane
     json_start = -1
     brace_count = 0
-    
+
     # Search backwards for the opening brace
     for i in range(multiplane_pos, -1, -1):
-        if content_str[i] == '}':
+        if content_str[i] == "}":
             brace_count += 1
-        elif content_str[i] == '{':
+        elif content_str[i] == "{":
             if brace_count == 0:
                 json_start = i
                 break
             brace_count -= 1
-    
+
     if json_start == -1:
         return
-    
+
     # Find the end of this JSON object
     brace_count = 0
     json_end = -1
-    
+
     for i in range(json_start, len(content_str)):
-        if content_str[i] == '{':
+        if content_str[i] == "{":
             brace_count += 1
-        elif content_str[i] == '}':
+        elif content_str[i] == "}":
             brace_count -= 1
             if brace_count == 0:
                 json_end = i + 1
                 break
-    
+
     if json_end == -1:
         return
-    
+
     # Extract and parse the JSON
     json_str = content_str[json_start:json_end]
     parsed_json = json.loads(json_str)
-    
+
     # Check for multiplane configuration
-    if isinstance(parsed_json, dict) and 'multiplane' in parsed_json:
-        multiplane_config = parsed_json['multiplane']
-        
+    if isinstance(parsed_json, dict) and "multiplane" in parsed_json:
+        multiplane_config = parsed_json["multiplane"]
+
         if multiplane_config:
-            enabled = multiplane_config.get('enabled', False)
-            active_planes = multiplane_config.get('activePlanes', 0)
-            planes = multiplane_config.get('planes', {})
-            
+            enabled = multiplane_config.get("enabled", False)
+            active_planes = multiplane_config.get("activePlanes", 0)
+            planes = multiplane_config.get("planes", {})
+
             # Check if this is actually multiplane
             if enabled or active_planes > 1 or len(planes) > 1:
                 raise NotImplementedError(
@@ -108,7 +108,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             If True, outputs additional information during processing.
         **kwargs : dict, optional
             Additional keyword arguments passed to the parent class.
-            
+
         Raises
         ------
         NotImplementedError
@@ -116,7 +116,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         # Check for multiplane configuration before proceeding
         _check_multiplane_file(file_path)
-        
+
         kwargs.setdefault("photon_series_type", "OnePhotonSeries")
         super().__init__(
             file_path=file_path,
