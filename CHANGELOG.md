@@ -1,6 +1,6 @@
 # v0.7.6 (Upcoming)
-# v0.8.0 (Upcoming)
 
+* Fixed incorrect `default: False` formatting in multiple datainterface docstrings [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
