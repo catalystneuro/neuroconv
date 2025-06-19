@@ -36,7 +36,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         DeepDict
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
-        
+
         TODO: Determine the excitation and emission wavelengths for each Inscopix microscope.
         We currently do not know how to map the names returned by get_acquisition_info['MicroscopeType']
         to the actual microscope models, as we do not have example data for each type.
