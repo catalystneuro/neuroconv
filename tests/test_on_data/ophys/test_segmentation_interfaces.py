@@ -284,7 +284,9 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         np.testing.assert_allclose(imaging_plane["imaging_rate"], 9.998700168978033, rtol=1e-3)
 
         # Check field of view description exact match
-        expected_plane_desc = "Inscopix imaging plane with field of view 398x366 pixels; Focus: 1000 µm; Exposure: 33 ms; Gain: 6"
+        expected_plane_desc = (
+            "Inscopix imaging plane with field of view 398x366 pixels; Focus: 1000 µm; Exposure: 33 ms; Gain: 6"
+        )
         assert imaging_plane["description"] == expected_plane_desc
 
         # Check optical channel information
