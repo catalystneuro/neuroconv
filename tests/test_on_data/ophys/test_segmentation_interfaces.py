@@ -225,10 +225,12 @@ skip_on_python_313 = pytest.mark.skipif(
     "See:https://github.com/inscopix/pyisx/issues",
 )
 
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface."""
+
     data_interface_cls = InscopixSegmentationInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
@@ -313,10 +315,12 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         raw_traces_metadata = metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]
         assert raw_traces_metadata["name"] == "RoiResponseSeries"
 
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface with the cellset_series_part1 dataset."""
+
     data_interface_cls = InscopixSegmentationInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
@@ -374,6 +378,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         raw_traces_metadata = metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]
         assert raw_traces_metadata["name"] == "RoiResponseSeries"
 
+
 @skip_on_darwin_arm64
 @skip_on_python_313
 class TestInscopixSegmentationInterfaceEmptyCellSet:
@@ -405,7 +410,6 @@ class TestInscopixSegmentationInterfaceEmptyCellSet:
         assert "ImageSegmentation" in metadata["Ophys"]
         assert "ImagingPlane" in metadata["Ophys"]
         assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-
 
     def test_empty_cellset_add_to_nwbfile_error(self, setup_interface):
         """Test that add_to_nwbfile raises appropriate error for empty cellset."""

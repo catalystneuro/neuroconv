@@ -152,7 +152,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if analysis_info and analysis_info.get("trace_units"):
             segmentation_desc += f" with traces in {analysis_info['trace_units']}"
 
-
         metadata["Ophys"]["ImageSegmentation"]["description"] = segmentation_desc
 
         # Subject metadata
@@ -211,7 +210,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             if "sex" not in subject_metadata:
                 subject_metadata["sex"] = "U"
 
-            if "Subject" in metadata :
+            if "Subject" in metadata:
                 metadata["Subject"].update(subject_metadata)
             else:
                 metadata["Subject"] = subject_metadata
