@@ -258,7 +258,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         device_metadata = device_list[0]
         assert device_metadata["name"] == "NVista3"
         assert "description" in device_metadata
-        expected_device_desc = "Inscopix NVista3; Serial: 11132301"
+        expected_device_desc = "Inscopix NVista3; SerialNumber: 11132301; Software version 1.5.2"
         assert device_metadata["description"] == expected_device_desc
 
         # Check subject information extraction
@@ -284,18 +284,15 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         np.testing.assert_allclose(imaging_plane["imaging_rate"], 9.998700168978033, rtol=1e-3)
 
         # Check field of view description exact match
-        expected_plane_desc = "Inscopix imaging plane with field of view 398x366 pixels"
+        expected_plane_desc = "Inscopix imaging plane with field of view 398x366 pixels; Focus: 1000 µm; Exposure: 33 ms; Gain: 6"
         assert imaging_plane["description"] == expected_plane_desc
 
         # Check optical channel information
         optical_channels = imaging_plane["optical_channel"]
-        if isinstance(optical_channels, list):
-            assert len(optical_channels) == 1
-            optical_channel = optical_channels[0]
-        else:
-            optical_channel = optical_channels
+        assert len(optical_channels) == 1
+        optical_channel = optical_channels[0]
         assert optical_channel["name"] == "OpticalChannelGreen"
-        expected_optical_desc = "Inscopix green channel (LED power: 25.5 mW/mm²)"
+        expected_optical_desc = "Inscopix green channel (LED power: 1.3 mW/mm²)"
         assert optical_channel["description"] == expected_optical_desc
 
         # Check plane segmentation naming
@@ -305,7 +302,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 
         # Check segmentation description exact match
         segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
-        expected_seg_desc = "Inscopix cell segmentation using cnmfe with traces in ΔF/F"
+        expected_seg_desc = "Inscopix cell segmentation using cnmfe with traces in dF over noise"
         assert segmentation_desc == expected_seg_desc
 
         # Check fluorescence metadata

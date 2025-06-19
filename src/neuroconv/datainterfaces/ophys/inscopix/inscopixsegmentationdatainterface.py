@@ -79,7 +79,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             if device_info.get("device_name"):
                 device_desc_parts.append(f"Inscopix {device_info['device_name']}")
             if device_info.get("device_serial_number"):
-                device_desc_parts.append(f"Serial: {device_info['device_serial_number']}")
+                device_desc_parts.append(f"SerialNumber: {device_info['device_serial_number']}")
             if device_info.get("acquisition_software_version"):
                 device_desc_parts.append(f"Software version {device_info['acquisition_software_version']}")
 
