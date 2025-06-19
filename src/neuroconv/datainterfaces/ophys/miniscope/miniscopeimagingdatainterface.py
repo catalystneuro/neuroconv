@@ -146,7 +146,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         imaging_extractor = self.imaging_extractor
 
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
+            stub_frames = min([stub_frames, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
             miniscope_timestamps = miniscope_timestamps[:stub_frames]
 
