@@ -21,20 +21,82 @@ runs:
     - name: Install wine on macOS
       if: runner.os == 'macOS'
       run: |
-        # Check if running on Apple Silicon
+        set -e  # Exit on any error
+
+        # Function to check if Rosetta 2 is installed and working
+        check_rosetta() {
+          if [[ $(uname -m) != "arm64" ]]; then
+            echo "Intel Mac - Rosetta not needed"
+            return 0
+          fi
+
+          # Method 1: Check if oahd process is running
+          if /usr/bin/pgrep oahd >/dev/null 2>&1; then
+            echo "Rosetta 2 daemon is running"
+            return 0
+          fi
+
+          # Method 2: Test x86_64 emulation directly
+          if arch -x86_64 /usr/bin/true >/dev/null 2>&1; then
+            echo "Rosetta 2 is working (x86_64 emulation test passed)"
+            return 0
+          fi
+
+          return 1
+        }
+
+        # Install Rosetta 2 if needed
         if [[ $(uname -m) == 'arm64' ]]; then
-          echo "Running on Apple Silicon, installing Rosetta 2"
-          softwareupdate --install-rosetta --agree-to-license
-        else
-          echo "Running on Intel Mac, skipping Rosetta 2 installation"
+          echo "Apple Silicon detected"
+
+          if check_rosetta; then
+            echo "Rosetta 2 is already available"
+          else
+            echo "Installing Rosetta 2..."
+            # Try installation, but don't fail if it's already installed
+            softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
+
+            # Verify it's working after installation attempt
+            if ! check_rosetta; then
+              echo "Failed to install or verify Rosetta 2"
+              exit 1
+            fi
+            echo "Rosetta 2 installation completed"
+          fi
         fi
 
-        # Install XQuartz
-        brew install --cask xquartz
+        # Install dependencies
+        echo "Installing Wine dependencies..."
 
-        # Use gcenx/wine tap which works better on Apple Silicon
-        brew tap gcenx/wine
+        # Install XQuartz if not present
+        if ! brew list --cask xquartz &>/dev/null; then
+          brew install --cask xquartz
+        fi
+
+        # Add the gcenx wine tap for Apple Silicon support
+        if ! brew tap | grep -q "gcenx/wine"; then
+          brew tap gcenx/wine
+        fi
+
+        # Install Wine (using the CrossOver build for better compatibility)
+        echo "Installing Wine..."
         brew install --cask --no-quarantine gcenx/wine/wine-crossover
+
+        # Verify installation
+        echo "Verifying Wine installation..."
+        if ! command -v wine &>/dev/null; then
+          # Wine might be installed as an app bundle, try to find it
+          if [[ -d "/Applications/Wine Crossover.app" ]]; then
+            echo "Wine installed as application bundle"
+          else
+            echo "Wine installation verification failed"
+            exit 1
+          fi
+        else
+          wine --version
+        fi
+
+        echo "Wine installation completed successfully"
       shell: bash
 
     - name: Skip installation on Windows
