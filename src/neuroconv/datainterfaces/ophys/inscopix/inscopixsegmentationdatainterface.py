@@ -36,6 +36,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         DeepDict
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
+        
+        TODO: Determine the excitation and emission wavelengths for each Inscopix microscope.
+        We currently do not know how to map the names returned by get_acquisition_info['MicroscopeType']
+        to the actual microscope models, as we do not have example data for each type.
+        See related issue: https://github.com/inscopix/pyisx/issues/62
+
         """
         metadata = super().get_metadata()
         extractor = self.segmentation_extractor
@@ -216,32 +222,3 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 metadata["Subject"] = subject_metadata
 
         return metadata
-
-    def add_to_nwbfile(self, nwbfile, metadata=None, **conversion_options):
-        """
-        Add Inscopix segmentation data to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile : pynwb.NWBFile
-            The NWB file to add data to.
-        metadata : dict, optional
-            Metadata dictionary.
-        **conversion_options
-            Additional conversion options.
-
-        Raises
-        ------
-        ValueError
-            If the cellset has no ROIs to convert.
-        """
-        # Simple check for empty cellsets before conversion
-        if self.segmentation_extractor.get_num_rois() == 0:
-            raise ValueError(
-                "Empty cellset detected: No ROIs found in the segmentation data. "
-                "Cell segmentation interfaces require at least one ROI to create valid NWB segmentation data. "
-                "Please verify that the cell segmentation was successful and identified cells in your data."
-            )
-
-        # Proceed with normal conversion
-        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
