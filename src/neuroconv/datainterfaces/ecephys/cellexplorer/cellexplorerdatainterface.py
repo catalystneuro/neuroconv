@@ -275,7 +275,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     * Gains
     * Dtype
 
-    Where the binary file is named `basename.dat` for the raw data and
+        verbose: bool, default: False
     `basename.lfp` for lfp data.
 
     The extraction of channel metadata is described in the function: `add_channel_metadata_to_recoder`
@@ -406,7 +406,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             write_electrical_series,
             compression,
             compression_opts,
-            iterator_type,
+        verbose: bool, default: False
             iterator_opts,
         )
 

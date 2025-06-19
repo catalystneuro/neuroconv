@@ -1,3 +1,4 @@
+* Fixed incorrect `default: False` formatting in multiple datainterface docstrings
 # v0.8.0 (Upcoming)
 
 ## Removals, Deprecations and Changes
