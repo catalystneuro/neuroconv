@@ -40,7 +40,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         stream_name: str, optional
@@ -220,7 +220,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         ----------
         file_path: FilePath
             Path to the plexon spiking data (.plx file).
-        verbose: bool, default: True
+        verbose: bool, default: False
             Allows verbosity.
         """
         super().__init__(file_path=file_path, verbose=verbose)

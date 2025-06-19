@@ -41,8 +41,8 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .slp file (the output of sleap)
-        verbose : bool, default: Falsee
-            controls verbosity. ``True`` by default.
+        verbose : bool, default: False
+            controls verbosity.
         video_file_path : FilePath, optional
             The file path of the video for extracting timestamps.
         frames_per_second : float, optional
