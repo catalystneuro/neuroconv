@@ -37,7 +37,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
 
-        TODO: Determine the excitation and emission wavelengths for each Inscopix microscope.
+        TODO: Determine the excitation and emission wavelengths. For each Inscopix microscope they are fixed (e.g. NVista has an emission: 535 and excitation: 475).
         We currently do not know how to map the names returned by get_acquisition_info['MicroscopeType']
         to the actual microscope models, as we do not have example data for each type.
         See related issue: https://github.com/inscopix/pyisx/issues/62
