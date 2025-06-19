@@ -125,8 +125,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
             # Sampling frequency
             sampling_frequency = extractor.get_sampling_frequency()
-            if sampling_frequency:
-                imaging_plane_metadata["imaging_rate"] = sampling_frequency
+            imaging_plane_metadata["imaging_rate"] = sampling_frequency
 
             # Optical channel
             optical_channel = {
@@ -153,9 +152,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if analysis_info and analysis_info.get("trace_units"):
             segmentation_desc += f" with traces in {analysis_info['trace_units']}"
 
-        # Add number of ROIs to description
-        num_rois = extractor.get_num_rois()
-        segmentation_desc += f" ({num_rois} ROIs identified)"
 
         metadata["Ophys"]["ImageSegmentation"]["description"] = segmentation_desc
 
@@ -174,6 +170,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if subject_info and subject_info.get("species"):
             species_raw = subject_info["species"]
             # If it contains genotype info or doesn't match format, put it in strain instead
+            # e.g., "CaMKIICre"
             if " " in species_raw and species_raw[0].isupper() and species_raw.split()[1][0].islower():
                 species_value = species_raw
             else:
@@ -214,7 +211,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             if "sex" not in subject_metadata:
                 subject_metadata["sex"] = "U"
 
-            if "Subject" in metadata and isinstance(metadata["Subject"], dict):
+            if "Subject" in metadata :
                 metadata["Subject"].update(subject_metadata)
             else:
                 metadata["Subject"] = subject_metadata
