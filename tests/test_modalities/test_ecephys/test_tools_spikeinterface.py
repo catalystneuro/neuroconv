@@ -458,7 +458,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder = Mock()
         mock_recorder.get_dtype.return_value = dtype
         mock_recorder.get_num_channels.return_value = num_channels
-        mock_recorder.get_num_frames.return_value = num_frames_to_overflow
+        mock_recorder.get_num_samples.return_value = num_frames_to_overflow
 
         reg_expression = "Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
