@@ -278,7 +278,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.6",
+    "roiextractors>=0.5.13",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -306,7 +306,7 @@ hdf5imaging = [
 ]
 inscopix = [
     "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
-    "python_version < '3.13'",  # TODO: change to neuroconv[inscopix] after neuroconv 0.8.0 is released
+    "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",
@@ -362,7 +362,8 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
-    "neuroconv[inscopix]",
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
