@@ -306,7 +306,7 @@ hdf5imaging = [
 ]
 inscopix = [
     "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
-    "neuroconv[ophys_minimal]",
+    "python_version < '3.13'",  # TODO: change to neuroconv[inscopix] after neuroconv 0.8.0 is released
 ]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",

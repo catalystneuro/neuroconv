@@ -932,8 +932,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
     )
     optical_series_name = "OnePhotonSeries"
-    conversion_options = dict(photon_series_type="OnePhotonSeries")
-
+  
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for file with minimal acquisition info."""
 
@@ -980,73 +979,34 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
 @skip_on_python_313
 @skip_on_darwin_arm64
-class TestInscopixImagingInterfaceMovieLongerThan3Min(ImagingExtractorInterfaceTestMixin):
-    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (rich metadata file)."""
+class TestInscopixImagingInterfaceMovieLongerThan3Min:
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+    
+    def test_multiplane_not_implemented_error(self):
+        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        from neuroconv.datainterfaces import InscopixImagingInterface
+        
+        interface_kwargs = dict(
+            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+        )
+        
+        # Test that initialization raises NotImplementedError
+        with pytest.raises(NotImplementedError) as exc_info:
+            InscopixImagingInterface(**interface_kwargs)
+        
+        # Verify the error message contains expected information
+        error_message = str(exc_info.value)
+        assert "Multiplane ISXD file detected but not supported" in error_message
+        assert "movie_longer_than_3_min.isxd" in error_message
+        assert "Active planes: 3" in error_message
+        assert "Enabled: True" in error_message
+        assert "Plane configs: ['plane-1', 'plane-2', 'plane-3']" in error_message
+        assert "Inscopix multiplane files store 3D data as interleaved 2D frames" in error_message
+        assert "Proper separation logic is not yet implemented in roiextractors" in error_message
+        assert "Loading as 2D would result in incorrect data interpretation" in error_message
+        assert "https://github.com/catalystneuro/roiextractors/issues" in error_message
 
-    data_interface_cls = InscopixImagingInterface
-    save_directory = OUTPUT_PATH
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
-    )
-    optical_series_name = "OnePhotonSeries"
-    conversion_options = dict(photon_series_type="OnePhotonSeries")
-
-    def check_extracted_metadata(self, metadata: dict):
-        """Test metadata extraction for file with rich acquisition info."""
-
-        # NWBFile checks
-        nwbfile = metadata["NWBFile"]
-        assert nwbfile["session_start_time"] == datetime(2019, 10, 7, 16, 22, 1, 524186)
-        assert nwbfile["session_id"] == "4D_SAAV_PFC_IM7_20191007"
-
-        # Device checks
-        device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "NVista3"
-        device_desc = device.get("description", "")
-        assert "Inscopix Microscope" in device_desc
-        assert "Serial: FA-11092903" in device_desc
-        assert "Software: 1.3.0" in device_desc
-
-        # ImagingPlane checks
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == "ImagingPlane"
-
-        desc = imaging_plane.get("description", "")
-        assert "The plane or volume being imaged by the microscope." in desc
-        assert "Exposure Time (ms): 20" in desc
-        assert "Gain: 5.9" in desc
-        assert "Focus: 1000" in desc
-        assert "eFocus: 370" in desc
-        assert "EX LED Power (mw/mm^2): 0.4" in desc
-        assert "OG LED Power (mw/mm^2): 0.2" in desc
-
-        # Optical channel checks
-        optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "channel_0"
-        assert (
-            optical_channel["description"] == "An optical channel of the microscope."
-        )  # Default metadata because this was not included in the source metadata
-
-        # OnePhotonSeries checks
-        ops = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert ops["name"] == "OnePhotonSeries"
-        assert (
-            ops["description"] == "Imaging data from one-photon excitation microscopy."
-        )  # Default metadata because this was not included in the source metadata
-        assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
-        assert ops["imaging_plane"] == "ImagingPlane"
-        assert ops["dimension"] == [33, 29]
-
-        # Subject checks
-        subject = metadata["Subject"]
-        assert subject["subject_id"] == "Unknown"
-        assert subject["species"] == "Unknown species"
-        assert subject["sex"] == "M"
-        assert "description" not in subject
-        assert "weight" not in subject
-        assert "date_of_birth" not in subject
-
-
+        
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
@@ -1056,7 +1016,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     optical_series_name = "OnePhotonSeries"
-    conversion_options = dict(photon_series_type="OnePhotonSeries")
+
 
     def check_extracted_metadata(self, metadata: dict):
         """Test metadata extraction for uint8 file with minimal acquisition info."""
