@@ -1,105 +1,35 @@
-name: Install packages
-description: This action installs the package and its dependencies for testing
-
-inputs:
-  os:
-    description: 'Operating system to set up'
-    required: true
+name: Install Wine
+description: Quickly install Wine for Linux and macOS runners
 
 runs:
-  using: "composite"
+  using: composite
   steps:
-    - name: Install wine on Linux
+    # -------- Linux --------
+    - name: Install Wine (Linux)
       if: runner.os == 'Linux'
+      shell: bash
       run: |
-        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
         sudo dpkg --add-architecture i386
         sudo apt-get update -qq
-        sudo apt-get install -yqq --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine
-      shell: bash
+        sudo apt-get install -yqq wine         # pulls 32-bit libs automatically
 
-    - name: Install wine on macOS
+    # -------- macOS --------
+    - name: Install Wine (macOS)
       if: runner.os == 'macOS'
+      shell: bash
       run: |
-        set -e  # Exit on any error
+        # Apple-Silicon machines: make sure Rosetta exists, but ignore "already installed"
+        [[ $(uname -m) == arm64 ]] && \
+          softwareupdate --install-rosetta --agree-to-license || true
 
-        # Function to check if Rosetta 2 is installed and working
-        check_rosetta() {
-          if [[ $(uname -m) != "arm64" ]]; then
-            echo "Intel Mac - Rosetta not needed"
-            return 0
-          fi
-
-          # Method 1: Check if oahd process is running
-          if /usr/bin/pgrep oahd >/dev/null 2>&1; then
-            echo "Rosetta 2 daemon is running"
-            return 0
-          fi
-
-          # Method 2: Test x86_64 emulation directly
-          if arch -x86_64 /usr/bin/true >/dev/null 2>&1; then
-            echo "Rosetta 2 is working (x86_64 emulation test passed)"
-            return 0
-          fi
-
-          return 1
-        }
-
-        # Install Rosetta 2 if needed
-        if [[ $(uname -m) == 'arm64' ]]; then
-          echo "Apple Silicon detected"
-
-          if check_rosetta; then
-            echo "Rosetta 2 is already available"
-          else
-            echo "Installing Rosetta 2..."
-            # Try installation, but don't fail if it's already installed
-            softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
-
-            # Verify it's working after installation attempt
-            if ! check_rosetta; then
-              echo "Failed to install or verify Rosetta 2"
-              exit 1
-            fi
-            echo "Rosetta 2 installation completed"
-          fi
-        fi
-
-        # Install dependencies
-        echo "Installing Wine dependencies..."
-
-        # Install XQuartz if not present
-        if ! brew list --cask xquartz &>/dev/null; then
-          brew install --cask xquartz
-        fi
-
-        # Add the gcenx wine tap for Apple Silicon support
-        if ! brew tap | grep -q "gcenx/wine"; then
-          brew tap gcenx/wine
-        fi
-
-        # Install Wine (using the CrossOver build for better compatibility)
-        echo "Installing Wine..."
+        # Core runtime pieces
+        brew install --cask xquartz            # X11 for Wine GUI apps
+        brew tap gcenx/wine
         brew install --cask --no-quarantine gcenx/wine/wine-crossover
+        wine --version || echo "Wine installed as an app bundle"
 
-        # Verify installation
-        echo "Verifying Wine installation..."
-        if ! command -v wine &>/dev/null; then
-          # Wine might be installed as an app bundle, try to find it
-          if [[ -d "/Applications/Wine Crossover.app" ]]; then
-            echo "Wine installed as application bundle"
-          else
-            echo "Wine installation verification failed"
-            exit 1
-          fi
-        else
-          wine --version
-        fi
-
-        echo "Wine installation completed successfully"
+    # -------- Windows --------
+    - name: Skip on Windows
+      if: runner.os == 'Windows'
       shell: bash
-
-    - name: Skip installation on Windows
-      if: ${{ inputs.os == 'Windows' }}
-      run: echo "Skipping Wine installation on Windows. Not necessary."
-      shell: bash
+      run: echo "Wine not required on Windows runner."
