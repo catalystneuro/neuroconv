@@ -1,6 +1,5 @@
 import warnings
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
@@ -34,7 +33,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self,
         file_path: FilePath | None = None,
         verbose: bool = False,
-        load_sync_channel: bool | None = None,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: DirectoryPath | None = None,
     ):
@@ -53,15 +51,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
-
-        if load_sync_channel is not None:
-
-            warnings.warn(
-                "The 'load_sync_channel' parameter is deprecated and will be removed in June 2025. "
-                "The sync channel data is only available the raw files of spikeglx`.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         if file_path is not None:
             warnings.warn(
@@ -103,7 +92,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         super().__init__(
             verbose=verbose,
-            load_sync_channel=load_sync_channel,
             es_key=es_key,
             folder_path=self.folder_path,
             file_path=file_path,
@@ -147,9 +135,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: float | None = None,
-        write_as: Literal["raw", "lfp", "processed"] = "raw",
-        write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
@@ -165,12 +150,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Metadata dictionary with device information. If None, uses default metadata
         stub_test : bool, default: False
             If True, only writes a small amount of data for testing
-        starting_time : float | None, default: None
-            DEPRECATED: Will be removed in June 2025. Starting time offset for the TimeSeries
-        write_as : Literal["raw", "lfp", "processed"], default: "raw"
-            DEPRECATED: Will be removed in June 2025. Specifies how to write the data
-        write_electrical_series : bool, default: True
-            DEPRECATED: Will be removed in June 2025. Whether to write electrical series data
         iterator_type : str | None, default: "v2"
             Type of iterator to use for data streaming
         iterator_opts : dict | None, default: None
@@ -178,35 +157,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-
-        if starting_time is not None:
-            warnings.warn(
-                "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
-                "Use the time alignment methods for modifying the starting time or timestamps "
-                "of the data if needed: "
-                "https://neuroconv.readthedocs.io/en/main/user_guide/temporal_alignment.html",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if write_as != "raw":
-            warnings.warn(
-                "The 'write_as' parameter is deprecated and will be removed in June 2025. "
-                "NIDQ should always be written in the acquisition module of NWB. "
-                "Writing data as LFP or processed data is not supported.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if write_electrical_series is not True:
-            warnings.warn(
-                "The 'write_electrical_series' parameter is deprecated and will be removed in June 2025. "
-                "The option to skip the addition of the data is no longer supported. "
-                "This option was used in ElectricalSeries to write the electrode and electrode group "
-                "metadata without the raw data.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         from ....tools.spikeinterface import _stub_recording
 
