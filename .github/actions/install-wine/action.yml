@@ -1,43 +1,35 @@
-name: Install packages
-description: This action installs the package and its dependencies for testing
-
-inputs:
-  os:
-    description: 'Operating system to set up'
-    required: true
+name: Install Wine
+description: Quickly install Wine for Linux and macOS runners
 
 runs:
-  using: "composite"
+  using: composite
   steps:
-    - name: Install wine on Linux
+    # -------- Linux --------
+    - name: Install Wine (Linux)
       if: runner.os == 'Linux'
+      shell: bash
       run: |
-        sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
         sudo dpkg --add-architecture i386
         sudo apt-get update -qq
-        sudo apt-get install -yqq --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine
-      shell: bash
+        sudo apt-get install -yqq wine         # pulls 32-bit libs automatically
 
-    - name: Install wine on macOS
+    # -------- macOS --------
+    - name: Install Wine (macOS)
       if: runner.os == 'macOS'
+      shell: bash
       run: |
-        # Check if running on Apple Silicon
-        if [[ $(uname -m) == 'arm64' ]]; then
-          echo "Running on Apple Silicon, installing Rosetta 2"
-          softwareupdate --install-rosetta --agree-to-license
-        else
-          echo "Running on Intel Mac, skipping Rosetta 2 installation"
-        fi
+        # Apple-Silicon machines: make sure Rosetta exists, but ignore "already installed"
+        [[ $(uname -m) == arm64 ]] && \
+          softwareupdate --install-rosetta --agree-to-license || true
 
-        # Install XQuartz
-        brew install --cask xquartz
-
-        # Use gcenx/wine tap which works better on Apple Silicon
+        # Core runtime pieces
+        brew install --cask xquartz            # X11 for Wine GUI apps
         brew tap gcenx/wine
         brew install --cask --no-quarantine gcenx/wine/wine-crossover
-      shell: bash
+        wine --version || echo "Wine installed as an app bundle"
 
-    - name: Skip installation on Windows
-      if: ${{ inputs.os == 'Windows' }}
-      run: echo "Skipping Wine installation on Windows. Not necessary."
+    # -------- Windows --------
+    - name: Skip on Windows
+      if: runner.os == 'Windows'
       shell: bash
+      run: echo "Wine not required on Windows runner."
