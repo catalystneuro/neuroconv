@@ -600,31 +600,6 @@ class TestAddPlaneSegmentation(TestCase):
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
         assert_masks_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
 
-    def test_none_masks(self):
-        """Test the None mask_type option for writing a plane segmentation table."""
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_frames=self.num_frames,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            mask_type=None,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-        assert "image_mask" not in plane_segmentation
-        assert "pixel_mask" not in plane_segmentation
-        assert "voxel_mask" not in plane_segmentation
-
     def test_invalid_mask_type(self):
         """Test that an invalid mask_type raises a AssertionError."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
@@ -634,8 +609,7 @@ class TestAddPlaneSegmentation(TestCase):
             num_columns=self.num_columns,
         )
         expected_error_message = re.escape(
-            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', or "
-            "None (to not write any masks)! Received 'invalid'."
+            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel'. " "Received 'invalid'."
         )
         with pytest.raises(AssertionError, match=expected_error_message):
             add_plane_segmentation_to_nwbfile(
