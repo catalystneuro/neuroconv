@@ -354,10 +354,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
         # Check optical channel has default name
         optical_channels = imaging_plane["optical_channel"]
-        if isinstance(optical_channels, list):
-            optical_channel = optical_channels[0]
-        else:
-            optical_channel = optical_channels
+        optical_channel = optical_channels[0]
         assert optical_channel["name"] == "OpticalChannelDefault"
         assert optical_channel["description"] == "Inscopix optical channel"
 
