@@ -995,16 +995,17 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
             InscopixImagingInterface(**interface_kwargs)
 
         # Verify the error message contains expected information
-        error_message = str(exc_info.value)
-        assert "Multiplane ISXD file detected but not supported" in error_message
-        assert "movie_longer_than_3_min.isxd" in error_message
-        assert "Active planes: 3" in error_message
-        assert "Enabled: True" in error_message
-        assert "Plane configs: ['plane-1', 'plane-2', 'plane-3']" in error_message
-        assert "Inscopix multiplane files store 3D data as interleaved 2D frames" in error_message
-        assert "Proper separation logic is not yet implemented in roiextractors" in error_message
-        assert "Loading as 2D would result in incorrect data interpretation" in error_message
-        assert "https://github.com/catalystneuro/roiextractors/issues" in error_message
+        expected_message = (
+            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
+            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
+            "Proper separation logic is not yet implemented in roiextractors.\n"
+            "Loading as 2D would result in incorrect data interpretation.\n\n"
+            "Please open an issue at:\n"
+            "https://github.com/catalystneuro/roiextractors/issues\n\n"
+            "Reference: https://github.com/inscopix/pyisx/issues/36"
+        )
+        assert str(exc_info.value) == expected_message
+        
 
 
 @skip_on_python_313

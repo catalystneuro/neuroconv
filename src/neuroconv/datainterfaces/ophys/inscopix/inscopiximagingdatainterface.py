@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 from typing import Optional
 
 from pydantic import FilePath, validate_call
@@ -7,83 +5,25 @@ from pydantic import FilePath, validate_call
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
 
-
-def _check_multiplane_file(file_path):
-    """Check if file contains multiplane configuration and raise error if detected."""
-    with open(file_path, "rb") as f:
-        content = f.read()
-
-    content_str = content.decode("utf-8", errors="ignore")
-
-    # Simple check: if no multiplane keyword, it's safe
-    if "multiplane" not in content_str:
-        return
-
-    # Find the multiplane position
-    multiplane_pos = content_str.find("multiplane")
-
-    # Find the JSON containing multiplane
-    json_start = -1
-    brace_count = 0
-
-    # Search backwards for the opening brace
-    for i in range(multiplane_pos, -1, -1):
-        if content_str[i] == "}":
-            brace_count += 1
-        elif content_str[i] == "{":
-            if brace_count == 0:
-                json_start = i
-                break
-            brace_count -= 1
-
-    if json_start == -1:
-        return
-
-    # Find the end of this JSON object
-    brace_count = 0
-    json_end = -1
-
-    for i in range(json_start, len(content_str)):
-        if content_str[i] == "{":
-            brace_count += 1
-        elif content_str[i] == "}":
-            brace_count -= 1
-            if brace_count == 0:
-                json_end = i + 1
-                break
-
-    if json_end == -1:
-        return
-
-    # Extract and parse the JSON
-    json_str = content_str[json_start:json_end]
-    parsed_json = json.loads(json_str)
-
-    # Check for multiplane configuration
-    if isinstance(parsed_json, dict) and "multiplane" in parsed_json:
-        multiplane_config = parsed_json["multiplane"]
-
-        if multiplane_config:
-            enabled = multiplane_config.get("enabled", False)
-            active_planes = multiplane_config.get("activePlanes", 0)
-            planes = multiplane_config.get("planes", {})
-
-            # Check if this is actually multiplane
-            if enabled or active_planes > 1 or len(planes) > 1:
+def is_file_multiplane(file_path):
+    """
+    Hacky check for 'multiplane' keyword in the file.
+    Reads line by line to avoid memory issues with large files.
+    If found, raises NotImplementedError.
+    This is NOT a proper ISX API method—just a string search.
+    """
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            if "multiplane" in line:
                 raise NotImplementedError(
-                    f"Multiplane ISXD file detected but not supported.\n\n"
-                    f"File: {Path(file_path).name}\n"
-                    f"Active planes: {active_planes}\n"
-                    f"Enabled: {enabled}\n"
-                    f"Plane configs: {list(planes.keys()) if planes else []}\n\n"
-                    f"Inscopix multiplane files store 3D data as interleaved 2D frames.\n"
+                    f"Multiplane ISXD file detected (found 'multiplane' in file).\n"
+                    f"This is a hacky check (not an official ISX API method) and may not be robust.\n"
                     f"Proper separation logic is not yet implemented in roiextractors.\n"
                     f"Loading as 2D would result in incorrect data interpretation.\n\n"
                     f"Please open an issue at:\n"
                     f"https://github.com/catalystneuro/roiextractors/issues\n\n"
                     f"Reference: https://github.com/inscopix/pyisx/issues/36"
                 )
-
 
 class InscopixImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for Inscopix Imaging Extractor."""
@@ -115,8 +55,8 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             If the file contains multiplane configuration that is not yet supported.
         """
         # Check for multiplane configuration before proceeding
-        _check_multiplane_file(file_path)
-
+        is_file_multiplane(file_path)
+        
         kwargs.setdefault("photon_series_type", "OnePhotonSeries")
         super().__init__(
             file_path=file_path,
