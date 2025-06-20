@@ -2,6 +2,7 @@
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "neuroconv"
 version = "0.7.6"
@@ -304,6 +305,10 @@ hdf5 = [
 hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
+inscopix = [
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
+]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -358,6 +363,8 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
