@@ -1024,8 +1024,8 @@ class TestAddElectrodes(TestCase):
         
         for prop in excluded_properties:
             self.assertNotIn(
-                prop, 
-                electrodes_columns, 
+                prop,
+                electrodes_columns,
                 f"Property '{prop}' should be excluded from electrodes table as it belongs in ElectricalSeries"
             )
         
