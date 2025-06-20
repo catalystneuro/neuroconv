@@ -811,6 +811,9 @@ def add_electrodes_to_nwbfile(
     spikeinterface_special_cases = [
         "offset_to_uV",  # Written in the ElectricalSeries
         "gain_to_uV",  # Written in the ElectricalSeries
+        "gain_to_physical_unit",  # Written in the ElectricalSeries
+        "offset_to_physical_unit",  # Written in the ElectricalSeries
+        "physical_unit",  # Written in the ElectricalSeries
         "contact_vector",  # Structured array representing the probe
         "channel_name",  # We handle this here with _get_channel_name
         "channel_names",  # Some formats from neo also have this property, skip it
