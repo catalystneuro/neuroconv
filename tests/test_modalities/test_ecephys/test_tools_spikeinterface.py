@@ -1014,21 +1014,21 @@ class TestAddElectrodes(TestCase):
         recording.set_property("gain_to_physical_unit", [1.0, 1.5, 2.0, 2.5])
         recording.set_property("offset_to_physical_unit", [0.0, 0.1, 0.2, 0.3])
         recording.set_property("physical_unit", ["uV", "mV", "uV", "mV"])
-        
+
         # Add electrodes to NWBFile
         add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
-        
+
         # Verify that the new properties are NOT in the electrodes table
         electrodes_columns = list(self.nwbfile.electrodes.colnames)
         excluded_properties = ["gain_to_physical_unit", "offset_to_physical_unit", "physical_unit"]
-        
+
         for prop in excluded_properties:
             self.assertNotIn(
                 prop,
                 electrodes_columns,
-                f"Property '{prop}' should be excluded from electrodes table as it belongs in ElectricalSeries"
+                f"Property '{prop}' should be excluded from electrodes table as it belongs in ElectricalSeries",
             )
-        
+
         # Verify that standard properties are still included
         expected_columns = ["location", "group", "group_name", "channel_name"]
         for col in expected_columns:
