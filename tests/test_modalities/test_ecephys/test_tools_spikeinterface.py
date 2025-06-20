@@ -2014,15 +2014,16 @@ class TestWriteSortingAnalyzer(TestCase):
             )
 
 
-def test_stub_recording_with_t_start():
-    """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
-    recording = generate_recording(durations=[1.0])
-    # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
-    # See https://github.com/SpikeInterface/spikeinterface/pull/3940
-    recording._recording_segments[0].t_start = 0.0
-    recording.shift_times(2.0)
+class TestStubRecording(TestCase):
+    def test_stub_recording_with_t_start(self):
+        """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
+        recording = generate_recording(durations=[1.0])
+        # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
+        # See https://github.com/SpikeInterface/spikeinterface/pull/3940
+        recording._recording_segments[0].t_start = 0.0
+        recording.shift_times(2.0)
 
-    _stub_recording(recording=recording)
+        _stub_recording(recording=recording)
 
 
 if __name__ == "__main__":
