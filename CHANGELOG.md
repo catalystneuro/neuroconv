@@ -6,6 +6,7 @@
 
 
 ## Bug Fixes
+* Fixed SpikeInterface physical unit properties (`gain_to_physical_unit`, `offset_to_physical_unit`, `physical_unit`) being incorrectly added to electrodes table instead of being handled in ElectricalSeries. [PR #1403](https://github.com/catalystneuro/neuroconv/pull/1403)
 
 ## Features
 * Segmentation interfaces now support roi ids that are strings [PR #1390](https://github.com/catalystneuro/neuroconv/pull/1390)
