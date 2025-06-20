@@ -5,6 +5,7 @@ from pydantic import FilePath, validate_call
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
 
+
 def is_file_multiplane(file_path):
     """
     Hacky check for 'multiplane' keyword in the file.
@@ -24,6 +25,7 @@ def is_file_multiplane(file_path):
                     f"https://github.com/catalystneuro/roiextractors/issues\n\n"
                     f"Reference: https://github.com/inscopix/pyisx/issues/36"
                 )
+
 
 class InscopixImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for Inscopix Imaging Extractor."""
@@ -56,7 +58,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         # Check for multiplane configuration before proceeding
         is_file_multiplane(file_path)
-        
+
         kwargs.setdefault("photon_series_type", "OnePhotonSeries")
         super().__init__(
             file_path=file_path,

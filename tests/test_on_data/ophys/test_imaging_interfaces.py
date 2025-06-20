@@ -1005,7 +1005,6 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
             "Reference: https://github.com/inscopix/pyisx/issues/36"
         )
         assert str(exc_info.value) == expected_message
-        
 
 
 @skip_on_python_313
