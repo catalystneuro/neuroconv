@@ -227,5 +227,5 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         # TODO: add logic for determining whether the microscope is `nVista 2P` and change photon_series_type to TwoPhotonSeries accordingly.
         """
         kwargs["photon_series_type"] = "OnePhotonSeries"
-# TODO: add logic for determining whether the microscope is `nVista 2P` and change photon_series_type to TwoPhotonSeries accordingly.
+        # TODO: add logic for determining whether the microscope is `nVista 2P` and change photon_series_type to TwoPhotonSeries accordingly.
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **kwargs)
