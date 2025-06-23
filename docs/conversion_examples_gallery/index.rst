@@ -55,7 +55,7 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    ABF <recording/abf>
+    Axon Binary File (ABF) <recording/abf>
 
 Optical physiology
 ------------------
