@@ -1006,6 +1006,7 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
         )
         assert str(exc_info.value) == expected_message
 
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMultiplaneMovie:
@@ -1035,7 +1036,7 @@ class TestInscopixImagingInterfaceMultiplaneMovie:
         )
         assert str(exc_info.value) == expected_message
 
-        
+
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
@@ -1046,7 +1047,9 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
         from neuroconv.datainterfaces import InscopixImagingInterface
 
         interface_kwargs = dict(
-            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
+            file_path=str(
+                OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd"
+            )
         )
 
         # Test that initialization raises NotImplementedError
@@ -1064,7 +1067,7 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
             "Reference: https://github.com/inscopix/pyisx/issues/36"
         )
         assert str(exc_info.value) == expected_message
-        
+
 
 @skip_on_python_313
 @skip_on_darwin_arm64
