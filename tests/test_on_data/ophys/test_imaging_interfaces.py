@@ -1,4 +1,5 @@
 import platform
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from neuroconv.datainterfaces import (
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     Hdf5ImagingInterface,
+    InscopixImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     SbxImagingInterface,
@@ -903,3 +905,221 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             AssertionError, match="The main folder should contain at least one subfolder named 'Miniscope'."
         ):
             self.data_interface_cls(folder_path=folder_path)
+
+
+skip_on_darwin_arm64 = pytest.mark.skipif(
+    platform.system() == "Darwin" and platform.machine() == "arm64",
+    reason="The isx package is currently not natively supported on macOS with Apple Silicon. "
+    "Installation instructions can be found at: "
+    "https://github.com/inscopix/pyisx?tab=readme-ov-file#install",
+)
+skip_on_python_313 = pytest.mark.skipif(
+    sys.version_info >= (3, 13),
+    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module "
+    "Requires: Python <3.13, >=3.9)"
+    "See:https://github.com/inscopix/pyisx/issues",
+)
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_128x128x100_part1.isxd (minimal metadata file)."""
+
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
+    )
+    optical_series_name = "OnePhotonSeries"
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Test metadata extraction for file with minimal acquisition info."""
+
+        # NWBFile checks
+        nwbfile = metadata["NWBFile"]
+        assert nwbfile["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+        assert "session_id" not in nwbfile
+        assert "experimenter" not in nwbfile
+
+        # Device checks
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
+        assert "description" not in device or device.get("description", "") == ""
+
+        # ImagingPlane checks
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["name"] == "ImagingPlane"
+        assert (
+            imaging_plane["device"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            imaging_plane["description"] == "The plane or volume being imaged by the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # Optical channel checks
+        optical_channel = imaging_plane["optical_channel"][0]
+        assert (
+            optical_channel["name"] == "channel_0"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            optical_channel["description"] == "An optical channel of the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # OnePhotonSeries checks
+        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert ops["name"] == "OnePhotonSeries"
+        assert (
+            ops["description"] == "Imaging data from one-photon excitation microscopy."
+        )  # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
+        assert ops["imaging_plane"] == "ImagingPlane"
+        assert ops["dimension"] == [128, 128]
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMovieLongerThan3Min:
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+
+    def test_multiplane_not_implemented_error(self):
+        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        from neuroconv.datainterfaces import InscopixImagingInterface
+
+        interface_kwargs = dict(
+            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
+        )
+
+        # Test that initialization raises NotImplementedError
+        with pytest.raises(NotImplementedError) as exc_info:
+            InscopixImagingInterface(**interface_kwargs)
+
+        # Verify the error message contains expected information
+        expected_message = (
+            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
+            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
+            "Proper separation logic is not yet implemented in roiextractors.\n"
+            "Loading as 2D would result in incorrect data interpretation.\n\n"
+            "Please open an issue at:\n"
+            "https://github.com/catalystneuro/roiextractors/issues\n\n"
+            "Reference: https://github.com/inscopix/pyisx/issues/36"
+        )
+        assert str(exc_info.value) == expected_message
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMultiplaneMovie:
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+
+    def test_multiplane_not_implemented_error(self):
+        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        from neuroconv.datainterfaces import InscopixImagingInterface
+
+        interface_kwargs = dict(
+            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
+        )
+
+        # Test that initialization raises NotImplementedError
+        with pytest.raises(NotImplementedError) as exc_info:
+            InscopixImagingInterface(**interface_kwargs)
+
+        # Verify the error message contains expected information
+        expected_message = (
+            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
+            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
+            "Proper separation logic is not yet implemented in roiextractors.\n"
+            "Loading as 2D would result in incorrect data interpretation.\n\n"
+            "Please open an issue at:\n"
+            "https://github.com/catalystneuro/roiextractors/issues\n\n"
+            "Reference: https://github.com/inscopix/pyisx/issues/36"
+        )
+        assert str(exc_info.value) == expected_message
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+
+    def test_multiplane_not_implemented_error(self):
+        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        from neuroconv.datainterfaces import InscopixImagingInterface
+
+        interface_kwargs = dict(
+            file_path=str(
+                OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd"
+            )
+        )
+
+        # Test that initialization raises NotImplementedError
+        with pytest.raises(NotImplementedError) as exc_info:
+            InscopixImagingInterface(**interface_kwargs)
+
+        # Verify the error message contains expected information
+        expected_message = (
+            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
+            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
+            "Proper separation logic is not yet implemented in roiextractors.\n"
+            "Loading as 2D would result in incorrect data interpretation.\n\n"
+            "Please open an issue at:\n"
+            "https://github.com/catalystneuro/roiextractors/issues\n\n"
+            "Reference: https://github.com/inscopix/pyisx/issues/36"
+        )
+        assert str(exc_info.value) == expected_message
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_u8.isxd (minimal metadata file, uint8 dtype)."""
+
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
+    optical_series_name = "OnePhotonSeries"
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Test metadata extraction for uint8 file with minimal acquisition info."""
+
+        # NWBFile checks
+        nwbfile = metadata["NWBFile"]
+        assert nwbfile["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+        assert "session_id" not in nwbfile
+        assert "experimenter" not in nwbfile
+
+        # Device checks
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
+        assert "description" not in device or device.get("description", "") == ""
+
+        # ImagingPlane checks
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["name"] == "ImagingPlane"
+        assert (
+            imaging_plane["device"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            imaging_plane["description"] == "The plane or volume being imaged by the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # Optical channel checks
+        optical_channel = imaging_plane["optical_channel"][0]
+        assert (
+            optical_channel["name"] == "channel_0"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            optical_channel["description"] == "An optical channel of the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # OnePhotonSeries checks
+        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert ops["name"] == "OnePhotonSeries"
+        assert (
+            ops["description"] == "Imaging data from one-photon excitation microscopy."
+        )  # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
+        assert (
+            ops["imaging_plane"] == "ImagingPlane"
+        )  # Default metadata because this was not included in the source metadata
+        assert ops["dimension"] == [3, 4]

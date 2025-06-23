@@ -52,4 +52,4 @@ def pytest_runtest_setup(item):
                     "Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module "
                     "Requires: Python <3.13, >=3.9) "
                     "See: https://github.com/inscopix/pyisx/issues/61"
-                )
+   )

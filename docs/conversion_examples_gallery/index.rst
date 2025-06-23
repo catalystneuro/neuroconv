@@ -70,6 +70,7 @@ Imaging
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
+    Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
     ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
