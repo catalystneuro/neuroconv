@@ -1006,6 +1006,65 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
         )
         assert str(exc_info.value) == expected_message
 
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMultiplaneMovie:
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+
+    def test_multiplane_not_implemented_error(self):
+        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        from neuroconv.datainterfaces import InscopixImagingInterface
+
+        interface_kwargs = dict(
+            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
+        )
+
+        # Test that initialization raises NotImplementedError
+        with pytest.raises(NotImplementedError) as exc_info:
+            InscopixImagingInterface(**interface_kwargs)
+
+        # Verify the error message contains expected information
+        expected_message = (
+            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
+            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
+            "Proper separation logic is not yet implemented in roiextractors.\n"
+            "Loading as 2D would result in incorrect data interpretation.\n\n"
+            "Please open an issue at:\n"
+            "https://github.com/catalystneuro/roiextractors/issues\n\n"
+            "Reference: https://github.com/inscopix/pyisx/issues/36"
+        )
+        assert str(exc_info.value) == expected_message
+
+        
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
+    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+
+    def test_multiplane_not_implemented_error(self):
+        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        from neuroconv.datainterfaces import InscopixImagingInterface
+
+        interface_kwargs = dict(
+            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
+        )
+
+        # Test that initialization raises NotImplementedError
+        with pytest.raises(NotImplementedError) as exc_info:
+            InscopixImagingInterface(**interface_kwargs)
+
+        # Verify the error message contains expected information
+        expected_message = (
+            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
+            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
+            "Proper separation logic is not yet implemented in roiextractors.\n"
+            "Loading as 2D would result in incorrect data interpretation.\n\n"
+            "Please open an issue at:\n"
+            "https://github.com/catalystneuro/roiextractors/issues\n\n"
+            "Reference: https://github.com/inscopix/pyisx/issues/36"
+        )
+        assert str(exc_info.value) == expected_message
+        
 
 @skip_on_python_313
 @skip_on_darwin_arm64
