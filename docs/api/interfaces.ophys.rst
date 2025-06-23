@@ -62,6 +62,10 @@ Extract Segmentation
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.extract.extractdatainterface
 
+Inscopix Segmentation
+---------------------
+.. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopixsegmentationdatainterface
+
 Sima Segmentation
 -----------------
 .. automodule:: neuroconv.datainterfaces.ophys.sima.simadatainterface
