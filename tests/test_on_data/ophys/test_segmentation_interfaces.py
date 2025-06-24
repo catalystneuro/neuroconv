@@ -5,6 +5,7 @@ from neuroconv.datainterfaces import (
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
     Suite2pSegmentationInterface,
+    MinianSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     SegmentationExtractorInterfaceTestMixin,
