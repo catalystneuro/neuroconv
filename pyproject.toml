@@ -297,6 +297,10 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+minian = [
+    "neuroconv[ophys_minimal]",
+]
+
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
 hdf5 = [

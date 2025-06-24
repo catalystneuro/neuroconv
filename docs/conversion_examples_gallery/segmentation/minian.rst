@@ -1,7 +1,7 @@
 Minian
 ------
 
-Install NeuroConv with the additional dependencies necessary for reading CaImAn data.
+Install NeuroConv with the additional dependencies necessary for reading Minian data.
 
 .. code-block:: bash
 
