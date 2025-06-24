@@ -1,16 +1,10 @@
-import platform
-import sys
-from datetime import datetime
 
-import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
-    InscopixSegmentationInterface,
-    MinianSegmentationInterface,
     Suite2pSegmentationInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
