@@ -2,6 +2,7 @@
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "neuroconv"
 version = "0.7.6"
@@ -278,7 +279,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@add_minian",
+    "roiextractors>=0.6",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -302,6 +303,10 @@ hdf5 = [
     "neuroconv[hdf5imaging]",
 ]
 hdf5imaging = [
+    "neuroconv[ophys_minimal]",
+]
+inscopix = [
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
     "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
@@ -358,6 +363,8 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",

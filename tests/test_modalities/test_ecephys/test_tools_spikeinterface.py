@@ -458,7 +458,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         mock_recorder = Mock()
         mock_recorder.get_dtype.return_value = dtype
         mock_recorder.get_num_channels.return_value = num_channels
-        mock_recorder.get_num_frames.return_value = num_frames_to_overflow
+        mock_recorder.get_num_samples.return_value = num_frames_to_overflow
 
         reg_expression = "Memory error, full electrical series is (.*?) GiB are available. Use iterator_type='V2'"
 
@@ -584,6 +584,25 @@ class TestAddElectrodes(TestCase):
         expected_electrode_column_names = ["location", "group", "group_name", "channel_name", "rel_x", "rel_y"]
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
         self.assertCountEqual(actual_electrode_column_names, expected_electrode_column_names)
+
+    def test_physical_unit_properties_excluded(self):
+        """Test that SpikeInterface physical unit properties are excluded from electrodes table."""
+        # Set the properties that should be excluded
+        num_channels = len(self.base_recording.channel_ids)
+        self.base_recording.set_property(key="gain_to_physical_unit", values=[1.0] * num_channels)
+        self.base_recording.set_property(key="offset_to_physical_unit", values=[0.0] * num_channels)
+        self.base_recording.set_property(key="physical_unit", values=["uV"] * num_channels)
+
+        add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
+
+        # Verify that these properties are NOT in the electrodes table
+        actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
+        excluded_properties = ["gain_to_physical_unit", "offset_to_physical_unit", "physical_unit"]
+
+        for prop in excluded_properties:
+            self.assertNotIn(
+                prop, actual_electrode_column_names, f"Property '{prop}' should be excluded from electrodes table"
+            )
 
     def test_integer_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are integers."""

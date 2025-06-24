@@ -1,9 +1,15 @@
+import platform
+import sys
+from datetime import datetime
+
+import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
+    InscopixSegmentationInterface,
     MinianSegmentationInterface,
     Suite2pSegmentationInterface,
 )
@@ -202,52 +208,6 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
         folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
         channel_name="chan1",
         plane_name="plane0",
-    )
-    save_directory = OUTPUT_PATH
-    conversion_options = dict(stub_test=True)
-
-
-class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
-    data_interface_cls = MinianSegmentationInterface
-    interface_kwargs = dict(
-        folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian" / "segmented_data_3units_100frames"
-    )
-    save_directory = OUTPUT_PATH
-
-    @pytest.fixture(
-        params=[
-            {"mask_type": "image", "include_background_segmentation": True},
-            {"mask_type": "pixel", "include_background_segmentation": True},
-            {"mask_type": "voxel", "include_background_segmentation": True},
-            # {"mask_type": None, "include_background_segmentation": True}, # Uncomment when https://github.com/catalystneuro/neuroconv/issues/530 is resolved
-            {"include_roi_centroids": False, "include_background_segmentation": True},
-            {"include_roi_acceptance": False, "include_background_segmentation": True},
-            {"include_background_segmentation": False},
-        ],
-        ids=[
-            "mask_type_image",
-            "mask_type_pixel",
-            "mask_type_voxel",
-            "exclude_roi_centroids",
-            "exclude_roi_acceptance",
-            "exclude_background_segmentation",
-        ],
-    )
-    def setup_interface(self, request):
-
-        test_id = request.node.callspec.id
-        self.test_name = test_id
-        self.interface_kwargs = self.interface_kwargs
-        self.conversion_options = request.param
-        self.interface = self.data_interface_cls(**self.interface_kwargs)
-
-        return self.interface, self.test_name
-
-
-class TestMinianSegmentationInterfaceWithStubTest(SegmentationExtractorInterfaceTestMixin):
-    data_interface_cls = MinianSegmentationInterface
-    interface_kwargs = dict(
-        folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian" / "segmented_data_3units_100frames",
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)

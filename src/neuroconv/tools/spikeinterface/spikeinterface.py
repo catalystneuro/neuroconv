@@ -27,7 +27,6 @@ def add_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
-    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str | None = None,
     write_electrical_series: bool = True,
@@ -100,7 +99,6 @@ def add_recording_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             segment_index=segment_index,
-            starting_time=starting_time,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
@@ -191,7 +189,6 @@ def add_electrical_series_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
-    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
@@ -203,11 +200,16 @@ def add_electrical_series_to_nwbfile(
     Deprecated. Call `add_recording_to_nwbfile` instead.
     """
 
+    warnings.warn(
+        "This function is deprecated and will be removed in or October 2025. "
+        "Use the 'add_recording_to_nwbfile' function instead.",
+        DeprecationWarning,
+    )
+
     _add_recording_segment_to_nwbfile(
         recording=recording,
         nwbfile=nwbfile,
         segment_index=segment_index,
-        starting_time=starting_time,
         metadata=metadata,
         write_as=write_as,
         es_key=es_key,
@@ -223,7 +225,6 @@ def _add_recording_segment_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
-    starting_time: float | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
@@ -240,16 +241,6 @@ def _add_recording_segment_to_nwbfile(
             "The 'write_scaled' parameter is deprecated and will be removed in October 2025. "
             "The function will automatically handle channel conversion and offsets using "
             "'gain_to_physical_unit' and 'offset_to_physical_unit' properties.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-    if starting_time is not None:
-        warnings.warn(
-            "The 'starting_time' parameter is deprecated and will be removed in June 2025. "
-            "Use the time alignment methods or set the recording times directlyfor modifying the starting time or timestamps "
-            "of the data if needed: "
-            "https://neuroconv.readthedocs.io/en/main/user_guide/temporal_alignment.html",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -339,11 +330,9 @@ def _add_recording_segment_to_nwbfile(
     )
     eseries_kwargs.update(data=ephys_data_iterator)
 
-    starting_time = starting_time if starting_time is not None else 0
     if always_write_timestamps:
         timestamps = recording.get_times(segment_index=segment_index)
-        shifted_timestamps = starting_time + timestamps
-        eseries_kwargs.update(timestamps=shifted_timestamps)
+        eseries_kwargs.update(timestamps=timestamps)
     else:
         # By default we write the rate if the timestamps are regular
         recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
@@ -355,15 +344,13 @@ def _add_recording_segment_to_nwbfile(
             rate = recording.get_sampling_frequency()
             recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
-        # Shift timestamps if starting_time is set
         if rate:
-            starting_time = float(starting_time + recording_t_start)
+            starting_time = float(recording_t_start)
             # Note that we call the sampling frequency again because the estimated rate might be different from the
             # sampling frequency of the recording extractor by some epsilon.
             eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
         else:
-            shifted_timestamps = starting_time + timestamps
-            eseries_kwargs.update(timestamps=shifted_timestamps)
+            eseries_kwargs.update(timestamps=timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -824,6 +811,9 @@ def add_electrodes_to_nwbfile(
     spikeinterface_special_cases = [
         "offset_to_uV",  # Written in the ElectricalSeries
         "gain_to_uV",  # Written in the ElectricalSeries
+        "gain_to_physical_unit",  # Written in the ElectricalSeries
+        "offset_to_physical_unit",  # Written in the ElectricalSeries
+        "physical_unit",  # Written in the ElectricalSeries
         "contact_vector",  # Structured array representing the probe
         "channel_name",  # We handle this here with _get_channel_name
         "channel_names",  # Some formats from neo also have this property, skip it
@@ -1002,7 +992,7 @@ def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment
     """
     element_size_in_bytes = recording.get_dtype().itemsize
     num_channels = recording.get_num_channels()
-    num_frames = recording.get_num_frames(segment_index=segment_index)
+    num_frames = recording.get_num_samples(segment_index=segment_index)
 
     traces_size_in_bytes = element_size_in_bytes * num_channels * num_frames
     available_memory_in_bytes = psutil.virtual_memory().available
@@ -1323,7 +1313,6 @@ def write_recording_to_nwbfile(
     metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    starting_time: float | None = None,
     write_as: str | None = "raw",
     es_key: str | None = None,
     write_electrical_series: bool = True,
@@ -1387,8 +1376,6 @@ def write_recording_to_nwbfile(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-    starting_time : float, optional
-        Sets the starting time of the ElectricalSeries to a manually set value.
     write_as: {'raw', 'processed', 'lfp'}, optional
         How to save the traces data in the nwb file.
         - 'raw' will save it in acquisition
@@ -1434,7 +1421,6 @@ def write_recording_to_nwbfile(
         add_recording_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile_out,
-            starting_time=starting_time,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,

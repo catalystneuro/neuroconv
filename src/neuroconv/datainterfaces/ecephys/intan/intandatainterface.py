@@ -4,7 +4,7 @@ from pydantic import FilePath
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_schema_from_hdmf_class
+from ....utils import DeepDict, get_schema_from_hdmf_class
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
@@ -73,7 +73,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 
