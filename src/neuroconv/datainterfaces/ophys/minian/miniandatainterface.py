@@ -4,6 +4,7 @@ from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ....utils import DeepDict
 
 
 class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
@@ -27,7 +28,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         ----------
         folder_path : str or Path
             Path to .zarr path.
-        verbose : bool, default True
+        verbose : bool, default False
             Whether to print progress
         """
         super().__init__(folder_path=folder_path)
@@ -59,7 +60,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             iterator_options=iterator_options,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Minian segmentation data.
 
@@ -72,6 +73,6 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             - subject_id: Unique identifier for the subject.
         """
         metadata = super().get_metadata()
-        metadata["NWBFile"]["session_id"] = self.segmentation_extractor.get_session_id()
-        metadata["Subject"]["subject_id"] = self.segmentation_extractor.get_subject_id()
+        metadata["NWBFile"]["session_id"] = self.segmentation_extractor._get_session_id()
+        metadata["Subject"]["subject_id"] = self.segmentation_extractor._get_subject_id()
         return metadata
