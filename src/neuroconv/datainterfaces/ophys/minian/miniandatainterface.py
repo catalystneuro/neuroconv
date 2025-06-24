@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -19,6 +19,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         source_metadata["properties"]["folder_path"]["description"] = "Path to .zarr output."
         return source_metadata
 
+    @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
 
