@@ -1,4 +1,3 @@
-
 import pytest
 
 from neuroconv.datainterfaces import (
