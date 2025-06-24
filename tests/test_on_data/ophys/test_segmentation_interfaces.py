@@ -1,3 +1,8 @@
+import platform
+import sys
+from datetime import datetime
+
+import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import (
@@ -389,7 +394,6 @@ class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
         ids=[
             "mask_type_image",
             "mask_type_pixel",
-            "mask_type_voxel",
             "exclude_roi_centroids",
             "exclude_roi_acceptance",
             "exclude_background_segmentation",
