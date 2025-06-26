@@ -155,7 +155,7 @@ interface_list = [
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
-    FemtonicsImagingInterface,  
+    FemtonicsImagingInterface,
     InscopixSegmentationInterface,
     SimaSegmentationInterface,
     Suite2pSegmentationInterface,
