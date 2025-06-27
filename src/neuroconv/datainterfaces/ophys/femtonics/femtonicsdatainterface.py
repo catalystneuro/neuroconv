@@ -65,6 +65,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 "Please specify 'channel_name' to select one channel."
             )
 
+        # Hack till roiextractors removes the get_num_channels method in `check_imaging_equal`.
+        # TODO: remove this once roiextractors 0.6.1
+        self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
+
     def get_metadata(self) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
