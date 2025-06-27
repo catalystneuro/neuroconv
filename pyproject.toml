@@ -298,7 +298,7 @@ extract = [
     "neuroconv[ophys_minimal]",
 ]
 femtonics = [
-    "neuroconv[ophys_minimal]", 
+    "neuroconv[ophys_minimal]",
 ]
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
