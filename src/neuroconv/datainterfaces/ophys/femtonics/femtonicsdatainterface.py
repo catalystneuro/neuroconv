@@ -197,11 +197,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         list of str
             List of available channel names.
         """
-        Extractor = FemtonicsImagingInterface.get_extractor() 
+        Extractor = FemtonicsImagingInterface.get_extractor()
         return Extractor.get_available_channels(
-            file_path=file_path, 
-            session_index=session_index, 
-            munit_index=munit_index
+            file_path=file_path, session_index=session_index, munit_index=munit_index
         )
 
     @staticmethod
@@ -218,7 +216,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         -------
         list of str
             List of available session keys.
-        """ 
+        """
         Extractor = FemtonicsImagingInterface.get_extractor()
         return Extractor.get_available_sessions(file_path=file_path)
 
@@ -239,9 +237,5 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         list of str
             List of available unit keys.
         """
-        Extractor = FemtonicsImagingInterface.get_extractor()      
-        return Extractor.get_available_units(
-            file_path=file_path, 
-            session_index=session_index
-        )
-
+        Extractor = FemtonicsImagingInterface.get_extractor()
+        return Extractor.get_available_units(file_path=file_path, session_index=session_index)
