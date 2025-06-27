@@ -297,6 +297,9 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+femtonics = [
+    "neuroconv[ophys_minimal]", 
+]
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
 hdf5 = [
@@ -363,6 +366,7 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
+    "neuroconv[femtonics]",
     "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
     "neuroconv[ophys_minimal]",
     "neuroconv[hdf5imaging]",

@@ -1,10 +1,6 @@
 """Femtonics imaging interface for NeuroConv."""
 
-from pathlib import Path
 from typing import Optional
-
-from roiextractors import FemtonicsImagingExtractor
-
 
 from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict, FolderPathType, dict_deep_update
@@ -205,8 +201,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         -------
         list of str
             List of available channel names.
-        """ 
-        return FemtonicsImagingExtractor.get_available_channels(
+        """
+        Extractor = FemtonicsImagingInterface.get_extractor() 
+        return Extractor.get_available_channels(
             file_path=file_path, 
             session_index=session_index, 
             munit_index=munit_index
@@ -227,7 +224,8 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         list of str
             List of available session keys.
         """ 
-        return FemtonicsImagingExtractor.get_available_sessions(file_path=file_path)
+        Extractor = FemtonicsImagingInterface.get_extractor()
+        return Extractor.get_available_sessions(file_path=file_path)
 
     @staticmethod  
     def get_available_units(file_path: FolderPathType, session_index: int = 0) -> list[str]:
@@ -245,8 +243,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         -------
         list of str
             List of available unit keys.
-        """      
-        return FemtonicsImagingExtractor.get_available_units(
+        """
+        Extractor = FemtonicsImagingInterface.get_extractor()      
+        return Extractor.get_available_units(
             file_path=file_path, 
             session_index=session_index
         )
