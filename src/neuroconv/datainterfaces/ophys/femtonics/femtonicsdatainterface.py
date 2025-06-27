@@ -3,15 +3,15 @@
 from typing import Optional
 
 from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, FolderPathType, dict_deep_update
+from ....utils import DeepDict, FolderPathType
 
 
 class FemtonicsImagingInterface(BaseImagingExtractorInterface):
     """
     Data interface for Femtonics imaging data (.mesc files).
-    
-    This interface handles Femtonics two-photon microscopy data stored in MESc 
-    (Measurement Session Container) format, which is an HDF5-based file format 
+
+    This interface handles Femtonics two-photon microscopy data stored in MESc
+    (Measurement Session Container) format, which is an HDF5-based file format
     containing imaging data, experiment metadata, scan parameters, and hardware configuration.
     """
 
@@ -36,7 +36,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Path to the .mesc file.
         session_index : int, optional
             Index of the MSession to use (0-based). Default is 0.
-        munit_index : int, optional  
+        munit_index : int, optional
             Index of the MUnit within the specified session (0-based). Default is 0.
         channel_name : str, optional
             Name of the channel to extract. If not specified and multiple channels exist,
@@ -49,7 +49,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             session_index=session_index,
             munit_index=munit_index,
             channel_name=channel_name,
-            verbose=verbose
+            verbose=verbose,
         )
 
         self._file_path = file_path
@@ -65,11 +65,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 "Please specify 'channel_name' to select one channel."
             )
 
-
     def get_metadata(self) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
-        
+
         Returns
         -------
         DeepDict
@@ -77,16 +76,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             optical channels, imaging plane details, and acquisition parameters.
         """
         metadata = super().get_metadata()
-     
+
         femtonics_metadata = self.imaging_extractor._get_metadata()
 
         # Extract pixel size information for imaging plane
         pixel_size_info = femtonics_metadata.get("pixel_size_micrometers")
-        if (
-            pixel_size_info
-            and "x_size" in pixel_size_info
-            and "y_size" in pixel_size_info
-        ):
+        if pixel_size_info and "x_size" in pixel_size_info and "y_size" in pixel_size_info:
             x_size = pixel_size_info["x_size"]
             y_size = pixel_size_info["y_size"]
             x_units = pixel_size_info.get("x_units")
@@ -101,30 +96,30 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                             imaging_plane["grid_spacing_unit"] = x_units
                         else:
                             import warnings
+
                             warnings.warn(
                                 "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will not be set. "
                                 "Default value is 'meters'"
                             )
-        
+
         # Add experimenter information
         experimenter_info = femtonics_metadata.get("experimenter_info", {})
         if experimenter_info.get("username"):
             metadata["NWBFile"]["experimenter"] = [experimenter_info["username"]]
 
-            
         # Add session information
         session_uuid = femtonics_metadata.get("session_uuid")
         if session_uuid:
             metadata["NWBFile"]["session_id"] = session_uuid
 
-        # Session description 
+        # Session description
         hostname = femtonics_metadata.get("hostname")
         session_descr = f"Session: {self._session_index}, MUnit: {self._munit_index}."
         if hostname:
             session_descr += f" Session performed on workstation: {hostname}."
         metadata["NWBFile"]["session_description"] = session_descr
 
-        # Add PMT settings to optical channels 
+        # Add PMT settings to optical channels
         pmt_settings = femtonics_metadata.get("pmt_settings", {})
         if pmt_settings:
             imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
@@ -134,12 +129,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 if channel_name in pmt_settings and i < len(optical_channels):
                     settings = pmt_settings[channel_name]
                     desc_parts = []
-                    if settings.get('voltage') is not None:
+                    if settings.get("voltage") is not None:
                         desc_parts.append(f"PMT voltage: {settings['voltage']}V")
-                    if settings.get('warmup_time') is not None:
+                    if settings.get("warmup_time") is not None:
                         desc_parts.append(f"Warmup time: {settings['warmup_time']}s")
                     if desc_parts:
-                        desc = optical_channels[i].get('description', '')
+                        desc = optical_channels[i].get("description", "")
                         desc = (desc + " " if desc else "") + ", ".join(desc_parts)
                         optical_channels[i]["description"] = desc.strip()
 
@@ -154,7 +149,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             version_strs.append(f"version: {version_info['version']}")
         if version_info.get("revision"):
             version_strs.append(f"revision: {version_info['revision']}")
-        if version_strs :
+        if version_strs:
             device = metadata["Ophys"]["Device"][0]
             desc = device.get("description", "")
             desc = f"{desc} {', '.join(version_strs)}"
@@ -213,12 +208,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
     def get_available_sessions(file_path: FolderPathType) -> list[str]:
         """
         Get list of available session keys in the file.
-        
+
         Parameters
         ----------
         file_path : str or Path
             Path to the .mesc file.
-            
+
         Returns
         -------
         list of str
@@ -227,18 +222,18 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         Extractor = FemtonicsImagingInterface.get_extractor()
         return Extractor.get_available_sessions(file_path=file_path)
 
-    @staticmethod  
+    @staticmethod
     def get_available_units(file_path: FolderPathType, session_index: int = 0) -> list[str]:
         """
         Get list of available unit keys in the specified session.
-        
+
         Parameters
         ----------
         file_path : str or Path
             Path to the .mesc file.
         session_index : int, optional
             Index of the MSession to use. Default is 0.
-            
+
         Returns
         -------
         list of str

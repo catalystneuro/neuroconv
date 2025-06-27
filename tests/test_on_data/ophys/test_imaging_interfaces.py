@@ -1125,39 +1125,44 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         )  # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
 
+
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p29.mesc file."""
-    
+
     data_interface_cls = FemtonicsImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"),
         session_index=0,
         munit_index=0,
-        channel_name="UG"
+        channel_name="UG",
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata was extracted correctly for p29.mesc."""
-        
+
         # Check session start time
         assert metadata["session_start_time"] == datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
-        
+
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
         assert nwbfile_metadata["session_description"] == "Session: 0, MUnit: 0."
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
-        
+
         # Check device metadata
         device_metadata = metadata["Ophys"]["Device"][0]
-        assert device_metadata["name"] == "Microscope" # Default metadata because this was not included in the source metadata
+        assert (
+            device_metadata["name"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
         assert device_metadata["description"] == "version: MESc 3.3, revision: 4356"
-        
+
         # Check imaging plane metadata
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "Microscope" # Default metadata because this was not included in the source metadata
+        assert (
+            imaging_plane["device"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
         assert imaging_plane["imaging_rate"] == 30.962890625
         assert imaging_plane["grid_spacing"] == [1.7821140546875, 1.7821140546875]
         assert imaging_plane["grid_spacing_unit"] == "µm"
@@ -1165,52 +1170,66 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
         # Check optical channel metadata
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == "UG"
-        assert optical_channel["description"] == "An optical channel of the microscope. PMT voltage: 65.0V, Warmup time: -0.2s"
-        
+        assert (
+            optical_channel["description"]
+            == "An optical channel of the microscope. PMT voltage: 65.0V, Warmup time: -0.2s"
+        )
+
         # Check two photon series metadata
         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
-        assert two_photon_series["name"] == "TwoPhotonSeries" 
-        assert two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."# Default metadata because this was not included in the source metadata
-        assert two_photon_series["unit"] == "n.a." # Default metadata because this was not included in the source metadata
+        assert two_photon_series["name"] == "TwoPhotonSeries"
+        assert (
+            two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            two_photon_series["unit"] == "n.a."
+        )  # Default metadata because this was not included in the source metadata
         assert two_photon_series["dimension"] == [512, 512]
-        
+
         # Check geometric transformations in imaging plane description
-        assert imaging_plane["description"] == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11608.54    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11474.34]"
+        assert (
+            imaging_plane["description"]
+            == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11608.54    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11474.34]"
+        )
 
 
 class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p30.mesc file."""
-    
+
     data_interface_cls = FemtonicsImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"),
         session_index=0,
         munit_index=0,
-        channel_name="UG"
+        channel_name="UG",
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
         """Check that the metadata was extracted correctly for p30.mesc."""
-        
+
         # Check session start time - different from p29
         assert metadata["session_start_time"] == datetime(2017, 9, 30, 9, 36, 12, 98727, tzinfo=timezone.utc)
-        
+
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
         assert nwbfile_metadata["session_description"] == "Session: 0, MUnit: 0."
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
-        
+
         # Check device metadata
         device_metadata = metadata["Ophys"]["Device"][0]
-        assert device_metadata["name"] == "Microscope" # Default metadata because this was not included in the source metadata
+        assert (
+            device_metadata["name"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
         assert device_metadata["description"] == "version: MESc 3.3, revision: 4356"
-        
+
         # Check imaging plane metadata
         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "Microscope" # Default metadata because this was not included in the source metadata
+        assert (
+            imaging_plane["device"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
         assert imaging_plane["imaging_rate"] == 30.962890625
         assert imaging_plane["grid_spacing"] == [1.7821140546875, 1.7821140546875]
         assert imaging_plane["grid_spacing_unit"] == "µm"
@@ -1218,22 +1237,32 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
         # Check optical channel metadata
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == "UG"
-        assert optical_channel["description"] == "An optical channel of the microscope. PMT voltage: 65.0V, Warmup time: -0.2s"
-        
+        assert (
+            optical_channel["description"]
+            == "An optical channel of the microscope. PMT voltage: 65.0V, Warmup time: -0.2s"
+        )
+
         # Check two photon series metadata
         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
         assert two_photon_series["name"] == "TwoPhotonSeries"
-        assert two_photon_series["description"] == "Imaging data from two-photon excitation microscopy." # Default metadata because this was not included in the source metadata
-        assert two_photon_series["unit"] == "n.a." # Default metadata because this was not included in the source metadata
+        assert (
+            two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            two_photon_series["unit"] == "n.a."
+        )  # Default metadata because this was not included in the source metadata
         assert two_photon_series["dimension"] == [512, 512]
-        
+
         # Check geometric transformations in imaging plane description
-        assert imaging_plane["description"] == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11425.51    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11281.89]"
+        assert (
+            imaging_plane["description"]
+            == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11425.51    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11281.89]"
+        )
 
 
 class TestFemtonicsImagingInterfaceStaticMethods:
     """Test static methods of FemtonicsImagingInterface."""
-    
+
     def test_get_available_channels_p29(self):
         """Test getting available channels for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
@@ -1242,7 +1271,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         assert len(channels) > 0
         assert "UG" in channels
         assert "UR" in channels
-    
+
     def test_get_available_channels_p30(self):
         """Test getting available channels for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
@@ -1250,29 +1279,29 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         assert isinstance(channels, list)
         assert len(channels) > 0
         assert "UG" in channels
-        assert "UR" in channels 
-    
+        assert "UR" in channels
+
     def test_get_available_sessions_p29(self):
         """Test getting available sessions for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert isinstance(sessions, list)
         assert len(sessions) > 0
-    
+
     def test_get_available_sessions_p30(self):
         """Test getting available sessions for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert isinstance(sessions, list)
         assert len(sessions) > 0
-        
+
     def test_get_available_units_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
         assert isinstance(units, list)
         assert len(units) > 0
-        
+
     def test_get_available_units_p30(self):
         """Test getting available units for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
