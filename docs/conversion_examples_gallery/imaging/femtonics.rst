@@ -31,10 +31,10 @@ Convert Femtonics imaging data to NWB using :py:class:`~neuroconv.datainterfaces
     ... )
     >>>
     >>> metadata = interface.get_metadata()
-    >>> # Session start time is automatically extracted from the .mesc file with timezone information 
-    >>> # should the conversion example still include : 
+    >>> # Session start time is automatically extracted from the .mesc file with timezone information
+    >>> # should the conversion example still include :
     >>> # session_start_time = datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
-    >>> # metadata["NWBFile"].update(session_start_time=session_start_time) ? 
+    >>> # metadata["NWBFile"].update(session_start_time=session_start_time) ?
     >>>
     >>> # Run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
