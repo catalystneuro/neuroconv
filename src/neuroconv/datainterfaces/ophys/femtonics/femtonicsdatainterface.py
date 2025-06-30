@@ -35,7 +35,11 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         file_path : str or Path
             Path to the .mesc file.
         session_index : int, optional
-            Index of the MSession to use (0-based). Default is 0.
+            Index or key of the MSession to use. If None, the first available session will be selected automatically.
+            In Femtonics MESc files, an MSession ("Measurement Session") represents a single experimental session,
+            which may contain one or more MUnits (imaging acquisitions or experiments). MSessions are typically
+            indexed as "MSession_0", "MSession_1", etc...
+
         munit_index : int, optional
             Index of the MUnit within the specified session (0-based). Default is 0.
 
@@ -51,6 +55,18 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, optional
             Whether to print verbose output. Default is False.
         """
+
+        Extractor = self.get_extractor()
+        session_keys = Extractor.get_available_sessions(file_path)
+        if session_index is None:
+            if not session_keys:
+                raise ValueError(f"No sessions found in Femtonics file: {file_path}")
+            session_index = 0  
+        if munit_index is None:
+            unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
+            if not unit_keys:
+                raise ValueError(f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}")
+            munit_index = 0  
 
         super().__init__(
             file_path=file_path,
@@ -68,20 +84,6 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # Hack till roiextractors removes the get_num_channels method in `check_imaging_equal`.
         # TODO: remove this once roiextractors 0.6.1
         self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
-
-        Extractor = self.get_extractor()
-        if session_index is None:
-            # If session_index is not specified, select the first available session key.
-            session_keys = Extractor.get_available_sessions(file_path)
-            if not session_keys:
-                raise ValueError(f"No sessions found in Femtonics file: {file_path}")
-            session_index = session_keys[0]
-        if munit_index is None:
-            # If munit_index is not specified, select the first available MUnit key within the session.
-            unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
-            if not unit_keys:
-                raise ValueError(f"No units found in session {session_index} of Femtonics file: {file_path}")
-            munit_index = unit_keys[0]
 
     def get_metadata(self) -> DeepDict:
         """
