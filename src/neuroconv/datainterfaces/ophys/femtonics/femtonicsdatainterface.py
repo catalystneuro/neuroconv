@@ -22,8 +22,8 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FolderPathType,
-        session_index: int = 0,
-        munit_index: int = 0,
+        session_index: Optional[int] = None,
+        munit_index: Optional[int] = None,
         channel_name: Optional[str] = None,
         verbose: bool = False,
     ):
@@ -68,6 +68,20 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # Hack till roiextractors removes the get_num_channels method in `check_imaging_equal`.
         # TODO: remove this once roiextractors 0.6.1
         self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
+
+        Extractor = self.get_extractor()
+        if session_index is None:
+            # If session_index is not specified, select the first available session key.
+            session_keys = Extractor.get_available_sessions(file_path)
+            if not session_keys:
+                raise ValueError(f"No sessions found in Femtonics file: {file_path}")
+            session_index = session_keys[0]
+        if munit_index is None:
+            # If munit_index is not specified, select the first available MUnit key within the session.
+            unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
+            if not unit_keys:
+                raise ValueError(f"No units found in session {session_index} of Femtonics file: {file_path}")
+            munit_index = unit_keys[0]
 
     def get_metadata(self) -> DeepDict:
         """
