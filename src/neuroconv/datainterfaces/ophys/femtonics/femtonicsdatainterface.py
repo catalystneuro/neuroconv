@@ -31,7 +31,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         Initialize the FemtonicsImagingInterface.
 
         Parameters
-        ----------       
+        ----------
         file_path : str or Path
             Path to the .mesc file.
         session_index : int, optional
@@ -96,7 +96,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 if "Ophys" in metadata and "ImagingPlane" in metadata["Ophys"]:
                     for imaging_plane in metadata["Ophys"]["ImagingPlane"]:
                         imaging_plane["grid_spacing"] = [x_size, y_size]
-                        if x_units: 
+                        if x_units:
                             imaging_plane["grid_spacing_unit"] = x_units
                         else:
                             import warnings
