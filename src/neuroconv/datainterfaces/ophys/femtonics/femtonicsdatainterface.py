@@ -61,12 +61,14 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if session_index is None:
             if not session_keys:
                 raise ValueError(f"No sessions found in Femtonics file: {file_path}")
-            session_index = 0  
+            session_index = 0
         if munit_index is None:
             unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
             if not unit_keys:
-                raise ValueError(f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}")
-            munit_index = 0  
+                raise ValueError(
+                    f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}"
+                )
+            munit_index = 0
 
         super().__init__(
             file_path=file_path,
