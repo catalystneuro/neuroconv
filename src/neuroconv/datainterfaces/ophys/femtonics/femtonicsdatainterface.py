@@ -31,19 +31,27 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         Initialize the FemtonicsImagingInterface.
 
         Parameters
-        ----------
+        ----------       
         file_path : str or Path
             Path to the .mesc file.
         session_index : int, optional
             Index of the MSession to use (0-based). Default is 0.
         munit_index : int, optional
             Index of the MUnit within the specified session (0-based). Default is 0.
+
+            In Femtonics MESc files, an MUnit ("Measurement Unit") represents a single imaging acquisition or experiment,
+            including all associated imaging data and metadata. A single MSession can contain multiple MUnits,
+            each corresponding to a separate imaging run/experiment performed during the session.
+            MUnits are indexed (0, 1, 2, ...) within each session.
+
         channel_name : str, optional
-            Name of the channel to extract. If not specified and multiple channels exist,
-            an error will be raised. If only one channel exists, it will be used automatically.
+            Name of the channel to extract (e.g., 'UG', 'UR').
+            If multiple channels are available and no channel is specified, an error will be raised.
+            If only one channel is available, it will be used automatically.
         verbose : bool, optional
             Whether to print verbose output. Default is False.
         """
+
         super().__init__(
             file_path=file_path,
             session_index=session_index,
@@ -56,14 +64,6 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         self._session_index = session_index
         self._munit_index = munit_index
         self._channel_name = channel_name
-
-        # Validate that only one channel is selected
-        channel_names = self.imaging_extractor.get_channel_names()
-        if len(channel_names) != 1:
-            raise ValueError(
-                f"FemtonicsImagingInterface expects a single channel, but found {len(channel_names)}: {channel_names}. "
-                "Please specify 'channel_name' to select one channel."
-            )
 
         # Hack till roiextractors removes the get_num_channels method in `check_imaging_equal`.
         # TODO: remove this once roiextractors 0.6.1
@@ -96,15 +96,15 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 if "Ophys" in metadata and "ImagingPlane" in metadata["Ophys"]:
                     for imaging_plane in metadata["Ophys"]["ImagingPlane"]:
                         imaging_plane["grid_spacing"] = [x_size, y_size]
-                        if x_units:
+                        if x_units: 
                             imaging_plane["grid_spacing_unit"] = x_units
                         else:
                             import warnings
 
                             warnings.warn(
-                                "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will not be set. "
-                                "Default value is 'meters'"
+                                "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will be set to 'n.a.'."
                             )
+                            imaging_plane["grid_spacing_unit"] = "n.a."
 
         # Add experimenter information
         experimenter_info = femtonics_metadata.get("experimenter_info", {})
@@ -144,7 +144,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
         # Add session start time if available
         session_start_time = femtonics_metadata.get("session_start_time")
-        metadata["session_start_time"] = session_start_time
+        metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Add version and revision info to Ophys Device description
         version_info = femtonics_metadata.get("mesc_version_info", {})

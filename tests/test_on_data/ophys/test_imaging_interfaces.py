@@ -1142,7 +1142,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
         """Check that the metadata was extracted correctly for p29.mesc."""
 
         # Check session start time
-        assert metadata["session_start_time"] == datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
@@ -1209,7 +1209,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
         """Check that the metadata was extracted correctly for p30.mesc."""
 
         # Check session start time - different from p29
-        assert metadata["session_start_time"] == datetime(2017, 9, 30, 9, 36, 12, 98727, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 30, 9, 36, 12, 98727, tzinfo=timezone.utc)
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
@@ -1285,26 +1285,22 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         """Test getting available sessions for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert isinstance(sessions, list)
-        assert len(sessions) > 0
+        assert sessions == ["MSession_0"]
 
     def test_get_available_sessions_p30(self):
         """Test getting available sessions for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert isinstance(sessions, list)
-        assert len(sessions) > 0
+        assert sessions == ["MSession_0"]
 
     def test_get_available_units_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
-        assert isinstance(units, list)
-        assert len(units) > 0
+        assert units == ["MUnit_0", "MUnit_1"]
 
     def test_get_available_units_p30(self):
         """Test getting available units for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
         units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
-        assert isinstance(units, list)
-        assert len(units) > 0
+        assert units == ["MUnit_0", "MUnit_1"]
