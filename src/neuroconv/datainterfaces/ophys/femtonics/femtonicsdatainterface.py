@@ -48,10 +48,14 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             each corresponding to a separate imaging run/experiment performed during the session.
             MUnits are indexed (0, 1, 2, ...) within each session.
 
+            Note: In future versions, roiextractors will default to the first available session if not specified.
+
         channel_name : str, optional
             Name of the channel to extract (e.g., 'UG', 'UR').
             If multiple channels are available and no channel is specified, an error will be raised.
             If only one channel is available, it will be used automatically.
+
+            Note: In future versions, roiextractors will default to the first available session if not specified.
         verbose : bool, optional
             Whether to print verbose output. Default is False.
         """
@@ -61,14 +65,19 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if session_index is None:
             if not session_keys:
                 raise ValueError(f"No sessions found in Femtonics file: {file_path}")
-            session_index = 0
+            session_index = (
+                0  # TODO: Remove this defaulting logic once roiextractors defaults to the first session automatically
+            )
+
         if munit_index is None:
             unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
             if not unit_keys:
                 raise ValueError(
                     f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}"
                 )
-            munit_index = 0
+            munit_index = (
+                0  # TODO: Remove this defaulting logic once roiextractors defaults to the first unit automatically
+            )
 
         super().__init__(
             file_path=file_path,
