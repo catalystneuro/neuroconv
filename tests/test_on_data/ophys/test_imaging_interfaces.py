@@ -1125,6 +1125,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         )  # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
 
+
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p29.mesc file."""
 

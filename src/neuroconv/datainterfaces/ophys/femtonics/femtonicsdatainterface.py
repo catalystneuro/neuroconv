@@ -41,7 +41,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             indexed as "MSession_0", "MSession_1", etc...
 
         munit_name : str, optional
-            Name of the MUnit within the specified session (e.g., "MUnit_0", "MUnit_1"). 
+            Name of the MUnit within the specified session (e.g., "MUnit_0", "MUnit_1").
             If None, the first available unit will be selected automatically.
 
             In Femtonics MESc files, an MUnit ("Measurement Unit") represents a single imaging acquisition or experiment,
@@ -73,14 +73,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                     f"Multiple sessions found in Femtonics file: {file_path}. "
                     f"Available sessions: {session_keys}. Please specify 'session_index'."
                 )
-        
+
         # Get available units for the selected session
         unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
         if not unit_keys:
-            raise ValueError(
-                f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}"
-            )
-        
+            raise ValueError(f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}")
+
         # Handle munit_name selection
         if munit_name is None:
             if len(unit_keys) == 1:
@@ -97,10 +95,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                     f"Specified munit_name '{munit_name}' not found in session {session_keys[session_index]} "
                     f"of Femtonics file: {file_path}. Available units: {unit_keys}."
                 )
-        
+
         # Convert munit_name to munit_index for the extractor
         munit_index = unit_keys.index(munit_name)
-        
+
         # TODO: Remove this logic once roiextractors supports this behavior natively.
 
         super().__init__(
@@ -246,7 +244,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         session_index : int, optional
             Index of the MSession to use. Default is 0.
         munit_name : str, optional
-            Name of the MUnit within the session (e.g., "MUnit_0"). 
+            Name of the MUnit within the session (e.g., "MUnit_0").
             If None, uses the first available unit.
 
         Returns
@@ -255,7 +253,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available channel names.
         """
         Extractor = FemtonicsImagingInterface.get_extractor()
-        
+
         # Handle munit_name to munit_index conversion
         if munit_name is None:
             unit_keys = Extractor.get_available_units(file_path=file_path, session_index=session_index)
@@ -267,7 +265,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             if munit_name not in unit_keys:
                 raise ValueError(f"Unit '{munit_name}' not found. Available units: {unit_keys}")
             munit_index = unit_keys.index(munit_name)
-        
+
         return Extractor.get_available_channels(
             file_path=file_path, session_index=session_index, munit_index=munit_index
         )
