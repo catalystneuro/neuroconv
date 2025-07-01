@@ -15,6 +15,7 @@ from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaPositionDataInterface,
@@ -144,6 +145,7 @@ interface_list = [
     PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    AxonRecordingInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
