@@ -1296,13 +1296,13 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
         units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_index=0)
         assert units == ["MUnit_0", "MUnit_1"]
-    
+
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\."
+            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
