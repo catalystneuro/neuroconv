@@ -1132,6 +1132,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = FemtonicsImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"),
+        munit_index=0,
         channel_name="UG",
     )
     save_directory = OUTPUT_PATH
@@ -1197,6 +1198,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = FemtonicsImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"),
+        munit_index=0,
         channel_name="UG",
     )
     save_directory = OUTPUT_PATH
@@ -1283,28 +1285,27 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert sessions == ["MSession_0"]
 
-    def test_get_available_units_p29(self):
+    def test_get_available_munits_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
+        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_index=0)
         assert units == ["MUnit_0", "MUnit_1"]
 
-    def test_get_available_units_p30(self):
+    def test_get_available_munits_p30(self):
         """Test getting available units for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
-        units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
+        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_index=0)
         assert units == ["MUnit_0", "MUnit_1"]
-
+    
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        # Do not specify channel_name
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(
+            ValueError,
+            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\."
+        ):
             FemtonicsImagingInterface(
                 file_path=file_path,
                 session_index=0,
-                munit_index=0,
-                # channel_name is omitted
+                munit_index=0,  # Specify the unit so the channel ambiguity is triggered
             )
-        assert "Multiple channels found" in str(excinfo.value)
-        assert "UG" in str(excinfo.value) and "UR" in str(excinfo.value)

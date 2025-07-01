@@ -16,7 +16,7 @@ Convert Femtonics imaging data to NWB using :py:class:`~neuroconv.datainterfaces
     >>> from neuroconv.datainterfaces import FemtonicsImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-    >>> interface = FemtonicsImagingInterface(file_path=file_path, channel_name="UG", verbose=False )
+    >>> interface = FemtonicsImagingInterface(file_path=file_path, munit_index=0, channel_name="UG")
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion

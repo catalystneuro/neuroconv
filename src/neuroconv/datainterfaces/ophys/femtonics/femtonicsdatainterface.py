@@ -65,19 +65,27 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if session_index is None:
             if not session_keys:
                 raise ValueError(f"No sessions found in Femtonics file: {file_path}")
-            session_index = (
-                0  # TODO: Remove this defaulting logic once roiextractors defaults to the first session automatically
-            )
-
+            if len(session_keys) == 1:
+                session_index = 0
+            else:
+                raise ValueError(
+                    f"Multiple sessions found in Femtonics file: {file_path}. "
+                    f"Available sessions: {session_keys}. Please specify 'session_index'."
+                )
         if munit_index is None:
-            unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
+            unit_keys = Extractor.get_available_munits(file_path, session_index=session_index)
             if not unit_keys:
                 raise ValueError(
                     f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}"
                 )
-            munit_index = (
-                0  # TODO: Remove this defaulting logic once roiextractors defaults to the first unit automatically
-            )
+            if len(unit_keys) == 1:
+                munit_index = 0
+            else:
+                raise ValueError(
+                    f"Multiple units found in session {session_keys[session_index]} of Femtonics file: {file_path}. "
+                    f"Available units: {unit_keys}. Please specify 'munit_index'."
+                )
+        # TODO: Remove this logic once roiextractors supports this behavior natively.
 
         super().__init__(
             file_path=file_path,
@@ -252,7 +260,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_sessions(file_path=file_path)
 
     @staticmethod
-    def get_available_units(file_path: FolderPathType, session_index: int = 0) -> list[str]:
+    def get_available_munits(file_path: FolderPathType, session_index: int = 0) -> list[str]:
         """
         Get list of available unit keys in the specified session.
 
