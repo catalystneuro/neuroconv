@@ -1125,14 +1125,13 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         )  # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
 
-
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p29.mesc file."""
 
     data_interface_cls = FemtonicsImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"),
-        munit_index=0,
+        munit_name="MUnit_0",
         channel_name="UG",
     )
     save_directory = OUTPUT_PATH
@@ -1145,7 +1144,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: 0, MUnit: 0."
+        assert nwbfile_metadata["session_description"] == "Session: 0, MUnit: MUnit_0."
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
 
@@ -1198,7 +1197,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = FemtonicsImagingInterface
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"),
-        munit_index=0,
+        munit_name="MUnit_0",
         channel_name="UG",
     )
     save_directory = OUTPUT_PATH
@@ -1211,7 +1210,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: 0, MUnit: 0."
+        assert nwbfile_metadata["session_description"] == "Session: 0, MUnit: MUnit_0."
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
 
@@ -1285,16 +1284,16 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert sessions == ["MSession_0"]
 
-    def test_get_available_munits_p29(self):
+    def test_get_available_units_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_index=0)
+        units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
         assert units == ["MUnit_0", "MUnit_1"]
 
-    def test_get_available_munits_p30(self):
+    def test_get_available_units_p30(self):
         """Test getting available units for p30.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
-        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_index=0)
+        units = FemtonicsImagingInterface.get_available_units(file_path=file_path, session_index=0)
         assert units == ["MUnit_0", "MUnit_1"]
 
     def test_channel_name_not_specified_multiple_channels(self):
@@ -1307,5 +1306,5 @@ class TestFemtonicsImagingInterfaceStaticMethods:
             FemtonicsImagingInterface(
                 file_path=file_path,
                 session_index=0,
-                munit_index=0,  # Specify the unit so the channel ambiguity is triggered
+                munit_name="MUnit_0",
             )

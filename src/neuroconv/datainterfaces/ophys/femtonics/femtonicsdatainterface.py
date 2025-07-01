@@ -23,7 +23,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FolderPathType,
         session_index: Optional[int] = None,
-        munit_index: Optional[int] = None,
+        munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
         verbose: bool = False,
     ):
@@ -40,22 +40,23 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             which may contain one or more MUnits (imaging acquisitions or experiments). MSessions are typically
             indexed as "MSession_0", "MSession_1", etc...
 
-        munit_index : int, optional
-            Index of the MUnit within the specified session (0-based). Default is 0.
+        munit_name : str, optional
+            Name of the MUnit within the specified session (e.g., "MUnit_0", "MUnit_1"). 
+            If None, the first available unit will be selected automatically.
 
             In Femtonics MESc files, an MUnit ("Measurement Unit") represents a single imaging acquisition or experiment,
             including all associated imaging data and metadata. A single MSession can contain multiple MUnits,
             each corresponding to a separate imaging run/experiment performed during the session.
-            MUnits are indexed (0, 1, 2, ...) within each session.
+            MUnits are named as "MUnit_0", "MUnit_1", etc. within each session.
 
-            Note: In future versions, roiextractors will default to the first available session if not specified.
+            Note: In future versions, roiextractors will default to the first available unit if not specified.
 
         channel_name : str, optional
             Name of the channel to extract (e.g., 'UG', 'UR').
             If multiple channels are available and no channel is specified, an error will be raised.
             If only one channel is available, it will be used automatically.
 
-            Note: In future versions, roiextractors will default to the first available session if not specified.
+            Note: In future versions, roiextractors will default to the first available channel if not specified.
         verbose : bool, optional
             Whether to print verbose output. Default is False.
         """
@@ -72,19 +73,34 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                     f"Multiple sessions found in Femtonics file: {file_path}. "
                     f"Available sessions: {session_keys}. Please specify 'session_index'."
                 )
-        if munit_index is None:
-            unit_keys = Extractor.get_available_munits(file_path, session_index=session_index)
-            if not unit_keys:
-                raise ValueError(
-                    f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}"
-                )
+        
+        # Get available units for the selected session
+        unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
+        if not unit_keys:
+            raise ValueError(
+                f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}"
+            )
+        
+        # Handle munit_name selection
+        if munit_name is None:
             if len(unit_keys) == 1:
-                munit_index = 0
+                munit_name = unit_keys[0]
             else:
                 raise ValueError(
                     f"Multiple units found in session {session_keys[session_index]} of Femtonics file: {file_path}. "
-                    f"Available units: {unit_keys}. Please specify 'munit_index'."
+                    f"Available units: {unit_keys}. Please specify 'munit_name'."
                 )
+        else:
+            # Validate that the specified munit_name exists
+            if munit_name not in unit_keys:
+                raise ValueError(
+                    f"Specified munit_name '{munit_name}' not found in session {session_keys[session_index]} "
+                    f"of Femtonics file: {file_path}. Available units: {unit_keys}."
+                )
+        
+        # Convert munit_name to munit_index for the extractor
+        munit_index = unit_keys.index(munit_name)
+        
         # TODO: Remove this logic once roiextractors supports this behavior natively.
 
         super().__init__(
@@ -97,10 +113,11 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
         self._file_path = file_path
         self._session_index = session_index
-        self._munit_index = munit_index
+        self._munit_name = munit_name
+        self._munit_index = munit_index  # Keep for internal use
         self._channel_name = channel_name
 
-        # Hack till roiextractors removes the get_num_channels method in `check_imaging_equal`.
+        # Hack till roiextractors removes the get_num_channels method in check_imaging_equal.
         # TODO: remove this once roiextractors 0.6.1
         self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
 
@@ -151,9 +168,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if session_uuid:
             metadata["NWBFile"]["session_id"] = session_uuid
 
-        # Session description
+        # Session description - use munit_name instead of index
         hostname = femtonics_metadata.get("hostname")
-        session_descr = f"Session: {self._session_index}, MUnit: {self._munit_index}."
+        session_descr = f"Session: {self._session_index}, MUnit: {self._munit_name}."
         if hostname:
             session_descr += f" Session performed on workstation: {hostname}."
         metadata["NWBFile"]["session_description"] = session_descr
@@ -218,7 +235,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     @staticmethod
-    def get_available_channels(file_path: FolderPathType, session_index: int = 0, munit_index: int = 0) -> list[str]:
+    def get_available_channels(file_path: FolderPathType, session_index: int = 0, munit_name: str = None) -> list[str]:
         """
         Get available channels in the specified session/unit combination.
 
@@ -228,8 +245,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Path to the .mesc file.
         session_index : int, optional
             Index of the MSession to use. Default is 0.
-        munit_index : int, optional
-            Index of the MUnit within the session. Default is 0.
+        munit_name : str, optional
+            Name of the MUnit within the session (e.g., "MUnit_0"). 
+            If None, uses the first available unit.
 
         Returns
         -------
@@ -237,6 +255,19 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available channel names.
         """
         Extractor = FemtonicsImagingInterface.get_extractor()
+        
+        # Handle munit_name to munit_index conversion
+        if munit_name is None:
+            unit_keys = Extractor.get_available_units(file_path=file_path, session_index=session_index)
+            if not unit_keys:
+                raise ValueError(f"No units found in session {session_index}")
+            munit_index = 0  # Use first unit if none specified
+        else:
+            unit_keys = Extractor.get_available_units(file_path=file_path, session_index=session_index)
+            if munit_name not in unit_keys:
+                raise ValueError(f"Unit '{munit_name}' not found. Available units: {unit_keys}")
+            munit_index = unit_keys.index(munit_name)
+        
         return Extractor.get_available_channels(
             file_path=file_path, session_index=session_index, munit_index=munit_index
         )
@@ -260,7 +291,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_sessions(file_path=file_path)
 
     @staticmethod
-    def get_available_munits(file_path: FolderPathType, session_index: int = 0) -> list[str]:
+    def get_available_units(file_path: FolderPathType, session_index: int = 0) -> list[str]:
         """
         Get list of available unit keys in the specified session.
 
