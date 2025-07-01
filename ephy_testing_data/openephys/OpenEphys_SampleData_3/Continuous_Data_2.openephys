@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<EXPERIMENT version="0.4000000000000000222" number="3" separatefiles="0">
+  <RECORDING number="0" samplerate="2000">
+    <PROCESSOR id="100">
+      <CHANNEL name="CH1" bitVolts="0.19499999284744262695" filename="100_CH1_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH2" bitVolts="0.19499999284744262695" filename="100_CH2_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH3" bitVolts="0.19499999284744262695" filename="100_CH3_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH4" bitVolts="0.19499999284744262695" filename="100_CH4_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH5" bitVolts="0.19499999284744262695" filename="100_CH5_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH6" bitVolts="0.19499999284744262695" filename="100_CH6_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH29" bitVolts="0.19499999284744262695" filename="100_CH29_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH31" bitVolts="0.19499999284744262695" filename="100_CH31_3.continuous"
+               position="1024"/>
+      <CHANNEL name="CH32" bitVolts="0.19499999284744262695" filename="100_CH32_3.continuous"
+               position="1024"/>
+    </PROCESSOR>
+  </RECORDING>
+</EXPERIMENT>

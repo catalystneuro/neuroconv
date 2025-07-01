@@ -24,13 +24,12 @@ class TestAbfRecordingInterface(unittest.TestCase):
 
     def test_extractor_name(self):
         """Test that the correct extractor is used."""
-        self.assertEqual(AbfRecordingInterface.ExtractorName, "NeoBaseRecordingExtractor")
-        self.assertEqual(
-            AbfRecordingInterface.ExtractorModuleName,
-            "spikeinterface.extractors.neoextractors.neobaseextractor"
-        )
+        self.assertEqual(AbfRecordingInterface.ExtractorName, "_AbfRecordingExtractor")
+        # Test that get_extractor returns the private class
+        from neuroconv.datainterfaces.ecephys.abf.abfrecordinginterface import _AbfRecordingExtractor
+        self.assertEqual(AbfRecordingInterface.get_extractor(), _AbfRecordingExtractor)
 
-    @patch('spikeinterface.extractors.neoextractors.neobaseextractor.NeoBaseRecordingExtractor')
+    @patch('neuroconv.datainterfaces.ecephys.abf.abfrecordinginterface._AbfRecordingExtractor')
     @patch('pathlib.Path.is_file')
     def test_interface_instantiation(self, mock_is_file, mock_extractor):
         """Test that the interface can be instantiated with mocked extractor."""

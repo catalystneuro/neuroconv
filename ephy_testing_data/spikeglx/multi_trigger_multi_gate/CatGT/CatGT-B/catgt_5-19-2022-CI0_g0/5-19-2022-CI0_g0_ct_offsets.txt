@@ -1,0 +1,8 @@
+smp_imap0:	0	299
+smp_imap1:	0	299
+smp_imlf0:	0	25
+smp_imlf1:	0	25
+sec_imap0:	0.000000	0.009967
+sec_imap1:	0.000000	0.009967
+sec_imlf0:	0.000000	0.010000
+sec_imlf1:	0.000000	0.010000

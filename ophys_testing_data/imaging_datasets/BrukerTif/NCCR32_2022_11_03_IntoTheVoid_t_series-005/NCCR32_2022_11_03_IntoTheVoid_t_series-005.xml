@@ -1,0 +1,318 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PVScan version="5.6.64.400" date="11/3/2022 11:20:34 AM" notes="">
+  <SystemIDs SystemID="E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3">
+    <SystemID SystemID="4886" Description="NORTHWESTERN" />
+  </SystemIDs>
+  <PVStateShard>
+    <PVStateValue key="activeMode" value="ResonantGalvo" />
+    <PVStateValue key="bitDepth" value="13" />
+    <PVStateValue key="currentScanAmplitude">
+      <IndexedValue index="XAxis" value="4.17170481" />
+      <IndexedValue index="YAxis" value="4.17170481" />
+    </PVStateValue>
+    <PVStateValue key="currentScanCenter">
+      <IndexedValue index="XAxis" value="0" />
+      <IndexedValue index="YAxis" value="0" />
+    </PVStateValue>
+    <PVStateValue key="dwellTime" value="0.4" />
+    <PVStateValue key="framePeriod" value="0.032950206" />
+    <PVStateValue key="interlacedScanTrackCount" value="0" />
+    <PVStateValue key="laserPower">
+      <IndexedValue index="0" value="599.609375" description="920 Axon" />
+      <IndexedValue index="1" value="0" description="1064 Axon" />
+      <IndexedValue index="2" value="0" description="Monaco" />
+    </PVStateValue>
+    <PVStateValue key="linesPerFrame" value="512" />
+    <PVStateValue key="maxVoltage">
+      <IndexedValue index="XAxis" value="2.085852405" />
+      <IndexedValue index="YAxis" value="2.085852405" />
+    </PVStateValue>
+    <PVStateValue key="micronsPerPixel">
+      <IndexedValue index="XAxis" value="1.1078125" />
+      <IndexedValue index="YAxis" value="1.1078125" />
+      <IndexedValue index="ZAxis" value="260" />
+    </PVStateValue>
+    <PVStateValue key="minVoltage">
+      <IndexedValue index="XAxis" value="-2.085852405" />
+      <IndexedValue index="YAxis" value="-2.085852405" />
+    </PVStateValue>
+    <PVStateValue key="objectiveLens" value="16X" />
+    <PVStateValue key="objectiveLensMag" value="16" />
+    <PVStateValue key="objectiveLensNA" value="0.8" />
+    <PVStateValue key="opticalZoom" value="2" />
+    <PVStateValue key="pixelsPerLine" value="512" />
+    <PVStateValue key="pmtGain">
+      <IndexedValue index="0" value="0" description="PMT 1 HV (Red)" />
+      <IndexedValue index="1" value="700" description="PMT 2 HV (Green)" />
+    </PVStateValue>
+    <PVStateValue key="positionCurrent">
+      <SubindexedValues index="XAxis">
+        <SubindexedValue subindex="0" value="14.927" />
+      </SubindexedValues>
+      <SubindexedValues index="YAxis">
+        <SubindexedValue subindex="0" value="56.215" />
+      </SubindexedValues>
+      <SubindexedValues index="ZAxis">
+        <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+        <SubindexedValue subindex="1" value="-129.972946650127" description="Optotune ETL 10-30" />
+      </SubindexedValues>
+    </PVStateValue>
+    <PVStateValue key="preampFilter" value="NoFilter" description="None" />
+    <PVStateValue key="preampOffset">
+      <SubindexedValues index="0">
+        <SubindexedValue subindex="0" value="0" description="Ch1" />
+        <SubindexedValue subindex="1" value="0" description="Ch2" />
+      </SubindexedValues>
+    </PVStateValue>
+    <PVStateValue key="rastersPerFrame" value="1" />
+    <PVStateValue key="rotation" value="0" />
+    <PVStateValue key="samplesPerPixel" value="3" />
+    <PVStateValue key="scanLinePeriod" value="6.3123E-05" />
+    <PVStateValue key="useInterlacedScanPattern" value="False" />
+    <PVStateValue key="xYStageGridIndex" value="-1" />
+    <PVStateValue key="xYStageGridXIndex" value="-1" />
+    <PVStateValue key="xYStageGridYIndex" value="-1" />
+    <PVStateValue key="yAspectExpansion" value="1" />
+    <PVStateValue key="zDevice" value="1" />
+  </PVStateShard>
+  <Sequence type="TSeries ZSeries Element" cycle="1" time="11:20:34.9066674" bidirectionalZ="False" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0" absoluteTime="6.71000000000004" index="1" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="-130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.048474237" absoluteTime="6.75847423700004" index="2" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00001_Ch2_000002.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="laserPower">
+          <IndexedValue index="0" value="650.390625" description="920 Axon" />
+          <IndexedValue index="1" value="0" description="1064 Axon" />
+          <IndexedValue index="2" value="0" description="Monaco" />
+        </PVStateValue>
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+  <Sequence type="TSeries ZSeries Element" cycle="2" time="11:25:42.1444112" bidirectionalZ="False" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0.096948474" absoluteTime="6.80694847400004" index="1" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00002_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="-130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.145422711" absoluteTime="6.85542271100004" index="2" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00002_Ch2_000002.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="laserPower">
+          <IndexedValue index="0" value="650.390625" description="920 Axon" />
+          <IndexedValue index="1" value="0" description="1064 Axon" />
+          <IndexedValue index="2" value="0" description="Monaco" />
+        </PVStateValue>
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+  <Sequence type="TSeries ZSeries Element" cycle="3" time="11:25:42.1444112" bidirectionalZ="False" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0.193896948" absoluteTime="6.90389694800004" index="1" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00003_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="-130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.242371185" absoluteTime="6.95237118500004" index="2" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00003_Ch2_000002.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="laserPower">
+          <IndexedValue index="0" value="650.390625" description="920 Axon" />
+          <IndexedValue index="1" value="0" description="1064 Axon" />
+          <IndexedValue index="2" value="0" description="Monaco" />
+        </PVStateValue>
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+  <Sequence type="TSeries ZSeries Element" cycle="4" time="11:25:42.1444112" bidirectionalZ="False" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0.290845422" absoluteTime="7.00084542200004" index="1" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00004_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="-130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.339319659" absoluteTime="7.04931965900004" index="2" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00004_Ch2_000002.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="laserPower">
+          <IndexedValue index="0" value="650.390625" description="920 Axon" />
+          <IndexedValue index="1" value="0" description="1064 Axon" />
+          <IndexedValue index="2" value="0" description="Monaco" />
+        </PVStateValue>
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+  <Sequence type="TSeries ZSeries Element" cycle="5" time="11:25:42.1444112" bidirectionalZ="False" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0.387793896" absoluteTime="7.09779389600004" index="1" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00005_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="-130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.436268133" absoluteTime="7.14626813300004" index="2" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2022_11_03_IntoTheVoid_t_series-005_Cycle00005_Ch2_000002.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.048474237" />
+        <PVStateValue key="laserPower">
+          <IndexedValue index="0" value="650.390625" description="920 Axon" />
+          <IndexedValue index="1" value="0" description="1064 Axon" />
+          <IndexedValue index="2" value="0" description="Monaco" />
+        </PVStateValue>
+        <PVStateValue key="positionCurrent">
+          <SubindexedValues index="XAxis">
+            <SubindexedValue subindex="0" value="14.927" />
+          </SubindexedValues>
+          <SubindexedValues index="YAxis">
+            <SubindexedValue subindex="0" value="56.215" />
+          </SubindexedValues>
+          <SubindexedValues index="ZAxis">
+            <SubindexedValue subindex="0" value="166.575" description="Z Focus" />
+            <SubindexedValue subindex="1" value="130" description="Optotune ETL 10-30" />
+          </SubindexedValues>
+        </PVStateValue>
+        <PVStateValue key="scanLinePeriod" value="6.3128E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+</PVScan>

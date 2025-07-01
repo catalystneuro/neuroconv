@@ -1,0 +1,200 @@
+{
+    "signals_medians": {
+        "dtype": "float32",
+        "shape": [
+            32
+        ],
+        "annotations": {}
+    },
+    "signals_mads": {
+        "dtype": "float32",
+        "shape": [
+            32
+        ],
+        "annotations": {}
+    },
+    "all_peaks": {
+        "dtype": [
+            [
+                "index",
+                "<i8"
+            ],
+            [
+                "cluster_label",
+                "<i8"
+            ],
+            [
+                "channel",
+                "<i8"
+            ],
+            [
+                "segment",
+                "<i8"
+            ],
+            [
+                "extremum_amplitude",
+                "<f8"
+            ]
+        ],
+        "shape": [
+            755
+        ],
+        "annotations": {}
+    },
+    "some_peaks_index": {
+        "dtype": "int64",
+        "shape": [
+            753
+        ],
+        "annotations": {}
+    },
+    "some_noise_index": {
+        "dtype": [
+            [
+                "index",
+                "<i8"
+            ],
+            [
+                "cluster_label",
+                "<i8"
+            ],
+            [
+                "channel",
+                "<i8"
+            ],
+            [
+                "segment",
+                "<i8"
+            ],
+            [
+                "extremum_amplitude",
+                "<f8"
+            ]
+        ],
+        "shape": [
+            300
+        ],
+        "annotations": {}
+    },
+    "some_noise_snippet": {
+        "dtype": "float32",
+        "shape": [
+            300,
+            160,
+            32
+        ],
+        "annotations": {}
+    },
+    "some_features": {
+        "dtype": "float32",
+        "shape": [
+            753,
+            96
+        ],
+        "annotations": {}
+    },
+    "channel_to_features": {
+        "dtype": "bool",
+        "shape": [
+            32,
+            96
+        ],
+        "annotations": {}
+    },
+    "some_noise_features": {
+        "dtype": "float32",
+        "shape": [
+            300,
+            96
+        ],
+        "annotations": {}
+    },
+    "clusters": {
+        "dtype": [
+            [
+                "cluster_label",
+                "<i8"
+            ],
+            [
+                "cell_label",
+                "<i8"
+            ],
+            [
+                "extremum_channel",
+                "<i8"
+            ],
+            [
+                "extremum_amplitude",
+                "<f8"
+            ],
+            [
+                "waveform_rms",
+                "<f8"
+            ],
+            [
+                "nb_peak",
+                "<i8"
+            ],
+            [
+                "tag",
+                "<U16"
+            ],
+            [
+                "annotations",
+                "<U32"
+            ],
+            [
+                "color",
+                "<u4"
+            ]
+        ],
+        "shape": [
+            11
+        ],
+        "annotations": {}
+    },
+    "centroids_median": {
+        "dtype": "float32",
+        "shape": [
+            11,
+            160,
+            32
+        ],
+        "annotations": {}
+    },
+    "centroids_mad": {
+        "dtype": "float32",
+        "shape": [
+            11,
+            160,
+            32
+        ],
+        "annotations": {}
+    },
+    "centroids_mean": {
+        "dtype": "float32",
+        "shape": [
+            11,
+            160,
+            32
+        ],
+        "annotations": {}
+    },
+    "centroids_std": {
+        "dtype": "float32",
+        "shape": [
+            11,
+            160,
+            32
+        ],
+        "annotations": {}
+    },
+    "centroids_sparse_mask": {
+        "dtype": "bool",
+        "shape": [
+            11,
+            32
+        ],
+        "annotations": {}
+    }
+}

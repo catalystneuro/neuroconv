@@ -1,0 +1,12 @@
+header.format = 'Open Ephys Data Format'; 
+header.version = 0.4; 
+header.header_bytes = 1024;
+header.description = 'each record contains one 64-bit timestamp, one 16-bit sample position, one uint8 event type, one uint8 processor ID, one uint8 event ID, one uint8 event channel, and one uint16 recordingNumber'; 
+header.date_created = '3-Oct-2018 131650';
+header.channel = 'GUI Messages';
+header.channelType = 'Continuous';
+header.sampleRate = 40000;
+header.blockLength = 1024;
+header.bufferSize = 1024;
+header.bitVolts = 1;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

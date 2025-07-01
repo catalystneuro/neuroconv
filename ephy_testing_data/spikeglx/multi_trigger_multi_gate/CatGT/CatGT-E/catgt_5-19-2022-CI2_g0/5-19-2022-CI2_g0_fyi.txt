@@ -1,0 +1,4 @@
+outpath_probe0=/Volumes/scratch/neuropixels/data/sample_data/CatGT/CatGT-E/catgt_5-19-2022-CI2_g0/5-19-2022-CI2_g0_imec0
+outpath_probe1=/Volumes/scratch/neuropixels/data/sample_data/CatGT/CatGT-E/catgt_5-19-2022-CI2_g0/5-19-2022-CI2_g0_imec1
+outpath_top=/Volumes/scratch/neuropixels/data/sample_data/CatGT/CatGT-E/catgt_5-19-2022-CI2_g0
+supercat_element={/Volumes/scratch/neuropixels/data/sample_data/CatGT/CatGT-E,catgt_5-19-2022-CI2_g0}

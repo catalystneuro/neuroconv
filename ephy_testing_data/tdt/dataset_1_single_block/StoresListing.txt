@@ -1,0 +1,46 @@
+Experiment: 512_8Wavs_3KHz_Raw_Vis
+Subject: ECTest
+User: Anthony
+Date: 02/07/2022
+Time: 1:53:58pm
+
+ObjectID: ANIN - Stream Data Storage
+ StoreID: ANIN
+
+ObjectID: Wave1 - Stream Data Storage
+ StoreID: Wav1
+
+ObjectID: Wave2 - Stream Data Storage
+ StoreID: Wav2
+
+ObjectID: Wave3 - Stream Data Storage
+ StoreID: Wav3
+
+ObjectID: Wave4 - Stream Data Storage
+ StoreID: Wav4
+
+ObjectID: Wave5 - Stream Data Storage
+ StoreID: Wav5
+
+ObjectID: Wave6 - Stream Data Storage
+ StoreID: Wav6
+
+ObjectID: Wave7 - Stream Data Storage
+ StoreID: Wav7
+
+ObjectID: Wave8 - Stream Data Storage
+ StoreID: Wav8
+
+
+Flat Listing:
+StoreID  Gizmo/Hal
+ANIN     ANIN
+Wav1     Wave1
+Wav2     Wave2
+Wav3     Wave3
+Wav4     Wave4
+Wav5     Wave5
+Wav6     Wave6
+Wav7     Wave7
+Wav8     Wave8
+

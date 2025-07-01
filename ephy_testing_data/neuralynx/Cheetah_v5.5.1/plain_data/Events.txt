@@ -1,0 +1,4 @@
+0	0	0	26122558117	11	0	0	0	0	[0 0 0 0 0 0 0 0]	Starting Recording
+0	0	0	26366361117	11	0	0	0	0	[0 0 0 0 0 0 0 0]	Starting Recording
+0	0	0	26379492742	11	2	0	0	0	[0 0 0 0 0 0 0 0]	TTL Input on AcqSystem1_0 board 0 port 0 value (0x0002).
+0	0	0	26379696805	11	0	0	0	0	[0 0 0 0 0 0 0 0]	TTL Input on AcqSystem1_0 board 0 port 0 value (0x0000).

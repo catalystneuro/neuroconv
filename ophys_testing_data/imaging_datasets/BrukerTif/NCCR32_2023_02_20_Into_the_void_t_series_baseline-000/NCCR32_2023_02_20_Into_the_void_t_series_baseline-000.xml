@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PVScan version="5.6.64.400" date="2/20/2023 3:58:25 PM" notes="">
+  <SystemIDs SystemID="E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3">
+    <SystemID SystemID="4886" Description="NORTHWESTERN" />
+  </SystemIDs>
+  <PVStateShard>
+    <PVStateValue key="activeMode" value="ResonantGalvo" />
+    <PVStateValue key="bitDepth" value="13" />
+    <PVStateValue key="currentScanAmplitude">
+      <IndexedValue index="XAxis" value="4.17170481" />
+      <IndexedValue index="YAxis" value="4.17170481" />
+    </PVStateValue>
+    <PVStateValue key="currentScanCenter">
+      <IndexedValue index="XAxis" value="0" />
+      <IndexedValue index="YAxis" value="0" />
+    </PVStateValue>
+    <PVStateValue key="dwellTime" value="0.4" />
+    <PVStateValue key="framePeriod" value="0.032953338" />
+    <PVStateValue key="interlacedScanTrackCount" value="0" />
+    <PVStateValue key="laserPower">
+      <IndexedValue index="0" value="500" description="920 Axon" />
+      <IndexedValue index="1" value="900.390625" description="1064 Axon" />
+      <IndexedValue index="2" value="0" description="Monaco" />
+    </PVStateValue>
+    <PVStateValue key="linesPerFrame" value="512" />
+    <PVStateValue key="maxVoltage">
+      <IndexedValue index="XAxis" value="2.085852405" />
+      <IndexedValue index="YAxis" value="2.085852405" />
+    </PVStateValue>
+    <PVStateValue key="micronsPerPixel">
+      <IndexedValue index="XAxis" value="1.1078125" />
+      <IndexedValue index="YAxis" value="1.1078125" />
+      <IndexedValue index="ZAxis" value="5" />
+    </PVStateValue>
+    <PVStateValue key="minVoltage">
+      <IndexedValue index="XAxis" value="-2.085852405" />
+      <IndexedValue index="YAxis" value="-2.085852405" />
+    </PVStateValue>
+    <PVStateValue key="objectiveLens" value="16X" />
+    <PVStateValue key="objectiveLensMag" value="16" />
+    <PVStateValue key="objectiveLensNA" value="0.8" />
+    <PVStateValue key="opticalZoom" value="2" />
+    <PVStateValue key="pixelsPerLine" value="512" />
+    <PVStateValue key="pmtGain">
+      <IndexedValue index="0" value="800" description="PMT 1 HV (Red)" />
+      <IndexedValue index="1" value="700" description="PMT 2 HV (Green)" />
+    </PVStateValue>
+    <PVStateValue key="positionCurrent">
+      <SubindexedValues index="XAxis">
+        <SubindexedValue subindex="0" value="0" />
+      </SubindexedValues>
+      <SubindexedValues index="YAxis">
+        <SubindexedValue subindex="0" value="0" />
+      </SubindexedValues>
+      <SubindexedValues index="ZAxis">
+        <SubindexedValue subindex="0" value="147.55" description="Z Focus" />
+        <SubindexedValue subindex="1" value="-80.0653860309135" description="Optotune ETL 10-30" />
+      </SubindexedValues>
+    </PVStateValue>
+    <PVStateValue key="preampFilter" value="NoFilter" description="None" />
+    <PVStateValue key="preampOffset">
+      <SubindexedValues index="0">
+        <SubindexedValue subindex="0" value="0" description="Ch1" />
+        <SubindexedValue subindex="1" value="0" description="Ch2" />
+      </SubindexedValues>
+    </PVStateValue>
+    <PVStateValue key="rastersPerFrame" value="1" />
+    <PVStateValue key="rotation" value="0" />
+    <PVStateValue key="samplesPerPixel" value="3" />
+    <PVStateValue key="scanLinePeriod" value="6.3129E-05" />
+    <PVStateValue key="useInterlacedScanPattern" value="False" />
+    <PVStateValue key="xYStageGridIndex" value="-1" />
+    <PVStateValue key="xYStageGridXIndex" value="-1" />
+    <PVStateValue key="xYStageGridYIndex" value="-1" />
+    <PVStateValue key="yAspectExpansion" value="1" />
+    <PVStateValue key="zDevice" value="0" />
+  </PVStateShard>
+  <Sequence type="TSeries Timed Element" cycle="1" time="15:58:25.8579176" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0" absoluteTime="16.8649999999907" index="1" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.033474224" absoluteTime="16.8984742239907" index="2" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000002.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.066948448" absoluteTime="16.9319484479907" index="3" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000003.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.100422672" absoluteTime="16.9654226719907" index="4" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000004.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.133896896" absoluteTime="16.9988968959907" index="5" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000005.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.16737112" absoluteTime="17.0323711199907" index="6" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000006.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.200845344" absoluteTime="17.0658453439907" index="7" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000007.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.234319568" absoluteTime="17.0993195679907" index="8" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000008.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.267793792" absoluteTime="17.1327937919907" index="9" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000009.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.301268016" absoluteTime="17.1662680159907" index="10" parameterSet="CurrentSettings">
+      <File channel="2" channelName="Ch2" filename="NCCR32_2023_02_20_Into_the_void_t_series_baseline-000_Cycle00001_Ch2_000010.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474224" />
+        <PVStateValue key="scanLinePeriod" value="6.3136E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+</PVScan>
