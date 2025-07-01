@@ -1,0 +1,23 @@
+{
+    "animalName": "",
+    "baseDirectory": "C:/mData/2021_10_07/C6-J588_Disc5/15_06_28",
+    "cameras": [
+        "BehavCam 2"
+    ],
+    "experimentName": "",
+    "miniscopes": [
+        "Miniscope"
+    ],
+    "nameExpMouse": "C6-J588_Disc5",
+    "recordingStartTime": {
+        "day": 7,
+        "hour": 15,
+        "minute": 6,
+        "month": 10,
+        "msec": 607,
+        "msecSinceEpoch": 1633644388607,
+        "second": 28,
+        "year": 2021
+    },
+    "researcherName": ""
+}

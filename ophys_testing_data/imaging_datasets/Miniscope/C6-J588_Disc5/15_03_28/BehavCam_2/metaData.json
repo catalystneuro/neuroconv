@@ -1,0 +1,14 @@
+{
+    "ROI": {
+        "height": 720,
+        "leftEdge": 0,
+        "topEdge": 0,
+        "width": 1280
+    },
+    "compression": "MJPG",
+    "deviceDirectory": "C:/mData/2021_10_07/C6-J588_Disc5/15_03_28/BehavCam_2",
+    "deviceID": 1,
+    "deviceName": "BehavCam 2",
+    "deviceType": "WebCam-1920x1080",
+    "framesPerFile": 1000
+}

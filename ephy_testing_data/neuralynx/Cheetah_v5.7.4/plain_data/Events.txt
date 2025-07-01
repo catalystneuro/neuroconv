@@ -1,0 +1,8 @@
+0	0	2	8129220653	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Starting Recording
+0	0	2	8139925622	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Stopping Recording
+0	0	2	8142930653	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Starting Recording
+0	0	2	8153931622	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Stopping Recording
+0	0	2	8158379653	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Starting Recording
+0	0	2	8169268622	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Stopping Recording
+0	0	2	8173472653	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Starting Recording
+0	0	2	8184472622	19	0	0	0	0	[0 0 0 0 0 0 0 0]	Stopping Recording

@@ -1,0 +1,11 @@
+{
+    "compression": "FFV1",
+    "deviceDirectory": "C:/mData/2021_10_07/C6-J588_Disc5/15_06_28/Miniscope",
+    "deviceID": 2,
+    "deviceName": "Miniscope",
+    "deviceType": "Miniscope_V3",
+    "frameRate": "15FPS",
+    "framesPerFile": 1000,
+    "gain": "High",
+    "led0": 47
+}
