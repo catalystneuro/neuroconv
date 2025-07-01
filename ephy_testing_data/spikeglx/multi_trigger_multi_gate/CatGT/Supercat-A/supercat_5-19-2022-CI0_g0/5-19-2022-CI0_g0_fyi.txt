@@ -1,0 +1,3 @@
+outpath_probe0=/Volumes/scratch/neuropixels/data/sample_data/CatGT/Supercat-A/supercat_5-19-2022-CI0_g0/5-19-2022-CI0_g0_imec0
+outpath_probe1=/Volumes/scratch/neuropixels/data/sample_data/CatGT/Supercat-A/supercat_5-19-2022-CI0_g0/5-19-2022-CI0_g0_imec1
+outpath_top=/Volumes/scratch/neuropixels/data/sample_data/CatGT/Supercat-A/supercat_5-19-2022-CI0_g0

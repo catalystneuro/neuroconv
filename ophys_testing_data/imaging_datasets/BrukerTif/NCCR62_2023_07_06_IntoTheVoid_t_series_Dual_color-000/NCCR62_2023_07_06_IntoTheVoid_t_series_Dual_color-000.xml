@@ -1,0 +1,176 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PVScan version="5.8.64.200" date="7/6/2023 3:13:58 PM" notes="">
+  <SystemIDs SystemID="E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3">
+    <SystemID SystemID="4886" Description="NORTHWESTERN" />
+  </SystemIDs>
+  <PVStateShard>
+    <PVStateValue key="activeMode" value="ResonantGalvo" />
+    <PVStateValue key="bitDepth" value="13" />
+    <PVStateValue key="currentScanAmplitude">
+      <IndexedValue index="XAxis" value="4.17170481" />
+      <IndexedValue index="YAxis" value="4.17170481" />
+    </PVStateValue>
+    <PVStateValue key="currentScanCenter">
+      <IndexedValue index="XAxis" value="0" />
+      <IndexedValue index="YAxis" value="0" />
+    </PVStateValue>
+    <PVStateValue key="daqGain">
+      <IndexedValue index="0" value="1" description="±1.25V" />
+      <IndexedValue index="1" value="-1" description="±1.25V" />
+      <IndexedValue index="2" value="-1" description="±1.25V" />
+    </PVStateValue>
+    <PVStateValue key="dwellTime" value="0.4" />
+    <PVStateValue key="framePeriod" value="0.032963778" />
+    <PVStateValue key="interlacedScanTrackCount" value="0" />
+    <PVStateValue key="laserPower">
+      <IndexedValue index="0" value="450.1953125" description="920 Axon" />
+      <IndexedValue index="1" value="500" description="1064 Axon" />
+      <IndexedValue index="2" value="2.21946022727273" description="Monaco" />
+    </PVStateValue>
+    <PVStateValue key="linesPerFrame" value="512" />
+    <PVStateValue key="maxVoltage">
+      <IndexedValue index="XAxis" value="2.085852405" />
+      <IndexedValue index="YAxis" value="2.085852405" />
+    </PVStateValue>
+    <PVStateValue key="micronsPerPixel">
+      <IndexedValue index="XAxis" value="1.1078125" />
+      <IndexedValue index="YAxis" value="1.1078125" />
+      <IndexedValue index="ZAxis" value="5" />
+    </PVStateValue>
+    <PVStateValue key="minVoltage">
+      <IndexedValue index="XAxis" value="-2.085852405" />
+      <IndexedValue index="YAxis" value="-2.085852405" />
+    </PVStateValue>
+    <PVStateValue key="objectiveLens" value="16X" />
+    <PVStateValue key="objectiveLensMag" value="16" />
+    <PVStateValue key="objectiveLensNA" value="0.8" />
+    <PVStateValue key="opticalZoom" value="2" />
+    <PVStateValue key="pixelsPerLine" value="512" />
+    <PVStateValue key="pmtGain">
+      <IndexedValue index="0" value="750" description="PMT 1 HV (Red)" />
+      <IndexedValue index="1" value="750" description="PMT 2 HV (Green)" />
+    </PVStateValue>
+    <PVStateValue key="positionCurrent">
+      <SubindexedValues index="XAxis">
+        <SubindexedValue subindex="0" value="0" />
+      </SubindexedValues>
+      <SubindexedValues index="YAxis">
+        <SubindexedValue subindex="0" value="0" />
+      </SubindexedValues>
+      <SubindexedValues index="ZAxis">
+        <SubindexedValue subindex="0" value="130.025" description="Z Focus" />
+        <SubindexedValue subindex="1" value="0" description="Narrow NeuraLeap" />
+      </SubindexedValues>
+    </PVStateValue>
+    <PVStateValue key="preampFilter" value="NoFilter" description="None" />
+    <PVStateValue key="preampOffset">
+      <SubindexedValues index="0">
+        <SubindexedValue subindex="0" value="0" description="Ch1" />
+        <SubindexedValue subindex="1" value="0.01" description="Ch2" />
+      </SubindexedValues>
+    </PVStateValue>
+    <PVStateValue key="rastersPerFrame" value="1" />
+    <PVStateValue key="rotation" value="0" />
+    <PVStateValue key="samplesPerPixel" value="3" />
+    <PVStateValue key="scanLinePeriod" value="6.3149E-05" />
+    <PVStateValue key="useInterlacedScanPattern" value="False" />
+    <PVStateValue key="xYStageGridIndex" value="-1" />
+    <PVStateValue key="xYStageGridXIndex" value="-1" />
+    <PVStateValue key="xYStageGridYIndex" value="-1" />
+    <PVStateValue key="yAspectExpansion" value="1" />
+    <PVStateValue key="zDevice" value="0" />
+  </PVStateShard>
+  <Sequence type="TSeries Timed Element" cycle="1" time="15:13:59.3902751" xYStageGridDefined="False" xYStageGridNumXPositions="0" xYStageGridNumYPositions="0" xYStageGridOverlapPercentage="10" xYStageGridXOverlap="10" xYStageGridYOverlap="10">
+    <PVStateShard />
+    <Frame relativeTime="0" absoluteTime="2.14300000000003" index="1" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="1" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="1" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.033474355" absoluteTime="2.17647435500003" index="2" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="2" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="2" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.06694871" absoluteTime="2.20994871000003" index="3" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="3" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="3" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.100423065" absoluteTime="2.24342306500003" index="4" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="4" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="4" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.13389742" absoluteTime="2.27689742000003" index="5" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="5" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="5" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.167371775" absoluteTime="2.31037177500003" index="6" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="6" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="6" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.20084613" absoluteTime="2.34384613000003" index="7" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="7" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="7" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.234320485" absoluteTime="2.37732048500003" index="8" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="8" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="8" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.26779484" absoluteTime="2.41079484000003" index="9" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="9" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="9" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+    <Frame relativeTime="0.301269195" absoluteTime="2.44426919500003" index="10" parameterSet="CurrentSettings">
+      <File channel="1" channelName="Ch1" page="10" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch1_000001.ome.tif" />
+      <File channel="2" channelName="Ch2" page="10" filename="NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000_Cycle00001_Ch2_000001.ome.tif" />
+      <ExtraParameters lastGoodFrame="0" />
+      <PVStateShard>
+        <PVStateValue key="framePeriod" value="0.033474355" />
+        <PVStateValue key="scanLinePeriod" value="6.314E-05" />
+      </PVStateShard>
+    </Frame>
+  </Sequence>
+</PVScan>

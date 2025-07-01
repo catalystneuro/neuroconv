@@ -1,0 +1,121 @@
+{
+    "cluster_labels": {
+        "dtype": "int64",
+        "shape": [
+            9
+        ],
+        "annotations": {}
+    },
+    "clusters": {
+        "dtype": [
+            [
+                "cluster_label",
+                "<i8"
+            ],
+            [
+                "cell_label",
+                "<i8"
+            ],
+            [
+                "extremum_channel",
+                "<i8"
+            ],
+            [
+                "extremum_amplitude",
+                "<f8"
+            ],
+            [
+                "waveform_rms",
+                "<f8"
+            ],
+            [
+                "nb_peak",
+                "<i8"
+            ],
+            [
+                "tag",
+                "<U16"
+            ],
+            [
+                "annotations",
+                "<U32"
+            ],
+            [
+                "color",
+                "<u4"
+            ]
+        ],
+        "shape": [
+            9
+        ],
+        "annotations": {}
+    },
+    "centers0": {
+        "dtype": "float32",
+        "shape": [
+            9,
+            160,
+            32
+        ],
+        "annotations": {}
+    },
+    "distance_limit": {
+        "dtype": "float32",
+        "shape": [
+            9
+        ],
+        "annotations": {}
+    },
+    "extremum_channel": {
+        "dtype": "int64",
+        "shape": [
+            9
+        ],
+        "annotations": {}
+    },
+    "extremum_amplitude": {
+        "dtype": "float32",
+        "shape": [
+            9
+        ],
+        "annotations": {}
+    },
+    "sparse_mask_level1": {
+        "dtype": "bool",
+        "shape": [
+            9,
+            32
+        ],
+        "annotations": {}
+    },
+    "sparse_mask_level2": {
+        "dtype": "bool",
+        "shape": [
+            9,
+            32
+        ],
+        "annotations": {}
+    },
+    "sparse_mask_level3": {
+        "dtype": "bool",
+        "shape": [
+            9,
+            32
+        ],
+        "annotations": {}
+    },
+    "signals_medians": {
+        "dtype": "float32",
+        "shape": [
+            32
+        ],
+        "annotations": {}
+    },
+    "signals_mads": {
+        "dtype": "float32",
+        "shape": [
+            32
+        ],
+        "annotations": {}
+    }
+}

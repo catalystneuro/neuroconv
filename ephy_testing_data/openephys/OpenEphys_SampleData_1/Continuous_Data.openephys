@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<EXPERIMENT version="0.4000000000000000222" number="1" separatefiles="0">
+  <RECORDING number="0" samplerate="40000">
+    <PROCESSOR id="101">
+      <CHANNEL name="CH0" bitVolts="0.050000000745058059692" filename="101_CH0.continuous"
+               position="1024"/>
+      <CHANNEL name="CH1" bitVolts="0.050000000745058059692" filename="101_CH1.continuous"
+               position="1024"/>
+    </PROCESSOR>
+  </RECORDING>
+</EXPERIMENT>

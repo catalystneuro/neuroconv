@@ -1,0 +1,124 @@
+Brain Vision Data Exchange Marker File, Version 2.0
+; Data created from history path: EEG_39_ArtifactRejection_PPmusic/Raw Data
+; The channel numbers are related to the channels in the exported file.
+
+[Common Infos]
+Codepage=UTF-8
+DataFile=test_export_BA_32bit.eeg
+
+[Marker Infos]
+; Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,
+; <Size in data points>, <Channel number (0 = marker is related to all channels)>,
+; <Date (YYYYMMDDhhmmssuuuuuu)>, Visible
+; Fields are delimited by commas, some fields may be omitted (empty).
+; Commas in type or description text are coded as "\1".
+Mk1=New Segment,,1,1,0,20130202105441832000
+Mk2=Time 0,,39,1,0
+Mk3=Trigger,1,39,1,0
+Mk4=New Segment,,295,1,0,20130202105445891000
+Mk5=Trigger,1,333,1,0
+Mk6=Time 0,,333,1,0
+Mk7=New Segment,,589,1,0,20130202105459235000
+Mk8=Trigger,1,627,1,0
+Mk9=Time 0,,627,1,0
+Mk10=New Segment,,883,1,0,20130202105507504000
+Mk11=Time 0,,921,1,0
+Mk12=Trigger,1,921,1,0
+Mk13=New Segment,,1177,1,0,20130202105520661000
+Mk14=Time 0,,1215,1,0
+Mk15=Trigger,1,1215,1,0
+Mk16=New Segment,,1471,1,0,20130202105548457000
+Mk17=Time 0,,1509,1,0
+Mk18=Trigger,1,1509,1,0
+Mk19=New Segment,,1765,1,0,20130202105933250000
+Mk20=Time 0,,1803,1,0
+Mk21=Trigger,1,1803,1,0
+Mk22=New Segment,,2059,1,0,20130202105945176000
+Mk23=Trigger,1,2097,1,0
+Mk24=Time 0,,2097,1,0
+Mk25=New Segment,,2353,1,0,20130202105955942000
+Mk26=Time 0,,2391,1,0
+Mk27=Trigger,1,2391,1,0
+Mk28=New Segment,,2647,1,0,20130202110002528000
+Mk29=Time 0,,2685,1,0
+Mk30=Trigger,1,2685,1,0
+Mk31=New Segment,,2941,1,0,20130202110021254000
+Mk32=Trigger,1,2979,1,0
+Mk33=Time 0,,2979,1,0
+Mk34=New Segment,,3235,1,0,20130202110037489000
+Mk35=Time 0,,3273,1,0
+Mk36=Trigger,1,3273,1,0
+Mk37=New Segment,,3529,1,0,20130202110049293000
+Mk38=Trigger,1,3567,1,0
+Mk39=Time 0,,3567,1,0
+Mk40=New Segment,,3823,1,0,20130202110428829000
+Mk41=Time 0,,3861,1,0
+Mk42=Trigger,1,3861,1,0
+Mk43=New Segment,,4117,1,0,20130202110443375000
+Mk44=Trigger,1,4155,1,0
+Mk45=Time 0,,4155,1,0
+Mk46=New Segment,,4411,1,0,20130202110503274000
+Mk47=Time 0,,4449,1,0
+Mk48=Trigger,1,4449,1,0
+Mk49=New Segment,,4705,1,0,20130202110505969000
+Mk50=Time 0,,4743,1,0
+Mk51=Trigger,1,4743,1,0
+Mk52=New Segment,,4999,1,0,20130202110521836000
+Mk53=Time 0,,5037,1,0
+Mk54=Trigger,1,5037,1,0
+Mk55=New Segment,,5293,1,0,20130202110526043000
+Mk56=Trigger,1,5331,1,0
+Mk57=Time 0,,5331,1,0
+Mk58=New Segment,,5587,1,0,20130202110533793000
+Mk59=Trigger,1,5625,1,0
+Mk60=Time 0,,5625,1,0
+Mk61=New Segment,,5881,1,0,20130202110540571000
+Mk62=Time 0,,5919,1,0
+Mk63=Trigger,1,5919,1,0
+Mk64=New Segment,,6175,1,0,20130202110931563000
+Mk65=Trigger,1,6213,1,0
+Mk66=Time 0,,6213,1,0
+Mk67=New Segment,,6469,1,0,20130202110938340000
+Mk68=Trigger,1,6507,1,0
+Mk69=Time 0,,6507,1,0
+Mk70=New Segment,,6763,1,0,20130202110949102000
+Mk71=Trigger,1,6801,1,0
+Mk72=Time 0,,6801,1,0
+Mk73=New Segment,,7057,1,0,20130202111000934000
+Mk74=Time 0,,7095,1,0
+Mk75=Trigger,1,7095,1,0
+Mk76=New Segment,,7351,1,0,20130202111011504000
+Mk77=Trigger,1,7389,1,0
+Mk78=Time 0,,7389,1,0
+Mk79=New Segment,,7645,1,0,20130202111021008000
+Mk80=Trigger,1,7683,1,0
+Mk81=Time 0,,7683,1,0
+Mk82=New Segment,,7939,1,0,20130202111044922000
+Mk83=Trigger,1,7977,1,0
+Mk84=Time 0,,7977,1,0
+Mk85=New Segment,,8233,1,0,20130202111430301000
+Mk86=Trigger,1,8271,1,0
+Mk87=Time 0,,8271,1,0
+Mk88=New Segment,,8527,1,0,20130202111434399000
+Mk89=Time 0,,8565,1,0
+Mk90=Trigger,1,8565,1,0
+Mk91=New Segment,,8821,1,0,20130202111441227000
+Mk92=Time 0,,8859,1,0
+Mk93=Trigger,1,8859,1,0
+Mk94=New Segment,,9115,1,0,20130202111511930000
+Mk95=Time 0,,9153,1,0
+Mk96=Trigger,1,9153,1,0
+Mk97=New Segment,,9409,1,0,20130202111516137000
+Mk98=Time 0,,9447,1,0
+Mk99=Trigger,1,9447,1,0
+Mk100=New Segment,,9703,1,0,20130202111533399000
+Mk101=Time 0,,9741,1,0
+Mk102=Trigger,1,9741,1,0
+
+[Marker User Infos]
+; Each entry: Prop<Number>=Mk<Marker number>,<Type>,<Name>,<Value>,<Value2>,...,<ValueN>
+; Property number must be unique. Types can be int, single, string, bool, byte, double, uint
+; or arrays of those, indicated int-array etc
+; Array types have more than one value, number of values determines size of array.
+; Fields are delimited by commas, commas in strings are written \1
+; Properties are assigned to markers using their marker number.

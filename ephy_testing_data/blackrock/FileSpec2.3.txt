@@ -1,0 +1,14 @@
+Raw recording on Channels 1-8
+Spike signal on Odd Channels (1-7)
+
+Recording on Analong Inputs 1 and 2
+Signal on Analog Input 2
+
+Three Comments Approximately 10 Seconds Apart
+
+Intermittent and Randomized Digital Signal
+
+No Serial Data
+
+No Tracking Data
+

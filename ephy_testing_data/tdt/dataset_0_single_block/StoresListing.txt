@@ -1,0 +1,48 @@
+Experiment: 512ch_reconly_all
+Subject: TDT
+User: User
+Date: 11/23/2018
+Time: 10:03:03am
+
+ObjectID: RZn(1) - RZn Processor
+ StoreID: PC0/
+ StoreID: PtC2
+ StoreID: PtC4
+ StoreID: PtC6
+
+ObjectID: RSn(1) - RSn Data Streamer
+ StoreID: RSn1
+
+ObjectID: RSn(2) - RSn Data Streamer
+ StoreID: RSn2
+
+ObjectID: Cam(1) - Camera Device
+ StoreID: Cam1
+
+ObjectID: Wave3 - Stream Data Storage
+ StoreID: EEG1
+
+ObjectID: Wave4 - Stream Data Storage
+ StoreID: EEG2
+
+ObjectID: Wave5 - Stream Data Storage
+ StoreID: Wav5
+
+ObjectID: Wave6 - Stream Data Storage
+ StoreID: Wav6
+
+
+Flat Listing:
+StoreID  Gizmo/Hal
+Cam1     Cam(1)
+EEG1     Wave3
+EEG2     Wave4
+PC0/     RZn(1)
+PtC2     RZn(1)
+PtC4     RZn(1)
+PtC6     RZn(1)
+RSn1     RSn(1)
+RSn2     RSn(2)
+Wav5     Wave5
+Wav6     Wave6
+

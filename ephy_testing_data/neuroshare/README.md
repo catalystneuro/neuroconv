@@ -1,0 +1,1 @@
+The `Multichannel_fil_1.mcd` file is provided by multichannel systems, see example file contained in https://download.multichannelsystems.com/download_data/software/neuroshare/nsMCDLibrary_Linux64_3.7b.tar.gz

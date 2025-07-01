@@ -1,0 +1,2 @@
+Processor: Neuropix-PXI Id: 116 subProcessor: 0 start time: 562020@30000Hz
+Processor: Neuropix-PXI Id: 116 subProcessor: 1 start time: 46835@2500Hz
