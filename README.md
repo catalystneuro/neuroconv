@@ -74,3 +74,5 @@ See our [ReadTheDocs page](https://neuroconv.readthedocs.io/en/main/) for full d
 
 ## License
 NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/license.txt) for more information.
+
+<!-- Test comment added for GitHub Copilot Setup Steps workflow validation on 2025-01-01 -->
