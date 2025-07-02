@@ -185,3 +185,32 @@ To run these tests specifically:
     pytest tests/imports.py::TestImportStructure::test_top_level
     pytest tests/imports.py::TestImportStructure::test_tools
     pytest tests/imports.py::TestImportStructure::test_datainterfaces
+
+Copilot Setup Validation Tests
+-------------------------------
+
+The `tests/test_copilot_setup_validation.py` file contains comprehensive tests to validate that the Copilot setup steps workflow provides all necessary dependencies for neuroconv development. This test serves as a validation checkpoint for Copilot development environments.
+
+These tests validate:
+
+1. Core neuroconv imports work correctly
+2. Testing framework (pytest) is available and functional
+3. Documentation dependencies are accessible
+4. Full installation extras are properly installed
+5. End-to-end NWB file creation workflow
+6. Package detection utilities for conditional logic
+7. Schema and metadata access functionality
+
+To run the complete validation:
+
+.. code:: bash
+
+    pytest tests/test_copilot_setup_validation.py
+
+Or run a quick minimal validation:
+
+.. code:: bash
+
+    python tests/test_copilot_setup_validation.py --minimal
+
+These tests are specifically designed to catch environment setup issues that could prevent Copilot agents from working effectively with neuroconv.
