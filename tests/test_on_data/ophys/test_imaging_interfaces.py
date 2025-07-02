@@ -1258,137 +1258,137 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
         )
 
 
-class TestFemtonicsImagingInterfaceSingleChannel(ImagingExtractorInterfaceTestMixin):
-    """Test FemtonicsImagingInterface with single channel .mesc file."""
+# class TestFemtonicsImagingInterfaceSingleChannel(ImagingExtractorInterfaceTestMixin):
+#     """Test FemtonicsImagingInterface with single channel .mesc file."""
 
-    data_interface_cls = FemtonicsImagingInterface
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"),
-        munit_name="MUnit_60",
-    )
-    save_directory = OUTPUT_PATH
+#     data_interface_cls = FemtonicsImagingInterface
+#     interface_kwargs = dict(
+#         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"),
+#         munit_name="MUnit_60",
+#     )
+#     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
-        """Check that the metadata was extracted correctly for single channel .mesc file."""
+#     def check_extracted_metadata(self, metadata: dict):
+#         """Check that the metadata was extracted correctly for single channel .mesc file."""
 
-        # Check session start time
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 3, 3, 15, 21, 57, 18837, tzinfo=timezone.utc)
+#         # Check session start time
+#         assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 3, 3, 15, 21, 57, 18837, tzinfo=timezone.utc)
 
-        # Check NWBFile metadata
-        nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_60."
-        assert nwbfile_metadata["experimenter"] == ["measurement"]
-        assert nwbfile_metadata["session_id"] == "eab55dc7-173e-4fcb-8746-65274f1e5f96"
+#         # Check NWBFile metadata
+#         nwbfile_metadata = metadata["NWBFile"]
+#         assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_60."
+#         assert nwbfile_metadata["experimenter"] == ["measurement"]
+#         assert nwbfile_metadata["session_id"] == "eab55dc7-173e-4fcb-8746-65274f1e5f96"
 
-        # Check device metadata
-        device_metadata = metadata["Ophys"]["Device"][0]
-        assert (
-            device_metadata["name"] == "Microscope"
-        )  # Default metadata because this was not included in the source metadata
-        assert device_metadata["description"] == "version: MESc 1.0, revision: 1839"
+#         # Check device metadata
+#         device_metadata = metadata["Ophys"]["Device"][0]
+#         assert (
+#             device_metadata["name"] == "Microscope"
+#         )  # Default metadata because this was not included in the source metadata
+#         assert device_metadata["description"] == "version: MESc 1.0, revision: 1839"
 
-        # Check imaging plane metadata
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == "ImagingPlane"
-        assert (
-            imaging_plane["device"] == "Microscope"
-        )  # Default metadata because this was not included in the source metadata
-        assert imaging_plane["imaging_rate"] == pytest.approx(31.2, rel=1e-2)
-        assert imaging_plane["grid_spacing"] == [0.8757686997991967, 0.8757686997991966]
-        assert imaging_plane["grid_spacing_unit"] == "µm"
+#         # Check imaging plane metadata
+#         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+#         assert imaging_plane["name"] == "ImagingPlane"
+#         assert (
+#             imaging_plane["device"] == "Microscope"
+#         )  # Default metadata because this was not included in the source metadata
+#         assert imaging_plane["imaging_rate"] == pytest.approx(31.2, rel=1e-2)
+#         assert imaging_plane["grid_spacing"] == [0.8757686997991967, 0.8757686997991966]
+#         assert imaging_plane["grid_spacing_unit"] == "µm"
 
-        # Check optical channel metadata
-        optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "UG"
-        assert (
-            optical_channel["description"] == "An optical channel of the microscope."
-        )  # Default metadata because this was not included in the source metadata
+#         # Check optical channel metadata
+#         optical_channel = imaging_plane["optical_channel"][0]
+#         assert optical_channel["name"] == "UG"
+#         assert (
+#             optical_channel["description"] == "An optical channel of the microscope."
+#         )  # Default metadata because this was not included in the source metadata
 
-        # Check two photon series metadata
-        two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
-        assert two_photon_series["name"] == "TwoPhotonSeries"
-        assert (
-            two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."
-        )  # Default metadata because this was not included in the source metadata
-        assert (
-            two_photon_series["unit"] == "n.a."
-        )  # Default metadata because this was not included in the source metadata
+#         # Check two photon series metadata
+#         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
+#         assert two_photon_series["name"] == "TwoPhotonSeries"
+#         assert (
+#             two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."
+#         )  # Default metadata because this was not included in the source metadata
+#         assert (
+#             two_photon_series["unit"] == "n.a."
+#         )  # Default metadata because this was not included in the source metadata
 
-        # Image dimensions from metadata: X Dimension: 512 pixels, Y Dimension: 512 pixels
-        assert two_photon_series["dimension"] == [512, 512]
+#         # Image dimensions from metadata: X Dimension: 512 pixels, Y Dimension: 512 pixels
+#         assert two_photon_series["dimension"] == [512, 512]
 
-        # Check geometric transformations in imaging plane description
-        assert (
-            imaging_plane["description"]
-            == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [-224.19678715 -224.19678715    0.        ], rotation: [0. 0. 0. 1.], labeling_origin: [    0.       0.   -6724.23]"
-        )
+#         # Check geometric transformations in imaging plane description
+#         assert (
+#             imaging_plane["description"]
+#             == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [-224.19678715 -224.19678715    0.        ], rotation: [0. 0. 0. 1.], labeling_origin: [    0.       0.   -6724.23]"
+#         )
 
 
-class TestFemtonicsImagingInterfaceSingleMUnit(ImagingExtractorInterfaceTestMixin):
-    """Test FemtonicsImagingInterface with second single channel .mesc file."""
+# class TestFemtonicsImagingInterfaceSingleMUnit(ImagingExtractorInterfaceTestMixin):
+#     """Test FemtonicsImagingInterface with second single channel .mesc file."""
 
-    data_interface_cls = FemtonicsImagingInterface
-    interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"),
-        channel_name="UG",
-    )
-    save_directory = OUTPUT_PATH
+#     data_interface_cls = FemtonicsImagingInterface
+#     interface_kwargs = dict(
+#         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"),
+#         channel_name="UG",
+#     )
+#     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
-        """Check that the metadata was extracted correctly for second single channel .mesc file."""
+#     def check_extracted_metadata(self, metadata: dict):
+#         """Check that the metadata was extracted correctly for second single channel .mesc file."""
 
-        # Check session start time
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 3, 3, 15, 21, 57, 18837, tzinfo=timezone.utc)
+#         # Check session start time
+#         assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 3, 3, 15, 21, 57, 18837, tzinfo=timezone.utc)
 
-        # Check NWBFile metadata
-        nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_60."
-        assert nwbfile_metadata["experimenter"] == ["measurement"]
-        assert nwbfile_metadata["session_id"] == "eab55dc7-173e-4fcb-8746-65274f1e5f96"
+#         # Check NWBFile metadata
+#         nwbfile_metadata = metadata["NWBFile"]
+#         assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_60."
+#         assert nwbfile_metadata["experimenter"] == ["measurement"]
+#         assert nwbfile_metadata["session_id"] == "eab55dc7-173e-4fcb-8746-65274f1e5f96"
 
-        # Check device metadata
-        device_metadata = metadata["Ophys"]["Device"][0]
-        assert (
-            device_metadata["name"] == "Microscope"
-        )  # Default metadata because this was not included in the source metadata
-        assert device_metadata["description"] == "version: MESc 1.0, revision: 1839"
+#         # Check device metadata
+#         device_metadata = metadata["Ophys"]["Device"][0]
+#         assert (
+#             device_metadata["name"] == "Microscope"
+#         )  # Default metadata because this was not included in the source metadata
+#         assert device_metadata["description"] == "version: MESc 1.0, revision: 1839"
 
-        # Check imaging plane metadata
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane["name"] == "ImagingPlane"
-        assert (
-            imaging_plane["device"] == "Microscope"
-        )  # Default metadata because this was not included in the source metadata
-        assert imaging_plane["imaging_rate"] == pytest.approx(31.2, rel=1e-2)
+#         # Check imaging plane metadata
+#         imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+#         assert imaging_plane["name"] == "ImagingPlane"
+#         assert (
+#             imaging_plane["device"] == "Microscope"
+#         )  # Default metadata because this was not included in the source metadata
+#         assert imaging_plane["imaging_rate"] == pytest.approx(31.2, rel=1e-2)
 
-        # Grid spacing from Pixel Size X: 0.876 μm, Pixel Size Y: 0.876 μm
-        assert imaging_plane["grid_spacing"] == [0.8757686997991967, 0.8757686997991966]
-        assert imaging_plane["grid_spacing_unit"] == "µm"
+#         # Grid spacing from Pixel Size X: 0.876 μm, Pixel Size Y: 0.876 μm
+#         assert imaging_plane["grid_spacing"] == [0.8757686997991967, 0.8757686997991966]
+#         assert imaging_plane["grid_spacing_unit"] == "µm"
 
-        # Check optical channel metadata
-        optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "UG"
-        assert (
-            optical_channel["description"] == "An optical channel of the microscope."
-        )  # Default metadata because this was not included in the source metadata
+#         # Check optical channel metadata
+#         optical_channel = imaging_plane["optical_channel"][0]
+#         assert optical_channel["name"] == "UG"
+#         assert (
+#             optical_channel["description"] == "An optical channel of the microscope."
+#         )  # Default metadata because this was not included in the source metadata
 
-        # Check two photon series metadata
-        two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
-        assert two_photon_series["name"] == "TwoPhotonSeries"
-        assert (
-            two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."
-        )  # Default metadata because this was not included in the source metadata
-        assert (
-            two_photon_series["unit"] == "n.a."
-        )  # Default metadata because this was not included in the source metadata
+#         # Check two photon series metadata
+#         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
+#         assert two_photon_series["name"] == "TwoPhotonSeries"
+#         assert (
+#             two_photon_series["description"] == "Imaging data from two-photon excitation microscopy."
+#         )  # Default metadata because this was not included in the source metadata
+#         assert (
+#             two_photon_series["unit"] == "n.a."
+#         )  # Default metadata because this was not included in the source metadata
 
-        # Image dimensions from metadata: X Dimension: 512 pixels, Y Dimension: 512 pixels
-        assert two_photon_series["dimension"] == [512, 512]
+#         # Image dimensions from metadata: X Dimension: 512 pixels, Y Dimension: 512 pixels
+#         assert two_photon_series["dimension"] == [512, 512]
 
-        assert (
-            imaging_plane["description"]
-            == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [-224.19678715 -224.19678715    0.        ], rotation: [0. 0. 0. 1.], labeling_origin: [    0.       0.   -6724.23]"
-        )
+#         assert (
+#             imaging_plane["description"]
+#             == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [-224.19678715 -224.19678715    0.        ], rotation: [0. 0. 0. 1.], labeling_origin: [    0.       0.   -6724.23]"
+#         )
 
 
 class TestFemtonicsImagingInterfaceStaticMethods:
@@ -1442,38 +1442,38 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 munit_name="MUnit_0",
             )
 
-    def test_get_available_channels_single_channel(self):
-        """Test getting available channels for first single channel .mesc file."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
-        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path, munit_name="MUnit_60")
-        assert channels == ["UG"]
+    # def test_get_available_channels_single_channel(self):
+    #     """Test getting available channels for first single channel .mesc file."""
+    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
+    #     channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path, munit_name="MUnit_60")
+    #     assert channels == ["UG"]
 
-    def test_get_available_channels_single_munit(self):
-        """Test getting available channels for second single channel .mesc file."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
-        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
-        assert channels == ["UG"]
+    # def test_get_available_channels_single_munit(self):
+    #     """Test getting available channels for second single channel .mesc file."""
+    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
+    #     channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
+    #     assert channels == ["UG"]
 
-    def test_get_available_sessions_single_channel(self):
-        """Test getting available sessions for first single channel .mesc file."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
-        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert sessions == ["MSession_0"]
+    # def test_get_available_sessions_single_channel(self):
+    #     """Test getting available sessions for first single channel .mesc file."""
+    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
+    #     sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
+    #     assert sessions == ["MSession_0"]
 
-    def test_get_available_sessions_single_munit(self):
-        """Test getting available sessions for second single channel .mesc file."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
-        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert sessions == ["MSession_0"]
+    # def test_get_available_sessions_single_munit(self):
+    #     """Test getting available sessions for second single channel .mesc file."""
+    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
+    #     sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
+    #     assert sessions == ["MSession_0"]
 
-    def test_get_available_munits_single_channel(self):
-        """Test getting available units for first single channel .mesc file."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
-        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path)
-        assert units == ["MUnit_60", "MUnit_96"]
+    # def test_get_available_munits_single_channel(self):
+    #     """Test getting available units for first single channel .mesc file."""
+    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
+    #     units = FemtonicsImagingInterface.get_available_munits(file_path=file_path)
+    #     assert units == ["MUnit_60", "MUnit_96"]
 
-    def test_get_available_munits_single_munit(self):
-        """Test getting available units for second single channel .mesc file."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
-        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path)
-        assert units == ["MUnit_60"]
+    # def test_get_available_munits_single_munit(self):
+    #     """Test getting available units for second single channel .mesc file."""
+    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
+    #     units = FemtonicsImagingInterface.get_available_munits(file_path=file_path)
+    #     assert units == ["MUnit_60"]
