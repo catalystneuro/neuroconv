@@ -22,7 +22,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FolderPathType,
-        session_index: Optional[int] = None,
+        session_name: Optional[str] = None,
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
         verbose: bool = False,
@@ -34,11 +34,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .mesc file.
-        session_index : int, optional
-            Index or key of the MSession to use. If None, the first available session will be selected automatically.
+        session_name : str, optional
+            Name of the MSession to use (e.g., "MSession_0", "MSession_1").
+            If None, the first available session will be selected automatically.
             In Femtonics MESc files, an MSession ("Measurement Session") represents a single experimental session,
             which may contain one or more MUnits (imaging acquisitions or experiments). MSessions are typically
-            indexed as "MSession_0", "MSession_1", etc...
+            named as "MSession_0", "MSession_1", etc...
 
         munit_name : str, optional
             Name of the MUnit within the specified session (e.g., "MUnit_0", "MUnit_1").
@@ -63,21 +64,33 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
         Extractor = self.get_extractor()
         session_keys = Extractor.get_available_sessions(file_path)
-        if session_index is None:
+
+        # Handle session_name selection
+        if session_name is None:
             if not session_keys:
                 raise ValueError(f"No sessions found in Femtonics file: {file_path}")
             if len(session_keys) == 1:
-                session_index = 0
+                session_name = session_keys[0]
             else:
                 raise ValueError(
                     f"Multiple sessions found in Femtonics file: {file_path}. "
-                    f"Available sessions: {session_keys}. Please specify 'session_index'."
+                    f"Available sessions: {session_keys}. Please specify 'session_name'."
                 )
+        else:
+            # Validate that the specified session_name exists
+            if session_name not in session_keys:
+                raise ValueError(
+                    f"Specified session_name '{session_name}' not found in Femtonics file: {file_path}. "
+                    f"Available sessions: {session_keys}."
+                )
+
+        # Convert session_name to session_index for the extractor
+        session_index = session_keys.index(session_name)
 
         # Get available units for the selected session
         unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
         if not unit_keys:
-            raise ValueError(f"No units found in session {session_keys[session_index]} of Femtonics file: {file_path}")
+            raise ValueError(f"No units found in session {session_name} of Femtonics file: {file_path}")
 
         # Handle munit_name selection
         if munit_name is None:
@@ -85,14 +98,14 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 munit_name = unit_keys[0]
             else:
                 raise ValueError(
-                    f"Multiple units found in session {session_keys[session_index]} of Femtonics file: {file_path}. "
+                    f"Multiple units found in session {session_name} of Femtonics file: {file_path}. "
                     f"Available units: {unit_keys}. Please specify 'munit_name'."
                 )
         else:
             # Validate that the specified munit_name exists
             if munit_name not in unit_keys:
                 raise ValueError(
-                    f"Specified munit_name '{munit_name}' not found in session {session_keys[session_index]} "
+                    f"Specified munit_name '{munit_name}' not found in session {session_name} "
                     f"of Femtonics file: {file_path}. Available units: {unit_keys}."
                 )
 
@@ -110,9 +123,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         )
 
         self._file_path = file_path
+        self._session_name = session_name
         self._session_index = session_index
         self._munit_name = munit_name
-        self._munit_index = munit_index  # Keep for internal use
+        self._munit_index = munit_index
         self._channel_name = channel_name
 
         # Hack till roiextractors removes the get_num_channels method in check_imaging_equal.
@@ -166,9 +180,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if session_uuid:
             metadata["NWBFile"]["session_id"] = session_uuid
 
-        # Session description - use munit_name instead of index
+        # Session description - use session_name and munit_name instead of indices
         hostname = femtonics_metadata.get("hostname")
-        session_descr = f"Session: {self._session_index}, MUnit: {self._munit_name}."
+        session_descr = f"Session: {self._session_name}, MUnit: {self._munit_name}."
         if hostname:
             session_descr += f" Session performed on workstation: {hostname}."
         metadata["NWBFile"]["session_description"] = session_descr
@@ -233,7 +247,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     @staticmethod
-    def get_available_channels(file_path: FolderPathType, session_index: int = 0, munit_name: str = None) -> list[str]:
+    def get_available_channels(
+        file_path: FolderPathType, session_name: str = None, munit_name: str = None
+    ) -> list[str]:
         """
         Get available channels in the specified session/unit combination.
 
@@ -241,8 +257,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .mesc file.
-        session_index : int, optional
-            Index of the MSession to use. Default is 0.
+        session_name : str, optional
+            Name of the MSession to use (e.g., "MSession_0").
+            If None, uses the first available session.
         munit_name : str, optional
             Name of the MUnit within the session (e.g., "MUnit_0").
             If None, uses the first available unit.
@@ -253,6 +270,18 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available channel names.
         """
         Extractor = FemtonicsImagingInterface.get_extractor()
+
+        # Handle session_name to session_index conversion
+        if session_name is None:
+            session_keys = Extractor.get_available_sessions(file_path=file_path)
+            if not session_keys:
+                raise ValueError("No sessions found")
+            session_index = 0  # Use first session if none specified
+        else:
+            session_keys = Extractor.get_available_sessions(file_path=file_path)
+            if session_name not in session_keys:
+                raise ValueError(f"Session '{session_name}' not found. Available sessions: {session_keys}")
+            session_index = session_keys.index(session_name)
 
         # Handle munit_name to munit_index conversion
         if munit_name is None:
@@ -289,7 +318,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_sessions(file_path=file_path)
 
     @staticmethod
-    def get_available_units(file_path: FolderPathType, session_index: int = 0) -> list[str]:
+    def get_available_munits(file_path: FolderPathType, session_name: str = None) -> list[str]:
         """
         Get list of available unit keys in the specified session.
 
@@ -297,8 +326,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .mesc file.
-        session_index : int, optional
-            Index of the MSession to use. Default is 0.
+        session_name : str, optional
+            Name of the MSession to use (e.g., "MSession_0").
+            If None, uses the first available session.
 
         Returns
         -------
@@ -306,4 +336,17 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available unit keys.
         """
         Extractor = FemtonicsImagingInterface.get_extractor()
+
+        # Handle session_name to session_index conversion
+        if session_name is None:
+            session_keys = Extractor.get_available_sessions(file_path=file_path)
+            if not session_keys:
+                raise ValueError("No sessions found")
+            session_index = 0  # Use first session if none specified
+        else:
+            session_keys = Extractor.get_available_sessions(file_path=file_path)
+            if session_name not in session_keys:
+                raise ValueError(f"Session '{session_name}' not found. Available sessions: {session_keys}")
+            session_index = session_keys.index(session_name)
+
         return Extractor.get_available_units(file_path=file_path, session_index=session_index)
