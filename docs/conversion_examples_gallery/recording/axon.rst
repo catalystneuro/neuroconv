@@ -14,7 +14,7 @@ Convert Axon ABF data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import AxonRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/axon/test_file.abf"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/axon/extracellular_data/four_electrodes/24606005_SampleData.abf"
     >>> interface = AxonRecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
