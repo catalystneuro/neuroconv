@@ -18,11 +18,6 @@ DANDI requires videos to be in specific formats for upload. The supported video 
 - ``.flv``
 - ``.mkv``
 
-.. note::
-   NeuroConv's video interfaces now correctly support ``.flv`` format files.
-   If you have videos in other formats (e.g., ``.m4v``, ``.webm``, ``.3gp``, proprietary formats),
-   you'll need to convert them to a DANDI-compatible format before using NeuroConv.
-
 Installing FFmpeg
 -----------------
 
@@ -175,7 +170,6 @@ Additional Resources
 --------------------
 
 - `FFmpeg Documentation <https://ffmpeg.org/documentation.html>`_
-- `DANDI Video Requirements <https://dandi.github.io/dandi-cli/>`_
 - `DANDI CLI Issue #1328 (FLV format support) <https://github.com/dandi/dandi-cli/issues/1328>`_
 - `NeuroConv Video Interface Documentation <../conversion_examples_gallery/behavior/video.html>`_
 - `NWB Video Best Practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_

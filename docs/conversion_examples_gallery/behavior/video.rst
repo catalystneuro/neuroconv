@@ -11,7 +11,7 @@ This interface can handle conversions from avi, mov, mp4, wmv, flv and most `FFm
 
 .. note::
     If your video files are not in a DANDI-compatible format, see our guide on
-    :doc:`../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
+    :doc:`../../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
 
 When storing videos of natural behavior, it is recommended to store this data as an external file with a link pointing
 from the ImageSeries in NWB to the external file
@@ -48,7 +48,7 @@ To follow this convention use the
 
 .. note::
     If your video files are not in a DANDI-compatible format, see our guide on
-    :doc:`../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
+    :doc:`../../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
 
 
 .. code-block:: python
