@@ -18,6 +18,11 @@ DANDI requires videos to be in specific formats for upload. The supported video 
 - ``.flv``
 - ``.mkv``
 
+.. note::
+   NeuroConv's video interface currently lists ``.flx`` instead of ``.flv`` in its supported formats.
+   If you have ``.flv`` files, they should work fine with DANDI after conversion, but you may need
+   to rename them to ``.flx`` for NeuroConv or convert them to ``.mp4`` using the examples below.
+
 If your behavioral videos are in other formats (e.g., ``.m4v``, ``.webm``, ``.3gp``, proprietary formats),
 you'll need to convert them before using NeuroConv's video interfaces.
 
@@ -68,6 +73,17 @@ Convert all files in a directory:
 
     # Windows batch command
     for %i in (*.webm) do ffmpeg -i "%i" -c:v libx264 -crf 20 -c:a aac "%~ni.mp4"
+
+Format Compatibility Note
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+While DANDI supports ``.flv`` files, NeuroConv's current interface lists ``.flx`` format.
+For maximum compatibility, it's recommended to convert to ``.mp4`` format:
+
+.. code-block:: bash
+
+    # Convert .flv to .mp4 (recommended for both DANDI and NeuroConv)
+    ffmpeg -i input_video.flv -c:v libx264 -crf 20 -c:a aac output_video.mp4
 
 Advanced Conversion Options
 ---------------------------
