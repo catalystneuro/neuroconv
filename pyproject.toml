@@ -149,9 +149,7 @@ behavior = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    # TEMPORARY: Using git branch with Axon support until official release
-    # TODO: Revert to "spikeinterface>=0.102.3" after Axon feature is released
-    "spikeinterface @ git+https://github.com/h-mayorquin/spikeinterface.git@add_axon",
+    "spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@main",
     "neo>=0.14.1"
 ]
 alphaomega = [
