@@ -142,7 +142,7 @@ Additional Resources
 --------------------
 
 - `FFmpeg Documentation <https://ffmpeg.org/documentation.html>`_
-- `NeuroConv Video Interface Documentation <../conversion_examples_gallery/behavior/video.html>`_
+- :doc:`../../conversion_examples_gallery/behavior/video`
 - `NWB Video Best Practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_
 
 .. note::
