@@ -202,13 +202,9 @@ class TestScanImageImagingInterfacesAssertions:
         channel_name = "Channel 2"
         with pytest.raises(
             ValueError,
-            match=r"Channel 'Channel 2' not found in MSession_0/MUnit_0\. Available: \['UG', 'UR'\]",
+            match=r"Channel name \(Channel 2\) not found in available channels \(\['Channel 1', 'Channel 4'\]\)\. Please specify a valid channel name\.",
         ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-                channel_name=channel_name,
-            )
+            ScanImageImagingInterface(file_path=file_path, channel_name=channel_name, interleave_slice_samples=True)
 
     def test_incorrect_plane_name(self):
         """Test that ValueError is raised when incorrect plane name is specified."""
