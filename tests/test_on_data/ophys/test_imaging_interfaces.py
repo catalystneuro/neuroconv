@@ -1480,6 +1480,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 munit_name="MUnit_0",
                 channel_name="UG",
             )
+
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
