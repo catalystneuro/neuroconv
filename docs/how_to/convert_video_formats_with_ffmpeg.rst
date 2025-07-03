@@ -142,7 +142,6 @@ Additional Resources
 --------------------
 
 - `FFmpeg Documentation <https://ffmpeg.org/documentation.html>`_
-- `DANDI CLI Issue #1328 (FLV format support) <https://github.com/dandi/dandi-cli/issues/1328>`_
 - `NeuroConv Video Interface Documentation <../conversion_examples_gallery/behavior/video.html>`_
 - `NWB Video Best Practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_
 
