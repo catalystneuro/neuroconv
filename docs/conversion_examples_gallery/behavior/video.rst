@@ -46,10 +46,6 @@ When storing videos of neural data, lossy compression should not be used and it 
 To follow this convention use the
 :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideodatainterface.InternalVideoInterface` class.
 
-.. note::
-    If your video files are not in a DANDI-compatible format, see our guide on
-    :doc:`../../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
-
 
 .. code-block:: python
 
