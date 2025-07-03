@@ -10,7 +10,6 @@ Install NeuroConv with the additional dependencies necessary for reading Femtoni
 Convert Femtonics imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.femtonics.femtonicsimaginginterface.FemtonicsImagingInterface``
 
 .. code-block:: python
-    >>> import sys, platform
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import FemtonicsImagingInterface
