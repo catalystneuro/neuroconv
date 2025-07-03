@@ -36,7 +36,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Path to the .mesc file.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0", "MSession_1").
-            If None, the first available session will be selected automatically.
+            If None, and there is only one session, then the first available session will be selected automatically. Otherwise this to be specified with the desired session.
             In Femtonics MESc files, an MSession ("Measurement Session") represents a single experimental session,
             which may contain one or more MUnits (imaging acquisitions or experiments). MSessions are typically
             named as "MSession_0", "MSession_1", etc...
