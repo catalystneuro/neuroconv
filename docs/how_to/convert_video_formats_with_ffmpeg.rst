@@ -41,15 +41,12 @@ Basic Video Conversion
 Convert to MP4 (Recommended)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-MP4 with H.264 codec is the most widely supported format:
+MP4 is the most widely supported format. Use ``-c copy`` to copy streams without re-encoding for fastest conversion:
 
 .. code-block:: bash
 
-    # Basic conversion to MP4
-    ffmpeg -i input_video.webm output_video.mp4
-
-    # Convert with quality control (CRF 18-23 for high quality)
-    ffmpeg -i input_video.m4v -c:v libx264 -crf 20 -c:a aac output_video.mp4
+    # Basic conversion to MP4 (copies streams without re-encoding)
+    ffmpeg -i input_video.webm -c copy output_video.mp4
 
 Batch Processing
 ~~~~~~~~~~~~~~~~
@@ -60,11 +57,11 @@ Convert all files in a directory:
 
     # Convert all .webm files to .mp4 (Linux/macOS)
     for file in *.webm; do
-        ffmpeg -i "$file" -c:v libx264 -crf 20 -c:a aac "${file%.webm}.mp4"
+        ffmpeg -i "$file" -c copy "${file%.webm}.mp4"
     done
 
     # Windows batch command
-    for %i in (*.webm) do ffmpeg -i "%i" -c:v libx264 -crf 20 -c:a aac "%~ni.mp4"
+    for %i in (*.webm) do ffmpeg -i "%i" -c copy "%~ni.mp4"
 
 Python script for batch conversion:
 
@@ -73,7 +70,7 @@ Python script for batch conversion:
     import subprocess
     from pathlib import Path
 
-    def convert_videos_to_mp4(input_dir, output_dir, quality=22):
+    def convert_videos_to_mp4(input_dir, output_dir):
         """Convert all video files in a directory to MP4 format."""
         input_path = Path(input_dir)
         output_path = Path(output_dir)
@@ -88,8 +85,7 @@ Python script for batch conversion:
 
                 cmd = [
                     'ffmpeg', '-i', str(video_file),
-                    '-c:v', 'libx264', '-crf', str(quality),
-                    '-c:a', 'aac', '-y',  # -y to overwrite existing files
+                    '-c', 'copy', '-y',  # -y to overwrite existing files
                     str(output_file)
                 ]
 
@@ -98,7 +94,7 @@ Python script for batch conversion:
                 print(f"Saved as {output_file.name}")
 
     # Usage example
-    convert_videos_to_mp4("./raw_videos", "./converted_videos", quality=20)
+    convert_videos_to_mp4("./raw_videos", "./converted_videos")
 
 Integration with NeuroConv
 --------------------------
@@ -141,30 +137,6 @@ For neural data videos (store internally when lossless compression is needed):
 
 For detailed information on using NeuroConv's video interfaces, see the
 :doc:`../conversion_examples_gallery/behavior/video` guide.
-
-Common Conversion Options
--------------------------
-
-**For behavioral analysis videos:**
-
-.. code-block:: bash
-
-    # Balanced quality for behavioral analysis
-    ffmpeg -i input_video.avi -c:v libx264 -crf 22 -preset medium -c:a aac output_video.mp4
-
-**For lossless conversion (neural data):**
-
-.. code-block:: bash
-
-    # Lossless H.264 encoding
-    ffmpeg -i input_video.avi -c:v libx264 -preset veryslow -crf 0 -c:a copy output_video.mp4
-
-**Troubleshooting codec errors:**
-
-.. code-block:: bash
-
-    # Try different codecs if conversion fails
-    ffmpeg -i input_video.unknown -c:v libx265 -crf 23 -c:a aac output_video.mp4
 
 Additional Resources
 --------------------
