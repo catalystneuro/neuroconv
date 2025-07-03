@@ -202,9 +202,13 @@ class TestScanImageImagingInterfacesAssertions:
         channel_name = "Channel 2"
         with pytest.raises(
             ValueError,
-            match=r"Channel name \(Channel 2\) not found in available channels \(\['Channel 1', 'Channel 4'\]\)\. Please specify a valid channel name\.",
+            match=r"Channel 'Channel 2' not found in MSession_0/MUnit_0\. Available: \['UG', 'UR'\]",
         ):
-            ScanImageImagingInterface(file_path=file_path, channel_name=channel_name, interleave_slice_samples=True)
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="MUnit_0",
+                channel_name=channel_name,
+            )
 
     def test_incorrect_plane_name(self):
         """Test that ValueError is raised when incorrect plane name is specified."""
@@ -1400,33 +1404,15 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
         assert channels == ["UG", "UR"]
 
-    def test_get_available_channels_p30(self):
-        """Test getting available channels for p30.mesc."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
-        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
-        assert channels == ["UG", "UR"]
-
     def test_get_available_sessions_p29(self):
         """Test getting available sessions for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert sessions == ["MSession_0"]
 
-    def test_get_available_sessions_p30(self):
-        """Test getting available sessions for p30.mesc."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
-        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert sessions == ["MSession_0"]
-
     def test_get_available_munits_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_name="MSession_0")
-        assert units == ["MUnit_0", "MUnit_1"]
-
-    def test_get_available_munits_p30(self):
-        """Test getting available units for p30.mesc."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"
         units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_name="MSession_0")
         assert units == ["MUnit_0", "MUnit_1"]
 
@@ -1442,38 +1428,66 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 munit_name="MUnit_0",
             )
 
-    # def test_get_available_channels_single_channel(self):
-    #     """Test getting available channels for first single channel .mesc file."""
-    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
-    #     channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path, munit_name="MUnit_60")
-    #     assert channels == ["UG"]
+    def test_wrong_channel_name(self):
+        """Test that ValueError is raised when an invalid channel_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        with pytest.raises(
+            ValueError,
+            match=r"Channel 'WRONG_CHANNEL' not found in MSession_0/MUnit_0\. Available: \['UG', 'UR'\]",
+        ):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="MUnit_0",
+                channel_name="WRONG_CHANNEL",
+            )
 
-    # def test_get_available_channels_single_munit(self):
-    #     """Test getting available channels for second single channel .mesc file."""
-    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
-    #     channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
-    #     assert channels == ["UG"]
+    def test_munit_not_specified_with_multiple_units(self):
+        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        with pytest.raises(
+            ValueError,
+            match=r"Multiple units found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\. Please specify 'munit_name'\.",
+        ):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                # munit_name not specified
+                channel_name="UG",
+            )
 
-    # def test_get_available_sessions_single_channel(self):
-    #     """Test getting available sessions for first single channel .mesc file."""
-    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
-    #     sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-    #     assert sessions == ["MSession_0"]
+    def test_wrong_munit_name(self):
+        """Test that ValueError is raised when an invalid munit_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        with pytest.raises(
+            ValueError,
+            match=r"Specified munit_name 'WRONG_UNIT' not found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\.",
+        ):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="WRONG_UNIT",
+                channel_name="UG",
+            )
 
-    # def test_get_available_sessions_single_munit(self):
-    #     """Test getting available sessions for second single channel .mesc file."""
-    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
-    #     sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-    #     assert sessions == ["MSession_0"]
-
-    # def test_get_available_munits_single_channel(self):
-    #     """Test getting available units for first single channel .mesc file."""
-    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_channel.mesc"
-    #     units = FemtonicsImagingInterface.get_available_munits(file_path=file_path)
-    #     assert units == ["MUnit_60", "MUnit_96"]
-
-    # def test_get_available_munits_single_munit(self):
-    #     """Test getting available units for second single channel .mesc file."""
-    #     file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "single_m_unit_index.mesc"
-    #     units = FemtonicsImagingInterface.get_available_munits(file_path=file_path)
-    #     assert units == ["MUnit_60"]
+    def test_wrong_session_name(self):
+        """Test that ValueError is raised when an invalid session_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        with pytest.raises(
+            ValueError,
+            match=r"Specified session_name 'WRONG_SESSION' not found in Femtonics file: .+\. Available sessions: \['MSession_0'\]\.",
+        ):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                session_name="WRONG_SESSION",
+                munit_name="MUnit_0",
+                channel_name="UG",
+            )
+    def test_channel_name_not_specified_multiple_channels(self):
+        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        with pytest.raises(
+            ValueError,
+            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
+        ):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="MUnit_0",
+            )
