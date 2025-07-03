@@ -67,6 +67,7 @@ Imaging
     :maxdepth: 1
 
     Bruker <imaging/brukertiff>
+    Femtonics <imaging/femtonics>
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>

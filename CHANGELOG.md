@@ -12,6 +12,7 @@
 * Segmentation interfaces now support roi ids that are strings [PR #1390](https://github.com/catalystneuro/neuroconv/pull/1390)
 * Added `InscopixImagingInterface` for converting Inscopix imaging data. [PR #1361](https://github.com/catalystneuro/neuroconv/pull/1361)
 * Added `InscopixSegmentationInterface` for converting Inscopix segmentation data. [PR #1364](https://github.com/catalystneuro/neuroconv/pull/1364)
+* Added `FemtonicsImagingInterface`for converting Femtonics imaging data. [PR #1408](https://github.com/catalystneuro/neuroconv/pull/1408)
 
 ## Improvements
 
