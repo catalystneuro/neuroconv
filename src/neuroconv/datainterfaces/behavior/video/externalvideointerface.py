@@ -26,7 +26,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
     display_name = "Video"
     keywords = ("video", "behavior")
-    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
+    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flv", ".mkv")
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats and writing them as ImageSeries with external_files."
 
