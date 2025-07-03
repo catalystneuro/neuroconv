@@ -102,15 +102,11 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         ----------
         file_path : str, Path
             The file path to the ``.nev`` data
-        sampling_frequency: float, optional
+        sampling_frequency : float, optional
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
             used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
             this extractor to be initialized.
-        sampling_frequency : float, default: None
-            The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
-            used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
-            this extractor to be initialized.
-        nsx_to_load : int | list | str, default: None
+        nsx_to_load : int | list | str, optional
             IDs of nsX file from which to load data, e.g., if set to 5 only data from the ns5 file are loaded.
             If 'all', then all nsX will be loaded. If None, all nsX files will be loaded. If empty list, no nsX files will be loaded.
         verbose : bool, default: False
