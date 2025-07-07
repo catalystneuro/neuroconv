@@ -27,6 +27,50 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file."
         return source_schema
 
+    def get_available_subjects(file_path: FilePath) -> list[str]:
+        """
+        Extract available subjects from a DeepLabCut output file.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the DeepLabCut output file (.h5 or .csv).
+
+        Returns
+        -------
+        list[str]
+            List of subject names found in the file.
+
+        Raises
+        ------
+        IOError
+            If the file is not a valid DeepLabCut output file.
+        FileNotFoundError
+            If the file does not exist.
+        """
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exist.")
+
+        # Read the data
+        if ".h5" in file_path.suffixes:
+            df = pd.read_hdf(file_path)
+        elif ".csv" in file_path.suffixes:
+            df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
+        else:
+            raise IOError(f"The file {file_path} passed in is not a valid DeepLabCut output data file.")
+
+        # Check if 'individuals' level exists in the column structure
+        if "individuals" in df.columns.names:
+            # Multi-subject file - extract unique individuals
+            individuals = df.columns.get_level_values("individuals").unique().tolist()
+            return individuals
+        else:
+            # Single-subject file - return default subject name
+            # For consistency with the interface's default behavior
+            return ["ind1"]
+
     @validate_call
     def __init__(
         self,
