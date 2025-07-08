@@ -82,41 +82,45 @@ Ophys:
       - name: dms_virus
         description: AAV5-CAG-FLEX-jGCaMP7b-WPRE viral vector used for DMS fiber photometry experiments.
         manufacturer: Addgene
-        viral_vector_type: AAV5-CAG-FLEX-jGCaMP7b-WPRE
-        titer: 1.02e13
-        lot_number: 18-429
+        construct_name: AAV5-CAG-FLEX-jGCaMP7b-WPRE
+        titer_in_vg_per_ml: 1.02e13
       - name: dls_virus
         description: AAV5-CAG-FLEX-jGCaMP7b-WPRE viral vector used for DLS fiber photometry experiments.
         manufacturer: Addgene
-        viral_vector_type: AAV5-CAG-FLEX-jGCaMP7b-WPRE
-        titer: 1.02e13
-        lot_number: 18-429
+        construct_name: AAV5-CAG-FLEX-jGCaMP7b-WPRE
+        titer_in_vg_per_ml: 1.02e13
     FiberPhotometryVirusInjections:
       - name: dms_virus_injection
         description: Viral injection into medial SNc for DMS fiber photometry experiments.
-        virus: dms_virus
-        injection_location: medial SNc
-        injection_coordinates_in_mm: [3.1, 0.8, 4.7]
-        injection_volume_in_ul: 1.0
+        viral_vector: dms_virus
+        location: medial SNc
+        hemisphere: right
+        reference: bregma at the cortical surface
+        ap_in_mm: -3.1
+        ml_in_mm: 0.8
+        dv_in_mm: -4.7
+        volume_in_uL: 1.0
       - name: dls_virus_injection
         description: Viral injection into lateral SNc for DLS fiber photometry experiments.
-        virus: dls_virus
-        injection_location: lateral SNc
-        injection_coordinates_in_mm: [3.1, 1.3, 4.2]
-        injection_volume_in_ul: 1.0
+        viral_vector: dls_virus
+        location: lateral SNc
+        hemisphere: right
+        reference: bregma at the cortical surface
+        ap_in_mm: -3.1
+        ml_in_mm: 1.3
+        dv_in_mm: -4.2
+        volume_in_uL: 1.0
     FiberPhotometryIndicators:
       - name: dms_green_fluorophore
         description: GCaMP7b indicator for DMS fiber photometry experiments.
         manufacturer: Addgene
         label: GCaMP7b
-        injection_location: medial SNc
-        injection_coordinates_in_mm: [3.1, 0.8, 4.7]
+        viral_vector_injection: dms_virus_injection
       - name: dls_green_fluorophore
         description: GCaMP7b indicator for DLS fiber photometry experiments.
         manufacturer: Addgene
         label: GCaMP7b
-        injection_location: lateral SNc
-        injection_coordinates_in_mm: [3.1, 1.3, 4.2]
+        viral_vector_injection: dls_virus_injection
     CommandedVoltageSeries:
       - name: commanded_voltage_series_dms_calcium_signal
         description: The commanded voltage for the DMS calcium signal.
