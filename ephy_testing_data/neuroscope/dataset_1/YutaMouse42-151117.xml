@@ -1,0 +1,1641 @@
+<?xml version='1.0'?>
+<parameters version="1.0" creator="ndManager-">
+ <generalInfo>
+  <date>2015-08-31</date>
+  <experimenters>yuta</experimenters>
+  <description/>
+  <notes/>
+ </generalInfo>
+ <acquisitionSystem>
+  <nBits>16</nBits>
+  <nChannels>80</nChannels>
+  <samplingRate>20000</samplingRate>
+  <voltageRange>20</voltageRange>
+  <amplification>1000</amplification>
+  <offset>0</offset>
+ </acquisitionSystem>
+ <fieldPotentials>
+  <lfpSamplingRate>1250</lfpSamplingRate>
+ </fieldPotentials>
+ <anatomicalDescription>
+  <channelGroups>
+   <group>
+    <channel skip="0">33</channel>
+    <channel skip="0">38</channel>
+    <channel skip="0">32</channel>
+    <channel skip="0">39</channel>
+    <channel skip="0">35</channel>
+    <channel skip="0">36</channel>
+    <channel skip="0">34</channel>
+    <channel skip="0">37</channel>
+   </group>
+   <group>
+    <channel skip="0">41</channel>
+    <channel skip="0">46</channel>
+    <channel skip="0">40</channel>
+    <channel skip="0">47</channel>
+    <channel skip="0">43</channel>
+    <channel skip="0">44</channel>
+    <channel skip="0">42</channel>
+    <channel skip="0">45</channel>
+   </group>
+   <group>
+    <channel skip="0">16</channel>
+    <channel skip="0">25</channel>
+    <channel skip="0">17</channel>
+    <channel skip="0">24</channel>
+    <channel skip="0">18</channel>
+    <channel skip="0">22</channel>
+    <channel skip="0">20</channel>
+    <channel skip="0">21</channel>
+   </group>
+   <group>
+    <channel skip="0">26</channel>
+    <channel skip="0">19</channel>
+    <channel skip="0">28</channel>
+    <channel skip="0">23</channel>
+    <channel skip="0">29</channel>
+    <channel skip="0">27</channel>
+    <channel skip="0">30</channel>
+    <channel skip="0">31</channel>
+   </group>
+   <group>
+    <channel skip="0">13</channel>
+    <channel skip="0">4</channel>
+    <channel skip="0">9</channel>
+    <channel skip="0">2</channel>
+    <channel skip="0">5</channel>
+    <channel skip="0">3</channel>
+    <channel skip="0">1</channel>
+    <channel skip="0">0</channel>
+   </group>
+   <group>
+    <channel skip="0">7</channel>
+    <channel skip="0">14</channel>
+    <channel skip="0">6</channel>
+    <channel skip="0">15</channel>
+    <channel skip="0">8</channel>
+    <channel skip="0">12</channel>
+    <channel skip="0">11</channel>
+    <channel skip="0">10</channel>
+   </group>
+   <group>
+    <channel skip="0">48</channel>
+    <channel skip="0">55</channel>
+    <channel skip="0">49</channel>
+    <channel skip="0">54</channel>
+    <channel skip="0">50</channel>
+    <channel skip="0">53</channel>
+    <channel skip="0">51</channel>
+    <channel skip="0">52</channel>
+   </group>
+   <group>
+    <channel skip="0">56</channel>
+    <channel skip="0">63</channel>
+    <channel skip="0">57</channel>
+    <channel skip="0">62</channel>
+    <channel skip="0">58</channel>
+    <channel skip="0">61</channel>
+    <channel skip="0">59</channel>
+    <channel skip="0">60</channel>
+   </group>
+   <group>
+    <channel skip="0">64</channel>
+    <channel skip="0">65</channel>
+    <channel skip="0">66</channel>
+    <channel skip="0">67</channel>
+    <channel skip="0">68</channel>
+    <channel skip="0">69</channel>
+   </group>
+   <group>
+    <channel skip="0">70</channel>
+    <channel skip="0">71</channel>
+    <channel skip="0">72</channel>
+    <channel skip="0">73</channel>
+    <channel skip="0">74</channel>
+    <channel skip="0">75</channel>
+    <channel skip="0">76</channel>
+    <channel skip="0">77</channel>
+    <channel skip="0">78</channel>
+    <channel skip="0">79</channel>
+   </group>
+  </channelGroups>
+ </anatomicalDescription>
+ <spikeDetection>
+  <channelGroups>
+   <group>
+    <channels>
+     <channel>33</channel>
+     <channel>38</channel>
+     <channel>32</channel>
+     <channel>39</channel>
+     <channel>35</channel>
+     <channel>36</channel>
+     <channel>34</channel>
+     <channel>37</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>41</channel>
+     <channel>46</channel>
+     <channel>40</channel>
+     <channel>47</channel>
+     <channel>43</channel>
+     <channel>44</channel>
+     <channel>42</channel>
+     <channel>45</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>16</channel>
+     <channel>25</channel>
+     <channel>17</channel>
+     <channel>24</channel>
+     <channel>18</channel>
+     <channel>22</channel>
+     <channel>20</channel>
+     <channel>21</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>26</channel>
+     <channel>19</channel>
+     <channel>28</channel>
+     <channel>23</channel>
+     <channel>29</channel>
+     <channel>27</channel>
+     <channel>30</channel>
+     <channel>31</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>13</channel>
+     <channel>4</channel>
+     <channel>9</channel>
+     <channel>2</channel>
+     <channel>5</channel>
+     <channel>3</channel>
+     <channel>1</channel>
+     <channel>0</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>7</channel>
+     <channel>14</channel>
+     <channel>6</channel>
+     <channel>15</channel>
+     <channel>8</channel>
+     <channel>12</channel>
+     <channel>11</channel>
+     <channel>10</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>48</channel>
+     <channel>55</channel>
+     <channel>49</channel>
+     <channel>54</channel>
+     <channel>50</channel>
+     <channel>53</channel>
+     <channel>51</channel>
+     <channel>52</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+   <group>
+    <channels>
+     <channel>56</channel>
+     <channel>63</channel>
+     <channel>57</channel>
+     <channel>62</channel>
+     <channel>58</channel>
+     <channel>61</channel>
+     <channel>59</channel>
+     <channel>60</channel>
+    </channels>
+    <nSamples>32</nSamples>
+    <peakSampleIndex>16</peakSampleIndex>
+    <nFeatures>3</nFeatures>
+   </group>
+  </channelGroups>
+ </spikeDetection>
+ <units>
+  <unit>
+   <group>5</group>
+   <cluster>2</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>5</group>
+   <cluster>3</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>5</group>
+   <cluster>4</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>2</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>3</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>4</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>5</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>6</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>7</cluster>
+   <structure>------</structure>
+   <type>------</type>
+   <isolationDistance>------</isolationDistance>
+   <quality>------</quality>
+   <notes>------</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>8</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>9</cluster>
+   <structure>--------------</structure>
+   <type>--------------</type>
+   <isolationDistance>--------------</isolationDistance>
+   <quality>--------------</quality>
+   <notes>--------------</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>10</cluster>
+   <structure>--------------</structure>
+   <type>--------------</type>
+   <isolationDistance>--------------</isolationDistance>
+   <quality>--------------</quality>
+   <notes>--------------</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>11</cluster>
+   <structure>------------</structure>
+   <type>------------</type>
+   <isolationDistance>------------</isolationDistance>
+   <quality>------------</quality>
+   <notes>------------</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>12</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>4</group>
+   <cluster>13</cluster>
+   <structure>------------------------</structure>
+   <type>------------------------</type>
+   <isolationDistance>------------------------</isolationDistance>
+   <quality>------------------------</quality>
+   <notes>------------------------</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>2</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>3</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>4</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>5</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>6</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>7</cluster>
+   <structure>----</structure>
+   <type>----</type>
+   <isolationDistance>----</isolationDistance>
+   <quality>----</quality>
+   <notes>----</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>8</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>9</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>3</group>
+   <cluster>10</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+  <unit>
+   <group>2</group>
+   <cluster>2</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>2</group>
+   <cluster>3</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>2</group>
+   <cluster>4</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>1</group>
+   <cluster>2</cluster>
+   <structure/>
+   <type/>
+   <isolationDistance/>
+   <quality/>
+   <notes/>
+  </unit>
+  <unit>
+   <group>1</group>
+   <cluster>3</cluster>
+   <structure>--</structure>
+   <type>--</type>
+   <isolationDistance>--</isolationDistance>
+   <quality>--</quality>
+   <notes>--</notes>
+  </unit>
+ </units>
+ <neuroscope version="2.0.0">
+  <miscellaneous>
+   <screenGain>0.2</screenGain>
+   <traceBackgroundImage></traceBackgroundImage>
+  </miscellaneous>
+  <video>
+   <rotate>0</rotate>
+   <flip>0</flip>
+   <videoImage></videoImage>
+   <positionsBackground>0</positionsBackground>
+  </video>
+  <spikes>
+   <nSamples>32</nSamples>
+   <peakSampleIndex>16</peakSampleIndex>
+  </spikes>
+  <channels>
+   <channelColors>
+    <channel>0</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>0</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>1</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>1</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>2</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>2</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>3</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>3</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>4</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>4</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>5</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>5</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>6</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>6</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>7</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>7</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>8</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>8</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>9</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>9</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>10</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>10</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>11</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>11</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>12</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>12</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>13</channel>
+    <color>#00b3ff</color>
+    <anatomyColor>#00b3ff</anatomyColor>
+    <spikeColor>#00b3ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>13</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>14</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>14</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>15</channel>
+    <color>#00ff95</color>
+    <anatomyColor>#00ff95</anatomyColor>
+    <spikeColor>#00ff95</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>15</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>16</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>16</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>17</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>17</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>18</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>18</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>19</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>19</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>20</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>20</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>21</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>21</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>22</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>22</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>23</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>23</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>24</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>24</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>25</channel>
+    <color>#8f06ff</color>
+    <anatomyColor>#8f06ff</anatomyColor>
+    <spikeColor>#8f06ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>25</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>26</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>26</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>27</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>27</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>28</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>28</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>29</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>29</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>30</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>30</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>31</channel>
+    <color>#0105ff</color>
+    <anatomyColor>#0105ff</anatomyColor>
+    <spikeColor>#0105ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>31</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>32</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>32</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>33</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>33</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>34</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>34</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>35</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>35</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>36</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>36</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>37</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>37</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>38</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>38</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>39</channel>
+    <color>#ff0004</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#0080ff</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>39</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>40</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>40</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>41</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>41</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>42</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>42</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>43</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>43</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>44</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>44</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>45</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>45</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>46</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>46</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>47</channel>
+    <color>#ff17d9</color>
+    <anatomyColor>#ff17d9</anatomyColor>
+    <spikeColor>#ff17d9</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>47</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>48</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>48</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>49</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>49</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>50</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>50</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>51</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>51</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>52</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>52</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>53</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>53</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>54</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>54</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>55</channel>
+    <color>#d5ff00</color>
+    <anatomyColor>#d5ff00</anatomyColor>
+    <spikeColor>#d5ff00</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>55</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>56</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>56</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>57</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>57</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>58</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>58</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>59</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>59</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>60</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>60</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>61</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>61</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>62</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>62</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>63</channel>
+    <color>#ff9500</color>
+    <anatomyColor>#ff9500</anatomyColor>
+    <spikeColor>#ff9500</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>63</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>64</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>64</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>65</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>65</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>66</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>66</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>67</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>67</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>68</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>68</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>69</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>69</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>70</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>70</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>71</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>71</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>72</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>72</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>73</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>73</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>74</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>74</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>75</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>75</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>76</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>76</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>77</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>77</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>78</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>78</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+   <channelColors>
+    <channel>79</channel>
+    <color>#0080ff</color>
+    <anatomyColor>#0080ff</anatomyColor>
+    <spikeColor>#000000</spikeColor>
+   </channelColors>
+   <channelOffset>
+    <channel>79</channel>
+    <defaultOffset>0</defaultOffset>
+   </channelOffset>
+  </channels>
+ </neuroscope>
+ <programs>
+  <program>
+   <name>process_calcThreshold</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>rmsWindowLength</name>
+     <value>2</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>useage:
+process_calcThreshold fileBaseName electrodeNumber
+
+This script calculates the spike detection threshold and puts it in the file fileBaseName.threshold.electrodeNumber
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- rmsWindowLength represents the  root mean square (rms) integration window for detection.
+</help>
+  </program>
+  <program>
+   <name>process_detectSpikes</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>thresholdFactor</name>
+     <value>7</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>refractoryPeriod</name>
+     <value>8</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>rmsWindowLength</name>
+     <value>2</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>peakWindowLength</name>
+     <value>10</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>windowPeakAlign</name>
+     <value>5</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>spikesFromDatBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script does the following:
+
+* detects the spikes (creates the .res.# file),
+* aligns the peaks,
+* gets the waveforms (creates the .spk.# file),
+
+The variables used by the different programs called in this script depend on the sampling rate. The default is for a sampling rate of 10khz.
+All the script  parameters are multiplifaction factor of 10khz except the thresholdFactor.
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- refractoryPeriod represents the after detection, how many samples to skip before detecting a new spike if one is detected.
+- rmsWindowLength represents the  root mean square (rms) integration window for detection.
+- peakWindowLength represents the window (number of samples to test) to search for spike peak, seams to be used for eigen calculation or finding of the true spike peak.
+- windowPeakAlign represents the middle of the peakWindowLength, where to take the spike peak in peakWindowLength.
+- thresholdFactor is a factor to compute the detection threshold: 
+threshold = thresholdFactor  * baseline
+- spikesFromDatBool: set to 1 if you want detrended spikes from wideband dat file; set to 0 if from high-passed fil file
+</help>
+  </program>
+  <program>
+   <name>process_findCommonThreshold</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>maxThreshold</name>
+     <value/>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>useage:
+process_findCommonThreshold fileBaseName [fileBaseName ...]
+
+for each electrodeGroup in fileBaseName.xml
+the value in fileBaseName.threshold.electrodeGroup is replaced by the minimum threshold value across passed fileBaseNames.
+ 
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- maxThreshold default = 500</help>
+  </program>
+  <program>
+   <name>process_merge</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>mergeBaseName</name>
+     <value>YutaMouse42-151117</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>process_merge
+
+usage:
+process_merge -n $mergeBaseName $fileBaseNames
+
+merges .spk .res etc for multi-file clustering.
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- mergeBaseName designates the fileBaseName of the merged files.
+
+*** Requirements ***
+* calls process_pca_light : to do pca without presence of .fil file
+* calls pproc
+* each fileBaseName.* must be in a directory fileBaseName - which can be performed by process_dirFiles
+</help>
+  </program>
+  <program>
+   <name>process_mhipass</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>frequency</name>
+     <value>800</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>libraryPath</name>
+     <value>/u16/local/matlab6.5/extern/lib/glnx86:/u16/local/matlab6.5/bin/glnx86:/u16/local/matlab6.5/sys/os/glnx86</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script does the high-pass filtering for subsequent spike extraction. The .fil file is created by the program called in this script.
+The frequency parameter is the lowest frequency cut off.
+The highest frequency is computed based on the sampling rate as 0.95 % of the Nyquist frequency:
+sampling rate * 0.5 * 0.95
+
+The program called in this script is currently a matlab program, therefore this part of the process relies on Matlab until this program is rewritten.
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- libraryPath is the path for Matlab.</help>
+  </program>
+  <program>
+   <name>process_mlopass</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>libraryPath</name>
+     <value>/u16/local/matlab6.5/extern/lib/glnx86:/u16/local/matlab6.5/bin/glnx86:/u16/local/matlab6.5/sys/os/glnx86</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script does the low-pass filtering (for local field potentials). The .eeg file is created by the program called in this script.
+It calls a resampling program which first apply an anti aliasing low pass filter to the data and then samples down to the local field potential sampling rate provided in the parameter file.
+
+The resampling program is currently a matlab program, therefore this part of the process relies on Matlab until this program is rewritten.
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- libraryPath is the path for Matlab.</help>
+  </program>
+  <program>
+   <name>process_multi_start</name>
+   <parameters>
+    <parameter>
+     <name>cpFirstXmlBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>rmFilFileBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script starts eeg and spike data processing on a list of input fileBaseNames
+
+This script is called by:
+process_multi_start fileBaseName [fileBaseNames]
+
+Parameters:
+- rmFilFileBool
+ 1 = remove the high pass filtered .fil file to save space
+- cpFirstXmlBool
+ 1 = copy the xml file from the first fileBaseName to all other fileBaseNames to save time
+
+
+* Note that ideally the common threshold would be for single channels rather than single electrodes (may be a problem of process_baseline)</help>
+  </program>
+  <program>
+   <name>process_mvFiles2Dirs</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script organizes files in preparation for process_merge by moving fileBaseName.* into a directory fileBaseName
+useage:
+process_mvFiles2Dirs fileBaseName
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+</help>
+  </program>
+  <program>
+   <name>process_pca</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>beforePeak</name>
+     <value>4</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>afterPeak</name>
+     <value>4</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>nSamplesInPCA</name>
+     <value>16</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script performs the principle component analysis (PCA ). It computes the variance (creates the .m1m2.# file) and creates the  .fet.# and .mm.# files.
+The variables used to compute the PCA depend on the sampling rate. The default is for a sampling rate of 10khz.
+The parameters in the parameter file are multiplifaction factor of 10khz.
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- beforePeak represents the number of samples before peak to be used for the PCA. There is one value for all the electrodes.
+- afterPeak represents the number of samples after peak to be used for the PCA. There is one value for all the electrodes.
+- nSamplesInPCA represents the number of samples used for PCA.  There is one value for all the electrodes.
+</help>
+  </program>
+  <program>
+   <name>updateParFile</name>
+   <parameters>
+    <parameter>
+     <name>executeScriptBool</name>
+     <value>1</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>samplesInWaveform</name>
+     <value>16</value>
+     <status>Mandatory</status>
+    </parameter>
+    <parameter>
+     <name>peakSample</name>
+     <value>8</value>
+     <status>Mandatory</status>
+    </parameter>
+   </parameters>
+   <help>This script updates the parameter file. 
+It adds for each spike group, the number of samples in each waveform, the sample index of the peak in a waveform and the number of feaures to use to do the PCA.
+
+The variables used by the different programs depend on the sampling rate. The default is for a sampling rate of 10khz.
+All the script parameters are multiplifaction factor of 10khz.
+
+parameters:
+- executeScriptBool determines whether the script should be run with the next batch process.
+- The parameter samplesInWaveform represents the number of samples in each waveform .
+- The parameter peakSample represents the sample index of the peak in a waveform.
+</help>
+  </program>
+ </programs>
+ <multiFileProcessing>
+  <commonThresholdBool>1</commonThresholdBool>
+  <files>
+   <fileBaseName>YutaMouse42-151117-01</fileBaseName>
+   <fileBaseName>YutaMouse42-151117-02</fileBaseName>
+   <fileBaseName>YutaMouse42-151117-03</fileBaseName>
+  </files>
+ </multiFileProcessing>
+</parameters>

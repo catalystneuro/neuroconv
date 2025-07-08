@@ -1,0 +1,23 @@
+Test file kindly provided by:
+
+Allen Institute 
+https://alleninstitute.org/
+
+© 2019 Allen Institute for Brain Science. Download page of the Allen Institute. Available from: http://download.alleninstitute.org/informatics-archive/prerelease/
+
+The files are governed by the Terms of Use linked here: 
+https://alleninstitute.org/legal/terms-use/
+
+This file will soon be replaced by a new version of data in NWB 2 format including:
+
+intracellular electrophysiology:
+Human: https://gui.dandiarchive.org/#/dandiset/000109
+Mouse: https://gui.dandiarchive.org/#/dandiset/000020
+
+Extracellular electrophysiology:
+https://gui.dandiarchive.org/#/dandiset/000022
+https://gui.dandiarchive.org/#/dandiset/000021
+https://registry.opendata.aws/allen-brain-observatory/
+
+2-photon optical physiology
+https://allensdk.readthedocs.io/en/latest/_static/examples/nb/visual_behavior_ophys_data_access.html

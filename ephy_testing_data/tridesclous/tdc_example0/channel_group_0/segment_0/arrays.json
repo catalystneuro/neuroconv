@@ -1,0 +1,32 @@
+{
+    "processed_signals": {
+        "dtype": "float32",
+        "shape": [
+            320000,
+            32
+        ],
+        "annotations": {
+            "processed_length": 320000
+        }
+    },
+    "spikes": {
+        "dtype": [
+            [
+                "index",
+                "<i8"
+            ],
+            [
+                "cluster_label",
+                "<i8"
+            ],
+            [
+                "jitter",
+                "<f8"
+            ]
+        ],
+        "shape": [
+            714
+        ],
+        "annotations": {}
+    }
+}

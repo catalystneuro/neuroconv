@@ -1,0 +1,52 @@
+{
+    "chunksize": 3200,
+    "memory_mode": "memmap",
+    "internal_dtype": "float32",
+    "mode": "sparse",
+    "sparse_threshold": 1.5,
+    "n_spike_for_centroid": 350,
+    "n_jobs": -1,
+    "signal_preprocessor_params": {
+        "highpass_freq": 400.0,
+        "lowpass_freq": 5000.0,
+        "smooth_size": 0,
+        "common_ref_removal": false,
+        "lostfront_chunksize": 240,
+        "output_dtype": "float32",
+        "engine": "numpy"
+    },
+    "peak_detector_params": {
+        "peak_sign": "-",
+        "relative_threshold": 5,
+        "peak_span_ms": 0.7,
+        "engine": "numba",
+        "method": "geometrical",
+        "adjacency_radius_um": 200.0,
+        "smooth_radius_um": null
+    },
+    "waveform_extractor_params": {
+        "n_left": -64,
+        "n_right": 96
+    },
+    "clean_peaks_params": {
+        "alien_value_threshold": null,
+        "mode": "extremum_amplitude"
+    },
+    "peak_sampler_params": {
+        "mode": "rand_by_channel",
+        "nb_max": 20000,
+        "nb_max_by_channel": 1000
+    },
+    "feature_method": "pca_by_channel",
+    "feature_kargs": {
+        "n_components_by_channel": 3,
+        "adjacency_radius_um": 50.0
+    },
+    "cluster_method": "pruningshears",
+    "cluster_kargs": {
+        "max_loop": 1000,
+        "min_cluster_size": 20,
+        "adjacency_radius_um": 50.0,
+        "high_adjacency_radius_um": 30.0
+    }
+}
