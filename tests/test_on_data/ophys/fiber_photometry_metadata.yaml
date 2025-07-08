@@ -11,6 +11,15 @@ Ophys:
       - name: optical_fiber
         description: Fiber optic implants (Doric Lenses; 400 um, 0.48 NA) were placed above DMS (AP 0.8, ML 1.5, DV 2.8) and DLS (AP 0.1, ML 2.8, DV 3.5). The DMS implant was placed in the hemisphere receiving a medial SNc viral injection, while the DLS implant was placed in the hemisphere receiving a lateral SNc viral injection. Calcium signals from dopamine terminals in DMS and DLS were recorded during RI30, on the first and last days of RI60/RR20 training as well as on both footshock probes for each mouse. All recordings were done using a fiber photometry rig with optical components from Doric lenses controlled by a real-time processor from Tucker Davis Technologies (TDT; RZ5P). TDT Synapse software was used for data acquisition.
         model: optical_fiber_model
+        fiber_insertion:
+          depth_in_mm: 2.8
+          insertion_position_ap_in_mm: 0.8
+          insertion_position_ml_in_mm: 1.5
+          insertion_position_dv_in_mm: 2.8
+          position_reference: bregma
+          hemisphere: right
+          insertion_angle_pitch_in_deg: 0.0
+
     ExcitationSourceModels:
       - name: excitation_source_model
         description: Connectorized LED model specifications from Doric Lenses.

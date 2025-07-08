@@ -52,7 +52,6 @@ def add_ophys_device(
     nwbfile: NWBFile,
     device_metadata: dict,
     device_type: Literal[
-        "OpticalFiber",
         "ExcitationSource",
         "Photodetector",
         "BandOpticalFilter",
@@ -62,7 +61,6 @@ def add_ophys_device(
 ):
     """Add an optical physiology device instance to an NWBFile object."""
     valid_device_types = [
-        "OpticalFiber",
         "ExcitationSource",
         "Photodetector",
         "BandOpticalFilter",
