@@ -379,6 +379,10 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             fiber_insertion = FiberInsertion(**fiber_insertion_metadata)
             optical_fiber_metadata = deepcopy(optical_fiber_metadata)
             optical_fiber_metadata["fiber_insertion"] = fiber_insertion
+            assert (
+                optical_fiber_metadata["model"] in nwbfile.devices
+            ), f"Device model {optical_fiber_metadata['model']} not found in NWBFile devices for {optical_fiber_metadata['name']}."
+            optical_fiber_metadata["model"] = nwbfile.devices[optical_fiber_metadata["model"]]
             optical_fiber = OpticalFiber(**optical_fiber_metadata)
             nwbfile.add_device(optical_fiber)
 
@@ -410,7 +414,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         else:
             virus_injections = None
 
-        indicators_metadata = metadata["Ophys"]["FiberPhotometry"].get("Indicators", [])
+        indicators_metadata = metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryIndicators", [])
         name_to_indicator = {}
         for indicator_metadata in indicators_metadata:
             if "viral_vector_injection" in indicator_metadata:
@@ -460,6 +464,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         required_fields = [
             "location",
+            "excitation_wavelength_in_nm",
+            "emission_wavelength_in_nm",
             "indicator",
             "optical_fiber",
             "excitation_source",
@@ -471,7 +477,6 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "excitation_source",
             "photodetector",
             "dichroic_mirror",
-            "indicator",
             "excitation_filter",
             "emission_filter",
         ]
@@ -482,6 +487,10 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 ), f"FiberPhotometryTable metadata row {row_metadata['name']} is missing required field {field}."
             row_data = {field: nwbfile.devices[row_metadata[field]] for field in device_fields if field in row_metadata}
             row_data["location"] = row_metadata["location"]
+            row_data["excitation_wavelength_in_nm"] = row_metadata["excitation_wavelength_in_nm"]
+            row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
+            if "indicator" in row_metadata:
+                row_data["indicator"] = name_to_indicator[row_metadata["indicator"]]
             if "coordinates" in row_metadata:
                 row_data["coordinates"] = row_metadata["coordinates"]
             if "commanded_voltage_series" in row_metadata:

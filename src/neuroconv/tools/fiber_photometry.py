@@ -29,7 +29,7 @@ def add_ophys_device_model(
         "DichroicMirrorModel",
     ]
     assert device_type in valid_device_types, f"device_type must be one of {valid_device_types}"
-    ndx_ophys_devices = get_package("ndx-ophys-devices")
+    ndx_ophys_devices = get_package("ndx_ophys_devices")
 
     device_name = device_metadata["name"]
     if device_name in nwbfile.devices:
@@ -68,7 +68,7 @@ def add_ophys_device(
         "DichroicMirror",
     ]
     assert device_type in valid_device_types, f"device_type must be one of {valid_device_types}"
-    ndx_ophys_devices = get_package("ndx-ophys-devices")
+    ndx_ophys_devices = get_package("ndx_ophys_devices")
 
     device_name = device_metadata["name"]
     if device_name in nwbfile.devices:
