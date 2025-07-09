@@ -36,6 +36,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "name": "optical_fiber",
             "description": "Fiber optic implants (Doric Lenses; 400 um, 0.48 NA) were placed above DMS (AP 0.8, ML 1.5, DV 2.8) and DLS (AP 0.1, ML 2.8, DV 3.5). The DMS implant was placed in the hemisphere receiving a medial SNc viral injection, while the DLS implant was placed in the hemisphere receiving a lateral SNc viral injection. Calcium signals from dopamine terminals in DMS and DLS were recorded during RI30, on the first and last days of RI60/RR20 training as well as on both footshock probes for each mouse. All recordings were done using a fiber photometry rig with optical components from Doric lenses controlled by a real-time processor from Tucker Davis Technologies (TDT; RZ5P). TDT Synapse software was used for data acquisition.",
             "serial_number": "OF001",
+            "model": "optical_fiber_model",
         },
         {
             "name": "excitation_source_calcium_signal",
@@ -43,6 +44,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "power_in_W": 0.001,
             "intensity_in_W_per_m2": 0.005,
             "exposure_time_in_s": 2.51e-13,
+            "model": "excitation_source_model",
         },
         {
             "name": "excitation_source_isosbestic_control",
@@ -50,41 +52,159 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "power_in_W": 0.001,
             "intensity_in_W_per_m2": 0.005,
             "exposure_time_in_s": 2.51e-13,
+            "model": "excitation_source_model",
         },
         {
             "name": "photodetector",
             "description": "This battery-operated photoreceiver has high gain and detects CW light signals in the sub-picowatt to nanowatt range. When used in conjunction with a modulated light source and a lock-in amplifier to reduce the measurement bandwidth, it achieves sensitivity levels in the femtowatt range. Doric offer this Newport product with add-on fiber optic adapter that improves coupling efficiency between the large core, high NA optical fibers used in Fiber Photometry and relatively small detector area. Its output analog voltage (0-5 V) can be monitored with an oscilloscope or with a DAQ board to record the data with a computer.",
             "serial_number": "PD001",
+            "model": "photodetector_model",
         },
         {
             "name": "emission_filter",
             "description": "Dual excitation band fiber photometry measurements use a Fluorescence Mini Cube with 4 ports: one port for the functional fluorescence excitation light, one for the isosbestic excitation, one for the fluorescence detection, and one for the sample. The cube has dichroic mirrors to combine isosbestic and fluorescence excitations and separate the fluorescence emission and narrow bandpass filters limiting the excitation fluorescence spectrum.",
+            "model": "emission_filter_model",
         },
         {
             "name": "excitation_filter",
             "description": "Dual excitation band fiber photometry measurements use a Fluorescence Mini Cube with 4 ports: one port for the functional fluorescence excitation light, one for the isosbestic excitation, one for the fluorescence detection, and one for the sample. The cube has dichroic mirrors to combine isosbestic and fluorescence excitations and separate the fluorescence emission and narrow bandpass filters limiting the excitation fluorescence spectrum.",
+            "model": "excitation_filter_model",
         },
         {
             "name": "isosbestic_excitation_filter",
             "description": "Dual excitation band fiber photometry measurements use a Fluorescence Mini Cube with 4 ports: one port for the functional fluorescence excitation light, one for the isosbestic excitation, one for the fluorescence detection, and one for the sample. The cube has dichroic mirrors to combine isosbestic and fluorescence excitations and separate the fluorescence emission and narrow bandpass filters limiting the excitation fluorescence spectrum.",
+            "model": "isosbestic_excitation_filter_model",
         },
         {
             "name": "dichroic_mirror",
             "description": "Dual excitation band fiber photometry measurements use a Fluorescence Mini Cube with 4 ports: one port for the functional fluorescence excitation light, one for the isosbestic excitation, one for the fluorescence detection, and one for the sample. The cube has dichroic mirrors to combine isosbestic and fluorescence excitations and separate the fluorescence emission and narrow bandpass filters limiting the excitation fluorescence spectrum.",
             "serial_number": "DM001",
+            "model": "dichroic_mirror_model",
         },
-        # {
-        #     "name": "dms_green_fluorophore",
-        #     "description": "GCaMP7b indicator for DMS fiber photometry experiments.",
-        #     "manufacturer": "Addgene",
-        #     "label": "GCaMP7b",
-        # },
-        # {
-        #     "name": "dls_green_fluorophore",
-        #     "description": "GCaMP7b indicator for DLS fiber photometry experiments.",
-        #     "manufacturer": "Addgene",
-        #     "label": "GCaMP7b",
-        # },
+    ]
+    expected_device_models = [
+        {
+            "name": "optical_fiber_model",
+            "description": "Fiber optic implant model specifications from Doric Lenses.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "Fiber Optic Implant",
+            "numerical_aperture": 0.48,
+            "core_diameter_in_um": 400.0,
+        },
+        {
+            "name": "excitation_source_model",
+            "description": "Connectorized LED model specifications from Doric Lenses.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "Connectorized LED",
+            "source_type": "LED",
+            "excitation_mode": "one-photon",
+            "wavelength_range_in_nm": [400.0, 470.0],
+        },
+        {
+            "name": "photodetector_model",
+            "description": "Newport Visible Femtowatt Photoreceiver Module specifications.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "Newport Visible Femtowatt Photoreceiver Module",
+            "detector_type": "photodiode",
+            "wavelength_range_in_nm": [400.0, 700.0],
+            "gain": 1.0e10,
+            "gain_unit": "V/W",
+        },
+        {
+            "name": "emission_filter_model",
+            "description": "Emission bandpass filter model for GCaMP fluorescence detection.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "4 ports Fluorescence Mini Cube - GCaMP Emission Filter",
+            "filter_type": "Bandpass",
+            "center_wavelength_in_nm": 525.0,
+            "bandwidth_in_nm": 50.0,
+        },
+        {
+            "name": "excitation_filter_model",
+            "description": "Excitation bandpass filter model for 465nm light.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "4 ports Fluorescence Mini Cube - GCaMP Excitation Filter",
+            "filter_type": "Bandpass",
+            "center_wavelength_in_nm": 475.0,
+            "bandwidth_in_nm": 30.0,
+        },
+        {
+            "name": "isosbestic_excitation_filter_model",
+            "description": "Excitation bandpass filter model for 405nm light.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "4 ports Fluorescence Mini Cube - GCaMP Isosbestic Filter",
+            "filter_type": "Bandpass",
+            "center_wavelength_in_nm": 405.0,
+            "bandwidth_in_nm": 10.0,
+        },
+        {
+            "name": "dichroic_mirror_model",
+            "description": "Dichroic mirror model specifications from Doric Lenses.",
+            "manufacturer": "Doric Lenses",
+            "model_number": "4 ports Fluorescence Mini Cube - GCaMP",
+            "cut_on_wavelength_in_nm": 495.0,
+            "reflection_band_in_nm": [400.0, 495.0],
+            "transmission_band_in_nm": [505.0, 700.0],
+            "angle_of_incidence_in_degrees": 45.0,
+        },
+    ]
+    expected_fiber_photometry_viruses = [
+        {
+            "name": "dms_virus",
+            "description": "AAV5-CAG-FLEX-jGCaMP7b-WPRE viral vector used for DMS fiber photometry experiments.",
+            "manufacturer": "Addgene",
+            "construct_name": "AAV5-CAG-FLEX-jGCaMP7b-WPRE",
+            "titer_in_vg_per_ml": 1.02e13,
+        },
+        {
+            "name": "dls_virus",
+            "description": "AAV5-CAG-FLEX-jGCaMP7b-WPRE viral vector used for DLS fiber photometry experiments.",
+            "manufacturer": "Addgene",
+            "construct_name": "AAV5-CAG-FLEX-jGCaMP7b-WPRE",
+            "titer_in_vg_per_ml": 1.02e13,
+        },
+    ]
+    expected_fiber_photometry_virus_injections = [
+        {
+            "name": "dms_virus_injection",
+            "description": "Viral injection into medial SNc for DMS fiber photometry experiments.",
+            "viral_vector": "dms_virus",
+            "location": "medial SNc",
+            "hemisphere": "right",
+            "reference": "bregma at the cortical surface",
+            "ap_in_mm": -3.1,
+            "ml_in_mm": 0.8,
+            "dv_in_mm": -4.7,
+            "volume_in_uL": 1.0,
+        },
+        {
+            "name": "dls_virus_injection",
+            "description": "Viral injection into lateral SNc for DLS fiber photometry experiments.",
+            "viral_vector": "dls_virus",
+            "location": "lateral SNc",
+            "hemisphere": "right",
+            "reference": "bregma at the cortical surface",
+            "ap_in_mm": -3.1,
+            "ml_in_mm": 1.3,
+            "dv_in_mm": -4.2,
+            "volume_in_uL": 1.0,
+        },
+    ]
+    expected_fiber_photometry_indicators = [
+        {
+            "name": "dms_green_fluorophore",
+            "description": "GCaMP7b indicator for DMS fiber photometry experiments.",
+            "manufacturer": "Addgene",
+            "label": "GCaMP7b",
+            "viral_vector_injection": "dms_virus_injection",
+        },
+        {
+            "name": "dls_green_fluorophore",
+            "description": "GCaMP7b indicator for DLS fiber photometry experiments.",
+            "manufacturer": "Addgene",
+            "label": "GCaMP7b",
+            "viral_vector_injection": "dls_virus_injection",
+        },
     ]
     expected_commanded_voltage_series = [
         {
@@ -206,16 +326,43 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
 
     def check_read_nwb(self, nwbfile_path: str):
         expected_devices = deepcopy(self.expected_devices)
+        expected_device_models = deepcopy(self.expected_device_models)
+        expected_fiber_photometry_viruses = deepcopy(self.expected_fiber_photometry_viruses)
+        expected_fiber_photometry_virus_injections = deepcopy(self.expected_fiber_photometry_virus_injections)
+        expected_fiber_photometry_indicators = deepcopy(self.expected_fiber_photometry_indicators)
         expected_commanded_voltage_series = deepcopy(self.expected_commanded_voltage_series)
         expected_fiber_photometry_response_series = deepcopy(self.expected_fiber_photometry_response_series)
         expected_fiber_photometry_table = deepcopy(self.expected_fiber_photometry_table)
 
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
+
+            # Check device models
+            for device_model_dict in expected_device_models:
+                expected_name = device_model_dict.pop("name")
+                assert expected_name in nwbfile.devices, f"Device model {expected_name} not found in NWBFile devices"
+                device_model = nwbfile.devices[expected_name]
+                for key, expected_value in device_model_dict.items():
+                    if isinstance(expected_value, list):
+                        np.testing.assert_equal(
+                            getattr(device_model, key), expected_value
+                        ), f"Device model {expected_name} attribute {key} is {getattr(device_model, key)} but expected {expected_value}"
+                    else:
+                        assert (
+                            getattr(device_model, key) == expected_value
+                        ), f"Device model {expected_name} attribute {key} is {getattr(device_model, key)} but expected {expected_value}"
+
+            # Check devices
             for device_dict in expected_devices:
                 expected_name = device_dict.pop("name")
                 assert expected_name in nwbfile.devices
+                expected_model = device_dict.pop("model")
+                assert expected_model in nwbfile.devices, f"Device model {expected_model} not found in NWBFile devices"
+                expected_model = nwbfile.devices[expected_model]
                 device = nwbfile.devices[expected_name]
+                assert (
+                    device.model is expected_model
+                ), f"Device {expected_name} model is {device.model} but expected {expected_model}"
                 for key, expected_value in device_dict.items():
                     if isinstance(expected_value, list):
                         np.testing.assert_equal(
@@ -225,6 +372,95 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                         assert (
                             getattr(device, key) == expected_value
                         ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
+
+            # Check biological containers
+            fiber_photometry_lab_meta_data = nwbfile.lab_meta_data["fiber_photometry"]
+
+            # Check fiber photometry viruses
+            if expected_fiber_photometry_viruses:
+                assert (
+                    fiber_photometry_lab_meta_data.fiber_photometry_viruses is not None
+                ), "FiberPhotometryViruses container not found"
+                viruses = fiber_photometry_lab_meta_data.fiber_photometry_viruses.viral_vectors
+                assert len(viruses) == len(
+                    expected_fiber_photometry_viruses
+                ), f"Expected {len(expected_fiber_photometry_viruses)} viruses but found {len(viruses)}"
+
+                for virus_dict in expected_fiber_photometry_viruses:
+                    expected_name = virus_dict.pop("name")
+                    assert expected_name in viruses, f"Virus {expected_name} not found in FiberPhotometryViruses"
+                    virus = viruses[expected_name]
+                    for key, expected_value in virus_dict.items():
+                        assert (
+                            getattr(virus, key) == expected_value
+                        ), f"Virus {expected_name} attribute {key} is {getattr(virus, key)} but expected {expected_value}"
+
+            # Check fiber photometry virus injections
+            if expected_fiber_photometry_virus_injections:
+                assert (
+                    fiber_photometry_lab_meta_data.fiber_photometry_virus_injections is not None
+                ), "FiberPhotometryVirusInjections container not found"
+                virus_injections = (
+                    fiber_photometry_lab_meta_data.fiber_photometry_virus_injections.viral_vector_injections
+                )
+                assert len(virus_injections) == len(
+                    expected_fiber_photometry_virus_injections
+                ), f"Expected {len(expected_fiber_photometry_virus_injections)} virus injections but found {len(virus_injections)}"
+
+                for virus_injection_dict in expected_fiber_photometry_virus_injections:
+                    expected_name = virus_injection_dict.pop("name")
+                    expected_viral_vector = virus_injection_dict.pop("viral_vector")
+                    assert (
+                        expected_name in virus_injections
+                    ), f"Virus injection {expected_name} not found in FiberPhotometryVirusInjections"
+                    virus_injection = virus_injections[expected_name]
+                    assert (
+                        virus_injection.viral_vector.name == expected_viral_vector
+                    ), f"Virus injection {expected_name} viral vector is {virus_injection.viral_vector.name} but expected {expected_viral_vector}"
+                    for key, expected_value in virus_injection_dict.items():
+                        assert (
+                            getattr(virus_injection, key) == expected_value
+                        ), f"Virus injection {expected_name} attribute {key} is {getattr(virus_injection, key)} but expected {expected_value}"
+
+            # Check fiber photometry indicators
+            if expected_fiber_photometry_indicators:
+                assert (
+                    fiber_photometry_lab_meta_data.fiber_photometry_indicators is not None
+                ), "FiberPhotometryIndicators container not found"
+                indicators = fiber_photometry_lab_meta_data.fiber_photometry_indicators.indicators
+                assert len(indicators) == len(
+                    expected_fiber_photometry_indicators
+                ), f"Expected {len(expected_fiber_photometry_indicators)} indicators but found {len(indicators)}"
+
+                for indicator_dict in expected_fiber_photometry_indicators:
+                    expected_name = indicator_dict.pop("name")
+                    expected_viral_vector_injection = indicator_dict.pop("viral_vector_injection")
+                    assert (
+                        expected_name in indicators
+                    ), f"Indicator {expected_name} not found in FiberPhotometryIndicators"
+                    indicator = indicators[expected_name]
+                    assert (
+                        indicator.viral_vector_injection.name == expected_viral_vector_injection
+                    ), f"Indicator {expected_name} viral vector injection is {indicator.viral_vector_injection.name} but expected {expected_viral_vector_injection}"
+                    for key, expected_value in indicator_dict.items():
+                        assert (
+                            getattr(indicator, key) == expected_value
+                        ), f"Indicator {expected_name} attribute {key} is {getattr(indicator, key)} but expected {expected_value}"
+
+            # Check object relationships
+            # 1. Devices properly reference their models
+            for device_dict in deepcopy(self.expected_devices):
+                device_name = device_dict["name"]
+                if device_name in nwbfile.devices:
+                    device = nwbfile.devices[device_name]
+                    if hasattr(device, "model") and device.model is not None:
+                        model_name = device.model.name
+                        assert (
+                            model_name in nwbfile.devices
+                        ), f"Device {device_name} references model {model_name} which is not found in devices"
+                        assert hasattr(
+                            nwbfile.devices[model_name], "manufacturer"
+                        ), f"Device model {model_name} should have manufacturer attribute"
 
             for cvs_dict in expected_commanded_voltage_series:
                 expected_name = cvs_dict.pop("name")
