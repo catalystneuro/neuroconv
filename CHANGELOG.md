@@ -18,6 +18,7 @@
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)
+* Updated `TDTFiberPhotometryInterface` to support the latest version of `ndx-fiber-photometry` (v0.2.0) [PR #1430](https://github.com/catalystneuro/neuroconv/pull/1430)
 
 # v0.7.5 (June 11, 2025)
 
