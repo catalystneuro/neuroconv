@@ -199,6 +199,7 @@ def test_has_compound_dtype_True():
     )
     pixel_mask = [[0, 0, 1]]
     plane_segmentation.add_roi(pixel_mask=pixel_mask)
+    nwbfile.create_processing_module(name="ophys", description="Ophys data")
     nwbfile.processing["ophys"].add(plane_segmentation)
 
     manager = get_manager()
@@ -248,6 +249,7 @@ def test_get_full_data_shape_compound():
     )
     pixel_mask = [[0, 0, 1]]
     plane_segmentation.add_roi(pixel_mask=pixel_mask)
+    nwbfile.create_processing_module(name="ophys", description="Ophys data")
     nwbfile.processing["ophys"].add(plane_segmentation)
 
     manager = get_manager()
