@@ -74,5 +74,5 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_id"] = self.segmentation_extractor._get_session_id()
-        metadata["Subject"]["subject_id"] = self.segmentation_extractor._get_subject_id()
+        # metadata["Subject"]["subject_id"] = self.segmentation_extractor._get_subject_id()
         return metadata
