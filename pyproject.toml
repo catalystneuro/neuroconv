@@ -274,7 +274,7 @@ image = [
 ## Fiber Photometry
 fiber_photometry = [
     "ndx-fiber-photometry",
-    "pynwb==3.0.0",
+    "pynwb<3.1.0",
 ]
 
 
