@@ -350,8 +350,7 @@ suite2p = [
     "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
-    "ndx-fiber-photometry",
-    "neuroconv[ophys_minimal]",
+    "neuroconv[fiber_photometry]",
     "tdt",
 ]
 thor = [
