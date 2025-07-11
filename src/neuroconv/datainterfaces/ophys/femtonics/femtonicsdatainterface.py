@@ -131,7 +131,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         selected_munit_name = femtonics_metadata.get("munit_name")
         experimenter_info = femtonics_metadata.get("experimenter_info", {})
         hostname = experimenter_info.get("hostname")
-        
+
         session_descr = f"Session: {selected_session_name}, MUnit: {selected_munit_name}."
         if hostname:
             session_descr += f" Session performed on workstation: {hostname}."
@@ -234,7 +234,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available unit keys.
         """
         Extractor = cls.get_extractor()
-        
+
         # If no session_name provided, only auto-select if there's exactly one session
         if session_name is None:
             available_sessions = cls.get_available_sessions(file_path=file_path)
@@ -242,11 +242,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 raise ValueError("No sessions found")
             if len(available_sessions) > 1:
                 raise ValueError(
-                    f"Multiple sessions found: {available_sessions}. "
-                    "Please specify 'session_name' to select one."
+                    f"Multiple sessions found: {available_sessions}. " "Please specify 'session_name' to select one."
                 )
             session_name = available_sessions[0]
-        
+
         return Extractor.get_available_munits(file_path=file_path, session_name=session_name)
 
     @classmethod
@@ -275,7 +274,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available channel names.
         """
         Extractor = cls.get_extractor()
-        
+
         # If no session_name provided, only auto-select if there's exactly one session
         if session_name is None:
             available_sessions = cls.get_available_sessions(file_path=file_path)
@@ -283,11 +282,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 raise ValueError("No sessions found")
             if len(available_sessions) > 1:
                 raise ValueError(
-                    f"Multiple sessions found: {available_sessions}. "
-                    "Please specify 'session_name' to select one."
+                    f"Multiple sessions found: {available_sessions}. " "Please specify 'session_name' to select one."
                 )
             session_name = available_sessions[0]
-        
+
         # If no munit_name provided, only auto-select if there's exactly one unit in the session
         if munit_name is None:
             available_munits = cls.get_available_munits(file_path=file_path, session_name=session_name)
@@ -299,7 +297,5 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                     "Please specify 'munit_name' to select one."
                 )
             munit_name = available_munits[0]
-        
-        return Extractor.get_available_channels(
-            file_path=file_path, session_name=session_name, munit_name=munit_name
-        )
+
+        return Extractor.get_available_channels(file_path=file_path, session_name=session_name, munit_name=munit_name)

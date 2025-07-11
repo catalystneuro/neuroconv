@@ -1145,7 +1145,10 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        assert (
+            nwbfile_metadata["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
 
@@ -1211,7 +1214,10 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        assert (
+            nwbfile_metadata["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
 
@@ -1411,7 +1417,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert sessions == ["MSession_0"]
-        
+
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
@@ -1448,7 +1454,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 file_path=file_path,
                 munit_name="MUnit_0",
             )
-    
+
     def test_munit_not_specified_with_multiple_units(self):
         """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
@@ -1461,7 +1467,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 # munit_name not specified
                 channel_name="UG",
             )
-    
+
     def test_wrong_munit_name(self):
         """Test that ValueError is raised when an invalid munit_name is specified."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
@@ -1474,7 +1480,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 munit_name="WRONG_UNIT",
                 channel_name="UG",
             )
-    
+
     def test_wrong_session_name(self):
         """Test that ValueError is raised when an invalid session_name is specified."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
