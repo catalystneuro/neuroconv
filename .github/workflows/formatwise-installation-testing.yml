@@ -125,7 +125,8 @@ jobs:
             fi
 
             # Install dependencies with uv (much faster than pip)
-            uv pip install --quiet ".[test,$name]"
+            uv pip install --quiet ".[$name]"
+            uv pip install --group test
 
             # Check if the gallery file exists before running pytest
             gallery_file="docs/conversion_examples_gallery/$type/$name.rst"
