@@ -461,10 +461,6 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             Number of samples to generate, by default 1000.
         num_nodes : int, optional
             Number of nodes/body parts to track, by default 3.
-        scorer : str, optional
-            Name of the pose estimation algorithm/scorer, by default "MockScorer".
-        source_software : str, optional
-            Source software name, by default "MockSource".
         pose_estimation_metadata_key : str, optional
             Key for pose estimation metadata container, by default "MockPoseEstimation".
         seed : int, optional
@@ -474,11 +470,13 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         """
         self.num_samples = num_samples
         self.num_nodes = num_nodes
-        self.scorer = scorer
-        self.source_software = source_software
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self.seed = seed
         self.verbose = verbose
+        
+        # Set metadata defaults
+        self.scorer = "MockScorer"
+        self.source_software = "MockSourceSoftware"
 
         # Generate random nodes and edges
         orbital_body_parts = ["head", "neck", "left_shoulder", "right_shoulder", "chest", 
