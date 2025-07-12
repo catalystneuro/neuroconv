@@ -432,7 +432,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
     """
 
     display_name = "Mock Pose Estimation"
-    keywords = ["behavior", "pose estimation", "mock"]
+    keywords = ("behavior", "pose estimation", "mock", )
     associated_suffixes = []
     info = "Mock interface for pose estimation data testing."
 
