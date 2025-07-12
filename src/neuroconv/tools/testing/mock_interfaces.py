@@ -423,3 +423,293 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+
+class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
+    """
+    A mock pose estimation interface for testing purposes.
+    """
+
+    display_name = "Mock Pose Estimation"
+    keywords = ["behavior", "pose estimation", "mock"]
+    associated_suffixes = []
+    info = "Mock interface for pose estimation data testing."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = get_json_schema_from_method_signature(
+            method=cls.__init__, exclude=["timestamps", "confidence"]
+        )
+        source_schema["additionalProperties"] = True
+        return source_schema
+
+    def __init__(
+        self,
+        num_samples: int = 1000,
+        num_nodes: int = 10,
+        timestamps: ArrayType | None = None,
+        confidence: ArrayType | None = None,
+        scorer: str = "MockDLC_resnet50_testAug20_test",
+        source_software: str = "DeepLabCut",
+        pose_estimation_metadata_key: str = "MockPoseEstimation",
+        seed: int = 0,
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock pose estimation interface.
+
+        Parameters
+        ----------
+        num_samples : int, optional
+            Number of samples to generate, by default 1000.
+        num_nodes : int, optional
+            Number of nodes/body parts to track, by default 10.
+        timestamps : ArrayType | None, optional
+            Custom timestamps array. If None, generates linearly spaced timestamps.
+        confidence : ArrayType | None, optional
+            Custom confidence scores. If None, generates realistic confidence patterns.
+        scorer : str, optional
+            Name of the pose estimation algorithm/scorer, by default "MockDLC_resnet50_testAug20_test".
+        source_software : str, optional
+            Source software name, by default "DeepLabCut".
+        pose_estimation_metadata_key : str, optional
+            Key for pose estimation metadata container, by default "MockPoseEstimation".
+        seed : int, optional
+            Random seed for reproducible data generation, by default 0.
+        verbose : bool, optional
+            Control verbosity, by default False.
+        """
+        self.num_samples = num_samples
+        self.num_nodes = num_nodes
+        self.scorer = scorer
+        self.source_software = source_software
+        self.pose_estimation_metadata_key = pose_estimation_metadata_key
+        self.seed = seed
+        self.verbose = verbose
+
+        # Generate random nodes and edges
+        orbital_body_parts = ["head", "neck", "left_shoulder", "right_shoulder", "chest", 
+                            "left_elbow", "right_elbow", "left_wrist", "right_wrist", "pelvis"]
+        
+        # Use orbital body parts if we have enough, otherwise generate generic nodes
+        if num_nodes <= len(orbital_body_parts):
+            self.nodes = orbital_body_parts[:num_nodes]
+        else:
+            self.nodes = orbital_body_parts + [f"node_{i}" for i in range(len(orbital_body_parts), num_nodes)]
+        
+        # Generate random edges (connect some nodes randomly)
+        np.random.seed(seed)  # For reproducible edge generation
+        num_edges = min(num_nodes - 1, max(1, num_nodes // 2))  # Reasonable number of edges
+        possible_edges = [(i, j) for i in range(num_nodes) for j in range(i+1, num_nodes)]
+        selected_edges = np.random.choice(len(possible_edges), size=num_edges, replace=False)
+        self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
+
+        # Generate timestamps
+        if timestamps is None:
+            self.original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        else:
+            self.original_timestamps = np.array(timestamps)
+            self.num_samples = len(self.original_timestamps)
+
+        self.timestamps = np.copy(self.original_timestamps)
+
+        # Generate pose estimation data
+        self.pose_data = self._generate_pose_data()
+
+        # Generate confidence scores
+        if confidence is None:
+            self.confidence_data = self._generate_confidence_data()
+        else:
+            self.confidence_data = np.array(confidence)
+
+        super().__init__(verbose=verbose)
+        
+        # Import ndx_pose to ensure it's available
+        import ndx_pose  # noqa: F401
+
+    def _generate_pose_data(self) -> np.ndarray:
+        """Generate realistic pose estimation data using deterministic Lissajous figures."""
+        # Fixed to 2D for now
+        shape = (self.num_samples, self.num_nodes, 2)
+        
+        # Generate deterministic base positions
+        base_positions = np.zeros((self.num_nodes, 2))
+        for i in range(self.num_nodes):
+            angle = 2 * np.pi * i / self.num_nodes
+            base_positions[i, 0] = 320 + 100 * np.cos(angle)  # Center around video center
+            base_positions[i, 1] = 240 + 100 * np.sin(angle)
+        
+        # Generate Lissajous figures for smooth, deterministic motion
+        data = np.zeros(shape)
+        time_points = np.linspace(0, 4 * np.pi, self.num_samples)
+        
+        for node_idx in range(self.num_nodes):
+            # Each node has different Lissajous parameters
+            a = 1 + 0.3 * node_idx  # frequency ratio for x
+            b = 1 + 0.2 * node_idx  # frequency ratio for y
+            delta = np.pi * node_idx / 4  # phase shift
+            amplitude = 30 + 10 * node_idx
+            
+            # Generate Lissajous curves
+            data[:, node_idx, 0] = base_positions[node_idx, 0] + amplitude * np.sin(a * time_points + delta)
+            data[:, node_idx, 1] = base_positions[node_idx, 1] + amplitude * np.sin(b * time_points)
+        
+        return data
+
+    def _generate_confidence_data(self) -> np.ndarray:
+        """Generate realistic confidence scores with occasional low confidence periods."""
+        np.random.seed(self.seed + 1)  # Different seed for confidence
+        
+        # Base high confidence with occasional drops
+        confidence = np.random.beta(8, 2, (self.num_samples, self.num_nodes))
+        
+        # Add occasional periods of low confidence (e.g., occlusions)
+        for node_idx in range(self.num_nodes):
+            # Random low-confidence periods
+            num_periods = np.random.randint(1, 4)
+            for _ in range(num_periods):
+                start_sample = np.random.randint(0, max(1, self.num_samples - 50))
+                duration = np.random.randint(5, 20)
+                end_sample = min(start_sample + duration, self.num_samples)
+                confidence[start_sample:end_sample, node_idx] *= 0.3
+        
+        return confidence
+
+    def get_original_timestamps(self) -> np.ndarray:
+        """Get the original timestamps before any alignment."""
+        return self.original_timestamps
+
+    def get_timestamps(self) -> np.ndarray:
+        """Get the current (possibly aligned) timestamps."""
+        return self.timestamps
+
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """Set aligned timestamps."""
+        self.timestamps = aligned_timestamps
+
+    def get_metadata(self) -> DeepDict:
+        """Get metadata for the mock pose estimation interface."""
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        
+        # Create metadata following the DeepLabCut pattern
+        container_name = self.pose_estimation_metadata_key
+        skeleton_name = f"Skeleton{container_name}"
+        device_name = f"Camera{container_name}"
+        
+        # Create PoseEstimation metadata structure
+        pose_estimation_metadata = DeepDict()
+        
+        # Add Skeleton as a dictionary
+        pose_estimation_metadata["Skeletons"] = {
+            skeleton_name: {
+                "name": skeleton_name,
+                "nodes": self.nodes,
+                "edges": self.edges.tolist()
+            }
+        }
+        
+        # Add Device as a dictionary
+        pose_estimation_metadata["Devices"] = {
+            device_name: {
+                "name": device_name,
+                "description": "Mock camera device for pose estimation testing."
+            }
+        }
+        
+        # Add PoseEstimation container
+        pose_estimation_metadata["PoseEstimationContainers"] = {
+            container_name: {
+                "name": container_name,
+                "description": f"Mock pose estimation data from {self.source_software}.",
+                "source_software": self.source_software,
+                "dimensions": [[640, 480]],
+                "skeleton": skeleton_name,
+                "devices": [device_name],
+                "scorer": self.scorer,
+                "original_videos": ["mock_video.mp4"],
+                "PoseEstimationSeries": {}
+            }
+        }
+        
+        # Add a series for each node
+        for node in self.nodes:
+            # Convert node name to PascalCase for the series name
+            pascal_case_node = ''.join(word.capitalize() for word in node.replace('_', ' ').split())
+            series_name = f"PoseEstimationSeries{pascal_case_node}"
+            
+            pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][node] = {
+                "name": series_name,
+                "description": f"Mock pose estimation series for {node}.",
+                "unit": "pixels",
+                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                "confidence_definition": "Softmax output of the deep neural network."
+            }
+        
+        # Add PoseEstimation metadata to the main metadata
+        metadata["PoseEstimation"] = pose_estimation_metadata
+        
+        return metadata
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
+        """Add mock pose estimation data to NWBFile using ndx-pose."""
+        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton
+        from pynwb.device import Device
+
+        # Create or get behavior processing module
+        if "behavior" not in nwbfile.processing:
+            behavior_module = nwbfile.create_processing_module(
+                name="behavior", description="processed behavioral data"
+            )
+        else:
+            behavior_module = nwbfile.processing["behavior"]
+
+        # Create device
+        device = Device(
+            name="MockCamera",
+            description="Mock camera device for pose estimation testing"
+        )
+        nwbfile.add_device(device)
+
+        # Create skeleton
+        skeleton = Skeleton(
+            name="MockSkeleton",
+            nodes=self.nodes,
+            edges=self.edges
+        )
+
+        # Create pose estimation series for each node
+        pose_estimation_series = []
+        for index, node_name in enumerate(self.nodes):
+            # Convert node name to PascalCase for the series name
+            pascal_case_node = ''.join(word.capitalize() for word in node_name.replace('_', ' ').split())
+            series_name = f"PoseEstimationSeries{pascal_case_node}"
+        
+            series = PoseEstimationSeries(
+                name=series_name,
+                description=f"Pose estimation for {node_name}",
+                data=self.pose_data[:, index, :],
+                unit="pixels",
+                reference_frame="top left corner of video frame",
+                timestamps=self.get_timestamps(),
+                confidence=self.confidence_data[:, index],
+                confidence_definition="Softmax output of the deep neural network"
+            )
+            pose_estimation_series.append(series)
+
+        # Create pose estimation container
+        pose_estimation = PoseEstimation(
+            name="MockPoseEstimation",
+            description=f"Mock pose estimation data from {self.source_software}",
+            pose_estimation_series=pose_estimation_series,
+            skeleton=skeleton,
+            devices=[device],
+            scorer=self.scorer,
+            source_software=self.source_software,
+            dimensions=np.array([[640, 480]], dtype="uint16"),
+            original_videos=["mock_video.mp4"],
+            labeled_videos=["mock_video_labeled.mp4"]
+        )
+
+        behavior_module.add(pose_estimation)
