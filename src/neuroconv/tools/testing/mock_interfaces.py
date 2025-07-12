@@ -23,7 +23,8 @@ from ...datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from ...utils import ArrayType, get_json_schema_from_method_signature
 from ...utils.dict import DeepDict
-
+from pynwb.device import Device
+from ...tools.nwb_helpers import get_module
 
 class MockInterface(BaseDataInterface):
     """
@@ -446,9 +447,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         num_samples: int = 1000,
-        num_nodes: int = 10,
-        timestamps: ArrayType | None = None,
-        confidence: ArrayType | None = None,
+        num_nodes: int = 3,
         scorer: str = "MockDLC_resnet50_testAug20_test",
         source_software: str = "DeepLabCut",
         pose_estimation_metadata_key: str = "MockPoseEstimation",
@@ -463,11 +462,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         num_samples : int, optional
             Number of samples to generate, by default 1000.
         num_nodes : int, optional
-            Number of nodes/body parts to track, by default 10.
-        timestamps : ArrayType | None, optional
-            Custom timestamps array. If None, generates linearly spaced timestamps.
-        confidence : ArrayType | None, optional
-            Custom confidence scores. If None, generates realistic confidence patterns.
+            Number of nodes/body parts to track, by default 3.
         scorer : str, optional
             Name of the pose estimation algorithm/scorer, by default "MockDLC_resnet50_testAug20_test".
         source_software : str, optional
@@ -504,23 +499,12 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         selected_edges = np.random.choice(len(possible_edges), size=num_edges, replace=False)
         self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
 
-        # Generate timestamps
-        if timestamps is None:
-            self.original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
-        else:
-            self.original_timestamps = np.array(timestamps)
-            self.num_samples = len(self.original_timestamps)
-
-        self.timestamps = np.copy(self.original_timestamps)
+        # Generate timestamps (private attributes)
+        self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
         self.pose_data = self._generate_pose_data()
-
-        # Generate confidence scores
-        if confidence is None:
-            self.confidence_data = self._generate_confidence_data()
-        else:
-            self.confidence_data = np.array(confidence)
 
         super().__init__(verbose=verbose)
         
@@ -528,64 +512,51 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         import ndx_pose  # noqa: F401
 
     def _generate_pose_data(self) -> np.ndarray:
-        """Generate realistic pose estimation data using deterministic Lissajous figures."""
+        """Generate realistic pose estimation data with center following Lissajous trajectory and nodes in circle."""
         # Fixed to 2D for now
         shape = (self.num_samples, self.num_nodes, 2)
         
-        # Generate deterministic base positions
-        base_positions = np.zeros((self.num_nodes, 2))
-        for i in range(self.num_nodes):
-            angle = 2 * np.pi * i / self.num_nodes
-            base_positions[i, 0] = 320 + 100 * np.cos(angle)  # Center around video center
-            base_positions[i, 1] = 240 + 100 * np.sin(angle)
-        
-        # Generate Lissajous figures for smooth, deterministic motion
-        data = np.zeros(shape)
+        # Generate Lissajous trajectory for the center
         time_points = np.linspace(0, 4 * np.pi, self.num_samples)
+        center_x = 320 + 80 * np.sin(1.2 * time_points)  # Center follows Lissajous
+        center_y = 240 + 60 * np.sin(1.7 * time_points + np.pi/3)
         
-        for node_idx in range(self.num_nodes):
-            # Each node has different Lissajous parameters
-            a = 1 + 0.3 * node_idx  # frequency ratio for x
-            b = 1 + 0.2 * node_idx  # frequency ratio for y
-            delta = np.pi * node_idx / 4  # phase shift
-            amplitude = 30 + 10 * node_idx
+        # Generate data for all nodes
+        data = np.zeros(shape)
+        circle_radius = 50  # Radius of circle around center
+        
+        for node_index in range(self.num_nodes):
+            # Position each node equally spaced around a circle relative to center
+            angle = 2 * np.pi * node_index / self.num_nodes
             
-            # Generate Lissajous curves
-            data[:, node_idx, 0] = base_positions[node_idx, 0] + amplitude * np.sin(a * time_points + delta)
-            data[:, node_idx, 1] = base_positions[node_idx, 1] + amplitude * np.sin(b * time_points)
+            # Each node orbits around its position on the circle with small oscillations
+            offset_x = circle_radius * np.cos(angle)
+            offset_y = circle_radius * np.sin(angle)
+            
+            # Add small oscillations to each node (smaller than center movement)
+            oscillation_amplitude = 8 + 2 * node_index  # Slight variation per node
+            oscillation_freq = 0.8 + 0.1 * node_index
+            node_oscillation_x = oscillation_amplitude * np.sin(oscillation_freq * time_points + angle)
+            node_oscillation_y = oscillation_amplitude * np.sin(oscillation_freq * time_points + angle + np.pi/4)
+            
+            # Final position: center + circle position + small oscillations
+            data[:, node_index, 0] = center_x + offset_x + node_oscillation_x
+            data[:, node_index, 1] = center_y + offset_y + node_oscillation_y
         
         return data
 
-    def _generate_confidence_data(self) -> np.ndarray:
-        """Generate realistic confidence scores with occasional low confidence periods."""
-        np.random.seed(self.seed + 1)  # Different seed for confidence
-        
-        # Base high confidence with occasional drops
-        confidence = np.random.beta(8, 2, (self.num_samples, self.num_nodes))
-        
-        # Add occasional periods of low confidence (e.g., occlusions)
-        for node_idx in range(self.num_nodes):
-            # Random low-confidence periods
-            num_periods = np.random.randint(1, 4)
-            for _ in range(num_periods):
-                start_sample = np.random.randint(0, max(1, self.num_samples - 50))
-                duration = np.random.randint(5, 20)
-                end_sample = min(start_sample + duration, self.num_samples)
-                confidence[start_sample:end_sample, node_idx] *= 0.3
-        
-        return confidence
 
     def get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
-        return self.original_timestamps
+        return self._original_timestamps
 
     def get_timestamps(self) -> np.ndarray:
         """Get the current (possibly aligned) timestamps."""
-        return self.timestamps
+        return self._timestamps
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         """Set aligned timestamps."""
-        self.timestamps = aligned_timestamps
+        self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
         """Get metadata for the mock pose estimation interface."""
@@ -655,15 +626,10 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
         """Add mock pose estimation data to NWBFile using ndx-pose."""
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton
-        from pynwb.device import Device
+
 
         # Create or get behavior processing module
-        if "behavior" not in nwbfile.processing:
-            behavior_module = nwbfile.create_processing_module(
-                name="behavior", description="processed behavioral data"
-            )
-        else:
-            behavior_module = nwbfile.processing["behavior"]
+        behavior_module = get_module(nwbfile, "behavior", "processed behavioral data")
 
         # Create device
         device = Device(
@@ -692,9 +658,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 data=self.pose_data[:, index, :],
                 unit="pixels",
                 reference_frame="top left corner of video frame",
-                timestamps=self.get_timestamps(),
-                confidence=self.confidence_data[:, index],
-                confidence_definition="Softmax output of the deep neural network"
+                timestamps=self.get_timestamps()
             )
             pose_estimation_series.append(series)
 
