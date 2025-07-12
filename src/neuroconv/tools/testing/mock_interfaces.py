@@ -448,8 +448,6 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self,
         num_samples: int = 1000,
         num_nodes: int = 3,
-        scorer: str = "MockDLC_resnet50_testAug20_test",
-        source_software: str = "DeepLabCut",
         pose_estimation_metadata_key: str = "MockPoseEstimation",
         seed: int = 0,
         verbose: bool = False,
@@ -464,9 +462,9 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         num_nodes : int, optional
             Number of nodes/body parts to track, by default 3.
         scorer : str, optional
-            Name of the pose estimation algorithm/scorer, by default "MockDLC_resnet50_testAug20_test".
+            Name of the pose estimation algorithm/scorer, by default "MockScorer".
         source_software : str, optional
-            Source software name, by default "DeepLabCut".
+            Source software name, by default "MockSource".
         pose_estimation_metadata_key : str, optional
             Key for pose estimation metadata container, by default "MockPoseEstimation".
         seed : int, optional
@@ -512,7 +510,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         import ndx_pose  # noqa: F401
 
     def _generate_pose_data(self) -> np.ndarray:
-        """Generate realistic pose estimation data with center following Lissajous trajectory and nodes in circle."""
+        """Generate pose estimation data with center following Lissajous trajectory and nodes fixed on circle."""
         # Fixed to 2D for now
         shape = (self.num_samples, self.num_nodes, 2)
         
@@ -529,19 +527,13 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             # Position each node equally spaced around a circle relative to center
             angle = 2 * np.pi * node_index / self.num_nodes
             
-            # Each node orbits around its position on the circle with small oscillations
+            # Fixed position on circle relative to center (no oscillations)
             offset_x = circle_radius * np.cos(angle)
             offset_y = circle_radius * np.sin(angle)
             
-            # Add small oscillations to each node (smaller than center movement)
-            oscillation_amplitude = 8 + 2 * node_index  # Slight variation per node
-            oscillation_freq = 0.8 + 0.1 * node_index
-            node_oscillation_x = oscillation_amplitude * np.sin(oscillation_freq * time_points + angle)
-            node_oscillation_y = oscillation_amplitude * np.sin(oscillation_freq * time_points + angle + np.pi/4)
-            
-            # Final position: center + circle position + small oscillations
-            data[:, node_index, 0] = center_x + offset_x + node_oscillation_x
-            data[:, node_index, 1] = center_y + offset_y + node_oscillation_y
+            # Final position: center + fixed circle position
+            data[:, node_index, 0] = center_x + offset_x
+            data[:, node_index, 1] = center_y + offset_y
         
         return data
 
