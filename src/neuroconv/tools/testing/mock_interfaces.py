@@ -616,10 +616,10 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
         """Add mock pose estimation data to NWBFile using ndx-pose."""
-        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton
+        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
         # Create or get behavior processing module
-        behavior_module = get_module(nwbfile, "behavior", "processed behavioral data")
+        behavior_module = get_module(nwbfile, "behavior")
 
         # Create device
         device = Device(name="MockCamera", description="Mock camera device for pose estimation testing")
@@ -642,6 +642,8 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 unit="pixels",
                 reference_frame="top left corner of video frame",
                 timestamps=self.get_timestamps(),
+                confidence=np.ones(self.num_samples),
+                confidence_definition="definition of confidence",
             )
             pose_estimation_series.append(series)
 
@@ -660,3 +662,9 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         )
 
         behavior_module.add(pose_estimation)
+        if "Skeletons" not in behavior_module.data_interfaces:
+            skeletons = Skeletons(skeletons=[skeleton])
+            behavior_module.add(skeletons)
+        else:
+            skeletons = behavior_module["Skeletons"]
+            skeletons.add_skeletons(skeleton)
