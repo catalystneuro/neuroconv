@@ -4,6 +4,7 @@ from typing import Literal
 import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
+from pynwb.device import Device
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
@@ -21,10 +22,10 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from ...tools.nwb_helpers import get_module
 from ...utils import ArrayType, get_json_schema_from_method_signature
 from ...utils.dict import DeepDict
-from pynwb.device import Device
-from ...tools.nwb_helpers import get_module
+
 
 class MockInterface(BaseDataInterface):
     """
@@ -438,9 +439,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(
-            method=cls.__init__, exclude=["timestamps", "confidence"]
-        )
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["timestamps", "confidence"])
         source_schema["additionalProperties"] = True
         return source_schema
 
@@ -481,19 +480,29 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
 
         # Generate random nodes and edges
-        orbital_body_parts = ["head", "neck", "left_shoulder", "right_shoulder", "chest", 
-                            "left_elbow", "right_elbow", "left_wrist", "right_wrist", "pelvis"]
-        
+        orbital_body_parts = [
+            "head",
+            "neck",
+            "left_shoulder",
+            "right_shoulder",
+            "chest",
+            "left_elbow",
+            "right_elbow",
+            "left_wrist",
+            "right_wrist",
+            "pelvis",
+        ]
+
         # Use orbital body parts if we have enough, otherwise generate generic nodes
         if num_nodes <= len(orbital_body_parts):
             self.nodes = orbital_body_parts[:num_nodes]
         else:
             self.nodes = orbital_body_parts + [f"node_{i}" for i in range(len(orbital_body_parts), num_nodes)]
-        
+
         # Generate random edges (connect some nodes randomly)
         np.random.seed(seed)  # For reproducible edge generation
         num_edges = min(num_nodes - 1, max(1, num_nodes // 2))  # Reasonable number of edges
-        possible_edges = [(i, j) for i in range(num_nodes) for j in range(i+1, num_nodes)]
+        possible_edges = [(i, j) for i in range(num_nodes) for j in range(i + 1, num_nodes)]
         selected_edges = np.random.choice(len(possible_edges), size=num_edges, replace=False)
         self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
 
@@ -505,7 +514,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self.pose_data = self._generate_pose_data()
 
         super().__init__(verbose=verbose)
-        
+
         # Import ndx_pose to ensure it's available
         import ndx_pose  # noqa: F401
 
@@ -513,30 +522,29 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         """Generate pose estimation data with center following Lissajous trajectory and nodes fixed on circle."""
         # Fixed to 2D for now
         shape = (self.num_samples, self.num_nodes, 2)
-        
+
         # Generate Lissajous trajectory for the center
         time_points = np.linspace(0, 4 * np.pi, self.num_samples)
         center_x = 320 + 80 * np.sin(1.2 * time_points)  # Center follows Lissajous
-        center_y = 240 + 60 * np.sin(1.7 * time_points + np.pi/3)
-        
+        center_y = 240 + 60 * np.sin(1.7 * time_points + np.pi / 3)
+
         # Generate data for all nodes
         data = np.zeros(shape)
         circle_radius = 50  # Radius of circle around center
-        
+
         for node_index in range(self.num_nodes):
             # Position each node equally spaced around a circle relative to center
             angle = 2 * np.pi * node_index / self.num_nodes
-            
+
             # Fixed position on circle relative to center (no oscillations)
             offset_x = circle_radius * np.cos(angle)
             offset_y = circle_radius * np.sin(angle)
-            
+
             # Final position: center + fixed circle position
             data[:, node_index, 0] = center_x + offset_x
             data[:, node_index, 1] = center_y + offset_y
-        
-        return data
 
+        return data
 
     def get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
@@ -555,32 +563,25 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
-        
+
         # Create metadata following the DeepLabCut pattern
         container_name = self.pose_estimation_metadata_key
         skeleton_name = f"Skeleton{container_name}"
         device_name = f"Camera{container_name}"
-        
+
         # Create PoseEstimation metadata structure
         pose_estimation_metadata = DeepDict()
-        
+
         # Add Skeleton as a dictionary
         pose_estimation_metadata["Skeletons"] = {
-            skeleton_name: {
-                "name": skeleton_name,
-                "nodes": self.nodes,
-                "edges": self.edges.tolist()
-            }
+            skeleton_name: {"name": skeleton_name, "nodes": self.nodes, "edges": self.edges.tolist()}
         }
-        
+
         # Add Device as a dictionary
         pose_estimation_metadata["Devices"] = {
-            device_name: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing."
-            }
+            device_name: {"name": device_name, "description": "Mock camera device for pose estimation testing."}
         }
-        
+
         # Add PoseEstimation container
         pose_estimation_metadata["PoseEstimationContainers"] = {
             container_name: {
@@ -592,65 +593,57 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 "devices": [device_name],
                 "scorer": self.scorer,
                 "original_videos": ["mock_video.mp4"],
-                "PoseEstimationSeries": {}
+                "PoseEstimationSeries": {},
             }
         }
-        
+
         # Add a series for each node
         for node in self.nodes:
             # Convert node name to PascalCase for the series name
-            pascal_case_node = ''.join(word.capitalize() for word in node.replace('_', ' ').split())
+            pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
             series_name = f"PoseEstimationSeries{pascal_case_node}"
-            
+
             pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][node] = {
                 "name": series_name,
                 "description": f"Mock pose estimation series for {node}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                "confidence_definition": "Softmax output of the deep neural network."
+                "confidence_definition": "Softmax output of the deep neural network.",
             }
-        
+
         # Add PoseEstimation metadata to the main metadata
         metadata["PoseEstimation"] = pose_estimation_metadata
-        
+
         return metadata
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
         """Add mock pose estimation data to NWBFile using ndx-pose."""
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton
 
-
         # Create or get behavior processing module
         behavior_module = get_module(nwbfile, "behavior", "processed behavioral data")
 
         # Create device
-        device = Device(
-            name="MockCamera",
-            description="Mock camera device for pose estimation testing"
-        )
+        device = Device(name="MockCamera", description="Mock camera device for pose estimation testing")
         nwbfile.add_device(device)
 
         # Create skeleton
-        skeleton = Skeleton(
-            name="MockSkeleton",
-            nodes=self.nodes,
-            edges=self.edges
-        )
+        skeleton = Skeleton(name="MockSkeleton", nodes=self.nodes, edges=self.edges)
 
         # Create pose estimation series for each node
         pose_estimation_series = []
         for index, node_name in enumerate(self.nodes):
             # Convert node name to PascalCase for the series name
-            pascal_case_node = ''.join(word.capitalize() for word in node_name.replace('_', ' ').split())
+            pascal_case_node = "".join(word.capitalize() for word in node_name.replace("_", " ").split())
             series_name = f"PoseEstimationSeries{pascal_case_node}"
-        
+
             series = PoseEstimationSeries(
                 name=series_name,
                 description=f"Pose estimation for {node_name}",
                 data=self.pose_data[:, index, :],
                 unit="pixels",
                 reference_frame="top left corner of video frame",
-                timestamps=self.get_timestamps()
+                timestamps=self.get_timestamps(),
             )
             pose_estimation_series.append(series)
 
@@ -665,7 +658,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             source_software=self.source_software,
             dimensions=np.array([[640, 480]], dtype="uint16"),
             original_videos=["mock_video.mp4"],
-            labeled_videos=["mock_video_labeled.mp4"]
+            labeled_videos=["mock_video_labeled.mp4"],
         )
 
         behavior_module.add(pose_estimation)
