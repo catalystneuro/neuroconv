@@ -433,7 +433,11 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
     """
 
     display_name = "Mock Pose Estimation"
-    keywords = ("behavior", "pose estimation", "mock", )
+    keywords = (
+        "behavior",
+        "pose estimation",
+        "mock",
+    )
     associated_suffixes = []
     info = "Mock interface for pose estimation data testing."
 
@@ -472,7 +476,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self.seed = seed
         self.verbose = verbose
-        
+
         # Set metadata defaults
         self.scorer = "MockScorer"
         self.source_software = "MockSourceSoftware"
