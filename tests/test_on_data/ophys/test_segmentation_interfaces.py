@@ -4,6 +4,10 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from numpy.testing import assert_array_almost_equal
+import tempfile
+from pynwb import NWBHDF5IO
+from pynwb import NWBFile
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -77,6 +81,251 @@ class TestCaimanSegmentationInterfaceCaimanAnalysis(SegmentationExtractorInterfa
         assert isinstance(columns, dict)
         assert len(columns) == 0, "Expected no quality metrics in test file"
 
+class TestCaimanSegmentationInterface450(SegmentationExtractorInterfaceTestMixin):
+    """Test class for CaImAn interface with a file containing quality metrics."""
+    
+    data_interface_cls = CaimanSegmentationInterface
+    interface_kwargs = dict(
+        file_path=(
+            OPHYS_DATA_PATH
+            / "segmentation_datasets"
+            / "caiman"
+            / "multi_plane_with_imaging_data"
+            / "mini_450_caiman_stubbed_10units_5frames.hdf5"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_quality_metrics_values(self):
+        """Test that PlaneSegmentation table is correctly populated with quality metrics."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        extractor = interface.segmentation_extractor
+        roi_ids = extractor.get_roi_ids()
+        
+        # Test quality metrics as properties
+        property_keys = extractor.get_property_keys()
+        assert "snr" == property_keys[property_keys.index("snr")]
+        assert "r_values" == property_keys[property_keys.index("r_values")]
+        assert "cnn_preds" not in property_keys
+        
+        # Test getting quality metrics via property interface
+        expected_snr = np.array(
+            [
+                0.82003892,
+                1.46365421,
+                2.37001396,
+                1.26491304,
+                0.88042214,
+                0.57378107,
+                1.91813623,
+                1.51477906,
+                1.34824757,
+                4.61553793,
+            ]
+        )
+        snr_property = extractor.get_property(key="snr", ids=roi_ids)
+        assert_array_almost_equal(snr_property, expected_snr, decimal=6)
+        
+        expected_r_values = np.array(
+            [
+                -0.09622008,
+                0.75080916,
+                0.46274736,
+                0.14843417,
+                -0.01086164,
+                0.32011244,
+                -0.06491879,
+                -0.12745297,
+                -0.10657519,
+                -0.37634573,
+            ]
+        )
+        r_values_property = extractor.get_property(key="r_values", ids=roi_ids)
+        assert_array_almost_equal(r_values_property, expected_r_values, decimal=6)
+        
+        # Test that quality metrics are available in PlaneSegmentation table columns
+        columns = interface.get_plane_segmentation_columns()
+        assert "snr" in columns
+        assert "r_values" in columns
+        assert "cnn_preds" not in columns
+        
+        # Test that PlaneSegmentation table contains the same values
+        assert_array_almost_equal(columns["snr"]["data"], expected_snr, decimal=6)
+        assert_array_almost_equal(columns["r_values"]["data"], expected_r_values, decimal=6)
+        
+        # Test that quality metrics are actually written to NWB PlaneSegmentation table using NWBHDF5IO
+        with tempfile.TemporaryDirectory() as temp_dir:
+            nwbfile_path = f"{temp_dir}/test_caiman_quality_metrics.nwb"
+            nwbfile = NWBFile(
+                session_description="test session",
+                identifier="test_id",
+                session_start_time=datetime.now(),
+            )
+            # Add the interface data to NWB file - this should populate PlaneSegmentation
+            interface.add_to_nwbfile(nwbfile)
+            # Write NWB file to disk
+            with NWBHDF5IO(nwbfile_path, 'w') as io:
+                io.write(nwbfile)
+            # Read back the NWB file and check PlaneSegmentation table
+            with NWBHDF5IO(nwbfile_path, 'r') as io:
+                nwbfile = io.read()
+                plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+                # Check that the quality metrics columns exist in the actual NWB PlaneSegmentation table
+                assert "snr" in plane_segmentation.colnames, "SNR column missing from PlaneSegmentation table"
+                assert "r_values" in plane_segmentation.colnames, "r_values column missing from PlaneSegmentation table"
+                assert "cnn_preds" not in plane_segmentation.colnames, "cnn_preds should not be in PlaneSegmentation table"
+                # Check that the values in the NWB PlaneSegmentation table match our expected values
+                actual_snr_in_nwb = plane_segmentation["snr"][:]
+                actual_r_values_in_nwb = plane_segmentation["r_values"][:]
+                assert_array_almost_equal(actual_snr_in_nwb, expected_snr, decimal=6,
+                                          err_msg="SNR values in PlaneSegmentation table don't match expected values")
+                assert_array_almost_equal(actual_r_values_in_nwb, expected_r_values, decimal=6,
+                                          err_msg="r_values in PlaneSegmentation table don't match expected values")
+
+class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin):
+    """Test class for CaImAn interface with a file containing quality metrics."""
+    
+    data_interface_cls = CaimanSegmentationInterface
+    interface_kwargs = dict(
+        file_path = (
+        OPHYS_DATA_PATH
+        / "segmentation_datasets"
+        / "caiman"
+        / "multi_plane_with_imaging_data"
+        / "mini_750_caiman_stubbed_10units_5frames.hdf5"
+    )
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_quality_metrics_values(self):
+        """Test that interface returns correct quality metrics values."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        extractor = interface.segmentation_extractor
+        roi_ids = extractor.get_roi_ids()
+        
+        # Test quality metrics as properties
+        property_keys = extractor.get_property_keys()
+        assert "snr" == property_keys[property_keys.index("snr")]
+        assert "r_values" == property_keys[property_keys.index("r_values")]
+        assert "cnn_preds" not in property_keys
+        
+        # Test getting quality metrics via property interface
+        expected_snr = np.array(
+            [
+                3.83573586,
+                0.99122825,
+                1.42381208,
+                2.2360468,
+                5.05530997,
+                2.82601472,
+                3.39339375,
+                1.27190148,
+                4.47956692,
+                2.43551304,
+            ]
+        )
+        snr_property = extractor.get_property(key="snr", ids=roi_ids)
+        assert_array_almost_equal(snr_property, expected_snr, decimal=6)
+        
+        expected_r_values = np.array(
+            [
+                0.1108782,
+                -0.2044603,
+                -0.30995306,
+                0.13629865,
+                0.39358738,
+                0.33849331,
+                -0.31045486,
+                -0.64353179,
+                0.31970047,
+                0.58292105,
+            ]
+        )
+        r_values_property = extractor.get_property(key="r_values", ids=roi_ids)
+        assert_array_almost_equal(r_values_property, expected_r_values, decimal=6)
+        
+        # Test that quality metrics are available in PlaneSegmentation table columns
+        columns = interface.get_plane_segmentation_columns()
+        assert "snr" in columns
+        assert "r_values" in columns
+        assert "cnn_preds" not in columns  
+        
+        # Test that PlaneSegmentation table contains the same values
+        assert_array_almost_equal(columns["snr"]["data"], expected_snr, decimal=6)
+        assert_array_almost_equal(columns["r_values"]["data"], expected_r_values, decimal=6)
+
+
+class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixin):
+    """Test class for CaImAn interface with a file containing quality metrics."""
+    
+    data_interface_cls = CaimanSegmentationInterface
+    interface_kwargs = dict(
+        file_path = (
+        OPHYS_DATA_PATH
+        / "segmentation_datasets"
+        / "caiman"
+        / "multi_plane_with_imaging_data"
+        / "mini_1000_caiman_stubbed_10units_5frames.hdf5"
+    )
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_quality_metrics_values(self):
+        """Test that interface returns correct quality metrics values."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        extractor = interface.segmentation_extractor
+        roi_ids = extractor.get_roi_ids()
+        
+        # Test quality metrics as properties
+        property_keys = extractor.get_property_keys()
+        assert "snr" == property_keys[property_keys.index("snr")]
+        assert "r_values" == property_keys[property_keys.index("r_values")]
+        assert "cnn_preds" not in property_keys
+        
+        # Test getting quality metrics via property interface
+        expected_snr = np.array(
+            [
+                2.91673987,
+                1.05541609,
+                1.59315755,
+                4.66348506,
+                2.97824475,
+                2.98275578,
+                2.9776668,
+                2.94389109,
+                1.19369399,
+                1.76922279,
+            ]
+        )
+        snr_property = extractor.get_property(key="snr", ids=roi_ids)
+        assert_array_almost_equal(snr_property, expected_snr, decimal=6)
+        
+        expected_r_values = np.array(
+            [
+                0.35878084,
+                0.182326,
+                0.34179541,
+                0.45524581,
+                0.13731668,
+                0.58202635,
+                0.26673053,
+                0.29431159,
+                0.3361319,
+                0.34527933,
+            ]
+        )
+        r_values_property = extractor.get_property(key="r_values", ids=roi_ids)
+        assert_array_almost_equal(r_values_property, expected_r_values, decimal=6)
+        
+        # Test that quality metrics are available in PlaneSegmentation table columns
+        columns = interface.get_plane_segmentation_columns()
+        assert "snr" in columns
+        assert "r_values" in columns
+        assert "cnn_preds" not in columns  
+        
+        # Test that PlaneSegmentation table contains the same values
+        assert_array_almost_equal(columns["snr"]["data"], expected_snr, decimal=6)
+        assert_array_almost_equal(columns["r_values"]["data"], expected_r_values, decimal=6)
 
 class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CnmfeSegmentationInterface
