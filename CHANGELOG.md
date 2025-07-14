@@ -18,7 +18,7 @@
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)
-* Refactored Femtonics Imaging Interface session, munit and channel selection logic. [PR #](https://github.com/catalystneuro/roiextractors/pull/)
+* Refactored Femtonics Imaging Interface session, munit and channel selection logic. [PR #1433](https://github.com/catalystneuro/roiextractors/pull/1433)
 
 # v0.7.5 (June 11, 2025)
 
