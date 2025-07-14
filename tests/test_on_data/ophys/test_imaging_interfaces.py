@@ -1145,10 +1145,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert (
-            nwbfile_metadata["session_description"]
-            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
-        )
+        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0."
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
 
@@ -1214,10 +1211,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert (
-            nwbfile_metadata["session_description"]
-            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
-        )
+        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0."
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
 
@@ -1460,7 +1454,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"Multiple MUnits found in session 'MSession_0' of file: .+\. Available MUnits: \['MUnit_0', 'MUnit_1'\]\. Please specify 'munit_name' to select one\.",
+            match=r"Multiple units found in session MSession_0 of Femtonics file: /Users/daphnedequatrebarbes/Documents/Catalystneuro/ophys_testing_data/imaging_datasets/Femtonics/moser_lab_mec/p29.mesc. Available units: \['MUnit_0', 'MUnit_1'\]. Please specify 'munit_name'",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
@@ -1473,7 +1467,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"MUnit 'WRONG_UNIT' not found in session 'MSession_0' of file: .+\. Available MUnits: \['MUnit_0', 'MUnit_1'\]",
+            match=r"Specified munit_name 'WRONG_UNIT' not found in session MSession_0 of Femtonics file: /Users/daphnedequatrebarbes/Documents/Catalystneuro/ophys_testing_data/imaging_datasets/Femtonics/moser_lab_mec/p29.mesc. Available units: \['MUnit_0', 'MUnit_1'\]",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
@@ -1486,7 +1480,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"Session 'WRONG_SESSION' not found in file: .+\. Available sessions: \['MSession_0'\]",
+            match=r"Specified session_name 'WRONG_SESSION' not found in Femtonics file: /Users/daphnedequatrebarbes/Documents/Catalystneuro/ophys_testing_data/imaging_datasets/Femtonics/moser_lab_mec/p29.mesc. Available sessions: \['MSession_0'\]",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
