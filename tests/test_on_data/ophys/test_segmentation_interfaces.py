@@ -57,6 +57,24 @@ class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
+    
+class TestCaimanSegmentationInterfaceCaimanAnalysis(SegmentationExtractorInterfaceTestMixin):
+    data_interface_cls = CaimanSegmentationInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5")
+    )
+    save_directory = OUTPUT_PATH
+    
+    def test_quality_metrics_absent(self):
+        """Test that interface handles missing quality metrics gracefully."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        
+        # Get quality metrics - should return empty dict since test file has no metrics
+        columns = interface.get_plane_segmentation_columns()
+        
+        # Should return empty dict when no quality metrics are available
+        assert isinstance(columns, dict)
+        assert len(columns) == 0, "Expected no quality metrics in test file"
 
 
 class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):

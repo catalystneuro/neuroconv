@@ -18,6 +18,7 @@
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)
+* Updated tests for `CaimanSegmentationExtractor` to cover all stub files, and enhanced the interface to include quality metrics properties in the PlaneSegmentation table (`r_values`, `SNR_comp`, `cnn_preds`). [PR #](https://github.com/catalystneuro/neuroconv/pull/)
 
 # v0.7.5 (June 11, 2025)
 
