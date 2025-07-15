@@ -399,7 +399,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
