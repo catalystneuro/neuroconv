@@ -19,12 +19,14 @@ try:
 except ImportError:
     from setup_paths import OUTPUT_PATH
 
-import pynwb
 import pytest
+from parameterized import parameterized
+
 
 # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+# ruff: noqa: I001
 from packaging import version
-from parameterized import parameterized
+import pynwb
 
 
 @pytest.mark.skipif(
