@@ -19,10 +19,18 @@ try:
 except ImportError:
     from setup_paths import OUTPUT_PATH
 
+import pynwb
 import pytest
+
+# TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+from packaging import version
 from parameterized import parameterized
 
 
+@pytest.mark.skipif(
+    version.parse(pynwb.__version__) >= version.parse("3.1.0"),
+    reason="TestTDTFiberPhotometryInterface doesn't work with pynwb>=3.1.0.",
+)
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(
