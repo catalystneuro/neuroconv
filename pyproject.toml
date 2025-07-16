@@ -66,26 +66,8 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-test = [
-    "pytest",
-    "pytest-cov",
-    "parameterized>=0.8.1",
-    "pytest-xdist"  # Runs tests on parallel
-]
 sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
     "scipy",
-]
-
-
-docs = [
-    "Sphinx==8.2.3",  # Latest as of April 2025.
-    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
-    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
-    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
-    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
-    "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.102.2",  # Needed for the API documentation
-    "pytest" # used to build the documentation for tools.testing
 ]
 
 dandi = ["dandi>=0.69"]
@@ -456,3 +438,26 @@ known-first-party = ["neuroconv"]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
 ignore-words-list = 'assertin'
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov",
+    "parameterized>=0.8.1",
+    "pytest-xdist"  # Runs tests on parallel
+]
+
+docs = [
+    "Sphinx==8.2.3",  # Latest as of April 2025.
+    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
+    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
+    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
+    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
+    "roiextractors",  # Needed for the API documentation
+    "spikeinterface>=0.102.2",  # Needed for the API documentation
+    "pytest" # used to build the documentation for tools.testing
+]
+
+dev = [
+    "pre-commit",
+]
