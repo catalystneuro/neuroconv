@@ -19,6 +19,7 @@
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)
+* Implemented PEP 735 dependency groups for test, docs, and dev dependencies [PR #1434](https://github.com/catalystneuro/neuroconv/pull/1434)
 
 # v0.7.5 (June 11, 2025)
 
