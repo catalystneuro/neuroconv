@@ -80,3 +80,88 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
         number_of_jobs=1,
         number_of_threads=1,
     )
+
+
+def test_staging_parameter_deprecation_warning(tmp_path):
+    """Test that using the 'staging' parameter triggers a deprecation warning."""
+    import os
+    import sys
+    import warnings
+
+    # Ensure we import from the local source directory
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+    from neuroconv.tools.data_transfers._dandi import automatic_dandi_upload
+
+    nwb_folder_path = tmp_path / "test_nwb"
+    nwb_folder_path.mkdir()
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+
+        try:
+            # This should trigger deprecation warning but fail early due to missing API key
+            automatic_dandi_upload(dandiset_id="200000", nwb_folder_path=nwb_folder_path, staging=True)
+        except AssertionError as e:
+            # Expected - no DANDI_API_KEY set in unit tests
+            if "DANDI_API_KEY" not in str(e):
+                raise
+
+        # Check that deprecation warning was issued
+        deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
+        assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"
+        warning_msg = str(deprecation_warnings[0].message)
+        assert "staging" in warning_msg
+        assert "sandbox" in warning_msg
+        assert "February 2026" in warning_msg
+
+
+def test_staging_sandbox_conflict(tmp_path):
+    """Test that providing both 'staging' and 'sandbox' parameters raises ValueError."""
+    import os
+    import sys
+
+    # Ensure we import from the local source directory
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+    from neuroconv.tools.data_transfers._dandi import automatic_dandi_upload
+
+    nwb_folder_path = tmp_path / "test_nwb"
+    nwb_folder_path.mkdir()
+
+    with pytest.raises(ValueError, match="Cannot specify both 'staging' and 'sandbox' parameters"):
+        automatic_dandi_upload(dandiset_id="200000", nwb_folder_path=nwb_folder_path, sandbox=True, staging=True)
+
+
+@pytest.mark.skipif(
+    not HAVE_DANDI_KEY,
+    reason="You must set your DANDI_API_KEY to run this test!",
+)
+def test_staging_backward_compatibility(tmp_path):
+    """Test that staging=True works the same as sandbox=True with deprecation warning."""
+    import os
+    import sys
+    import warnings
+
+    # Ensure we import from the local source directory
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+    from neuroconv.tools.data_transfers._dandi import automatic_dandi_upload
+
+    nwb_folder_path = tmp_path / "test_nwb"
+    nwb_folder_path.mkdir()
+    metadata = get_default_nwbfile_metadata()
+    metadata["NWBFile"].update(
+        session_start_time=datetime.now().astimezone(),
+        session_id=f"test-staging-compat-{sys.platform}-{get_python_version().replace('.', '-')}",
+    )
+    metadata.update(Subject=dict(subject_id="foo", species="Mus musculus", age="P1D", sex="U"))
+    with NWBHDF5IO(path=nwb_folder_path / "test_nwb_staging.nwb", mode="w") as io:
+        io.write(make_nwbfile_from_metadata(metadata=metadata))
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+
+        # This should work with deprecation warning
+        automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
+
+        # Check that deprecation warning was issued
+        deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
+        assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"
