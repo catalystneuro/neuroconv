@@ -32,7 +32,7 @@ def test_automatic_dandi_upload(tmp_path):
     with NWBHDF5IO(path=nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
         io.write(make_nwbfile_from_metadata(metadata=metadata))
 
-    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
+    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, sandbox=True)
 
 
 @pytest.mark.skipif(
@@ -51,7 +51,7 @@ def test_automatic_dandi_upload_non_parallel(tmp_path):
     with NWBHDF5IO(path=nwb_folder_path / "test_nwb_2.nwb", mode="w") as io:
         io.write(make_nwbfile_from_metadata(metadata=metadata))
 
-    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True, number_of_jobs=1)
+    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, sandbox=True, number_of_jobs=1)
 
 
 @pytest.mark.skipif(
@@ -76,7 +76,7 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
     automatic_dandi_upload(
         dandiset_id="200560",
         nwb_folder_path=nwb_folder_path,
-        staging=True,
+        sandbox=True,
         number_of_jobs=1,
         number_of_threads=1,
     )

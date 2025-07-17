@@ -15,7 +15,7 @@ def automatic_dandi_upload(
     nwb_folder_path: DirectoryPath,
     dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
-    staging: bool = False,
+    sandbox: bool = False,
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
@@ -45,8 +45,8 @@ def automatic_dandi_upload(
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
-    staging : bool, default: False
-        Is the Dandiset hosted on the staging server? This is mostly for testing purposes.
+    sandbox : bool, default: False
+        Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
@@ -71,7 +71,7 @@ def automatic_dandi_upload(
     if number_of_threads is not None and number_of_threads > 1 and number_of_jobs is None:
         number_of_jobs = -1
 
-    url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
+    url_base = "https://sandbox.dandiarchive.org" if sandbox else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
@@ -100,7 +100,7 @@ def automatic_dandi_upload(
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
-    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
+    dandi_instance = "dandi-sandbox" if sandbox else "dandi"  # Test
 
     dandi_upload(
         paths=organized_nwbfiles,

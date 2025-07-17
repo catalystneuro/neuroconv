@@ -33,7 +33,7 @@ def test_run_conversion_from_yaml_with_dandi_upload():
 
     time.sleep(60)  # Give some buffer room for server to process before making assertions against DANDI API
 
-    client = dandi.dandiapi.DandiAPIClient(api_url="https://api-staging.dandiarchive.org/api")
+    client = dandi.dandiapi.DandiAPIClient(api_url="https://api-sandbox.dandiarchive.org/api")
     dandiset = client.get_dandiset("200560")
 
     expected_asset_paths = [

@@ -165,11 +165,11 @@ def run_conversion_from_yaml(
 
     if upload_to_dandiset:
         dandiset_id = specification["upload_to_dandiset"]
-        staging = int(dandiset_id) >= 200_000
+        sandbox = int(dandiset_id) >= 200_000
         automatic_dandi_upload(
             dandiset_id=dandiset_id,
             nwb_folder_path=output_folder_path,
-            staging=staging,
+            sandbox=sandbox,
         )
 
         return None  # We can early return since organization below will occur within the upload step
