@@ -535,6 +535,54 @@ class TestAddPlaneSegmentation(TestCase):
         accepted_roi_ids = list(np.logical_not(np.array(expected_rejected_roi_ids)).astype(int))
         plane_segmentation_accepted_roi_ids = plane_segmentation["Accepted"].data
         assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
+    
+    def test_add_plane_segmentation_with_quality_metrics(self):
+        """Test that quality metrics are added to PlaneSegmentation when include_quality_metrics=True."""
+        add_plane_segmentation_to_nwbfile(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            include_quality_metrics=True,
+        )
+
+        # Check that the plane segmentation was added
+        ophys_module = self.nwbfile.processing["ophys"]
+        image_segmentation = ophys_module.data_interfaces[self.image_segmentation_name]
+        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
+
+        # Check if extractor has quality metrics properties
+        available_properties = self.segmentation_extractor.get_property_keys()
+        
+        # If SNR property exists, it should be in the PlaneSegmentation
+        if "snr" in available_properties:
+            assert "snr" in plane_segmentation.colnames
+        
+        # If r_values property exists, it should be in the PlaneSegmentation  
+        if "r_values" in available_properties:
+            assert "r_values" in plane_segmentation.colnames
+            
+        # If cnn_preds property exists, it should be in the PlaneSegmentation
+        if "cnn_preds" in available_properties:
+            assert "cnn_preds" in plane_segmentation.colnames
+
+    def test_add_plane_segmentation_without_quality_metrics(self):
+        """Test that quality metrics are not added when include_quality_metrics=False."""
+        add_plane_segmentation_to_nwbfile(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            include_quality_metrics=False,
+        )
+
+        # Check that the plane segmentation was added
+        ophys_module = self.nwbfile.processing["ophys"]
+        image_segmentation = ophys_module.data_interfaces[self.image_segmentation_name]
+        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
+
+        # Quality metrics should NOT be in the PlaneSegmentation regardless of what properties exist
+        assert "snr" not in plane_segmentation.colnames
+        assert "r_values" not in plane_segmentation.colnames
+        assert "cnn_preds" not in plane_segmentation.colnames
 
     def test_pixel_masks(self):
         """Test the voxel mask option for writing a plane segmentation table."""
