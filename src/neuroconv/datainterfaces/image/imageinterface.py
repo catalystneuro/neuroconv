@@ -1,5 +1,6 @@
 """Interface for converting single or multiple images to NWB format."""
 
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -158,6 +159,7 @@ class ImageInterface(BaseDataInterface):
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
         images_location: Literal["acquisition", "stimulus"] = "acquisition",
+        images_container_metadata_key: str = "Images",
         verbose: bool = True,
     ):
         """
@@ -171,6 +173,8 @@ class ImageInterface(BaseDataInterface):
             Path to folder containing images to be converted. Used if file_paths not provided.
         images_location : Literal["acquisition", "stimulus"], default: "acquisition"
             Location to store images in the NWB file
+        images_container_metadata_key : str, default: "Images"
+            Key to use in metadata["Images"][images_container_metadata_key] for storing container metadata
         verbose : bool, default: True
             Whether to print status messages
         """
@@ -183,12 +187,14 @@ class ImageInterface(BaseDataInterface):
         self.file_paths = file_paths
         self.folder_path = folder_path
         self.images_location = images_location
+        self.images_container_metadata_key = images_container_metadata_key
 
         super().__init__(
             verbose=verbose,
             file_paths=file_paths,
             folder_path=folder_path,
             images_location=images_location,
+            images_container_metadata_key=images_container_metadata_key,
         )
 
         # Process paths
@@ -211,8 +217,13 @@ class ImageInterface(BaseDataInterface):
         """Get metadata for the images."""
         metadata = super().get_metadata()
 
-        # Add basic metadata about the images
-        metadata["Images"] = dict(description="Images loaded through ImageInterface")
+        # Add basic metadata about the images under the specified key
+        if "Images" not in metadata:
+            metadata["Images"] = {}
+
+        metadata["Images"][self.images_container_metadata_key] = dict(
+            name=self.images_container_metadata_key, description="Images loaded through ImageInterface"
+        )
 
         return metadata
 
@@ -220,7 +231,7 @@ class ImageInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: DeepDict | None = None,
-        container_name: str = "images",
+        container_name: str | None = None,
     ) -> None:
         """
         Add the image data to an NWB file.
@@ -231,16 +242,39 @@ class ImageInterface(BaseDataInterface):
             The NWB file to add the images to
         metadata : dict, optional
             Metadata for the images
-        container_name : str, default: "images"
-            Name of the Images container
+        container_name : str, optional, deprecated
+            Name of the Images container. This parameter is deprecated and will be removed
+            on or after February 2026. Use images_container_metadata_key in __init__ instead.
+            If provided, it overrides the name from metadata.
         """
+
+        if container_name is not None:
+            warnings.warn(
+                "The 'container_name' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'images_container_metadata_key' in the __init__ method instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
 
+        # Get metadata for this specific container
+        images_metadata = metadata.get("Images", {})
+        container_metadata = images_metadata.get(self.images_container_metadata_key, {})
+
+        # Use container_name only if explicitly provided (deprecated), otherwise use metadata
+        if container_name is not None:
+            name = container_name
+        else:
+            name = container_metadata.get("name", self.images_container_metadata_key)
+
+        description = container_metadata.get("description", "Images loaded through ImageInterface")
+
         # Create Images container
         images_container = Images(
-            name=container_name,
-            description=metadata.get("Images", {}).get("description", "Images loaded through ImageInterface"),
+            name=name,
+            description=description,
         )
 
         # Process each image
