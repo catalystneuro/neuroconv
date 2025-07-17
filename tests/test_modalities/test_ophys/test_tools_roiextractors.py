@@ -535,7 +535,7 @@ class TestAddPlaneSegmentation(TestCase):
         accepted_roi_ids = list(np.logical_not(np.array(expected_rejected_roi_ids)).astype(int))
         plane_segmentation_accepted_roi_ids = plane_segmentation["Accepted"].data
         assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
-    
+
     def test_add_plane_segmentation_with_quality_metrics(self):
         """Test that quality metrics are added to PlaneSegmentation when include_quality_metrics=True."""
         add_plane_segmentation_to_nwbfile(
@@ -552,15 +552,15 @@ class TestAddPlaneSegmentation(TestCase):
 
         # Check if extractor has quality metrics properties
         available_properties = self.segmentation_extractor.get_property_keys()
-        
+
         # If SNR property exists, it should be in the PlaneSegmentation
         if "snr" in available_properties:
             assert "snr" in plane_segmentation.colnames
-        
-        # If r_values property exists, it should be in the PlaneSegmentation  
+
+        # If r_values property exists, it should be in the PlaneSegmentation
         if "r_values" in available_properties:
             assert "r_values" in plane_segmentation.colnames
-            
+
         # If cnn_preds property exists, it should be in the PlaneSegmentation
         if "cnn_preds" in available_properties:
             assert "cnn_preds" in plane_segmentation.colnames
