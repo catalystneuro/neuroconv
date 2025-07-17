@@ -27,6 +27,8 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install package for API docs
-        run: pip install .[docs]
+        run: |
+          pip install .
+          pip install --group docs
       - name: Test External Links
         run: sphinx-build -b linkcheck ./docs ./docs/_build/
