@@ -252,7 +252,7 @@ class ImageInterface(BaseDataInterface):
             warnings.warn(
                 "The 'container_name' parameter is deprecated and will be removed on or after February 2026. "
                 "Use 'images_container_metadata_key' in the __init__ method instead.",
-                DeprecationWarning,
+                FutureWarning,
                 stacklevel=2,
             )
 
