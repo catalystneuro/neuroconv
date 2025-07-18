@@ -9,19 +9,19 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class IntanAnalogInterface(BaseDataInterface):
     """
-    Primary data interface class for converting analog channels from Intan data.
+    Primary data interface for converting non-amplifier analog data streams from Intan .rhd or .rhs files.
 
-    This interface handles non-amplifier analog streams including:
-    - Stream 1: RHD2000 auxiliary input channels (e.g., accelerometer data)
-    - Stream 3: USB board ADC input channels (analog signals -10V to +10V)
-    - Stream 4: USB board ADC output channels (analog signals -10V to +10V)
-    - Stream 10: DC amplifier channels (RHS only)
+    This interface handles several types of analog signals that are not the primary neural recording channels,
+    including auxiliary inputs, ADC inputs, and DC amplifier signals.
+
+    If your data consists of the main amplifier channels (neural data), you should use the
+    :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandatainterface.IntanRecordingInterface`.
     """
 
     display_name = "Intan Analog"
-    keywords = ("analog", "auxiliary", "ADC", "supply voltage", "DC amplifier")
+    keywords = ("intan", "analog", "auxiliary", "ADC", "DC amplifier", "rhd", "rhs")
     associated_suffixes = (".rhd", ".rhs")
-    info = "Interface for Intan analog channel data (non-amplifier streams)."
+    info = "Interface for converting Intan non-amplifier analog data."
 
     @classmethod
     def get_source_schema(cls) -> dict:

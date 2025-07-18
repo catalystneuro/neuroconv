@@ -1,5 +1,8 @@
-Intan data conversion
----------------------
+Intan Amplifier Data Conversion
+------------------------------
+
+This guide covers the conversion of Intan amplifier data, which contains the primary neural recordings from the RHD2000 or RHS2000 amplifier channels.
+If your data includes other streams like analog inputs, auxiliary inputs, or DC amplifiers, please see the :ref:`conversion_gallery_intan_analog` guide.
 
 Install NeuroConv with the additional dependencies necessary for reading Intan data.
 
@@ -28,3 +31,9 @@ Convert Intan data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.int
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+See Also
+--------
+
+- :ref:`conversion_gallery_intan_analog`

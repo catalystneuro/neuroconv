@@ -9,15 +9,19 @@ from ....utils import DeepDict, get_schema_from_hdmf_class
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary data interface class for converting Intan data using the
+    Primary data interface for converting Intan amplifier data from .rhd or .rhs files.
 
-    :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`.
+    This interface is used for data that comes from the RHD2000/RHS2000 amplifier channels,
+    which are the primary neural recording channels.
+
+    If you have other data streams from your Intan system (e.g., analog inputs, auxiliary inputs, DC amplifiers),
+    you should use the :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
     """
 
-    display_name = "Intan Recording"
-    keywords = ("extracellular electrophysiology", "amplifier", "recording")
+    display_name = "Intan Amplifier"
+    keywords = ("intan", "amplifier", "rhd", "rhs", "extracellular electrophysiology", "recording")
     associated_suffixes = (".rhd", ".rhs")
-    info = "Interface for Intan recording data."
+    info = "Interface for converting Intan amplifier data."
     stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
 
     @classmethod

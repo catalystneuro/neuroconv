@@ -1,5 +1,9 @@
-Intan analog data conversion
+Intan Analog Data Conversion
 ----------------------------
+
+This guide explains how to convert non-amplifier analog data from Intan systems.
+This includes signals from auxiliary inputs, ADC inputs, and DC amplifiers.
+If you need to convert the primary neural recording data from the amplifier channels, please refer to the :ref:`conversion_gallery_intan` guide.
 
 Install NeuroConv with the additional dependencies necessary for reading Intan data.
 
@@ -145,3 +149,9 @@ For RHS systems, you can also convert ADC output channels:
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_output = output_folder / "intan_adc_output_conversion.nwb"
     >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output)
+
+
+See also
+--------
+
+:ref:`conversion_gallery_intan`
