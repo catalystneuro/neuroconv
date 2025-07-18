@@ -21,6 +21,7 @@ Recording
     Blackrock <recording/blackrock>
     European Data Format (EDF) <recording/edf>
     Intan <recording/intan>
+    Intan Analog <recording/intan_analog>
     MaxOne <recording/maxone>
     MCSRaw <recording/mcsraw>
     MEArec <recording/mearec>

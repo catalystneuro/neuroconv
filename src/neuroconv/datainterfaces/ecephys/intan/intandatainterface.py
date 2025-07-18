@@ -15,6 +15,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """
 
     display_name = "Intan Recording"
+    keywords = ("extracellular electrophysiology", "amplifier", "recording")
     associated_suffixes = (".rhd", ".rhs")
     info = "Interface for Intan recording data."
     stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'

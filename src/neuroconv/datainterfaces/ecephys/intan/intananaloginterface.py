@@ -19,6 +19,7 @@ class IntanAnalogInterface(BaseDataInterface):
     """
 
     display_name = "Intan Analog"
+    keywords = ("analog", "auxiliary", "ADC", "supply voltage", "DC amplifier")
     associated_suffixes = (".rhd", ".rhs")
     info = "Interface for Intan analog channel data (non-amplifier streams)."
 
