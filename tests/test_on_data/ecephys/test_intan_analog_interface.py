@@ -25,7 +25,7 @@ class TestIntanAnalogInterface:
         interface = IntanAnalogInterface(file_path=file_path, stream_name="USB board ADC input channel")
 
         assert interface.stream_name == "USB board ADC input channel"
-        assert interface.time_series_name == "TimeSeriesIntanADC"
+        assert interface.time_series_name == "TimeSeriesIntanADCInput"
         assert interface.recording_extractor is not None
 
         # Should have 8 ADC channels according to the README
@@ -62,7 +62,7 @@ class TestIntanAnalogInterface:
         interface = IntanAnalogInterface(file_path=file_path, stream_name="USB board ADC input channel")
 
         assert interface.stream_name == "USB board ADC input channel"
-        assert interface.time_series_name == "TimeSeriesIntanADC"
+        assert interface.time_series_name == "TimeSeriesIntanADCInput"
 
     def test_invalid_stream_name(self):
         """Test that invalid stream names raise appropriate errors."""

@@ -48,6 +48,7 @@ class IntanAnalogInterface(BaseDataInterface):
             - "RHD2000 auxiliary input channel": Auxiliary input channels (e.g., accelerometer data)
             - "RHD2000 supply voltage channel": Supply voltage channels
             - "USB board ADC input channel": ADC input channels (analog signals -10V to +10V)
+            - "USB board ADC output channel": ADC output channels (analog signals -10V to +10V)
             - "DC Amplifier channel": DC amplifier channels (RHS system only)
         verbose : bool, default: False
             Verbose output
@@ -73,7 +74,11 @@ class IntanAnalogInterface(BaseDataInterface):
             },
             "USB board ADC input channel": {
                 "description": "USB board ADC input channels (analog signals -10V to +10V)",
-                "time_series_name": "TimeSeriesIntanADC",
+                "time_series_name": "TimeSeriesIntanADCInput",
+            },
+            "USB board ADC output channel": {
+                "description": "USB board ADC output channels (analog signals -10V to +10V)",
+                "time_series_name": "TimeSeriesIntanADCOutput",
             },
             "DC Amplifier channel": {
                 "description": "DC amplifier channels (RHS system)",
