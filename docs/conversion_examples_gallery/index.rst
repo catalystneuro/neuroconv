@@ -16,6 +16,7 @@ Recording
     :maxdepth: 1
 
     AlphaOmega <recording/alphaomega>
+    Axon <recording/axon>
     Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
