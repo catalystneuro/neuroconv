@@ -84,13 +84,7 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
 
 def test_staging_parameter_deprecation_warning(tmp_path):
     """Test that using the 'staging' parameter triggers a deprecation warning."""
-    import os
-    import sys
     import warnings
-
-    # Ensure we import from the local source directory
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
-    from neuroconv.tools.data_transfers._dandi import automatic_dandi_upload
 
     nwb_folder_path = tmp_path / "test_nwb"
     nwb_folder_path.mkdir()
@@ -117,12 +111,6 @@ def test_staging_parameter_deprecation_warning(tmp_path):
 
 def test_staging_sandbox_conflict(tmp_path):
     """Test that providing both 'staging' and 'sandbox' parameters raises ValueError."""
-    import os
-    import sys
-
-    # Ensure we import from the local source directory
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
-    from neuroconv.tools.data_transfers._dandi import automatic_dandi_upload
 
     nwb_folder_path = tmp_path / "test_nwb"
     nwb_folder_path.mkdir()
@@ -137,13 +125,7 @@ def test_staging_sandbox_conflict(tmp_path):
 )
 def test_staging_backward_compatibility(tmp_path):
     """Test that staging=True works the same as sandbox=True with deprecation warning."""
-    import os
-    import sys
     import warnings
-
-    # Ensure we import from the local source directory
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
-    from neuroconv.tools.data_transfers._dandi import automatic_dandi_upload
 
     nwb_folder_path = tmp_path / "test_nwb"
     nwb_folder_path.mkdir()
