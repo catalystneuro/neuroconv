@@ -15,7 +15,7 @@ def automatic_dandi_upload(
     nwb_folder_path: DirectoryPath,
     dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
-    sandbox: bool = False,
+    sandbox: bool | None = None,
     staging: bool | None = None,
     cleanup: bool = False,
     number_of_jobs: int | None = None,
@@ -46,8 +46,9 @@ def automatic_dandi_upload(
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
-    sandbox : bool, default: False
+    sandbox : bool, optional
         Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
+        Defaults to False.
     staging : bool, optional
         .. deprecated:: 0.6.0
             The 'staging' parameter is deprecated and will be removed in February 2026.
@@ -63,16 +64,20 @@ def automatic_dandi_upload(
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
 
-    # Handle deprecated 'staging' parameter
+    # Handle deprecated 'staging' parameter and set defaults
+    if staging is not None and sandbox is not None:
+        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
+
     if staging is not None:
         warn(
             "The 'staging' parameter is deprecated and will be removed in February 2026. " "Use 'sandbox' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        if sandbox != False:  # Check if sandbox was explicitly set to a non-default value
-            raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
         sandbox = staging
+
+    if sandbox is None:
+        sandbox = False
 
     assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
