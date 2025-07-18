@@ -536,6 +536,26 @@ class TestAddPlaneSegmentation(TestCase):
         plane_segmentation_accepted_roi_ids = plane_segmentation["Accepted"].data
         assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
 
+    def test_add_plane_segmentation_with_quality_metrics(self):
+        """Test that available quality metrics in the segmentation extractor are added as columns to the PlaneSegmentation when available."""
+        add_plane_segmentation_to_nwbfile(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        # Check that the avzailable quality metrics are present in the PlaneSegmentation
+        ophys_module = self.nwbfile.processing["ophys"]
+        image_segmentation = ophys_module.data_interfaces[self.image_segmentation_name]
+        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
+
+        available_metrics = set(self.segmentation_extractor.get_property_keys())
+        expected_metrics = {"snr", "r_values", "cnn_preds"}
+        present_metrics = available_metrics & expected_metrics
+
+        for metric in present_metrics:
+            assert metric in plane_segmentation
+
     def test_pixel_masks(self):
         """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(

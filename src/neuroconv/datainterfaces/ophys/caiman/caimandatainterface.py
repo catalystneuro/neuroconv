@@ -8,12 +8,12 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
 
     display_name = "CaImAn Segmentation"
     associated_suffixes = (".hdf5",)
-    info = "Interface for Caiman segmentation data."
+    info = "Interface for CaImAn segmentation data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
         """
-        Get the source schema for the Caiman segmentation interface.
+        Get the source schema for the CaImAn segmentation interface.
 
         Returns
         -------
@@ -27,12 +27,11 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
 
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """
-
         Parameters
         ----------
         file_path : FilePath
             Path to .hdf5 file.
-        verbose : bool, default True
+        verbose : bool, default False
             Whether to print progress
         """
         super().__init__(file_path=file_path)

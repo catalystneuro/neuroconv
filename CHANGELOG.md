@@ -15,11 +15,13 @@
 * Added `FemtonicsImagingInterface`for converting Femtonics imaging data. [PR #1408](https://github.com/catalystneuro/neuroconv/pull/1408)
 * Added `get_available_subjects` static method to `DeepLabCutInterface` for extracting subject names from DeepLabCut output files [PR #1425](https://github.com/catalystneuro/neuroconv/pull/1425)
 * Added `MockPoseEstimationInterface` for testing pose estimation workflows with deterministic Lissajous figure motion patterns [PR #1435](https://github.com/catalystneuro/neuroconv/pull/1435)
+* Enhanced the `CaimanSegmentationExtractor` to include quality metrics properties in the PlaneSegmentation table (`r_values`, `SNR_comp`, `cnn_preds`). [PR #1436](https://github.com/catalystneuro/neuroconv/pull/1436)
 
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)
 * Implemented PEP 735 dependency groups for test, docs, and dev dependencies [PR #1434](https://github.com/catalystneuro/neuroconv/pull/1434)
+* Updated tests for `CaimanSegmentationExtractor` to cover all stub file [PR #1436](https://github.com/catalystneuro/neuroconv/pull/1436)
 
 # v0.7.5 (June 11, 2025)
 

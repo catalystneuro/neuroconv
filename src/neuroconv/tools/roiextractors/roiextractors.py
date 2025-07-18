@@ -809,6 +809,26 @@ def add_plane_segmentation_to_nwbfile(
     else:
         roi_locations = None
 
+    # Prepare quality metrics data - always attempt to include if available
+    quality_metrics = {}
+    available_properties = segmentation_extractor.get_property_keys()
+
+    # Define quality metrics with their descriptions
+    quality_metrics_definitions = {
+        "snr": "Signal-to-noise ratio for each component",
+        "r_values": "Spatial correlation values for each component",
+        "cnn_preds": "CNN classifier predictions for component quality",
+    }
+
+    # Extract available quality metrics
+    for property_key in available_properties:
+        if property_key in quality_metrics_definitions:
+            values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
+            quality_metrics[property_key] = {
+                "data": values,
+                "description": quality_metrics_definitions[property_key],
+            }
+
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
         image_or_pixel_masks=image_or_pixel_masks,
@@ -823,6 +843,7 @@ def add_plane_segmentation_to_nwbfile(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
+        quality_metrics=quality_metrics,
     )
     return nwbfile
 
@@ -841,8 +862,8 @@ def _add_plane_segmentation(
     is_id_rejected: list | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
+    quality_metrics: dict | None = None,
 ) -> NWBFile:
-
     iterator_options = iterator_options or dict()
 
     # Set the defaults and required infrastructure
@@ -896,12 +917,10 @@ def _add_plane_segmentation(
     )
 
     if mask_type == "image":
-
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
             plane_segmentation.add_roi(**{"id": roi_index, "roi_name": roi_name, "image_mask": image_mask})
-
     else:  # mask_type is "pixel" or "voxel"
         pixel_masks = image_or_pixel_masks
         num_pixel_dims = pixel_masks[0].shape[1]
@@ -949,6 +968,13 @@ def _add_plane_segmentation(
             description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
             data=is_id_rejected,
         )
+
+    # Always add quality metrics if they are available
+    if quality_metrics:
+        for column_name, column_info in quality_metrics.items():
+            plane_segmentation.add_column(
+                name=column_name, description=column_info["description"], data=column_info["data"]
+            )
 
     image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
@@ -1410,7 +1436,6 @@ def add_segmentation_to_nwbfile(
     iterator_options : dict, optional
         Options for iterating over the data, by default None.
 
-
     Returns
     -------
     NWBFile
@@ -1540,7 +1565,7 @@ def write_segmentation_to_nwbfile(
 
     iterator_options = iterator_options or dict()
 
-    # parse metadata correctly considering the MultiSegmentationExtractor function:
+    # Parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
         segmentation_extractors = segmentation_extractor.segmentations
         if metadata is not None:
@@ -1560,7 +1585,7 @@ def write_segmentation_to_nwbfile(
         get_nwb_segmentation_metadata(segmentation_extractor) for segmentation_extractor in segmentation_extractors
     ]
 
-    # updating base metadata with new:
+    # Updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
         metadata_input = metadata[num] if metadata else {}
         metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)
