@@ -48,7 +48,7 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
 
 .. code-block:: python
 
-    >>> from datetime import datetimey
+    >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import IntanAnalogInterface
