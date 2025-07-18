@@ -13,8 +13,8 @@ class IntanAnalogInterface(BaseDataInterface):
 
     This interface handles non-amplifier analog streams including:
     - Stream 1: RHD2000 auxiliary input channels (e.g., accelerometer data)
-    - Stream 2: RHD2000 supply voltage channels
     - Stream 3: USB board ADC input channels (analog signals -10V to +10V)
+    - Stream 4: USB board ADC output channels (analog signals -10V to +10V)
     - Stream 10: DC amplifier channels (RHS only)
     """
 

@@ -11,10 +11,13 @@ Convert Intan analog channel data (non-amplifier streams) to NWB using :py:class
 
 This interface supports analog streams including:
 
-* **RHD2000 auxiliary input channel**: Auxiliary input channels (e.g., accelerometer data)
-* **RHD2000 supply voltage channel**: Supply voltage channels
 * **USB board ADC input channel**: ADC input channels (analog signals -10V to +10V)
+* **RHD2000 auxiliary input channel**: Auxiliary input channels (e.g., accelerometer data)
 * **DC Amplifier channel**: DC amplifier channels (RHS system only)
+* **USB board ADC output channel**: ADC output channels (analog signals -10V to +10V)
+
+USB board ADC input channels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -43,6 +46,9 @@ This interface supports analog streams including:
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+RHD2000 auxiliary input channels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can also convert auxiliary input channels (e.g., accelerometer data):
 
@@ -74,6 +80,42 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
     >>> nwbfile_path_aux = output_folder / "intan_auxiliary_conversion.nwb"
     >>> interface_aux.run_conversion(nwbfile_path=nwbfile_path_aux, metadata=metadata_aux)
 
+DC Amplifier channels (RHS systems)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For RHS systems, you can also convert DC amplifier channels:
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import IntanAnalogInterface
+    >>>
+    >>> # For this interface we need to pass the location of the .rhs file
+    >>> file_path_dc = f"{ECEPHY_DATA_PATH}/intan/test_fcs_dc_250327_154333/info.rhs"
+    >>>
+    >>> # Convert DC amplifier channels (RHS system)
+    >>> interface_dc = IntanAnalogInterface(
+    ...     file_path=file_path_dc,
+    ...     stream_name="DC Amplifier channel",
+    ...     verbose=False
+    ... )
+    >>>
+    >>> # Extract what metadata we can from the source files
+    >>> metadata_dc = interface_dc.get_metadata()
+    >>> # session_start_time is required for conversion. If it cannot be inferred
+    >>> # automatically from the source files you must supply one.
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata_dc["NWBFile"].update(session_start_time=session_start_time)
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path_dc = output_folder / "intan_dc_amplifier_conversion.nwb"
+    >>> interface_dc.run_conversion(nwbfile_path=nwbfile_path_dc, metadata=metadata_dc)
+
+USB board ADC output channels (RHS systems)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 For RHS systems, you can also convert ADC output channels:
 
 .. code-block:: python
@@ -84,7 +126,7 @@ For RHS systems, you can also convert ADC output channels:
     >>> from neuroconv.datainterfaces import IntanAnalogInterface
     >>>
     >>> # For this interface we need to pass the location of the .rhs file
-    >>> file_path_output = f"{ECEPHY_DATA_PATH}/intan/intan_rhs_test_1.rhs"
+    >>> file_path_output = f"{ECEPHY_DATA_PATH}/intan/rhs_stim_data_single_file_format/intanTestFile.rhs"
     >>>
     >>> # Convert ADC output channels (RHS system)
     >>> interface_output = IntanAnalogInterface(
