@@ -742,7 +742,6 @@ def add_plane_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    include_quality_metrics: bool = True,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -780,9 +779,7 @@ def add_plane_segmentation_to_nwbfile(
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel'.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
-    include_quality_metrics : bool, default: True
-        Whether to include available ROI quality metrics (e.g., SNR, spatial correlation, CNN predictions)
-        as additional columns in the PlaneSegmentation table. Set to False to skip adding these metrics.
+
     Returns
     -------
     NWBFile
@@ -812,31 +809,25 @@ def add_plane_segmentation_to_nwbfile(
     else:
         roi_locations = None
 
-    # Prepare quality metrics data
-    quality_metrics = None
-    if include_quality_metrics:
-        quality_metrics = {}
-        available_properties = segmentation_extractor.get_property_keys()
+    # Prepare quality metrics data - always attempt to include if available
+    quality_metrics = {}
+    available_properties = segmentation_extractor.get_property_keys()
 
-        # Define quality metrics with their descriptions
-        quality_metrics_definitions = {
-            "snr": "Signal-to-noise ratio for each component",
-            "r_values": "Spatial correlation values for each component",
-            "cnn_preds": "CNN classifier predictions for component quality (0-1, higher = more neuron-like)",
-        }
+    # Define quality metrics with their descriptions
+    quality_metrics_definitions = {
+        "snr": "Signal-to-noise ratio for each component",
+        "r_values": "Spatial correlation values for each component",
+        "cnn_preds": "CNN classifier predictions for component quality",
+    }
 
-        # Extract available quality metrics (same pattern as existing data preparation)
-        for property_key in available_properties:
-            if property_key in quality_metrics_definitions:
-                try:
-                    values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
-                    quality_metrics[property_key] = {
-                        "data": values,
-                        "description": quality_metrics_definitions[property_key],
-                    }
-                except Exception as e:
-                    warnings.warn(f"Could not extract quality metric '{property_key}': {e}")
-                    continue
+    # Extract available quality metrics
+    for property_key in available_properties:
+        if property_key in quality_metrics_definitions:
+            values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
+            quality_metrics[property_key] = {
+                "data": values,
+                "description": quality_metrics_definitions[property_key],
+            }
 
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
@@ -852,7 +843,6 @@ def add_plane_segmentation_to_nwbfile(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
-        include_quality_metrics=include_quality_metrics,
         quality_metrics=quality_metrics,
     )
     return nwbfile
@@ -872,7 +862,6 @@ def _add_plane_segmentation(
     is_id_rejected: list | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    include_quality_metrics: bool = False,
     quality_metrics: dict | None = None,
 ) -> NWBFile:
     iterator_options = iterator_options or dict()
@@ -980,7 +969,8 @@ def _add_plane_segmentation(
             data=is_id_rejected,
         )
 
-    if include_quality_metrics and quality_metrics is not None:
+    # Always add quality metrics if they are available
+    if quality_metrics:
         for column_name, column_info in quality_metrics.items():
             plane_segmentation.add_column(
                 name=column_name, description=column_info["description"], data=column_info["data"]
@@ -1419,7 +1409,6 @@ def add_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    include_quality_metrics: bool = False,
 ) -> NWBFile:
     """
     Add segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1446,9 +1435,6 @@ def add_segmentation_to_nwbfile(
         Type of mask to use for segmentation; can be either "image" or "pixel", by default "image".
     iterator_options : dict, optional
         Options for iterating over the data, by default None.
-    include_quality_metrics : bool, optional
-        If True, includes quality metrics as columns in the PlaneSegmentation table, by default False.
-
 
     Returns
     -------
@@ -1469,7 +1455,6 @@ def add_segmentation_to_nwbfile(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
-        include_quality_metrics=include_quality_metrics,
     )
     if include_background_segmentation:
         add_background_plane_segmentation_to_nwbfile(
@@ -1523,7 +1508,6 @@ def write_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    include_quality_metrics: bool = False,
 ) -> NWBFile:
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.
@@ -1574,9 +1558,6 @@ def write_segmentation_to_nwbfile(
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
     iterator_options: dict, optional
         A dictionary with options for the internal iterators that process the data.
-    include_quality_metrics : bool, default: False
-        Whether to include quality metrics as columns in the PlaneSegmentation table.
-        Quality metrics are extracted from the segmentation extractor's properties.
     """
     assert (
         nwbfile_path is None or nwbfile is None
@@ -1627,7 +1608,6 @@ def write_segmentation_to_nwbfile(
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 iterator_options=iterator_options,
-                include_quality_metrics=include_quality_metrics,
             )
 
     return nwbfile_out

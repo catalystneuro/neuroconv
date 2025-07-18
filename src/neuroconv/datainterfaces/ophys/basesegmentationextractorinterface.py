@@ -144,7 +144,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
-        include_quality_metrics: bool = False,  # NEW PARAMETER
     ):
         """
         Add segmentation data to the NWB file.
@@ -166,7 +165,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             you may wish to disable this for faster write speeds.
         include_roi_acceptance : bool, default: True
             Whether to include if the detected ROI was 'accepted' or 'rejected'.
-            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
+            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         mask_type : str, default: 'image'
             There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
@@ -183,9 +182,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
-        include_quality_metrics : bool, default: False
-            Whether to include quality metrics as columns in the PlaneSegmentation table.
-            Quality metrics are extracted from the segmentation extractor's properties if available.
 
         Returns
         -------
@@ -211,5 +207,4 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
-            include_quality_metrics=include_quality_metrics,
         )

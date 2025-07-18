@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 import pytest
 from numpy.testing import assert_array_almost_equal
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
@@ -75,19 +76,30 @@ class TestCaimanSegmentationInterface450(SegmentationExtractorInterfaceTestMixin
     )
     save_directory = OUTPUT_PATH
 
-    def test_quality_metrics_values(self):
-        """Test that PlaneSegmentation table is correctly populated with quality metrics."""
-        interface = self.data_interface_cls(**self.interface_kwargs)
-        extractor = interface.segmentation_extractor
-        roi_ids = extractor.get_roi_ids()
+    def test_quality_metrics_propagated(self, setup_interface):
+        """Test that quality metrics are automatically propagated to the NWB file."""
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        # Test quality metrics as properties
-        property_keys = extractor.get_property_keys()
-        assert "snr" == property_keys[property_keys.index("snr")]
-        assert "r_values" == property_keys[property_keys.index("r_values")]
-        assert "cnn_preds" not in property_keys
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        plane_segmentation = image_segmentation["PlaneSegmentation"]
 
-        # Test getting quality metrics via property interface
+        # Check that quality metrics columns exist in the plane segmentation table
+        assert "snr" in plane_segmentation.colnames
+        assert "r_values" in plane_segmentation.colnames
+
+        # Check that the descriptions are correct
+        expected_descriptions = {
+            "snr": "Signal-to-noise ratio for each component",
+            "r_values": "Spatial correlation values for each component",
+            "cnn_preds": "CNN classifier predictions for component quality",
+        }
+
+        assert plane_segmentation["snr"].description == expected_descriptions["snr"]
+        assert plane_segmentation["r_values"].description == expected_descriptions["r_values"]
+
+        # Verify the quality metrics data matches expected values
         expected_snr = np.array(
             [
                 0.82003892,
@@ -102,8 +114,6 @@ class TestCaimanSegmentationInterface450(SegmentationExtractorInterfaceTestMixin
                 4.61553793,
             ]
         )
-        snr_property = extractor.get_property(key="snr", ids=roi_ids)
-        assert_array_almost_equal(snr_property, expected_snr, decimal=6)
 
         expected_r_values = np.array(
             [
@@ -119,8 +129,13 @@ class TestCaimanSegmentationInterface450(SegmentationExtractorInterfaceTestMixin
                 -0.37634573,
             ]
         )
-        r_values_property = extractor.get_property(key="r_values", ids=roi_ids)
-        assert_array_almost_equal(r_values_property, expected_r_values, decimal=6)
+
+        # Check that the data in the NWB table matches expected values
+        assert_array_almost_equal(plane_segmentation["snr"][:], expected_snr, decimal=6)
+        assert_array_almost_equal(plane_segmentation["r_values"][:], expected_r_values, decimal=6)
+
+        # CNN predictions should not be present in this test file
+        assert "cnn_preds" not in plane_segmentation.colnames
 
 
 class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin):
@@ -138,19 +153,30 @@ class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin
     )
     save_directory = OUTPUT_PATH
 
-    def test_quality_metrics_values(self):
-        """Test that interface returns correct quality metrics values."""
-        interface = self.data_interface_cls(**self.interface_kwargs)
-        extractor = interface.segmentation_extractor
-        roi_ids = extractor.get_roi_ids()
+    def test_quality_metrics_propagated(self, setup_interface):
+        """Test that quality metrics are automatically propagated to the NWB file."""
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        # Test quality metrics as properties
-        property_keys = extractor.get_property_keys()
-        assert "snr" == property_keys[property_keys.index("snr")]
-        assert "r_values" == property_keys[property_keys.index("r_values")]
-        assert "cnn_preds" not in property_keys
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        plane_segmentation = image_segmentation["PlaneSegmentation"]
 
-        # Test getting quality metrics via property interface
+        # Check that quality metrics columns exist in the plane segmentation table
+        assert "snr" in plane_segmentation.colnames
+        assert "r_values" in plane_segmentation.colnames
+
+        # Check that the descriptions are correct
+        expected_descriptions = {
+            "snr": "Signal-to-noise ratio for each component",
+            "r_values": "Spatial correlation values for each component",
+            "cnn_preds": "CNN classifier predictions for component quality",
+        }
+
+        assert plane_segmentation["snr"].description == expected_descriptions["snr"]
+        assert plane_segmentation["r_values"].description == expected_descriptions["r_values"]
+
+        # Verify the quality metrics data matches expected values
         expected_snr = np.array(
             [
                 3.83573586,
@@ -165,8 +191,6 @@ class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin
                 2.43551304,
             ]
         )
-        snr_property = extractor.get_property(key="snr", ids=roi_ids)
-        assert_array_almost_equal(snr_property, expected_snr, decimal=6)
 
         expected_r_values = np.array(
             [
@@ -182,8 +206,13 @@ class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin
                 0.58292105,
             ]
         )
-        r_values_property = extractor.get_property(key="r_values", ids=roi_ids)
-        assert_array_almost_equal(r_values_property, expected_r_values, decimal=6)
+
+        # Check that the data in the NWB table matches expected values
+        assert_array_almost_equal(plane_segmentation["snr"][:], expected_snr, decimal=6)
+        assert_array_almost_equal(plane_segmentation["r_values"][:], expected_r_values, decimal=6)
+
+        # CNN predictions should not be present in this test file
+        assert "cnn_preds" not in plane_segmentation.colnames
 
 
 class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixin):
@@ -201,19 +230,30 @@ class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixi
     )
     save_directory = OUTPUT_PATH
 
-    def test_quality_metrics_values(self):
-        """Test that interface returns correct quality metrics values."""
-        interface = self.data_interface_cls(**self.interface_kwargs)
-        extractor = interface.segmentation_extractor
-        roi_ids = extractor.get_roi_ids()
+    def test_quality_metrics_propagated(self, setup_interface):
+        """Test that quality metrics are automatically propagated to the NWB file."""
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        # Test quality metrics as properties
-        property_keys = extractor.get_property_keys()
-        assert "snr" == property_keys[property_keys.index("snr")]
-        assert "r_values" == property_keys[property_keys.index("r_values")]
-        assert "cnn_preds" not in property_keys
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        plane_segmentation = image_segmentation["PlaneSegmentation"]
 
-        # Test getting quality metrics via property interface
+        # Check that quality metrics columns exist in the plane segmentation table
+        assert "snr" in plane_segmentation.colnames
+        assert "r_values" in plane_segmentation.colnames
+
+        # Check that the descriptions are correct
+        expected_descriptions = {
+            "snr": "Signal-to-noise ratio for each component",
+            "r_values": "Spatial correlation values for each component",
+            "cnn_preds": "CNN classifier predictions for component quality",
+        }
+
+        assert plane_segmentation["snr"].description == expected_descriptions["snr"]
+        assert plane_segmentation["r_values"].description == expected_descriptions["r_values"]
+
+        # Verify the quality metrics data matches expected values
         expected_snr = np.array(
             [
                 2.91673987,
@@ -228,8 +268,6 @@ class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixi
                 1.76922279,
             ]
         )
-        snr_property = extractor.get_property(key="snr", ids=roi_ids)
-        assert_array_almost_equal(snr_property, expected_snr, decimal=6)
 
         expected_r_values = np.array(
             [
@@ -245,8 +283,13 @@ class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixi
                 0.34527933,
             ]
         )
-        r_values_property = extractor.get_property(key="r_values", ids=roi_ids)
-        assert_array_almost_equal(r_values_property, expected_r_values, decimal=6)
+
+        # Check that the data in the NWB table matches expected values
+        assert_array_almost_equal(plane_segmentation["snr"][:], expected_snr, decimal=6)
+        assert_array_almost_equal(plane_segmentation["r_values"][:], expected_r_values, decimal=6)
+
+        # CNN predictions should not be present in this test file
+        assert "cnn_preds" not in plane_segmentation.colnames
 
 
 class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):

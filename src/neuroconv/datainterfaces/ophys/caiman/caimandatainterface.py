@@ -36,25 +36,3 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         super().__init__(file_path=file_path)
         self.verbose = verbose
-
-    def add_to_nwbfile(self, nwbfile, include_quality_metrics: bool = True, **kwargs):
-        """
-        Add CaImAn segmentation data to NWBFile with optional quality metrics.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the segmentation data to.
-        include_quality_metrics : bool, default: True
-            Whether to include quality metrics as columns in the PlaneSegmentation table.
-
-            Available CaImAn quality metrics (if present in the HDF5 file):
-            - snr: Signal-to-noise ratio for each component
-            - r_values: Spatial correlation values for each component
-            - cnn_preds: CNN classifier predictions for component quality (0-1, higher = more neuron-like)
-
-            These metrics are automatically stored as properties in the CaImAn segmentation
-            extractor during initialization and will be added as columns if available.
-
-        """
-        super().add_to_nwbfile(nwbfile=nwbfile, include_quality_metrics=include_quality_metrics)
