@@ -150,8 +150,6 @@ For RHS systems, you can also convert ADC output channels:
     >>> nwbfile_path_output = output_folder / "intan_adc_output_conversion.nwb"
     >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output)
 
-
-See also
---------
-
-:ref:`conversion_gallery_intan`
+.. note::
+    If your Intan data consists of the main amplifier channels (neural data),
+    use the :doc:`IntanRecordingInterface <intan>` instead.

@@ -32,8 +32,6 @@ Convert Intan data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.int
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-
-See Also
---------
-
-- :ref:`conversion_gallery_intan_analog`
+.. note::
+    If your Intan data contains non-amplifier analog streams (e.g., auxiliary inputs, ADC inputs, DC amplifiers),
+    use the :doc:`IntanAnalogInterface <intan_analog>` instead.
