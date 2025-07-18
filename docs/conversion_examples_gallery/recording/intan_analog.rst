@@ -3,7 +3,7 @@ Intan Analog Data Conversion
 
 This guide explains how to convert non-amplifier analog data from Intan systems.
 This includes signals from auxiliary inputs, ADC inputs, and DC amplifiers.
-If you need to convert the primary neural recording data from the amplifier channels, please refer to the :ref:`conversion_gallery_intan` guide.
+If you need to convert the primary neural recording data from the amplifier channels, please check :doc:`IntanRecordingInterface <intan>` .
 
 Install NeuroConv with the additional dependencies necessary for reading Intan data.
 
@@ -15,10 +15,10 @@ Convert Intan analog channel data (non-amplifier streams) to NWB using :py:class
 
 This interface supports analog streams including:
 
-* **USB board ADC input channel**: ADC input channels (analog signals -10V to +10V)
+* **USB board ADC input channel**: ADC input channels
 * **RHD2000 auxiliary input channel**: Auxiliary input channels (e.g., accelerometer data)
 * **DC Amplifier channel**: DC amplifier channels (RHS system only)
-* **USB board ADC output channel**: ADC output channels (analog signals -10V to +10V)
+* **USB board ADC output channel**: ADC output channels
 
 USB board ADC input channels
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,8 +42,7 @@ USB board ADC input channels
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
-    >>> # session_start_time is required for conversion. If it cannot be inferred
-    >>> # automatically from the source files you must supply one.
+    >>> # session_start_time is required but not available on intan
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
@@ -51,7 +50,7 @@ USB board ADC input channels
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-RHD2000 auxiliary input channels
+RHD2000 auxiliary input
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can also convert auxiliary input channels (e.g., accelerometer data):
@@ -75,8 +74,7 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata_aux = interface_aux.get_metadata()
-    >>> # session_start_time is required for conversion. If it cannot be inferred
-    >>> # automatically from the source files you must supply one.
+    >>> # session_start_time is required but not available on intan
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata_aux["NWBFile"].update(session_start_time=session_start_time)
     >>>
@@ -108,8 +106,7 @@ For RHS systems, you can also convert DC amplifier channels:
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata_dc = interface_dc.get_metadata()
-    >>> # session_start_time is required for conversion. If it cannot be inferred
-    >>> # automatically from the source files you must supply one.
+    >>> # session_start_time is required but not available on intan
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata_dc["NWBFile"].update(session_start_time=session_start_time)
     >>>
@@ -151,5 +148,5 @@ For RHS systems, you can also convert ADC output channels:
     >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output)
 
 .. note::
-    If your Intan data consists of the main amplifier channels (neural data),
+    If your Intan data consists of the main amplifier channels (neural data from channels (A-001, A-002, etc.)),
     use the :doc:`IntanRecordingInterface <intan>` instead.
