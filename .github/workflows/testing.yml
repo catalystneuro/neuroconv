@@ -55,7 +55,9 @@ jobs:
 
 
       - name: Install NeuroConv with testing requirements
-        run: python -m pip install ".[test]"
+        run: |
+          python -m pip install "."
+          python -m pip install --group test
       - name: Run import tests
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
@@ -77,7 +79,8 @@ jobs:
             source env_ecephys/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[test,ecephys_minimal,sorting_analyzer]"  # we test the sorting analyzer here so we need its dependencies
+          python -m pip install ".[ecephys_minimal,sorting_analyzer]"  # we test the sorting analyzer here so we need its dependencies
+          python -m pip install --group test
           python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
@@ -97,7 +100,8 @@ jobs:
             source env_ophys/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[test,ophys_minimal]"
+          python -m pip install ".[ophys_minimal]"
+          python -m pip install --group test
           python -m pytest tests/test_modalities/test_ophys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
@@ -117,7 +121,8 @@ jobs:
             source env_fiber_photometry/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[test,fiber_photometry]"
+          python -m pip install ".[fiber_photometry]"
+          python -m pip install --group test
           python -m pytest tests/test_modalities/test_fiber_photometry -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
@@ -137,7 +142,8 @@ jobs:
             source env_behavior/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[test,behavior]"
+          python -m pip install ".[behavior]"
+          python -m pip install --group test
           python -m pytest tests/test_modalities/test_behavior -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
