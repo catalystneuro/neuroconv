@@ -116,18 +116,21 @@ You can customize the container name and add descriptions, names, and resolution
     >>> # Create a temporary directory for our example images
     >>> image_dir = Path(mkdtemp())
     >>>
-    >>> # Create example images
+    >>> # Create example images with specific file paths
+    >>> stimulus_image_file_path = image_dir / 'stimulus_image.png'
+    >>> baseline_image_file_path = image_dir / 'baseline_image.png'
+    >>>
     >>> rgb_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
     >>> rgb_image = Image.fromarray(rgb_array, mode='RGB')
-    >>> rgb_image.save(image_dir / 'stimulus_image.png')
+    >>> rgb_image.save(stimulus_image_file_path)
     >>>
     >>> gray_array = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
     >>> gray_image = Image.fromarray(gray_array, mode='L')
-    >>> gray_image.save(image_dir / 'baseline_image.png')
+    >>> gray_image.save(baseline_image_file_path)
     >>>
     >>> # Create interface with custom container name
     >>> interface = ImageInterface(
-    ...     folder_path=image_dir,
+    ...     folder_path=str(image_dir),
     ...     images_container_metadata_key="ExperimentalImages"
     ... )
     >>>
@@ -141,14 +144,14 @@ You can customize the container name and add descriptions, names, and resolution
     >>> metadata["Images"]["ExperimentalImages"]["description"] = "Collection of experimental stimulus and baseline images"
     >>>
     >>> # Customize individual image metadata (names, descriptions, resolution)
-    >>> stimulus_path = str(image_dir / 'stimulus_image.png')
-    >>> baseline_path = str(image_dir / 'baseline_image.png')
-    >>> metadata["Images"]["ExperimentalImages"]["images"][stimulus_path]["name"] = "visual_stimulus"
-    >>> metadata["Images"]["ExperimentalImages"]["images"][stimulus_path]["description"] = "Visual stimulus presented to subject"
-    >>> metadata["Images"]["ExperimentalImages"]["images"][stimulus_path]["resolution"] = 2.5  # pixels/cm
-    >>> metadata["Images"]["ExperimentalImages"]["images"][baseline_path]["name"] = "baseline_recording"
-    >>> metadata["Images"]["ExperimentalImages"]["images"][baseline_path]["description"] = "Baseline image before stimulus"
-    >>> metadata["Images"]["ExperimentalImages"]["images"][baseline_path]["resolution"] = 2.5  # pixels/cm
+    >>> stimulus_image_file_path_str = str(stimulus_image_file_path)
+    >>> baseline_image_file_path_str = str(baseline_image_file_path)
+    >>> metadata["Images"]["ExperimentalImages"]["images"][stimulus_image_file_path_str]["name"] = "visual_stimulus"
+    >>> metadata["Images"]["ExperimentalImages"]["images"][stimulus_image_file_path_str]["description"] = "Visual stimulus presented to subject"
+    >>> metadata["Images"]["ExperimentalImages"]["images"][stimulus_image_file_path_str]["resolution"] = 2.5  # pixels/cm
+    >>> metadata["Images"]["ExperimentalImages"]["images"][baseline_image_file_path_str]["name"] = "baseline_recording"
+    >>> metadata["Images"]["ExperimentalImages"]["images"][baseline_image_file_path_str]["description"] = "Baseline image before stimulus"
+    >>> metadata["Images"]["ExperimentalImages"]["images"][baseline_image_file_path_str]["resolution"] = 2.5  # pixels/cm
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
