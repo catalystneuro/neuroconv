@@ -84,7 +84,9 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
 
 def test_staging_parameter_deprecation_warning(tmp_path):
     """Test that using the 'staging' parameter triggers a deprecation warning."""
+    import os
     import warnings
+    from unittest.mock import patch
 
     nwb_folder_path = tmp_path / "test_nwb"
     nwb_folder_path.mkdir()
@@ -92,13 +94,18 @@ def test_staging_parameter_deprecation_warning(tmp_path):
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
 
-        try:
-            # This should trigger deprecation warning but fail early due to missing API key
-            automatic_dandi_upload(dandiset_id="200000", nwb_folder_path=nwb_folder_path, staging=True)
-        except AssertionError as e:
-            # Expected - no DANDI_API_KEY set in unit tests
-            if "DANDI_API_KEY" not in str(e):
-                raise
+        # Temporarily unset DANDI_API_KEY to ensure the test behaves consistently
+        with patch.dict(os.environ, {}, clear=False):
+            if "DANDI_API_KEY" in os.environ:
+                del os.environ["DANDI_API_KEY"]
+
+            try:
+                # This should trigger deprecation warning but fail early due to missing API key
+                automatic_dandi_upload(dandiset_id="200000", nwb_folder_path=nwb_folder_path, staging=True)
+            except AssertionError as e:
+                # Expected - no DANDI_API_KEY set in unit tests
+                if "DANDI_API_KEY" not in str(e):
+                    raise
 
         # Check that deprecation warning was issued
         deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
