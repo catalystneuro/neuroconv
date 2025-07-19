@@ -83,7 +83,7 @@ Key Features
     - Directory: ``interface = ImageInterface(folder_path="images_directory")``
 
 4. **Storage Location**: Images can be stored in either acquisition or stimulus:
-    .. code-block:: python
+.. code-block:: python
 
     # Store in acquisition (default)
     interface = ImageInterface(file_paths=["image.png"], images_location="acquisition")
