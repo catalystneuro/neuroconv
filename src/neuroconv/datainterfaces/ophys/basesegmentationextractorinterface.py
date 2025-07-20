@@ -21,10 +21,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, verbose: bool = False, **source_data):
+    def __init__(self, verbose: bool = False, metadata_key: str = "default", **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
+        self.metadata_key = metadata_key
 
     def get_metadata_schema(self) -> dict:
         """
@@ -62,9 +63,22 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         )
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
 
-        # Temporary fixes until centralized definition of metadata schemas
-        metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
-        metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
+        # Update schema for new dictionary structure
+        metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlanes"] = dict(
+            type="object",
+            patternProperties={"^[a-zA-Z0-9_]+$": metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"]},
+            additionalProperties=False,
+        )
+        if "ImagingPlane" in metadata_schema["properties"]["Ophys"]["properties"]:
+            del metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"]
+
+        metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"] = dict(
+            type="object",
+            patternProperties={
+                "^[a-zA-Z0-9_]+$": metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"]
+            },
+            additionalProperties=False,
+        )
 
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
@@ -84,7 +98,21 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
         )
 
-        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
+        # Update ImageSegmentation to use dictionary structure
+        image_segmentation_schema = metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]
+        image_segmentation_schema["type"] = "object"
+        image_segmentation_schema["patternProperties"] = {
+            "^[a-zA-Z0-9_]+$": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "imaging_plane": {"type": "string"},  # Reference by key
+                },
+                "required": ["name", "imaging_plane"],
+            }
+        }
+        image_segmentation_schema["additionalProperties"] = False
 
         metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
             "properties"
@@ -117,7 +145,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
-        metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
+        metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor, metadata_key=self.metadata_key))
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:

@@ -37,12 +37,14 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str = "default",
         **source_data,
     ):
         super().__init__(**source_data)
         self.imaging_extractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
+        self.metadata_key = metadata_key
 
     def get_metadata_schema(
         self,
@@ -63,17 +65,23 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", self.photon_series_type]
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlanes", self.photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
-            ImagingPlane=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}),
+            ImagingPlanes=dict(
+                type="object",
+                patternProperties={"^[a-zA-Z0-9_]+$": {"$ref": "#/properties/Ophys/definitions/ImagingPlane"}},
+                additionalProperties=False,
+            ),
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             {
                 self.photon_series_type: dict(
-                    type="array",
-                    minItems=1,
-                    items={"$ref": f"#/properties/Ophys/definitions/{self.photon_series_type}"},
+                    type="object",
+                    patternProperties={
+                        "^[a-zA-Z0-9_]+$": {"$ref": f"#/properties/Ophys/definitions/{self.photon_series_type}"}
+                    },
+                    additionalProperties=False,
                 ),
             }
         )
@@ -115,16 +123,29 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
+        default_metadata = get_nwb_imaging_metadata(
+            self.imaging_extractor, photon_series_type=self.photon_series_type, metadata_key=self.metadata_key
+        )
         metadata = dict_deep_update(default_metadata, metadata)
 
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:
-            for two_photon_series in metadata["Ophys"]["TwoPhotonSeries"]:
-                if "dimension" in two_photon_series:
-                    two_photon_series["dimension"] = list(two_photon_series["dimension"])
-                if "rate" in two_photon_series:
-                    two_photon_series["rate"] = float(two_photon_series["rate"])
+            photon_series_data = metadata["Ophys"]["TwoPhotonSeries"]
+            # Handle both old list format and new dictionary format
+            if isinstance(photon_series_data, list):
+                # Old format
+                for two_photon_series in photon_series_data:
+                    if "dimension" in two_photon_series:
+                        two_photon_series["dimension"] = list(two_photon_series["dimension"])
+                    if "rate" in two_photon_series:
+                        two_photon_series["rate"] = float(two_photon_series["rate"])
+            elif isinstance(photon_series_data, dict):
+                # New format
+                for key, two_photon_series in photon_series_data.items():
+                    if "dimension" in two_photon_series:
+                        two_photon_series["dimension"] = list(two_photon_series["dimension"])
+                    if "rate" in two_photon_series:
+                        two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:

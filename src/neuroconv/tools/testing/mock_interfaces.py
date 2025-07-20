@@ -311,6 +311,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         verbose: bool = False,
         seed: int = 0,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -332,6 +333,10 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             "TwoPhotonSeries", by default "TwoPhotonSeries".
         verbose : bool, default False
             controls verbosity
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and PhotonSeries.
+            Default is "default".
         """
 
         self.seed = seed
@@ -343,6 +348,8 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             dtype=dtype,
             verbose=verbose,
             seed=seed,
+            photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )
 
         self.verbose = verbose
@@ -375,6 +382,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         has_neuropil_signal: bool = True,
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -403,6 +411,10 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed for the random number generator, by default 0
         verbose : bool, optional
             controls verbosity, by default False.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This key will be used for ImageSegmentation dictionary.
+            Default is "default".
         """
 
         super().__init__(
@@ -418,6 +430,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
     def get_metadata(self) -> DeepDict:

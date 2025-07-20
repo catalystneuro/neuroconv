@@ -3,6 +3,10 @@
 from typing import Optional
 
 from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    convert_ophys_metadata_to_dict,
+    is_old_ophys_metadata_format,
+)
 from ....utils import DeepDict, FolderPathType
 
 
@@ -26,6 +30,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Initialize the FemtonicsImagingInterface.
@@ -59,6 +64,11 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
         verbose : bool, optional
             Whether to print verbose output. Default is False.
+
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and TwoPhotonSeries.
+            Default is "default".
         """
 
         Extractor = self.get_extractor()
@@ -119,6 +129,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             munit_index=munit_index,
             channel_name=channel_name,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
         self._file_path = file_path
@@ -144,6 +155,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         """
         metadata = super().get_metadata()
 
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = convert_ophys_metadata_to_dict(metadata)
+
         femtonics_metadata = self.imaging_extractor._get_metadata()
 
         # Extract pixel size information for imaging plane
@@ -156,18 +171,18 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
             # Only update if both units are the same or if units are missing
             if x_units == y_units:
-                if "Ophys" in metadata and "ImagingPlane" in metadata["Ophys"]:
-                    for imaging_plane in metadata["Ophys"]["ImagingPlane"]:
-                        imaging_plane["grid_spacing"] = [x_size, y_size]
-                        if x_units:
-                            imaging_plane["grid_spacing_unit"] = x_units
-                        else:
-                            import warnings
+                if "Ophys" in metadata and "ImagingPlanes" in metadata["Ophys"]:
+                    imaging_plane = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+                    imaging_plane["grid_spacing"] = [x_size, y_size]
+                    if x_units:
+                        imaging_plane["grid_spacing_unit"] = x_units
+                    else:
+                        import warnings
 
-                            warnings.warn(
-                                "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will be set to 'n.a.'."
-                            )
-                            imaging_plane["grid_spacing_unit"] = "n.a."
+                        warnings.warn(
+                            "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will be set to 'n.a.'."
+                        )
+                        imaging_plane["grid_spacing_unit"] = "n.a."
 
         # Add experimenter information
         experimenter_info = femtonics_metadata.get("experimenter_info", {})
@@ -189,7 +204,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # Add PMT settings to optical channels
         pmt_settings = femtonics_metadata.get("pmt_settings", {})
         if pmt_settings:
-            imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+            imaging_plane = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
             optical_channels = imaging_plane.get("optical_channel", [])
             channel_names = self.imaging_extractor.get_channel_names()
             for i, channel_name in enumerate(channel_names):
@@ -209,7 +224,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         session_start_time = femtonics_metadata.get("session_start_time")
         metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Add version and revision info to Ophys Device description
+        # Add version and revision info to Device description
         version_info = femtonics_metadata.get("mesc_version_info", {})
         version_strs = []
         if version_info.get("version"):
@@ -217,20 +232,24 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if version_info.get("revision"):
             version_strs.append(f"revision: {version_info['revision']}")
         if version_strs:
-            device = metadata["Ophys"]["Device"][0]
+            # Update device metadata in the new structure
+            if "Devices" not in metadata:
+                metadata["Devices"] = {}
+            if self.metadata_key not in metadata["Devices"]:
+                metadata["Devices"][self.metadata_key] = {}
+            device = metadata["Devices"][self.metadata_key]
             desc = device.get("description", "")
             desc = f"{desc} {', '.join(version_strs)}"
             device["description"] = desc.strip()
 
-        # Add imaging rate to ImagingPlane properties (Femtonics: only one imaging plane, always present)
+        # Add imaging rate to ImagingPlane properties
         sampling_freq = femtonics_metadata["sampling_frequency_hz"]
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
         imaging_plane["imaging_rate"] = sampling_freq
 
         # Add geometric transformations to ImagingPlane description
         geometric_transformations = femtonics_metadata.get("geometric_transformations", {})
         if geometric_transformations:
-            imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
             desc = imaging_plane.get("description", "")
             gt_parts = []
             if geometric_transformations.get("translation") is not None:

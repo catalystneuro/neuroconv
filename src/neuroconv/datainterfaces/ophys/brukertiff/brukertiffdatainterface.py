@@ -4,6 +4,10 @@ from dateutil.parser import parse
 from pydantic import DirectoryPath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    convert_ophys_metadata_to_dict,
+    is_old_ophys_metadata_format,
+)
 from ....utils.dict import DeepDict
 
 
@@ -68,6 +72,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         folder_path: DirectoryPath,
         stream_name: str | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Initialize reading of TIFF files.
@@ -79,12 +84,17 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
         verbose : bool, default: False
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and TwoPhotonSeries.
+            Default is "default".
         """
         self.folder_path = folder_path
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._image_size = self.imaging_extractor.get_frame_shape()
@@ -152,23 +162,36 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         """
         metadata = super().get_metadata()
 
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = convert_ophys_metadata_to_dict(metadata)
+
         xml_metadata = self.imaging_extractor.xml_metadata
         session_start_time = parse(xml_metadata["date"])
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         description = f"Version {xml_metadata['version']}"
         device_name = "BrukerFluorescenceMicroscope"
-        metadata["Ophys"]["Device"][0].update(
+
+        # Update device metadata in the new structure
+        if "Devices" not in metadata:
+            metadata["Devices"] = {}
+        if self.metadata_key not in metadata["Devices"]:
+            metadata["Devices"][self.metadata_key] = {}
+        metadata["Devices"][self.metadata_key].update(
             name=device_name,
             description=description,
         )
 
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        # Update imaging plane metadata
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
         imaging_plane_metadata.update(
-            device=device_name,
+            device=self.metadata_key,
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
-        two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+
+        # Update two photon series metadata
+        two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][self.metadata_key]
         two_photon_series_metadata.update(
             description="The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
             scan_line_rate=1 / float(xml_metadata["scanLinePeriod"]),
@@ -255,6 +278,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         folder_path: DirectoryPath,
         stream_name: str | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Initialize reading of TIFF files.
@@ -266,11 +290,16 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         stream_name : str, optional
             The name of the recording stream (e.g. 'Ch2').
         verbose : bool, default: False
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and TwoPhotonSeries.
+            Default is "default".
         """
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
         self.folder_path = folder_path
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
@@ -340,24 +369,36 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         """
         metadata = super().get_metadata()
 
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = convert_ophys_metadata_to_dict(metadata)
+
         xml_metadata = self.imaging_extractor.xml_metadata
         session_start_time = parse(xml_metadata["date"])
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         description = f"Version {xml_metadata['version']}"
         device_name = "BrukerFluorescenceMicroscope"
-        metadata["Ophys"]["Device"][0].update(
+
+        # Update device metadata in the new structure
+        if "Devices" not in metadata:
+            metadata["Devices"] = {}
+        if self.metadata_key not in metadata["Devices"]:
+            metadata["Devices"][self.metadata_key] = {}
+        metadata["Devices"][self.metadata_key].update(
             name=device_name,
             description=description,
         )
 
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        # Update imaging plane metadata
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
         imaging_plane_metadata.update(
-            device=device_name,
+            device=self.metadata_key,
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
-        two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
 
+        # Update two photon series metadata
+        two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][self.metadata_key]
         two_photon_series_metadata.update(
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             scan_line_rate=1 / float(xml_metadata["scanLinePeriod"]),

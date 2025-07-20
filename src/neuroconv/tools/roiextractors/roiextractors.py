@@ -66,8 +66,8 @@ def _get_default_ophys_metadata() -> DeepDict:
 
     metadata.update(
         Ophys=dict(
-            Device=[default_device],
-            ImagingPlane=[default_imaging_plane],
+            Device=[default_device],  # Keep as list for now
+            ImagingPlanes={"default": default_imaging_plane},  # Dictionary structure
         ),
     )
 
@@ -105,20 +105,18 @@ def _get_default_segmentation_metadata() -> DeepDict:
         ),
     )
 
+    # Use dictionary structure for ImageSegmentation
     default_image_segmentation = dict(
-        name="ImageSegmentation",
-        plane_segmentations=[
-            dict(
-                name="PlaneSegmentation",
-                description="Segmented ROIs",
-                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
-            ),
-            dict(
-                name="BackgroundPlaneSegmentation",
-                description="Segmented Background Components",
-                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
-            ),
-        ],
+        default=dict(
+            name="PlaneSegmentation",
+            description="Segmented ROIs",
+            imaging_plane="default",  # Reference by key
+        ),
+        background=dict(
+            name="BackgroundPlaneSegmentation",
+            description="Segmented Background Components",
+            imaging_plane="default",  # Reference by key
+        ),
     )
 
     default_segmentation_images = dict(
@@ -144,6 +142,7 @@ def _get_default_segmentation_metadata() -> DeepDict:
 def get_nwb_imaging_metadata(
     imgextractor: ImagingExtractor,
     photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+    metadata_key: str = "default",
 ) -> dict:
     """
     Convert metadata from the ImagingExtractor into nwb specific metadata.
@@ -154,6 +153,9 @@ def get_nwb_imaging_metadata(
         The imaging extractor to get metadata from.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
         The type of photon series to create metadata for.
+    metadata_key : str, optional
+        The key to use for storing the metadata in the dictionary structure.
+        Default is "default".
 
     Returns
     -------
@@ -170,7 +172,23 @@ def get_nwb_imaging_metadata(
         else [f"OpticalChannel{idx}" for idx in range(imgextractor.get_num_channels())]
     )
 
-    imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+    # Check if we have the new dictionary structure or old list structure
+    if "ImagingPlanes" in metadata["Ophys"]:
+        # New dictionary structure
+        # Ensure the key exists in the dictionary
+        if metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
+            # If the key doesn't exist, rename the default key
+            if "default" in metadata["Ophys"]["ImagingPlanes"]:
+                metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop("default")
+            else:
+                # Use the first available key and rename it
+                first_key = list(metadata["Ophys"]["ImagingPlanes"].keys())[0]
+                metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop(first_key)
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
+    else:
+        # Old list structure (backward compatibility)
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
             imaging_plane["optical_channel"][index]["name"] = channel_name
@@ -189,10 +207,12 @@ def get_nwb_imaging_metadata(
         name=photon_series_type,
         description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
         unit="n.a.",
-        imaging_plane=imaging_plane["name"],
+        imaging_plane=metadata_key,  # Reference by key instead of name
         dimension=list(imgextractor.get_sample_shape()),
     )
-    metadata["Ophys"].update({photon_series_type: [photon_series_metadata]})
+
+    # Use dictionary structure for photon series
+    metadata["Ophys"][photon_series_type] = {metadata_key: photon_series_metadata}
 
     return metadata
 
@@ -278,22 +298,43 @@ def add_imaging_plane_to_nwbfile(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
-    default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
+    # Get default imaging plane name - handle both old and new structure
+    if "ImagingPlanes" in default_metadata["Ophys"]:
+        # New dictionary structure
+        default_key = list(default_metadata["Ophys"]["ImagingPlanes"].keys())[0]
+        default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlanes"][default_key]["name"]
+    else:
+        # Old list structure
+        default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
+
     imaging_plane_name = imaging_plane_name or default_imaging_plane_name
     existing_imaging_planes = nwbfile.imaging_planes
 
     if imaging_plane_name not in existing_imaging_planes:
-        imaging_plane_metadata = next(
-            (
-                imaging_plane_metadata
-                for imaging_plane_metadata in metadata_copy["Ophys"]["ImagingPlane"]
-                if imaging_plane_metadata["name"] == imaging_plane_name
-            ),
-            None,
-        )
+        imaging_plane_metadata = None
+
+        # Try to find imaging plane metadata in new dictionary structure
+        if "ImagingPlanes" in metadata_copy["Ophys"]:
+            # New dictionary structure - look for the plane by name or key
+            for key, plane_data in metadata_copy["Ophys"]["ImagingPlanes"].items():
+                if plane_data["name"] == imaging_plane_name or key == imaging_plane_name:
+                    imaging_plane_metadata = plane_data
+                    break
+        else:
+            # Old list structure
+            imaging_plane_metadata = next(
+                (
+                    imaging_plane_metadata
+                    for imaging_plane_metadata in metadata_copy["Ophys"]["ImagingPlane"]
+                    if imaging_plane_metadata["name"] == imaging_plane_name
+                ),
+                None,
+            )
+
         if imaging_plane_metadata is None:
+            metadata_location = "ImagingPlanes" if "ImagingPlanes" in metadata_copy["Ophys"] else "ImagingPlane"
             raise ValueError(
-                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
+                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['{metadata_location}']."
             )
 
         imaging_plane = _create_imaging_plane_from_metadata(
@@ -408,7 +449,23 @@ def add_photon_series_to_nwbfile(
     ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
     # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
-    photon_series_metadata = metadata_copy["Ophys"][photon_series_type][photon_series_index]
+    # Handle both list and dictionary structure
+    photon_series_data = metadata_copy["Ophys"][photon_series_type]
+    if isinstance(photon_series_data, list):
+        # Old list structure
+        photon_series_metadata = photon_series_data[photon_series_index]
+    else:
+        # New dictionary structure
+        # If index is provided, try to get the key by index, otherwise get the first key
+        keys = list(photon_series_data.keys())
+        if photon_series_index < len(keys):
+            metadata_key = keys[photon_series_index]
+        else:
+            metadata_key = keys[0] if keys else None
+        if metadata_key is None:
+            raise ValueError(f"No {photon_series_type} metadata found")
+        photon_series_metadata = photon_series_data[metadata_key]
+
     photon_series_name = photon_series_metadata["name"]
 
     if parent_container == "acquisition" and photon_series_name in nwbfile.acquisition:
@@ -689,7 +746,7 @@ def write_imaging_to_nwbfile(
     return nwbfile_out
 
 
-def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
+def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_key: str = "default") -> dict:
     """
     Convert metadata from the segmentation into nwb specific metadata.
 
@@ -697,6 +754,9 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     ----------
     segmentation_extractor : SegmentationExtractor
         The segmentation extractor to get metadata from.
+    metadata_key : str, optional
+        The key to use for storing the metadata in the dictionary structure.
+        Default is "default".
 
     Returns
     -------
@@ -705,13 +765,22 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
         and fluorescence data specific to the segmentation.
     """
     metadata = _get_default_segmentation_metadata()
-    # Optical Channel name:
+
+    # Handle optical channels for the imaging plane
+    # Check if we have the new dictionary structure or old list structure
+    if "ImagingPlanes" in metadata["Ophys"]:
+        # New dictionary structure
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
+    else:
+        # Old list structure (backward compatibility)
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
         if i == 0:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][i]["name"] = ch_name
+            imaging_plane["optical_channel"][i]["name"] = ch_name
         else:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"].append(
+            imaging_plane["optical_channel"].append(
                 dict(
                     name=ch_name,
                     emission_lambda=np.nan,
@@ -719,7 +788,17 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
                 )
             )
 
-    plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    # Get plane segmentation name from the dictionary structure
+    if (
+        isinstance(metadata["Ophys"]["ImageSegmentation"], dict)
+        and metadata_key in metadata["Ophys"]["ImageSegmentation"]
+    ):
+        # New dictionary structure
+        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][metadata_key]["name"]
+    else:
+        # Old list structure (backward compatibility)
+        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
         # raw traces have already default name ("RoiResponseSeries")
         if trace_name in ["raw", "dff"]:
@@ -851,24 +930,53 @@ def _add_plane_segmentation(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
-    plane_segmentation_name = (
-        plane_segmentation_name
-        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
-            "name"
-        ]
-    )
 
-    plane_segmentation_metadata = next(
-        (
-            plane_segmentation_metadata
-            for plane_segmentation_metadata in image_segmentation_metadata["plane_segmentations"]
-            if plane_segmentation_metadata["name"] == plane_segmentation_name
-        ),
-        None,
-    )
+    # Get default plane segmentation name - handle both old and new structure
+    if plane_segmentation_name is None:
+        if isinstance(default_metadata["Ophys"]["ImageSegmentation"], dict):
+            # New dictionary structure
+            keys = list(default_metadata["Ophys"]["ImageSegmentation"].keys())
+            if default_plane_segmentation_index < len(keys):
+                default_key = keys[default_plane_segmentation_index]
+                plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
+            else:
+                # Use first key if index out of range
+                default_key = keys[0] if keys else None
+                if default_key:
+                    plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
+        else:
+            # Old list structure
+            plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
+                default_plane_segmentation_index
+            ]["name"]
+
+    # Find plane segmentation metadata
+    plane_segmentation_metadata = None
+
+    if isinstance(image_segmentation_metadata, dict) and not "plane_segmentations" in image_segmentation_metadata:
+        # New dictionary structure
+        for key, segmentation_data in image_segmentation_metadata.items():
+            if segmentation_data.get("name") == plane_segmentation_name:
+                plane_segmentation_metadata = segmentation_data
+                break
+    else:
+        # Old list structure
+        plane_segmentation_metadata = next(
+            (
+                plane_segmentation_metadata
+                for plane_segmentation_metadata in image_segmentation_metadata["plane_segmentations"]
+                if plane_segmentation_metadata["name"] == plane_segmentation_name
+            ),
+            None,
+        )
     if plane_segmentation_metadata is None:
+        metadata_location = (
+            "ImageSegmentation"
+            if isinstance(image_segmentation_metadata, dict)
+            else "ImageSegmentation']['plane_segmentations"
+        )
         raise ValueError(
-            f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations']."
+            f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['{metadata_location}']."
         )
 
     imaging_plane_name = plane_segmentation_metadata["imaging_plane"]

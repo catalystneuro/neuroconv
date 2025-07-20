@@ -4,23 +4,42 @@ from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    convert_ophys_metadata_to_dict,
+    is_old_ophys_metadata_format,
+)
 from ....utils import DeepDict
 
 
-def _update_metadata_links_for_plane_segmentation_name(metadata: dict, plane_segmentation_name: str) -> DeepDict:
+def _update_metadata_links_for_plane_segmentation_name(
+    metadata: dict, plane_segmentation_name: str, metadata_key: str
+) -> DeepDict:
     """Private utility function to update the metadata with a new plane segmentation name."""
     metadata_copy = deepcopy(metadata)
 
-    plane_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+    # Handle backward compatibility
+    if is_old_ophys_metadata_format(metadata_copy):
+        metadata_copy = convert_ophys_metadata_to_dict(metadata_copy)
+
+    # Get plane segmentation metadata using the metadata_key
+    if "ImageSegmentation" in metadata_copy["Ophys"] and metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]:
+        plane_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]
+    else:
+        # Fallback for edge cases
+        return metadata_copy
+
     default_plane_segmentation_name = plane_segmentation_metadata["name"]
     default_plane_suffix = default_plane_segmentation_name.replace("PlaneSegmentation", "")
     new_plane_name_suffix = plane_segmentation_name.replace("PlaneSegmentation", "")
     imaging_plane_name = "ImagingPlane" + new_plane_name_suffix
     plane_segmentation_metadata.update(
         name=plane_segmentation_name,
-        imaging_plane=imaging_plane_name,
+        imaging_plane=metadata_key,  # Keep the same metadata_key reference
     )
-    metadata_copy["Ophys"]["ImagingPlane"][0].update(name=imaging_plane_name)
+
+    # Update imaging plane name if it exists
+    if "ImagingPlanes" in metadata_copy["Ophys"] and metadata_key in metadata_copy["Ophys"]["ImagingPlanes"]:
+        metadata_copy["Ophys"]["ImagingPlanes"][metadata_key].update(name=imaging_plane_name)
 
     fluorescence_metadata_per_plane = metadata_copy["Ophys"]["Fluorescence"].pop(default_plane_segmentation_name)
     # override the default name of the plane segmentation
@@ -114,6 +133,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_name: str | None = None,
         plane_segmentation_name: str | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
 
@@ -130,9 +150,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             To determine what planes are available, use ``Suite2pSegmentationInterface.get_available_planes(folder_path)``.
         plane_segmentation_name: str, optional
             The name of the plane segmentation to be added.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for ImageSegmentation.
+            Default is "default".
         """
 
-        super().__init__(folder_path=folder_path, channel_name=channel_name, plane_name=plane_name)
+        super().__init__(
+            folder_path=folder_path, channel_name=channel_name, plane_name=plane_name, metadata_key=metadata_key
+        )
         available_planes = self.get_available_planes(folder_path=self.source_data["folder_path"])
         available_channels = self.get_available_channels(folder_path=self.source_data["folder_path"])
 
@@ -158,14 +184,25 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         metadata = super().get_metadata()
 
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = convert_ophys_metadata_to_dict(metadata)
+
+        # Get the plane segmentation metadata using metadata_key
+        if "ImageSegmentation" in metadata["Ophys"] and self.metadata_key in metadata["Ophys"]["ImageSegmentation"]:
+            default_plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][self.metadata_key]["name"]
+        else:
+            # If metadata_key doesn't exist, return as is
+            return metadata
+
         # No need to update the metadata links for the default plane segmentation name
-        default_plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
         if self.plane_segmentation_name == default_plane_segmentation_name:
             return metadata
 
         metadata = _update_metadata_links_for_plane_segmentation_name(
             metadata=metadata,
             plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key=self.metadata_key,
         )
 
         return metadata
