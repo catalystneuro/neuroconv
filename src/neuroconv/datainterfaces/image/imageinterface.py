@@ -211,7 +211,7 @@ class ImageInterface(BaseDataInterface):
             if not file_paths:
                 raise ValueError(f"No image files found in {folder}")
 
-        self.file_paths = [Path(p).resolve() for p in file_paths]
+        self.file_paths = [Path(p) for p in file_paths]
 
     def get_metadata(self) -> DeepDict:
         """
