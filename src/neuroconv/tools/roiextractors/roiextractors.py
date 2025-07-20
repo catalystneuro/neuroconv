@@ -770,6 +770,9 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
     # Check if we have the new dictionary structure or old list structure
     if "ImagingPlanes" in metadata["Ophys"]:
         # New dictionary structure
+        # Create the key if it doesn't exist
+        if metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
+            metadata["Ophys"]["ImagingPlanes"][metadata_key] = deepcopy(metadata["Ophys"]["ImagingPlanes"]["default"])
         imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
     else:
         # Old list structure (backward compatibility)
@@ -787,6 +790,13 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
                     description=f"{ch_name} description",
                 )
             )
+
+    # Create ImageSegmentation entry for the metadata_key if it doesn't exist
+    if metadata_key not in metadata["Ophys"]["ImageSegmentation"]:
+        metadata["Ophys"]["ImageSegmentation"][metadata_key] = deepcopy(
+            metadata["Ophys"]["ImageSegmentation"]["default"]
+        )
+        metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane"] = metadata_key
 
     # Get plane segmentation name from the dictionary structure
     if (
