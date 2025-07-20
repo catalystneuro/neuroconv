@@ -87,7 +87,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
-        self._image_size = self.imaging_extractor.get_image_size()
+        self._image_size = self.imaging_extractor.get_frame_shape()
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -274,7 +274,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
         self.folder_path = folder_path
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
-        self._image_size = self.imaging_extractor.get_image_size()
+        self._image_size = self.imaging_extractor.get_frame_shape()
 
     def _determine_position_current(self) -> list[float]:
         """

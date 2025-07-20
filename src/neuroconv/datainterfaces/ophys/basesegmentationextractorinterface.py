@@ -122,11 +122,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.source_data)
-        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_samples()))
 
     def get_timestamps(self) -> np.ndarray:
         return self.segmentation_extractor.frame_to_time(
-            frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
+            frames=np.arange(stop=self.segmentation_extractor.get_num_samples())
         )
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
@@ -189,8 +189,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import add_segmentation_to_nwbfile
 
         if stub_test:
-            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
-            segmentation_extractor = self.segmentation_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_samples()])
+            segmentation_extractor = self.segmentation_extractor.slice_samples(start_frame=0, end_frame=stub_frames)
         else:
             segmentation_extractor = self.segmentation_extractor
 
