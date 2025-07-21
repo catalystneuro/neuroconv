@@ -336,7 +336,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
 
         self.seed = seed
         super().__init__(
-            num_frames=num_frames,
+            num_samples=num_frames,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,
@@ -407,7 +407,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
 
         super().__init__(
             num_rois=num_rois,
-            num_frames=num_frames,
+            num_samples=num_frames,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,

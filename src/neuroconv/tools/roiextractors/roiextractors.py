@@ -1111,7 +1111,7 @@ def _add_fluorescence_traces_to_nwbfile(
 
     # Add timestamps or rate
     if segmentation_extractor.has_time_vector():
-        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_samples()))
+        timestamps = segmentation_extractor.get_timestamps()
         estimated_rate = calculate_regular_series_rate(series=timestamps)
         if estimated_rate:
             roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
