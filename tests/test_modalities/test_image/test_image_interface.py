@@ -374,3 +374,50 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
         assert "GrayscaleImages" in nwbfile.acquisition
         assert len(nwbfile.acquisition["RGBImages"].images) == 2
         assert len(nwbfile.acquisition["GrayscaleImages"].images) == 3
+
+    def test_per_image_metadata_with_custom_key(self):
+        """Test per-image resolution, description, and custom names with custom metadata key."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        # Get metadata and customize per-image settings using the custom metadata key
+        metadata = self.interface.get_metadata()
+        images_dict = metadata["Images"][self.custom_metadata_key]["images"]
+
+        # Get file paths from the interface
+        file_paths = list(self.interface.file_paths)
+
+        # Set up different metadata for each image
+        images_dict[str(file_paths[0])]["resolution"] = 2.5
+        images_dict[str(file_paths[0])]["description"] = "First test image"
+
+        images_dict[str(file_paths[1])]["resolution"] = 3.0
+        images_dict[str(file_paths[1])]["description"] = "Second test image"
+        images_dict[str(file_paths[1])]["name"] = "custom_name_image"
+
+        # Third image gets no custom metadata (should use defaults)
+
+        # Add to NWB file
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile, metadata=metadata)
+
+        # Verify the images were created with correct metadata in the custom container
+        images_container = nwbfile.acquisition[self.custom_metadata_key]
+        assert len(images_container.images) == 3
+
+        # Check first image
+        first_image_name = file_paths[0].stem
+        first_image = images_container.images[first_image_name]
+        assert first_image.resolution == 2.5
+        assert first_image.description == "First test image"
+
+        # Check second image (with custom name)
+        second_image = images_container.images["custom_name_image"]
+        assert second_image.resolution == 3.0
+        assert second_image.description == "Second test image"
+
+        # Check third image (no custom metadata)
+        third_image_name = file_paths[2].stem
+        third_image = images_container.images[third_image_name]
+        # Should not have resolution or description attributes if not set
+        assert not hasattr(third_image, "resolution") or third_image.resolution is None
+        assert not hasattr(third_image, "description") or third_image.description is None
