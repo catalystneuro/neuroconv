@@ -18,6 +18,7 @@
 * Added `MockPoseEstimationInterface` for testing pose estimation workflows with deterministic Lissajous figure motion patterns [PR #1435](https://github.com/catalystneuro/neuroconv/pull/1435)
 * Added `IntanAnalogInterface` for converting non-amplifier analog streams from Intan data files, supporting RHD2000 auxiliary input channels, RHD2000 supply voltage channels, USB board ADC input channels, and DC amplifier channels (RHS system only) [PR #1440](https://github.com/catalystneuro/neuroconv/pull/1440)
 * Added `images_container_metadata_key` parameter to `ImageInterface` to allow custom naming and organization of image containers in NWB files. This enables multiple image interfaces to coexist with distinct container names. [PR #1439](https://github.com/catalystneuro/neuroconv/pull/1439)
+* Added per-image metadata support to `ImageInterface` allowing users to specify individual `resolution` (pixels/cm), name and `description` for each image through metadata structure. [PR #1441](https://github.com/catalystneuro/neuroconv/pull/1441)
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)

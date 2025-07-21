@@ -211,18 +211,89 @@ class ImageInterface(BaseDataInterface):
             if not file_paths:
                 raise ValueError(f"No image files found in {folder}")
 
-        self.file_paths = [Path(p).resolve() for p in file_paths]
+        self.file_paths = [Path(p) for p in file_paths]
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the images."""
+        """
+        Get metadata for the images.
+
+        This method returns a metadata structure that includes both container-level and per-image metadata.
+        The per-image metadata allows customization of individual image properties such as name, resolution,
+        and description.
+
+        Returns
+        -------
+        DeepDict
+            Metadata dictionary with the following structure:
+            {
+                "Images": {
+                    "<images_container_metadata_key>": {
+                        "name": str,
+                            Name of the Images container (defaults to images_container_metadata_key)
+                        "description": str,
+                            Description of the Images container
+                        "images": {
+                            "<file_path_1>": {
+                                "name": str,
+                                    Name for the individual image (defaults to file stem)
+                                "resolution": float, optional
+                                    Resolution in pixels/cm (can be added by user)
+                                "description": str, optional
+                                    Description of the individual image (can be added by user)
+                            },
+                            "<file_path_2>": {
+                                ...
+                            }
+                        }
+                    }
+                }
+            }
+
+        Examples
+        --------
+        Basic usage:
+        >>> interface = ImageInterface(file_paths=["/data/img1.png", "/data/img2.jpg"])
+        >>> metadata = interface.get_metadata()
+        >>> print(metadata["Images"]["ImagesRGB"]["images"])
+        {
+            "/data/img1.png": {"name": "img1"},
+            "/data/img2.jpg": {"name": "img2"}
+        }
+
+        Customizing per-image metadata:
+        >>> metadata = interface.get_metadata()
+        >>> metadata["Images"]["ImagesRGB"]["images"]["/data/img1.png"]["resolution"] = 2.5
+        >>> metadata["Images"]["ImagesRGB"]["images"]["/data/img1.png"]["description"] = "Baseline image"
+        >>> metadata["Images"]["ImagesRGB"]["images"]["/data/img2.jpg"]["name"] = "treatment_image"
+        >>> interface.add_to_nwbfile(nwbfile, metadata=metadata)
+
+        Notes
+        -----
+        - The "images" dictionary maps file paths (as strings) to individual image metadata
+        - Users can modify the returned metadata to customize image properties before calling add_to_nwbfile()
+        - Resolution should be specified in pixels/cm if provided
+        - If resolution or description are not specified, they will not be passed to the NWB image objects
+        - Image names default to the file stem but can be overridden in the metadata
+        """
         metadata = super().get_metadata()
 
         # Add basic metadata about the images under the specified key
         if "Images" not in metadata:
             metadata["Images"] = {}
 
+        # Create images_dict mapping file_path to individual image metadata
+        images_metadata_dict = {}
+        for file_path in self.file_paths:
+            file_path_str = str(file_path)
+            images_metadata_dict[file_path_str] = {
+                "name": Path(file_path).stem,  # Default name from file stem
+                # Users can add "resolution" and "description" keys as needed
+            }
+
         metadata["Images"][self.images_container_metadata_key] = dict(
-            name=self.images_container_metadata_key, description="Images loaded through ImageInterface"
+            name=self.images_container_metadata_key,
+            description="Images loaded through ImageInterface",
+            images=images_metadata_dict,
         )
 
         return metadata
@@ -278,24 +349,28 @@ class ImageInterface(BaseDataInterface):
         )
 
         # Process each image
+        images_metadata_dict = container_metadata.get("images", {})
         for file_path in self.file_paths:
             # Create iterator for memory-efficient loading
             iterator = SingleImageIterator(file_path)
-
-            # Get image name from file name
-            image_name = Path(file_path).stem
-
             # Validate mode and get image class
             if iterator.image_mode not in self.IMAGE_MODE_TO_NWB_TYPE_MAP:
                 raise ValueError(f"Unsupported image mode: {iterator.image_mode} for image {file_path.name}")
 
+            # Build the Image
             nwb_image_class = self.IMAGE_MODE_TO_NWB_TYPE_MAP[iterator.image_mode]
-            image_container = nwb_image_class(name=image_name, data=iterator)
+            image_kwargs = dict(data=iterator)
+            image_metadata = images_metadata_dict.get(str(file_path), {})
+            image_kwargs.update(image_metadata)
+            # If name is not available use the file stem
+            image_kwargs["name"] = image_kwargs.get("name", Path(file_path).stem)
+
+            nwb_image = nwb_image_class(**image_kwargs)
 
             # Add to images container
-            images_container.add_image(image_container)
+            images_container.add_image(nwb_image)
 
-        # Add images container to file
+        # Add images container to nwb file
         if self.images_location == "acquisition":
             nwbfile.add_acquisition(images_container)
         else:
