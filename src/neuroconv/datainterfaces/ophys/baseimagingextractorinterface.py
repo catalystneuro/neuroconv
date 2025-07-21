@@ -39,8 +39,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
         **source_data,
     ):
+
+        from roiextractors import ImagingExtractor
+
         super().__init__(**source_data)
-        self.imaging_extractor = self._extractor_instance
+
+        self.imaging_extractor: ImagingExtractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
@@ -180,8 +184,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_samples()])
-            imaging_extractor = self.imaging_extractor.slice_samples(start_frame=0, end_frame=stub_frames)
+            stub_samples = min([stub_frames, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
         else:
             imaging_extractor = self.imaging_extractor
 
