@@ -129,9 +129,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
-        return reinitialized_extractor.sample_indices_to_time(
-            frames=np.arange(stop=reinitialized_extractor.get_num_samples())
-        )
+        return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_samples()))
