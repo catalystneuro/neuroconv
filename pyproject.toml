@@ -157,9 +157,6 @@ edf = [
 intan = [
     "neuroconv[ecephys_minimal]",
 ]
-intan_analog = [
-    "neuroconv[ecephys_minimal]",
-]
 kilosort = [
     "neuroconv[ecephys_minimal]",
 ]
