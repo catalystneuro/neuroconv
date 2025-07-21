@@ -33,7 +33,7 @@ This interface handles the primary neural recordings from the RHD2000 or RHS2000
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 Intan Analog Data Conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ USB board ADC input channels
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 RHD2000 auxiliary input
 """""""""""""""""""""""
@@ -108,7 +108,7 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_aux = output_folder / "intan_auxiliary_conversion.nwb"
-    >>> interface_aux.run_conversion(nwbfile_path=nwbfile_path_aux, metadata=metadata_aux)
+    >>> interface_aux.run_conversion(nwbfile_path=nwbfile_path_aux, metadata=metadata_aux, overwrite=True)
 
 DC Amplifier channels (RHS systems)
 """""""""""""""""""""""""""""""""""
@@ -140,7 +140,7 @@ For RHS systems, you can also convert DC amplifier channels:
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_dc = output_folder / "intan_dc_amplifier_conversion.nwb"
-    >>> interface_dc.run_conversion(nwbfile_path=nwbfile_path_dc, metadata=metadata_dc)
+    >>> interface_dc.run_conversion(nwbfile_path=nwbfile_path_dc, metadata=metadata_dc, overwrite=True)
 
 USB board ADC output channels (RHS systems)
 """""""""""""""""""""""""""""""""""""""""""
@@ -173,4 +173,4 @@ For RHS systems, you can also convert ADC output channels:
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_output = output_folder / "intan_adc_output_conversion.nwb"
-    >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output)
+    >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output, overwrite=True)
