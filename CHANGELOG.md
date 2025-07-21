@@ -5,10 +5,12 @@
 * Removed deprecated arguments: `load_sync_channel` in `SpikeGLXNIDQInterface` initialization and `start_time`, `write_as` and `write_electrical_series` in `SpikeGLXNIDQInterface.add_to_nwbfile()`. [PR #1378](https://github.com/catalystneuro/neuroconv/pull/1378)
 * Removed `starting_time` as an argument from the recording interfaces `add_to_nwbfile` method and the stand alone  `add_recording_segment` utility [PR #1378](https://github.com/catalystneuro/neuroconv/pull/1378)
 * Deprecated the `container_name` parameter in `ImageInterface.add_to_nwbfile()` method. Use `images_container_metadata_key` in `__init__` instead. This parameter will be removed on or after February 2026. [PR #1439](https://github.com/catalystneuro/neuroconv/pull/1439)
+* Removed deprecated type aliases `FolderPathType`, `FilePath`, `OptionalFilePath`, and `OptionalFolderPathType` from utils. Use `pydantic.DirectoryPath`, `pydantic.FilePath`, or their optional variants directly. [PR #1442](https://github.com/catalystneuro/neuroconv/pull/1442)
 
 ## Bug Fixes
 * Fixed SpikeInterface physical unit properties being incorrectly included in electrodes table [PR #1406](https://github.com/catalystneuro/neuroconv/pull/1406)
 * Fixed deprecated ROI extractor method calls: replaced `get_image_size()` with `get_frame_shape()`, `get_num_frames()` with `get_num_samples()`, and `frame_slice()` with `slice_samples()` in ophys interfaces [PR #1443](https://github.com/catalystneuro/neuroconv/pull/1443)
+
 
 ## Features
 * Segmentation interfaces now support roi ids that are strings [PR #1390](https://github.com/catalystneuro/neuroconv/pull/1390)
