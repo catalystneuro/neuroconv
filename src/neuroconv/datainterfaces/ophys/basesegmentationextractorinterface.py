@@ -190,7 +190,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         if stub_test:
             stub_frames = min([stub_frames, self.segmentation_extractor.get_num_samples()])
-            segmentation_extractor = self.segmentation_extractor.slice_samples(start_frame=0, end_frame=stub_frames)
+            segmentation_extractor = self.segmentation_extractor.slice_samples(start_sample=0, end_sample=stub_frames)
         else:
             segmentation_extractor = self.segmentation_extractor
 
