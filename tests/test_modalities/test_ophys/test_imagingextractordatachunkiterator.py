@@ -145,7 +145,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
             imaging_extractor = self.imaging_extractor
         else:
             imaging_extractor = generate_dummy_imaging_extractor(
-                num_frames=max_data_shape[0],
+                num_samples=max_data_shape[0],
                 num_columns=max_data_shape[1],
                 num_rows=max_data_shape[2],
             )
@@ -183,13 +183,13 @@ class TestImagingExtractorDataChunkIterator(TestCase):
 
 
 def test_volumetric_default_chunking():
-    number_of_frames = 10
+    number_of_samples = 10
     width = 1024
     height = 1024
     number_of_planes = 3
 
     imaging_extractors = [
-        generate_dummy_imaging_extractor(num_frames=number_of_frames, num_rows=width, num_columns=height)
+        generate_dummy_imaging_extractor(num_samples=number_of_samples, num_rows=width, num_columns=height)
         for _ in range(number_of_planes)
     ]
     volumetric_imaging_extractor = VolumetricImagingExtractor(imaging_extractors=imaging_extractors)
