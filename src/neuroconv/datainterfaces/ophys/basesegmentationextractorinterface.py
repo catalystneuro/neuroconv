@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -165,13 +166,14 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
+        stub_samples: int = 100,
     ):
         """
 
@@ -182,7 +184,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata : dict, optional
             The metadata for the interface
         stub_test : bool, default: False
-        stub_frames : int, default: 100
+        stub_frames : int, optional
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
         include_background_segmentation : bool, default: False
             Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
             neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
@@ -209,6 +213,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
 
         Returns
         -------
@@ -216,9 +222,26 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         """
         from ...tools.roiextractors import add_segmentation_to_nwbfile
 
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         if stub_test:
-            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_samples()])
-            segmentation_extractor = self.segmentation_extractor.slice_samples(start_frame=0, end_frame=stub_frames)
+            effective_stub_samples = min([effective_stub_samples, self.segmentation_extractor.get_num_samples()])
+            segmentation_extractor = self.segmentation_extractor.slice_samples(
+                start_sample=0, end_sample=effective_stub_samples
+            )
         else:
             segmentation_extractor = self.segmentation_extractor
 

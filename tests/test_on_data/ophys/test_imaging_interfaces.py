@@ -484,7 +484,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls = request.cls
 
         cls.photon_series_name = "TwoPhotonSeries"
-        cls.num_frames = 5
+        cls.num_samples = 5
         cls.image_shape = (512, 512, 2)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
@@ -538,7 +538,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 20.629515014336377
 
@@ -559,7 +559,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         cls = request.cls
 
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
-        cls.num_frames = 5
+        cls.num_samples = 5
         cls.image_shape = (512, 512)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
@@ -629,7 +629,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 10.314757507168189
 
@@ -649,7 +649,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
 
         cls = request.cls
         cls.photon_series_name = "TwoPhotonSeriesCh2"
-        cls.num_frames = 10
+        cls.num_samples = 10
         cls.image_shape = (512, 512)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.8.64.200")
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
@@ -700,7 +700,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 29.873615189896864
 
