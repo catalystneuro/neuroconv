@@ -1,11 +1,12 @@
 from pathlib import Path
+from typing import Optional
 
 from pydantic import FilePath
 
 from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -63,12 +64,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         self.stream_id = str(nsx_to_load)
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
+            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
@@ -89,28 +90,42 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: float | None = None, verbose: bool = False):
+    def __init__(
+        self,
+        file_path: FilePath,
+        sampling_frequency: Optional[float] = None,
+        nsx_to_load: Optional[int | list | str] = None,
+        verbose: bool = False,
+    ):
         """
         Parameters
         ----------
         file_path : str, Path
             The file path to the ``.nev`` data
-        sampling_frequency: float, optional
+        sampling_frequency : float, optional
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
             used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
             this extractor to be initialized.
+        nsx_to_load : int | list | str, optional
+            IDs of nsX file from which to load data, e.g., if set to 5 only data from the ns5 file are loaded.
+            If 'all', then all nsX will be loaded. If None, all nsX files will be loaded. If empty list, no nsX files will be loaded.
         verbose : bool, default: False
             Enables verbosity
         """
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(
+            file_path=file_path,
+            sampling_frequency=sampling_frequency,
+            nsx_to_load=nsx_to_load,
+            verbose=verbose,
+        )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
-            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+            metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
         return metadata

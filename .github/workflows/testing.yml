@@ -34,7 +34,6 @@ jobs:
         os: ${{ fromJson(inputs.os-versions) }}
     steps:
       - uses: actions/checkout@v4
-      - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -43,25 +42,22 @@ jobs:
       - name: Global Setup
         run: |
           python -m pip install -U pip  # Official recommended way
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
 
       - name: Install NeuroConv with minimal requirements
-        run: pip install .
+        run: python -m pip install "."
       - name: Test initial import of all non-lazy dependencies
-        run: |  # Minimal installation should allow for lazy imports on main modules
+        run: |  # This tests that everything can be imported without errors
           python -c "import neuroconv"
           python -c "import neuroconv.datainterfaces"
           python -c "import neuroconv.tools"
           python -c "import neuroconv.utils"
           python -c "import neuroconv.converters"
-      - name: Install Wine (For Plexon2 Tests)
-        uses: ./.github/actions/install-wine
-        with:
-          os: ${{ runner.os }}
+
 
       - name: Install NeuroConv with testing requirements
-        run: pip install .[test]
+        run: |
+          python -m pip install "."
+          python -m pip install --group test
       - name: Run import tests
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
@@ -71,29 +67,89 @@ jobs:
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
 
-      - name: Install additional specific testing-only requirements
-        run: pip install .[test]
+      - name: Test ecephys machinery
+        shell: bash
+        run: |
+          # Create ecephys environment
+          python -m venv env_ecephys
+          # Activate ecephys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_ecephys/Scripts/activate
+          else
+            source env_ecephys/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[ecephys_minimal,sorting_analyzer]"  # we test the sorting analyzer here so we need its dependencies
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
+      - name: Test ophys machinery
+        shell: bash
+        run: |
+          # Create ophys environment
+          python -m venv env_ophys
+          # Activate ophys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_ophys/Scripts/activate
+          else
+            source env_ophys/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[ophys_minimal]"
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_ophys -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
+      - name: Test fiber photometry machinery
+        shell: bash
+        run: |
+          # Create fiber_photometry environment
+          python -m venv env_fiber_photometry
+          # Activate fiber_photometry environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_fiber_photometry/Scripts/activate
+          else
+            source env_fiber_photometry/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[fiber_photometry]"
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_fiber_photometry -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
-      - name: Install with behavior requirements
-        run: pip install .[behavior]
-      - name: Run behavior tests
-        run: pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
-
-      - name: Install with icephys requirements
-        run: pip install .[icephys]
-
-      #- name: Run icephys tests  # There are no icephys specific tests without data
-      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
+      - name: Test behavior machinery
+        shell: bash
+        run: |
+          # Create behavior environment
+          python -m venv env_behavior
+          # Activate behavior environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_behavior/Scripts/activate
+          else
+            source env_behavior/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[behavior]"
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_behavior -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
 
       - name: Prepare data for tests
         uses: ./.github/actions/load-data
@@ -101,15 +157,19 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
-          os: ${{ matrix.os }}
 
-      - name: Install full requirements
-        run: pip install .[full]
+      - name: Install full requirements in base environment
+        run: python -m pip install ".[full]"
+
+      - name: Install Wine (For Plexon2 Data Tests)
+        uses: ./.github/actions/install-wine
+        with:
+          os: ${{ runner.os }}
 
       - name: Run full pytest with coverage
         run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
-        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest' }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

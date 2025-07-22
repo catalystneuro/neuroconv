@@ -13,7 +13,7 @@ from .spikeglx_utils import (
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
@@ -71,6 +71,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
             )
 
+        if stream_id is not None and "SYNC" in stream_id:
+            raise ValueError(
+                "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. Open an issue if you need this functionality."
+            )
+
         if file_path is not None:
             warnings.warn(
                 "file_path is deprecated and will be removed by the end of 2025. "
@@ -115,7 +120,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:

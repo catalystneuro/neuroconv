@@ -53,36 +53,38 @@ use the following structure:
     ...     "name": "PoseEstimationContainerName", # Edit to change the name and if you add multiple DLC containers for disambiguation
     ...     "description": "2D keypoint coordinates estimated using DeepLabCut.",
     ...     "source_software": "DeepLabCut",
-    ...     "dimensions": [0, 0],
+    ...     "source_software_version": "2.2.0",
+    ...     "dimensions": [[0, 0]],
     ...     "skeleton": "SubjectIDSkeleton",
     ...     "devices": ["CameraPoseEstimationContainerName"],
     ...     "scorer": "DLC_resnet50_openfieldAug20shuffle1_30000",
     ...     "original_videos": None,
+    ...     "labeled_videos": None,
     ...     "PoseEstimationSeries": {
     ...         "snout": {
-    ...             "name": "ind1_snout",
-    ...             "description": "Keypoint snout from individual ind1.",
+    ...             "name": "PoseEstimationSeriesSnout",
+    ...             "description": "Pose estimation series for snout.",
     ...             "unit": "pixels",
     ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
     ...             "confidence_definition": "Softmax output of the deep neural network.",
     ...         },
     ...         "leftear": {
-    ...             "name": "ind1_leftear",
-    ...             "description": "Keypoint leftear from individual ind1.",
+    ...             "name": "PoseEstimationSeriesLeftear",
+    ...             "description": "Pose estimation series for leftear.",
     ...             "unit": "pixels",
     ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
     ...             "confidence_definition": "Softmax output of the deep neural network.",
     ...         },
     ...         "rightear": {
-    ...             "name": "ind1_rightear",
-    ...             "description": "Keypoint rightear from individual ind1.",
+    ...             "name": "PoseEstimationSeriesRightear",
+    ...             "description": "Pose estimation series for rightear.",
     ...             "unit": "pixels",
     ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
     ...             "confidence_definition": "Softmax output of the deep neural network.",
     ...         },
     ...         "tailbase": {
-    ...             "name": "ind1_tailbase",
-    ...             "description": "Keypoint tailbase from individual ind1.",
+    ...             "name": "PoseEstimationSeriesTailbase",
+    ...             "description": "Pose estimation series for tailbase.",
     ...             "unit": "pixels",
     ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
     ...             "confidence_definition": "Softmax output of the deep neural network.",
@@ -114,11 +116,13 @@ The metadata structure for DeepLabCut includes:
    - ``name``: Name of the pose estimation container
    - ``description``: Description of the pose estimation data
    - ``source_software``: Software used for pose estimation (DeepLabCut)
-   - ``dimensions``: Video dimensions [height, width]
+   - ``source_software_version``: Version of the software used
+   - ``dimensions``: Video dimensions [height, width] for each video
    - ``skeleton``: Reference to a skeleton defined in Skeletons
    - ``devices``: List of devices used for recording
    - ``scorer``: Name of the DeepLabCut model used
    - ``original_videos``: Paths to original videos (if available)
+   - ``labeled_videos``: Paths to labeled videos (if available)
    - ``PoseEstimationSeries``: Dictionary of series for each bodypart
 
 2. **Skeletons** - Defines the skeleton structure:

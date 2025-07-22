@@ -5,18 +5,22 @@ from typing import Literal
 
 import numpy as np
 import psutil
-from hdmf.data_utils import DataChunkIterator
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.image import ImageSeries
 from tqdm import tqdm
 
-from .video_utils import VideoCaptureContext
+from .video_utils import VideoCaptureContext, VideoDataChunkIterator
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
-from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_class
+from ....utils import (
+    DeepDict,
+    dict_deep_update,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 from ....utils.str_utils import human_readable_size
 
 
@@ -25,7 +29,7 @@ class InternalVideoInterface(BaseDataInterface):
 
     display_name = "Video"
     keywords = ("video",)
-    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
+    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flv", ".mkv")
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats and writing them as ImageSeries with internal data."
 
@@ -98,7 +102,7 @@ class InternalVideoInterface(BaseDataInterface):
         }
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
@@ -288,8 +292,7 @@ class InternalVideoInterface(BaseDataInterface):
                 nwbfile.add_device(device)
             image_series_kwargs["device"] = device
 
-        stub_frames = 10
-
+        # The 70 size is an estimation of the total size of the video file in memory
         uncompressed_estimate = file_path.stat().st_size * 70
         available_memory = psutil.virtual_memory().available
         if not buffer_data and not stub_test and uncompressed_estimate >= available_memory:
@@ -298,38 +301,28 @@ class InternalVideoInterface(BaseDataInterface):
                 f"as array ({human_readable_size(available_memory)} available)! Forcing buffer_data to True."
             )
             buffer_data = True
-        with VideoCaptureContext(str(file_path)) as video_capture_ob:
-            if stub_test:
-                video_capture_ob.frame_count = stub_frames
-            total_frames = video_capture_ob.get_video_frame_count()
-            frame_shape = video_capture_ob.get_frame_shape()
-
-        maxshape = (total_frames, *frame_shape)
-        tqdm_pos, tqdm_mininterval = (0, 10)
 
         if buffer_data:
-            chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
-            video_capture_ob = VideoCaptureContext(str(file_path))
-            if stub_test:
-                video_capture_ob.frame_count = stub_frames
-            iterable = DataChunkIterator(
-                data=tqdm(
-                    iterable=video_capture_ob,
-                    desc=f"Copying video data for {file_path.name}",
-                    position=tqdm_pos,
-                    total=total_frames,
-                    mininterval=tqdm_mininterval,
-                ),
-                iter_axis=0,  # nwb standard is time as zero axis
-                maxshape=maxshape,
+            data_iterator = VideoDataChunkIterator(
+                video_file=file_path,
+                stub_test=stub_test,
             )
+            image_series_kwargs.update(data=data_iterator)
 
         else:
             # Load the video
-            chunks = None
-            video = np.zeros(shape=maxshape, dtype="uint8")
-            with VideoCaptureContext(str(file_path)) as video_capture_ob:
+            with VideoCaptureContext(file_path) as video_capture_ob:
+
+                total_frames = video_capture_ob.get_video_frame_count()
+                frame_shape = video_capture_ob.get_frame_shape()
+                dtype = video_capture_ob.get_video_frame_dtype()
+
+                maxshape = (total_frames, *frame_shape)
+                tqdm_pos, tqdm_mininterval = (0, 10)
+                video_array = np.zeros(shape=maxshape, dtype=dtype)
+
                 if stub_test:
+                    stub_frames = 10
                     video_capture_ob.frame_count = stub_frames
                 with tqdm(
                     desc=f"Reading video data for {Path(file_path).name}",
@@ -338,11 +331,10 @@ class InternalVideoInterface(BaseDataInterface):
                     mininterval=tqdm_mininterval,
                 ) as pbar:
                     for n, frame in enumerate(video_capture_ob):
-                        video[n, :, :, :] = frame
+                        video_array[n, :, :, :] = frame
                         pbar.update(1)
-            iterable = video
 
-        image_series_kwargs.update(data=iterable)
+                image_series_kwargs.update(data=video_array)
 
         from ....utils import calculate_regular_series_rate
 

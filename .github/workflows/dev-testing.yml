@@ -53,7 +53,9 @@ jobs:
           os: ${{ runner.os }}
 
       - name: Install full requirements
-        run: pip install --no-cache-dir .[full,test]
+        run: |
+          pip install --no-cache-dir .[full]
+          pip install --group test
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
@@ -82,7 +84,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
-          os: ${{ matrix.os }}
 
 
       - name: Run full pytest

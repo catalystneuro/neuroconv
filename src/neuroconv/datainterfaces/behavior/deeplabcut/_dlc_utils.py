@@ -9,6 +9,7 @@ from pydantic import FilePath
 from ruamel.yaml import YAML
 
 from ....tools import get_module
+from ....utils import DeepDict
 from ....utils.checks import calculate_regular_series_rate
 
 
@@ -251,7 +252,7 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
     return video_file_path, image_shape
 
 
-def _write_pes_to_nwbfile(
+def _add_pose_estimation_to_nwbfile(
     nwbfile,
     df_animal,
     timestamps,
@@ -260,7 +261,7 @@ def _write_pes_to_nwbfile(
     metadata: dict | None = None,
 ):
     """
-    Updated version of _write_pes_to_nwbfile to work with ndx-pose v0.2.0+
+    Adds pose estimation data to an nwbfile using ndx-pose v0.2.0+
 
     Parameters
     ----------
@@ -276,30 +277,25 @@ def _write_pes_to_nwbfile(
         The metadata dictionary containing additional information for the pose estimation.
     """
     from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
-    from pynwb.file import Subject
-
-    from ....utils import DeepDict
 
     # Extract keypoints from the DataFrame
     keypoints = df_animal.columns.get_level_values("bodyparts").unique()
 
     # Create default metadata structure
     default_metadata = dict()
-    container_name = pose_estimation_metadata_key
     animal = ""  # Default empty animal name
-    skeleton_default_name = f"Skeleton{container_name}_{animal.capitalize()}"
+    skeleton_default_name = f"Skeleton{pose_estimation_metadata_key}_{animal.capitalize()}"
     # Set up default container structure
-    camera_default_name = f"Camera{container_name}"
+    camera_default_name = f"Camera{pose_estimation_metadata_key}"
     default_metadata["PoseEstimation"] = {
         "PoseEstimationContainers": {
-            container_name: {
-                "name": container_name,
+            pose_estimation_metadata_key: {
+                "name": pose_estimation_metadata_key,
                 "description": "2D keypoint coordinates estimated using DeepLabCut.",
                 "source_software": "DeepLabCut",
                 "scorer": "DeepLabCut",
                 "devices": [camera_default_name],
                 "PoseEstimationSeries": {},
-                "dimensions": [0, 0],
                 "skeleton": skeleton_default_name,
             }
         },
@@ -325,31 +321,27 @@ def _write_pes_to_nwbfile(
 
     # Access the updated metadata structure directly
     pose_estimation_metadata = default_metadata["PoseEstimation"]
-    container_metadata = pose_estimation_metadata["PoseEstimationContainers"][container_name]
+    container_metadata = pose_estimation_metadata["PoseEstimationContainers"][pose_estimation_metadata_key]
 
     # Get skeleton information
-    skeleton_name = container_metadata["skeleton"]
-    skeleton_metadata = pose_estimation_metadata["Skeletons"][skeleton_name]
+    skeleton_metadata_key = container_metadata["skeleton"]
+    skeleton_metadata = pose_estimation_metadata["Skeletons"][skeleton_metadata_key]
 
-    # Get animal/subject from skeleton metadata
-    animal = skeleton_metadata["subject"]
-
-    # Create or get subject
-    if nwbfile.subject is None and animal:
-        subject = Subject(subject_id=animal)
-        nwbfile.subject = subject
-    else:
+    # If the skeleton name is identical to the subject id then link the skeleton to the subject
+    skeleton_subject = skeleton_metadata["subject"]
+    if nwbfile.subject is not None and skeleton_subject == nwbfile.subject.subject_id:
         subject = nwbfile.subject
+    else:
+        subject = None
 
     # Create skeleton
     skeleton = Skeleton(
-        name=skeleton_name,
+        name=skeleton_metadata["name"],
         nodes=skeleton_metadata["nodes"],
         edges=np.array(skeleton_metadata["edges"]) if skeleton_metadata["edges"] else None,
-        subject=subject if animal == getattr(subject, "subject_id", "") else None,
+        subject=subject,
     )
 
-    # Add skeleton to processing module
     behavior_processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
     if "Skeletons" not in behavior_processing_module.data_interfaces:
         skeletons = Skeletons(skeletons=[skeleton])
@@ -372,8 +364,8 @@ def _write_pes_to_nwbfile(
 
         # Default series kwargs
         pose_estimation_series_kwargs = dict(
-            name=f"{animal}_{keypoint}" if animal else keypoint,
-            description=f"Keypoint {keypoint} from individual {animal}.",
+            name=f"PoseEstimationSeries{keypoint.capitalize()}",
+            description=f"Pose estimation series for {keypoint}.",
             data=data[:, :2],
             unit="pixels",
             reference_frame="(0,0) corresponds to the bottom left corner of the video.",
@@ -400,8 +392,9 @@ def _write_pes_to_nwbfile(
         pose_estimation_series.append(series)
 
     # Get device information
-    device_name = container_metadata["devices"][0]
-    device_metadata = pose_estimation_metadata["Devices"][device_name]
+    device_metadata_key = container_metadata["devices"][0]
+    device_metadata = pose_estimation_metadata["Devices"][device_metadata_key]
+    device_name = device_metadata["name"]
 
     # Create or get the device
     if device_name not in nwbfile.devices:
@@ -414,13 +407,16 @@ def _write_pes_to_nwbfile(
 
     # Create PoseEstimation container with all available metadata
     pose_estimation_container = PoseEstimation(
-        name=container_name,
+        name=container_metadata["name"],
         pose_estimation_series=pose_estimation_series,
         description=container_metadata["description"],
         original_videos=container_metadata.get("original_videos", None),
+        labeled_videos=container_metadata.get("labeled_videos", None),
+        dimensions=container_metadata.get("dimensions", None),
         devices=[camera],
         scorer=container_metadata["scorer"],
         source_software=container_metadata["source_software"],
+        source_software_version=container_metadata.get("source_software_version", None),
         skeleton=skeleton,
     )
 

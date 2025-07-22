@@ -5,7 +5,7 @@ from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import dict_deep_update
+from ....utils import DeepDict, dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
@@ -49,7 +49,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path: FolderPathType
+        folder_path: DirectoryPath
             Path to Neuralynx directory.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
@@ -70,7 +70,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`

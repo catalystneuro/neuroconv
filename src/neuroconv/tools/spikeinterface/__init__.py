@@ -16,6 +16,7 @@ from .spikeinterface import (
     check_if_recording_traces_fit_into_memory,
     _check_if_recording_traces_fit_into_memory,
     add_recording_metadata_to_nwbfile,
+    _stub_recording,
 )
 
 

@@ -13,7 +13,6 @@ from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
-from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
 from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -367,7 +366,11 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
         metadata = interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        # Use conversion_options if available
+        conversion_options = getattr(self, "conversion_options", {})
+
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **conversion_options)
 
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
@@ -396,6 +399,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.core.testing import check_recordings_equal
         from spikeinterface.extractors import NwbRecordingExtractor
 
         recording = self.interface.recording_extractor
@@ -621,6 +625,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         self.interface.register_recording(recording_interface=recording_interface)
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.core.testing import check_sortings_equal
         from spikeinterface.extractors import NwbSortingExtractor
 
         sorting = self.interface.sorting_extractor
@@ -1143,7 +1148,7 @@ class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, Temporal
             times_from_extractor = imaging_extractor._times
             assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
 
-            data_from_extractor = imaging_extractor.get_video()
+            data_from_extractor = imaging_extractor.get_series()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
@@ -1172,7 +1177,7 @@ class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalA
             assert two_photon_series.starting_time == self.expected_starting_time
 
             imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_video()
+            data_from_extractor = imaging_extractor.get_series()
             assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
             optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
@@ -1451,3 +1456,43 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.check_shift_timestamps_by_start_time()
                 self.check_interface_original_timestamps_inmutability()
                 self.check_nwbfile_temporal_alignment()
+
+
+class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    Generic class for testing any pose estimation interface.
+    """
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Check that pose estimation data can be read back from NWB file."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            # Check that behavior module exists
+            assert "behavior" in nwbfile.processing
+            behavior_module = nwbfile.processing["behavior"]
+
+            # Check for pose estimation container (this may vary by interface)
+            # Most interfaces will have some pose estimation container in behavior
+            pose_containers = [
+                data_interface
+                for name, data_interface in behavior_module.data_interfaces.items()
+                if hasattr(data_interface, "pose_estimation_series")
+            ]
+            assert len(pose_containers) > 0, "No pose estimation containers found in behavior module"
+
+            # Check that pose estimation series exist
+            pose_container = pose_containers[0]
+            assert hasattr(pose_container, "pose_estimation_series")
+            assert len(pose_container.pose_estimation_series) > 0
+
+            # Check that timestamps are properly written
+            for series_name, series in pose_container.pose_estimation_series.items():
+                assert hasattr(series, "timestamps")
+                assert len(series.timestamps) > 0
+                assert hasattr(series, "data")
+                assert len(series.data) > 0
+
+                # Check data dimensions (should be 2D: time x spatial_dims)
+                assert len(series.data.shape) == 2
+                assert series.data.shape[0] == len(series.timestamps)

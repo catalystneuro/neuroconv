@@ -7,6 +7,7 @@ from pynwb import NWBFile
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
+    DeepDict,
     get_json_schema_from_method_signature,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
@@ -48,7 +49,6 @@ class BaseIcephysInterface(BaseExtractorInterface):
         for f in file_paths:
             self.readers_list.append(self.get_extractor()(filename=f))
 
-        self.subset_channels = None
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
@@ -61,7 +61,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ...tools.neo import get_number_of_electrodes
 
         metadata = super().get_metadata()

@@ -55,7 +55,7 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    ABF <recording/abf>
+    Axon Binary File (ABF) <recording/abf>
 
 Optical physiology
 ------------------
@@ -67,11 +67,14 @@ Imaging
     :maxdepth: 1
 
     Bruker <imaging/brukertiff>
+    Femtonics <imaging/femtonics>
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
+    Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
     Thor <imaging/thor>
     Tiff <imaging/tiff>
 
@@ -84,6 +87,7 @@ Segmentation
     Caiman <segmentation/caiman>
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
+    Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
 Fiber Photometry

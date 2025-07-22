@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -42,7 +43,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.recording_extractor.set_property("channel_name", channel_names)
             self.recording_extractor.delete_property("channel_names")
 
-        self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
@@ -294,39 +294,22 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         spikeinterface.core.BaseRecording
             The subsetted recording extractor.
         """
-        from spikeinterface.core.segmentutils import AppendSegmentRecording
+        from ...tools.spikeinterface import _stub_recording
 
-        max_frames = 100
+        # Deprecating internal methods to simplify the API
+        warnings.warn(
+            "The subset_recording method is deprecated. It will be removed on or after October 2025.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        recording_extractor = self.recording_extractor
-        number_of_segments = recording_extractor.get_num_segments()
-        recording_segments = [recording_extractor.select_segments([index]) for index in range(number_of_segments)]
-        end_frame_list = [min(max_frames, segment.get_num_frames()) for segment in recording_segments]
-        recording_segments_stubbed = [
-            segment.frame_slice(start_frame=0, end_frame=end_frame)
-            for segment, end_frame in zip(recording_segments, end_frame_list)
-        ]
-        recording_extractor_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
-
-        times_stubbed = [
-            recording_extractor.get_times(segment_index=segment_index)[:end_frame]
-            for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
-        ]
-        for segment_index in range(number_of_segments):
-            recording_extractor_stubbed.set_times(
-                times=times_stubbed[segment_index],
-                segment_index=segment_index,
-                with_warning=False,
-            )
-
-        return recording_extractor_stubbed
+        return _stub_recording(recording=self.recording_extractor)
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
-        starting_time: float | None = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
@@ -346,8 +329,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
 
-        starting_time : float, optional
-            Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as : {'raw', 'processed', 'lfp'}, default='raw'
@@ -389,12 +370,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
-        from ...tools.spikeinterface import add_recording_to_nwbfile
+        from ...tools.spikeinterface import _stub_recording, add_recording_to_nwbfile
 
-        if stub_test or self.subset_channels is not None:
-            recording = self.subset_recording(stub_test=stub_test)
-        else:
-            recording = self.recording_extractor
+        recording = self.recording_extractor
+        if stub_test:
+            recording = _stub_recording(recording=recording)
 
         metadata = metadata or self.get_metadata()
 
@@ -402,7 +382,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,

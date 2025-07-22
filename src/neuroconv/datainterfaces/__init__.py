@@ -82,7 +82,10 @@ from .ophys.brukertiff.brukertiffdatainterface import (
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
+from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
+from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -151,12 +154,15 @@ interface_list = [
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
-    Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
+    FemtonicsImagingInterface,
+    InscopixSegmentationInterface,
     SimaSegmentationInterface,
+    Suite2pSegmentationInterface,
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
+    InscopixImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
     ScanImageMultiFileImagingInterface,

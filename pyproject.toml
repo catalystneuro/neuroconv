@@ -2,9 +2,10 @@
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "neuroconv"
-version = "0.7.4"
+version = "0.7.6"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -35,9 +36,7 @@ requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.22.0; python_version <= '3.11'",
     "numpy>=1.26.0; python_version >= '3.12'",
-    "jsonschema>=3.2.0",
     "PyYAML>=5.4",
-    "scipy>=1.4.1",
     "h5py>=3.9.0",
     "hdmf>=4.0.0",
     "hdmf_zarr>=0.11",
@@ -47,12 +46,13 @@ dependencies = [
     "psutil>=5.8.0",
     "tqdm>=4.60.0",
     "pandas",
-    "parse>=1.20.0",
-    "click",
-    "docstring-parser",
+    "parse>=1.20.0",  # For the path expansion functionality
+    "click",  # for CLI access point in the yaml conversion specificatio
+    "jsonschema>=3.2.0",
+    "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
-    "referencing",
-    "numcodecs<0.16.0", # For supporting zarr < 3
+    "referencing", # for the json schema references
+    "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
 ]
 
 
@@ -66,29 +66,11 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-test = [
-    "pytest",
-    "pytest-cov",
-    "ndx-events==0.2.1",  # for special tests to ensure load_namespaces is set to allow NWBFile load at all times
-    "parameterized>=0.8.1",
-    "ndx-miniscope",
-    "spikeinterface[qualitymetrics]>=0.102.2",
-    "zarr",
-    "pytest-xdist"
+sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
+    "scipy",
 ]
 
-docs = [
-    "Sphinx==8.2.3",  # Latest as of April 2025.
-    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
-    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
-    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
-    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
-    "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.102.2",  # Needed for the API documentation
-    "pytest" # used to build the documentation for tools.testing
-]
-
-dandi = ["dandi>=0.66.5", "dandischema>=0.11"]
+dandi = ["dandi>=0.69"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
@@ -110,7 +92,8 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.0",
+    "ndx-sound>=0.2.2",
+    "scipy", # for scipy.io.wavfile
 ]
 sleap = [
     "av>=10.0.0",
@@ -147,101 +130,91 @@ behavior = [
 
 
 ## Ecephys
+ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
+    "spikeinterface>=0.102.3",
+    "neo>=0.14.1"
+]
 alphaomega = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 axona = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 biocam = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 blackrock = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 cellexplorer = [
-    "neo>=0.14",
     "pymatreader>=0.0.32",
-    "spikeinterface>=0.102.2",
-    "setuptools; python_version >= '3.12'"
+    "neuroconv[ecephys_minimal]",
 ]
 edf = [
-    "neo>=0.14",
-    "pyedflib>=0.1.36,<0.1.39",  # Remove ceiling after neo 0.14.1 releases
-    "spikeinterface>=0.102.2",
+    "pyedflib>=0.1.36",
+    "neuroconv[ecephys_minimal]",
 ]
 intan = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 kilosort = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 
 maxwell = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 mcsraw = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 mearec = [
+    "neuroconv[ecephys_minimal]",
     "MEArec>=1.8.0",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
     "setuptools; python_version >= '3.12'"
 ]
 neuralynx = [
+    "neuroconv[ecephys_minimal]",
     "natsort>=7.1.1",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
 ]
 neuroscope = [
+    "neuroconv[ecephys_minimal]",
     "lxml>=4.6.5",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
 ]
 openephys = [
+    "neuroconv[ecephys_minimal]",
     "lxml>=4.9.4",
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
 ]
 phy = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
+
 plexon = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
+    "zugbruecke >= 0.2.1; platform_system != 'Windows'",  # Here for backwards compatibility with older versions of the gallery. Remove in 0.8
+]
+
+plexon2 = [
+    "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
 spike2 = [
-    "neo>=0.14",
+    "neuroconv[ecephys_minimal]",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
-    "spikeinterface>=0.102.2",
 ]
 spikegadgets = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 spikeglx = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
+    "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [
-    "neo>=0.14",
-    "spikeinterface>=0.102.2",
+    "neuroconv[ecephys_minimal]",
 ]
 whitematter = [
-    "spikeinterface>=0.102.3",
+    "neuroconv[ecephys_minimal]",
 ]
-ecephys = [  # Note that this the requirements of the extracts as they are on pipy
+ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
@@ -258,6 +231,7 @@ ecephys = [  # Note that this the requirements of the extracts as they are on pi
     "neuroconv[openephys]",
     "neuroconv[phy]",
     "neuroconv[plexon]",
+    "neuroconv[plexon2]",
     "neuroconv[spike2]",
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
@@ -279,74 +253,112 @@ image = [
     "pillow>=10.0.0",
 ]
 
+## Fiber Photometry
+fiber_photometry = [
+    "ndx-fiber-photometry",
+    "pynwb<3.1.0",
+]
+
+
 ## Ophys
+ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
+    "roiextractors>=0.6",
+]
 brukertiff = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
+    "natsort",
 ]
 caiman = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
+    "scipy",
 ]
 cnmfe = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
+    "scipy",
 ]
 extract = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
+femtonics = [
+    "neuroconv[ophys_minimal]",
+]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
 hdf5 = [
-    "roiextractors>=0.5.13",
+    "neuroconv[hdf5imaging]",
+]
+hdf5imaging = [
+    "neuroconv[ophys_minimal]",
+]
+inscopix = [
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
     "ndx-miniscope>=0.5.1",
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
+    "neuroconv[video]",
 ]
+# Here for backwards compatibility with older versions of the gallery
+# Remove at the start of 2026
 sbx = [
-    "roiextractors>=0.5.13",
+    "neuroconv[scanbox]",
+]
+scanbox = [
+    "neuroconv[ophys_minimal]",
 ]
 scanimage = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "natsort",
+    "tifffile>=2023.3.21",
 ]
 scanimage_legacy = [
+    "neuroconv[ophys_minimal]",
     "scanimage-tiff-reader>=1.4.1",
 ]
+
+
 sima = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
 ]
 suite2p = [
-    "roiextractors>=0.5.13",
+    "natsort",
+    "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
-    "ndx-fiber-photometry",
-    "roiextractors>=0.5.13",
+    "neuroconv[fiber_photometry]",
     "tdt",
 ]
 thor = [
-    "roiextractors>=0.5.13",
+    "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
 ]
 tiff = [
-    "roiextractors>=0.5.9",
-    "tiffile>=2018.10.18",
+    "neuroconv[ophys_minimal]",
+    "tifffile>=2018.10.18",
 ]
 ophys = [
     "neuroconv[brukertiff]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
-    "neuroconv[hdf5]",
+    "neuroconv[femtonics]",
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
+    "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
-    "neuroconv[sbx]",
+    "neuroconv[scanbox]",
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
-    "neuroconv[tdt_fp]",
+    # "neuroconv[tdt_fp]", # TODO: add tdt_fp back to ophys when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
@@ -369,11 +381,12 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
-    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file"
+    "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
+    "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
 ]
 
 [tool.black]
@@ -422,6 +435,29 @@ known-first-party = ["neuroconv"]
 
 
 [tool.codespell]
-skip = '.git*,*.pdf,*.css'
+skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
 ignore-words-list = 'assertin'
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov",
+    "parameterized>=0.8.1",
+    "pytest-xdist"  # Runs tests on parallel
+]
+
+docs = [
+    "Sphinx==8.2.3",  # Latest as of April 2025.
+    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
+    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
+    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
+    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
+    "roiextractors",  # Needed for the API documentation
+    "spikeinterface>=0.102.2",  # Needed for the API documentation
+    "pytest" # used to build the documentation for tools.testing
+]
+
+dev = [
+    "pre-commit",
+]

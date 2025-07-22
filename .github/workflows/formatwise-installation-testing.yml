@@ -1,72 +1,198 @@
-name: Formwatwise gallery tests
+name: Formatwise gallery tests
 on:
-  schedule:
-    - cron: "0 16 * * 1"  # Every Monday at noon EST
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      S3_GIN_BUCKET:
+        required: true
 
 jobs:
+  load_python_and_os_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: load_python_versions
+        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+      - id: load_os_versions
+        run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
+
   run:
-    name: ${{ format.type }}:${{ format.name }} on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    needs: load_python_and_os_versions
+    name: OS ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # Disabling these due to multiplicative nature
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        format: [ {type: recording, name: spikeglx}, {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut} ]  # SpikeGLX is the test of the 'empty' requirements functionality - missing: ced recording gallery and video behavior gallery
+        python-version: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
+        os: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
-      - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v4
-      - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Global Setup
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: false
+
+      - name: Prepare data for tests
+        uses: ./.github/actions/load-data
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
+
+      # Discover formats dynamically from conversion gallery
+      # This automatically finds all .rst files in docs/conversion_examples_gallery/
+      # and creates format strings in the format "category:format_name"
+      - name: Discover formats from gallery
+        id: collect_gallery_formats
+        shell: bash
         run: |
-          python -m pip install -U pip  # Official recommended way
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
-      - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
+          chmod +x .github/scripts/collect_gallery_formats.py
+          FORMATS_JSON=$(python .github/scripts/collect_gallery_formats.py)
+          echo "formats_json=$FORMATS_JSON" >> $GITHUB_OUTPUT
 
+          # Initialize Job Summary
+          echo "# NeuroConv Format Testing Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** ${{ matrix.os }} | **Python:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
+          FORMAT_COUNT=$(echo "$FORMATS_JSON" | jq length)
+          echo "**Total Formats Discovered:** $FORMAT_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
+          echo "Discovered $FORMAT_COUNT formats"
+          echo "Formats: $FORMATS_JSON"
 
-      # Only rely on caches in matrix - absolutely no S3 transfer in a matrix this large.
-      - name: Get ephy_testing_data current head hash
-        id: ephys
-        run: echo "HASH_EPHY_DATASET=$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
-      - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v4
-        id: cache-ephys-datasets
-        with:
-          path: ./ephy_testing_data
-          key: ephys-datasets-2024-08-30-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-      - name: Get ophys_testing_data current head hash
-        id: ophys
-        run: echo "HASH_OPHYS_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
-      - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v4
-        id: cache-ophys-datasets
-        with:
-          path: ./ophys_testing_data
-          key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-      - name: Get behavior_testing_data current head hash
-        id: behavior
-        run: echo "HASH_BEHAVIOR_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
-      - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v4
-        id: cache-behavior-datasets
-        with:
-          path: ./behavior_testing_data
-          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+      # Run all format tests in sequence
+      - name: Run all format tests in sequence
+        shell: bash
+        run: |
+          # Get formats from discovery step and convert to bash array
+          # Using while loop for macOS compatibility (readarray not available in older bash)
+          FORMATS_JSON='${{ steps.collect_gallery_formats.outputs.formats_json }}'
+          FORMATS=()
+          while IFS= read -r format; do
+            FORMATS+=("$format")
+          done < <(echo "$FORMATS_JSON" | jq -r '.[]')
 
+          echo "Testing ${#FORMATS[@]} formats:"
+          printf '%s\n' "${FORMATS[@]}"
+          echo ""
 
+          # Initialize table in Job Summary
+          echo "## Test Progress" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Format | Category | Status | Reason |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
 
-      - name: Install a specific format
-        run: pip install .[${{ matrix.format.name }}]
-      - name: Run that particular file in the doctest gallery
-        run: pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/${{ matrix.format.type }}/${{ matrix.format.name }}.rst
+          # Track overall success
+          OVERALL_SUCCESS=true
+          FAILED_FORMATS=()
+
+          # Loop through each format
+          for format in "${FORMATS[@]}"; do
+            # Split type and name, and trim any whitespace/carriage returns
+            IFS=':' read -r type name <<< "$format"
+            # Remove any trailing whitespace or carriage returns (Windows compatibility)
+            type=$(echo "$type" | tr -d '\r\n' | xargs)
+            name=$(echo "$name" | tr -d '\r\n' | xargs)
+
+            echo "===================================================="
+            echo "Testing $type:$name"
+            echo "===================================================="
+
+            # Create fresh virtual environment with uv (much faster)
+            uv venv clean_env_$name
+
+            # Activate environment
+            if [ "${{ runner.os }}" == "Windows" ]; then
+              source clean_env_$name/Scripts/activate
+            else
+              source clean_env_$name/bin/activate
+            fi
+
+            # Install dependencies with uv (much faster than pip)
+            uv pip install --quiet ".[$name]"
+            uv pip install --group test
+
+            # Check if the gallery file exists before running pytest
+            gallery_file="docs/conversion_examples_gallery/$type/$name.rst"
+            if [ ! -f "$gallery_file" ]; then
+              echo "Gallery file not found: $gallery_file"
+              OVERALL_SUCCESS=false
+              FAILED_FORMATS+=("$type:$name (file not found)")
+              # Update Job Summary
+              echo "| $name | $type | Failed | File not found |" >> $GITHUB_STEP_SUMMARY
+            else
+              # Run test
+              if pytest --doctest-glob="*.rst" "$gallery_file"; then
+                echo "$type:$name test passed"
+                # Update Job Summary
+                echo "| $name | $type | Passed | All doctests successful |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "$type:$name test failed"
+                OVERALL_SUCCESS=false
+                FAILED_FORMATS+=("$type:$name")
+                # Update Job Summary
+                echo "| $name | $type | Failed | Doctest failures |" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+
+            # Deactivate environment
+            deactivate
+
+            # Remove environment to save space
+            rm -rf clean_env_$name
+
+            echo ""
+          done
+
+          # Count results for summary
+          TOTAL_FORMATS=${#FORMATS[@]}
+          FAILED_COUNT=${#FAILED_FORMATS[@]}
+          PASSED_COUNT=$((TOTAL_FORMATS - FAILED_COUNT))
+
+          # Add final summary to Job Summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Final Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Formats Tested:** $TOTAL_FORMATS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passed:** $PASSED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed:** $FAILED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$OVERALL_SUCCESS" = true ]; then
+            echo "**All format tests passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Some format tests failed:**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Failed Formats:" >> $GITHUB_STEP_SUMMARY
+            for failed in "${FAILED_FORMATS[@]}"; do
+              echo "- $failed" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+          # Report results to console
+          echo "===================================================="
+          if [ "$OVERALL_SUCCESS" = true ]; then
+            echo "All format tests passed!"
+          else
+            echo "Some format tests failed:"
+            for failed in "${FAILED_FORMATS[@]}"; do
+              echo "   - $failed"
+            done
+            exit 1
+          fi

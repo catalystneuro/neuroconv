@@ -1,4 +1,4 @@
-"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -6,7 +6,12 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import fill_defaults, get_base_schema, get_schema_from_hdmf_class
+from ...utils import (
+    DeepDict,
+    fill_defaults,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
@@ -108,7 +113,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
@@ -136,7 +141,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
+        mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
     ):
@@ -171,8 +176,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
               of voxels in each ROI.
 
-            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
-            If None, the mask information is not written to the NWB file.
+            Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional

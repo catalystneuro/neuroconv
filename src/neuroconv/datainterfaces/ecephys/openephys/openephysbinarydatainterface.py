@@ -1,7 +1,7 @@
 from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
@@ -71,7 +71,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path: FolderPathType
+        folder_path: DirectoryPath
             Path to directory containing OpenEphys binary files.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
@@ -103,9 +103,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
         )
 
-        if stub_test:
-            self.subset_channels = [0, 1]
-
         # Check if the recording has ADC channels
         recording = self.recording_extractor
         channel_ids = recording.get_channel_ids()
@@ -113,7 +110,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if len(neural_channels) < len(channel_ids):
             self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
 
         metadata = super().get_metadata()

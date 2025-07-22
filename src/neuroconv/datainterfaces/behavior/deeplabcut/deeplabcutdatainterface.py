@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +26,50 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the file output by dlc (.h5 or .csv)."
         source_schema["properties"]["config_file_path"]["description"] = "Path to .yml config file."
         return source_schema
+
+    def get_available_subjects(file_path: FilePath) -> list[str]:
+        """
+        Extract available subjects from a DeepLabCut output file.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the DeepLabCut output file (.h5 or .csv).
+
+        Returns
+        -------
+        list[str]
+            List of subject names found in the file.
+
+        Raises
+        ------
+        IOError
+            If the file is not a valid DeepLabCut output file.
+        FileNotFoundError
+            If the file does not exist.
+        """
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exist.")
+
+        # Read the data
+        if ".h5" in file_path.suffixes:
+            df = pd.read_hdf(file_path)
+        elif ".csv" in file_path.suffixes:
+            df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
+        else:
+            raise IOError(f"The file {file_path} passed in is not a valid DeepLabCut output data file.")
+
+        # Check if 'individuals' level exists in the column structure
+        if "individuals" in df.columns.names:
+            # Multi-subject file - extract unique individuals
+            individuals = df.columns.get_level_values("individuals").unique().tolist()
+            return individuals
+        else:
+            # Single-subject file - return default subject name
+            # For consistency with the interface's default behavior
+            return ["ind1"]
 
     @validate_call
     def __init__(
@@ -92,15 +137,15 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                             "devices": ["device_name"],  # References to devices
                             "PoseEstimationSeries": {
                                 "PoseEstimationSeriesBodyPart1": {
-                                    "name": "subject_bodypart1",
-                                    "description": "Keypoint bodypart1 from individual subject.",
+                                    "name": "bodypart1",
+                                    "description": "Keypoint bodypart1.",
                                     "unit": "pixels",
                                     "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                                     "confidence_definition": "Softmax output of the deep neural network."
                                 },
                                 "PoseEstimationSeriesBodyPart2": {
-                                    "name": "subject_bodypart2",
-                                    "description": "Keypoint bodypart2 from individual subject.",
+                                    "name": "bodypart2",
+                                    "description": "Keypoint bodypart2.",
                                     "unit": "pixels",
                                     "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                                     "confidence_definition": "Softmax output of the deep neural network."
@@ -250,7 +295,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                 "dimensions": {
                     "type": ["array", "null"],
                     "description": "Dimensions [height, width] of the labeled video(s)",
-                    "items": {"type": "integer"},
+                    "items": {"type": "array", "items": {"type": "integer"}},
                 },
                 "original_videos": {
                     "type": ["array", "null"],
@@ -317,7 +362,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         if self.config_dict:
@@ -345,7 +390,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         individuals = df.columns.get_level_values("individuals").unique().tolist()
 
         # Get video dimensions from config if available
-        dimensions = [0, 0]
+        dimensions = None
         if self.source_data.get("config_file_path"):
             from ._dlc_utils import _get_video_info_from_config_file
 
@@ -357,7 +402,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             try:
                 shape_parts = [int(x.strip()) for x in image_shape.split(",")]
                 if len(shape_parts) == 4:
-                    dimensions = [shape_parts[3], shape_parts[1]]  # [height, width]
+                    dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
             except (ValueError, IndexError):
                 pass
 
@@ -432,8 +477,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Add a series for each bodypart
         for bodypart in bodyparts:
             pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][bodypart] = {
-                "name": f"{self.subject_name}_{bodypart}",
-                "description": f"Keypoint {bodypart} from individual {self.subject_name}.",
+                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                "description": f"Pose estimation series for {bodypart}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                 "confidence_definition": "Softmax output of the deep neural network.",
@@ -488,23 +533,22 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             the content of the metadata.
 
         """
-        import warnings
+        from ._dlc_utils import (
+            _add_pose_estimation_to_nwbfile,
+            _ensure_individuals_in_header,
+        )
 
         # Use the pose_estimation_metadata_key from the instance if container_name not provided
-        if container_name is None:
-            container_name = self.pose_estimation_metadata_key
-        else:
+        if container_name is not None:
             warnings.warn(
                 "The container_name parameter in add_to_nwbfile is deprecated and will be removed on or after October 2025. "
                 "Use the pose_estimation_metadata_key parameter when initializing the interface instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-        from pathlib import Path
-
-        import pandas as pd
-
-        from ._dlc_utils import _ensure_individuals_in_header, _write_pes_to_nwbfile
+            pose_estimation_metadata_key = container_name
+        else:
+            pose_estimation_metadata_key = self.pose_estimation_metadata_key
 
         # Get default metadata
         default_metadata = DeepDict(self.get_metadata())
@@ -513,17 +557,22 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        # Set the container name in the metadata, remove this once  container_name is deprecated
-        if "PoseEstimation" in default_metadata and "PoseEstimationContainers" in default_metadata["PoseEstimation"]:
-            if container_name in default_metadata["PoseEstimation"]["PoseEstimationContainers"]:
-                default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name]["name"] = container_name
-            else:
-                # If the container doesn't exist in the metadata, create it with the name
-                default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name] = {
-                    "name": container_name
-                }
+        # Set the container name in the metadata, remove this once container_name is deprecated
+        if container_name is not None:
+            if (
+                "PoseEstimation" in default_metadata
+                and "PoseEstimationContainers" in default_metadata["PoseEstimation"]
+            ):
+                if container_name in default_metadata["PoseEstimation"]["PoseEstimationContainers"]:
+                    default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name][
+                        "name"
+                    ] = container_name
+                else:
+                    # If the container doesn't exist in the metadata, create it with the name
+                    default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name] = {
+                        "name": container_name
+                    }
 
-        # Process the DLC file
         file_path = Path(self.source_data["file_path"])
 
         # Read the data
@@ -540,15 +589,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if timestamps is None:
             timestamps = df.index.tolist()  # Use index as dummy timestamps if not provided
 
-        # Extract data for the subject
         df_animal = df.xs(self.subject_name, level="individuals", axis=1)
 
-        # Write to NWB file
-        _write_pes_to_nwbfile(
+        _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             df_animal=df_animal,
             timestamps=timestamps,
             exclude_nans=False,
             metadata=default_metadata,
-            pose_estimation_metadata_key=container_name,
+            pose_estimation_metadata_key=pose_estimation_metadata_key,
         )

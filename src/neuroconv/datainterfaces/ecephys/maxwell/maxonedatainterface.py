@@ -5,6 +5,7 @@ from platform import system
 from pydantic import DirectoryPath, FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import DeepDict
 
 
 class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no cover
@@ -84,7 +85,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]

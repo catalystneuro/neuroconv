@@ -4,6 +4,7 @@ from pynwb import NWBFile
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
 from ....basedatainterface import BaseDataInterface
 from ....utils import (
+    DeepDict,
     get_json_schema_from_method_signature,
 )
 
@@ -96,7 +97,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         session_start_time = _get_session_start_time(element=self._xml_root)
@@ -143,17 +144,17 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
+        from ....tools.spikeinterface import (
+            _stub_recording,
+            add_recording_as_time_series_to_nwbfile,
+        )
 
         if metadata is None:
             metadata = self.get_metadata()
 
+        recording = self.recording_extractor
         if stub_test:
-            end_time = self.recording_extractor.get_end_time()
-            end_time = min(end_time, 0.100)
-            recording = self.recording_extractor.time_slice(start_time=0, end_time=end_time)
-        else:
-            recording = self.recording_extractor
+            recording = _stub_recording(recording=recording)
 
         description = (
             f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."

@@ -12,6 +12,7 @@ from hdmf import Container
 from hdmf.build.builders import (
     BaseBuilder,
 )
+from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -22,13 +23,15 @@ from pydantic import (
 )
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
+from pynwb.image import ImageSeries
 from typing_extensions import Self
 
 from neuroconv.tools.hdmf import get_full_data_shape
+from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
 from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from ...hdmf import GenericDataChunkIterator, SliceableDataChunkIterator
+from ...hdmf import SliceableDataChunkIterator
 
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
@@ -195,19 +198,24 @@ class DatasetIOConfiguration(BaseModel, ABC):
         chunk_shape = values["chunk_shape"] if values["chunk_shape"] is not None else full_shape
         buffer_shape = values["buffer_shape"] if values["buffer_shape"] is not None else full_shape
 
-        if len(chunk_shape) != len(buffer_shape):
-            raise ValueError(
-                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location_in_file}'!"
-            )
-        if len(buffer_shape) != len(full_shape):
-            raise ValueError(
-                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"
-            )
-
         if any(chunk_axis <= 0 for chunk_axis in chunk_shape):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} are less than or equal to zero for dataset at "
                 f"location '{location_in_file}'!"
+            )
+
+        # If the buffer shape is None skip the rest of the checks
+        if buffer_shape is None:
+            return values
+
+        if len(chunk_shape) != len(buffer_shape):
+            raise ValueError(
+                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location_in_file}'!"
+            )
+
+        if len(buffer_shape) != len(full_shape):
+            raise ValueError(
+                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location_in_file}'!"
             )
         if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
             raise ValueError(
@@ -220,6 +228,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=} for dataset at "
                 f"location '{location_in_file}'!"
             )
+
         if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
             raise ValueError(
                 f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
@@ -280,13 +289,12 @@ class DatasetIOConfiguration(BaseModel, ABC):
         full_shape = get_full_data_shape(dataset=candidate_dataset, location_in_file=location_in_file, builder=builder)
         dtype = _infer_dtype(dataset=candidate_dataset)
 
-        if isinstance(candidate_dataset, GenericDataChunkIterator):
+        if isinstance(candidate_dataset, HDMFGenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
             compression_method = "gzip"
 
         elif isinstance(neurodata_object, ElectricalSeries) and dataset_name == "data":
-            from ....tools.spikeinterface import get_electrical_series_chunk_shape
 
             number_of_frames = candidate_dataset.shape[0]
             number_of_channels = candidate_dataset.shape[1]
@@ -296,19 +304,34 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
             )
 
-            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=1.0,
-                chunk_shape=chunk_shape,
-                maxshape=full_shape,
+            buffer_shape = None  # This is the non-iterative path
+            compression_method = "gzip"
+
+        elif isinstance(neurodata_object, ImageSeries) and dataset_name == "data":
+            from ....tools.iterative_write import (
+                get_image_series_chunk_shape,
+            )
+
+            num_samples = candidate_dataset.shape[0]
+            sample_shape = candidate_dataset.shape[1:]
+
+            chunk_shape = get_image_series_chunk_shape(
+                num_samples=num_samples,
+                sample_shape=sample_shape,
                 dtype=dtype,
             )
+            buffer_shape = None  # This is the non-iterative path
             compression_method = "gzip"
+
         elif dtype != np.dtype("object"):
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
                 chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
             )
             buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
+                buffer_gb=0.5,
+                chunk_shape=chunk_shape,
+                maxshape=full_shape,
+                dtype=np.dtype(dtype),
             )
             compression_method = "gzip"
         elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
