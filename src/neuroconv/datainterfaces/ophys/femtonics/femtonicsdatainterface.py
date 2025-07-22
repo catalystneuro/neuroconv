@@ -2,12 +2,14 @@
 
 from typing import Optional
 
+from pydantic import FilePath
+
 from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools.ophys_metadata_conversion import (
     convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
 )
-from ....utils import DeepDict, FolderPathType
+from ....utils import DeepDict
 
 
 class FemtonicsImagingInterface(BaseImagingExtractorInterface):
@@ -25,7 +27,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FolderPathType,
+        file_path: FilePath,
         session_name: Optional[str] = None,
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
@@ -265,7 +267,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     @classmethod
-    def get_available_sessions(cls, file_path: FolderPathType) -> list[str]:
+    def get_available_sessions(cls, file_path: FilePath) -> list[str]:
         """
         Get list of available session keys in the file.
 
@@ -283,7 +285,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_sessions(file_path=file_path)
 
     @classmethod
-    def get_available_munits(cls, file_path: FolderPathType, session_name: str = None) -> list[str]:
+    def get_available_munits(cls, file_path: FilePath, session_name: str = None) -> list[str]:
         """
         Get list of available unit keys in the specified session.
 
@@ -313,9 +315,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_units(file_path=file_path, session_index=session_index)
 
     @classmethod
-    def get_available_channels(
-        cls, file_path: FolderPathType, session_name: str = None, munit_name: str = None
-    ) -> list[str]:
+    def get_available_channels(cls, file_path: FilePath, session_name: str = None, munit_name: str = None) -> list[str]:
         """
         Get available channels in the specified session/unit combination.
 

@@ -60,10 +60,10 @@ def run_conversion_from_yaml(
     ----------
     specification_file_path : FilePath
         File path leading to .yml specification file for NWB conversion.
-    data_folder_path : FolderPathType, optional
+    data_folder_path : DirectoryPath, optional
         Folder path leading to root location of the data files.
         The default is the parent directory of the specification_file_path.
-    output_folder_path : FolderPathType, optional
+    output_folder_path : DirectoryPath, optional
         Folder path leading to the desired output location of the .nwb files.
         The default is the parent directory of the specification_file_path.
     overwrite : bool, default: False

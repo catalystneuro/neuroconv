@@ -39,7 +39,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The folder path that contains the OME-TIF image files (.ome.tif files) and
            the 'DisplaySettings' JSON file.
         verbose : bool, default: False
