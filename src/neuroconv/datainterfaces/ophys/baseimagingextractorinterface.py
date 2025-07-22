@@ -1,5 +1,6 @@
 """Author: Ben Dichter."""
 
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -149,10 +150,11 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
         always_write_timestamps: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
+        stub_samples: int = 100,
     ):
         """
         Add imaging data to the NWB file
@@ -173,19 +175,38 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_test : bool, optional
             If True, only writes a small subset of frames for testing purposes, by default False.
         stub_frames : int, optional
-            The number of frames to write when stub_test is True. Will use min(stub_frames, total_frames) to avoid
-            exceeding available frames, by default 100.
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
+        always_write_timestamps : bool, optional
+            Whether to always write timestamps, by default False.
         iterator_type : str, optional
             The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
         iterator_options : dict, optional
             Additional options for controlling the iteration process, by default None.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         if stub_test:
-            stub_samples = min([stub_frames, self.imaging_extractor.get_num_samples()])
-            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
+            effective_stub_samples = min([effective_stub_samples, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=effective_stub_samples)
         else:
             imaging_extractor = self.imaging_extractor
 
