@@ -35,7 +35,6 @@ def write_nwbfile(nwbfile_path: Path, backend: str = "hdf5"):
 
     # pixel mask to check compound dtypes
     n_rois = 10
-    nwbfile = mock_NWBFile()
     plane_segmentation = PlaneSegmentation(
         description="no description.",
         imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
@@ -57,7 +56,7 @@ def write_nwbfile(nwbfile_path: Path, backend: str = "hdf5"):
 
 def main():
     """Temp"""
-    backend = "hdf5"
+    backend = "zarr"
     if backend == "hdf5":
         nwbfile_path = Path("temp.nwb")
         repacked_nwbfile_path = Path("repacked_temp.nwb")
@@ -72,7 +71,7 @@ def main():
     if not nwbfile_path.exists():
         write_nwbfile(nwbfile_path, backend=backend)
 
-    backend_configuration_changes = {"acquisition/test_timeseries/data": dict(chunk_shape=(2,))}
+    backend_configuration_changes = {"processing/ophys/TestPlaneSegmentation/pixel_mask/data": dict(chunk_shape=(3,))}
     repack_nwbfile(
         nwbfile_path=str(nwbfile_path),
         export_nwbfile_path=str(repacked_nwbfile_path),
@@ -84,7 +83,8 @@ def main():
     IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
     with IO(str(repacked_nwbfile_path), mode="r") as io:
         nwbfile = io.read()
-        print(f'{nwbfile.acquisition["test_timeseries"].data.chunks = }')
+        print(f'{nwbfile.processing["ophys"]["TestPlaneSegmentation"].pixel_mask.data.compressor = }')
+        print(f'{nwbfile.processing["ophys"]["TestPlaneSegmentation"].pixel_mask.data.chunks = }')
 
 
 if __name__ == "__main__":
