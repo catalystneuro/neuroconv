@@ -32,7 +32,7 @@ def _read_settings_xml(folder_path: DirectoryPath) -> "lxml.etree.Element":
 
     Parameters
     ----------
-    folder_path : FolderPathType
+    folder_path : DirectoryPath
         The path to the folder containing the settings.xml file.
     """
     folder_path = Path(folder_path)
