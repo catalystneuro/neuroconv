@@ -1,5 +1,6 @@
 # v0.8.0 (Upcoming)
 
+* Fixed incorrect `default: False` formatting in multiple datainterface docstrings [PR #1396](https://github.com/catalystneuro/neuroconv/pull/1396)
 ## Removals, Deprecations and Changes
 * Segmentation writing pipeline no longer supports writing segmentation data without image or pixel masks [PR #1400](https://github.com/catalystneuro/neuroconv/pull/1400)
 * Removed deprecated arguments: `load_sync_channel` in `SpikeGLXNIDQInterface` initialization and `start_time`, `write_as` and `write_electrical_series` in `SpikeGLXNIDQInterface.add_to_nwbfile()`. [PR #1378](https://github.com/catalystneuro/neuroconv/pull/1378)
