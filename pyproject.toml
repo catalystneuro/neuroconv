@@ -280,6 +280,10 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+minian = [
+    "neuroconv[ophys_minimal]",
+]
+
 femtonics = [
     "neuroconv[ophys_minimal]",
 ]
