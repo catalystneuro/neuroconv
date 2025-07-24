@@ -10,7 +10,8 @@ First, create a clean environment and type the following commands in your termin
 
   git clone https://github.com/catalystneuro/neuroconv
   cd neuroconv
-  pip install --editable .[docs]
+  pip install --editable .
+  pip install --group docs
 
 These commands install both the latest version of the repo and the dependencies necessary to build the documentation.
 
