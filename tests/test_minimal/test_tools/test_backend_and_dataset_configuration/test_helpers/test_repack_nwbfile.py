@@ -299,6 +299,10 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
                 nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
                 nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
             )
+            np.testing.assert_array_equal(
+                nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+            )
             # Compare specifically compressed data
             np.testing.assert_array_equal(
                 nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
@@ -315,6 +319,9 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
             assert nwbfile_zarr.intervals["trials"].start_time.data.compressor == default_compressor
             assert nwbfile_zarr.intervals["trials"].compressed_start_time.data.compressor == default_compressor
             assert nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
+            assert (
+                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
+            )
 
 
 def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
@@ -349,6 +356,10 @@ def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
                 nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
                 nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
             )
+            np.testing.assert_array_equal(
+                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+                nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+            )
             # Compare specifically compressed data
             np.testing.assert_array_equal(
                 nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
@@ -365,6 +376,7 @@ def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
             assert nwbfile_hdf5.intervals["trials"].start_time.data.compression_opts == 4
             assert nwbfile_hdf5.intervals["trials"].compressed_start_time.data.compression_opts == 4
             assert nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+            assert nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
 
 
 def test_repack_nwbfile_invalid_configuration_error(hdf5_nwbfile_path, tmp_path):
