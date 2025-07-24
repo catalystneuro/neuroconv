@@ -37,6 +37,22 @@ def generate_complex_nwbfile() -> NWBFile:
 
     nwbfile.add_epoch(start_time=0.0, stop_time=1.0, timeseries=nwbfile.acquisition["RawTimeSeries"])
 
+    # Add PlaneSegmentation with pixel_mask
+    n_rois = 10
+    plane_segmentation = PlaneSegmentation(
+        description="no description.",
+        imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
+        name="PlaneSegmentation",
+    )
+
+    for _ in range(n_rois):
+        pixel_mask = [(x, x, 1.0) for x in range(10)]
+        plane_segmentation.add_roi(pixel_mask=pixel_mask)
+
+    if "ophys" not in nwbfile.processing:
+        nwbfile.create_processing_module("ophys", "ophys")
+    nwbfile.processing["ophys"].add(plane_segmentation)
+
     return nwbfile
 
 
@@ -61,25 +77,9 @@ def hdf5_nwbfile_path(tmpdir_factory):
             data=H5DataIO(data=start_time, compression="gzip", compression_opts=2),
         )
 
-        # Add PlaneSegmentation with pixel_mask
-        # TODO: move to generate_complex_nwbfile after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
-        n_rois = 10
-        plane_segmentation = PlaneSegmentation(
-            description="no description.",
-            imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
-            name="PlaneSegmentation",
-        )
-
-        for _ in range(n_rois):
-            pixel_mask = [(x, x, 1.0) for x in range(10)]
-            plane_segmentation.add_roi(pixel_mask=pixel_mask)
-
-        if "ophys" not in nwbfile.processing:
-            nwbfile.create_processing_module("ophys", "ophys")
-        nwbfile.processing["ophys"].add(plane_segmentation)
-
         with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
             io.write(nwbfile)
+
     return str(nwbfile_path)
 
 
@@ -112,6 +112,7 @@ def zarr_nwbfile_path(tmpdir_factory):
 
         with NWBZarrIO(path=str(nwbfile_path), mode="w") as io:
             io.write(nwbfile)
+
     return str(nwbfile_path)
 
 
@@ -165,7 +166,8 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_defau
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
-                # TODO: add checks for pixel_mask after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters is None
             else:
                 assert nwbfile.acquisition["RawTimeSeries"].data.compressor == compressor
                 assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
@@ -175,7 +177,8 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_defau
                 assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == compressor
                 assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == filters
-                # TODO: add checks for pixel_mask after the following issue is resolved: https://github.com/hdmf-dev/hdmf-zarr/issues/272
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == compressor
+                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters == None
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
