@@ -1,13 +1,17 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
 import importlib
+import math
 
 from hdmf.common import Data
+from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging import version
-from pynwb import NWBFile, TimeSeries
+from pynwb import NWBFile, TimeSeries, get_manager
 
+from ._configuration_models._base_dataset_io import _find_location_in_memory_nwbfile
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
+from ..hdmf import has_compound_dtype
 from ..importing import get_package_version, is_package_installed
 
 
@@ -32,6 +36,9 @@ def configure_backend(
     if any(locations_to_remap):
         backend_configuration = backend_configuration.build_remapped_backend(locations_to_remap=locations_to_remap)
 
+    manager = get_manager()
+    builder = manager.build(nwbfile, export=True)
+
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
     for dataset_configuration in backend_configuration.dataset_configurations.values():
@@ -43,14 +50,31 @@ def configure_backend(
 
         neurodata_object = nwbfile.objects[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
+        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
+        dtype_is_compound = has_compound_dtype(builder=builder, location_in_file=location_in_file)
+        if isinstance(neurodata_object.fields.get(dataset_name), AbstractDataChunkIterator) or dtype_is_compound:
+            data_chunk_iterator_class = None
+            data_chunk_iterator_kwargs = dict()
+        else:
+            data_chunk_iterator_class = DataChunkIterator
+            data_chunk_iterator_kwargs = dict(buffer_size=math.prod(dataset_configuration.buffer_shape))
 
         # Table columns
         if isinstance(neurodata_object, Data):
-            neurodata_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
+            neurodata_object.set_data_io(
+                data_io_class=data_io_class,
+                data_io_kwargs=data_io_kwargs,
+                data_chunk_iterator_class=data_chunk_iterator_class,
+                data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
+            )
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
             neurodata_object.set_data_io(
-                dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+                dataset_name=dataset_name,
+                data_io_class=data_io_class,
+                data_io_kwargs=data_io_kwargs,
+                data_chunk_iterator_class=data_chunk_iterator_class,
+                data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
         # Special ndx-events v0.2.0 types
         elif is_ndx_events_installed and (get_package_version("ndx-events") <= version.parse("0.2.1")):
@@ -59,7 +83,11 @@ def configure_backend(
                 continue
             elif isinstance(neurodata_object, ndx_events.Events):
                 neurodata_object.set_data_io(
-                    dataset_name=dataset_name, data_io_class=data_io_class, data_io_kwargs=data_io_kwargs
+                    dataset_name=dataset_name,
+                    data_io_class=data_io_class,
+                    data_io_kwargs=data_io_kwargs,
+                    data_chunk_iterator_class=data_chunk_iterator_class,
+                    data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
                 )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
