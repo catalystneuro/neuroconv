@@ -156,8 +156,8 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._times = aligned_timestamps
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS
         pattern = r"(?P<date_time>\d{4}-\d{2}-\d{2}/\d{2}-\d{2}-\d{2})"

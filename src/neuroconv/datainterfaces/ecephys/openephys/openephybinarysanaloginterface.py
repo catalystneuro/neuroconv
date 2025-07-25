@@ -1,4 +1,4 @@
-from pydantic import ConfigDict, DirectoryPath, validate_call
+from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
@@ -97,8 +97,8 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:

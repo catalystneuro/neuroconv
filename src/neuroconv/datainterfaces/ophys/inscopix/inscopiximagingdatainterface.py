@@ -66,7 +66,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             **kwargs,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.
 
@@ -77,7 +77,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
         # Get metadata from parent (already configured for OnePhotonSeries)
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         extractor = self.imaging_extractor
         extractor_metadata = extractor._get_metadata()

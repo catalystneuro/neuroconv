@@ -1,7 +1,7 @@
 from datetime import datetime
 from warnings import warn
 
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict
@@ -99,8 +99,8 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
         )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         neo_reader = self.recording_extractor.neo_reader
         block_annotations = neo_reader.raw_annotations.get("blocks", [])

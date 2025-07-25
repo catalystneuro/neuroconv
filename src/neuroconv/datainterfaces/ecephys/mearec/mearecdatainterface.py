@@ -38,8 +38,8 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         # TODO: improve ProbeInterface integration in our writing procedures
         # probe = self.recording_extractor.get_probe()  # TODO: Need to check if this is always available

@@ -2,6 +2,7 @@ import warnings
 from typing import Literal
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
@@ -114,10 +115,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
 

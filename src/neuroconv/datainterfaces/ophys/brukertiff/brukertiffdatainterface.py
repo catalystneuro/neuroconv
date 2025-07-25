@@ -1,7 +1,7 @@
 from typing import Literal
 
 from dateutil.parser import parse
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, FilePath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils.dict import DeepDict
@@ -141,7 +141,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         position_values.append(z_value)
         return position_values
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the Bruker TIFF imaging data.
 
@@ -150,7 +150,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         DeepDict
             The metadata dictionary containing imaging metadata from the Bruker TIFF files.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         xml_metadata = self.imaging_extractor.xml_metadata
         session_start_time = parse(xml_metadata["date"])
@@ -329,7 +329,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         return position_values
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the Bruker TIFF imaging data.
 
@@ -338,7 +338,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         DeepDict
             The metadata dictionary containing imaging metadata from the Bruker TIFF files.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         xml_metadata = self.imaging_extractor.xml_metadata
         session_start_time = parse(xml_metadata["date"])

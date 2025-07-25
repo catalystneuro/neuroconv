@@ -85,8 +85,8 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]
         metadata["Ecephys"]["Device"][0].update(description=f"Recorded using Maxwell version '{maxwell_version}'.")

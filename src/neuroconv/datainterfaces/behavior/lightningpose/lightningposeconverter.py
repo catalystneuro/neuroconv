@@ -76,10 +76,10 @@ class LightningPoseConverter(NWBConverter):
 
         return conversion_options_schema
 
-    def get_metadata(self) -> DeepDict:
-        metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = self.data_interface_objects["PoseEstimation"].get_metadata(metadata_file_path=metadata_file_path)
         original_video_interface = self.data_interface_objects["OriginalVideo"]
-        original_videos_metadata = original_video_interface.get_metadata()
+        original_videos_metadata = original_video_interface.get_metadata(metadata_file_path=metadata_file_path)
         metadata = dict_deep_update(metadata, original_videos_metadata)
 
         original_videos_metadata["Behavior"]["Videos"][0].update(
@@ -89,7 +89,7 @@ class LightningPoseConverter(NWBConverter):
 
         if "LabeledVideo" in self.data_interface_objects:
             labeled_video_interface = self.data_interface_objects["LabeledVideo"]
-            labeled_videos_metadata = labeled_video_interface.get_metadata()
+            labeled_videos_metadata = labeled_video_interface.get_metadata(metadata_file_path=metadata_file_path)
             labeled_videos_metadata["Behavior"]["Videos"][0].update(
                 name=self.labeled_video_name,
                 description="The video recorded by camera with the pose estimation labels.",

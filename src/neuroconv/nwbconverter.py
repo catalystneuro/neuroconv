@@ -136,19 +136,33 @@ class NWBConverter:
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
-        Auto-fill as much of the metadata as possible. Must comply with metadata schema.
+        Extract and auto-fill as much of the metadata as possible. Must comply with metadata schema.
+
+        Parameters
+        ----------
+        metadata_file_path : FilePath, optional
+            Path to a YAML or JSON file containing additional metadata to merge with
+            the metadata extracted from source files. If provided, the file contents will be loaded
+            and merged with the extracted metadata using deep update.
 
         Returns
         -------
         DeepDict
-            The metadata dictionary containing auto-filled metadata from all interfaces.
+            The metadata dictionary containing metadata extracted from all interfaces,
+            optionally merged with metadata from the provided file.
         """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
             metadata = dict_deep_update(metadata, interface_metadata)
+
+        # If a metadata file is provided, load and merge it
+        if metadata_file_path is not None:
+            file_metadata = load_dict_from_file(metadata_file_path)
+            metadata = dict_deep_update(metadata, file_metadata)
+
         return metadata
 
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):

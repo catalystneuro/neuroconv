@@ -88,10 +88,10 @@ class AbfInterface(BaseIcephysInterface):
             icephys_metadata_file_path=icephys_metadata_file_path,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         if self.source_data["icephys_metadata"]:
             icephys_metadata = self.source_data["icephys_metadata"]

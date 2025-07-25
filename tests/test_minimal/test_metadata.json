@@ -1,0 +1,23 @@
+{
+  "NWBFile": {
+    "session_description": "Test session from JSON file",
+    "lab": "Test Lab from JSON",
+    "institution": "Test Institution from JSON",
+    "experimenter": ["Alice Johnson"],
+    "keywords": ["json", "test", "metadata"]
+  },
+  "Behavior": {
+    "Videos": [
+      {
+        "name": "test_video_json",
+        "description": "Test video from JSON metadata"
+      }
+    ]
+  },
+  "Custom": {
+    "json_specific_field": "This field only exists in JSON",
+    "nested_field": {
+      "sub_field": "nested value from JSON"
+    }
+  }
+}

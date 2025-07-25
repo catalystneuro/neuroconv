@@ -558,8 +558,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         return dummy_recording_extractor
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion

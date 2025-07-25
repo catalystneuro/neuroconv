@@ -55,8 +55,8 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         self._timestamps = aligned_timestamps
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         metadata["NWBFile"].update(session_start_time=self.header["TimeCreated"])
         metadata["Behavior"][self.nvt_filename].update(
