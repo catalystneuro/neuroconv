@@ -6,7 +6,8 @@ from tempfile import mkdtemp
 
 import numpy as np
 import pytest
-from pynwb import NWBFile
+from pynwb import NWBHDF5IO, NWBFile
+from pynwb.misc import AnnotationSeries
 
 from neuroconv import (
     BaseDataInterface,
@@ -332,11 +333,6 @@ def test_get_metadata_yaml_json_integration():
 
 def test_conversion_with_yaml_json_metadata_integration():
     """Integration test that runs actual NWB conversion using YAML/JSON metadata."""
-    from datetime import datetime
-    from shutil import rmtree
-    from tempfile import mkdtemp
-
-    from pynwb import NWBHDF5IO
 
     class IntegrationTestInterface(BaseDataInterface):
         def get_metadata(self, metadata_file_path=None):
@@ -346,9 +342,6 @@ def test_conversion_with_yaml_json_metadata_integration():
 
         def add_to_nwbfile(self, nwbfile, metadata, **conversion_options):
             # Add some dummy data to test the conversion
-            import numpy as np
-            from pynwb.misc import AnnotationSeries
-
             annotations = AnnotationSeries(
                 name="test_annotations",
                 description="Test annotations for integration test",
