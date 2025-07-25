@@ -1,0 +1,16 @@
+NWBFile:
+  session_description: "Test session from YAML file"
+  lab: "Test Lab from YAML"
+  institution: "Test Institution from YAML"
+  experimenter: ["John Doe", "Jane Smith"]
+  related_publications: ["doi:10.1000/test"]
+
+Behavior:
+  Videos:
+    - name: "test_video_yaml"
+      description: "Test video from YAML metadata"
+
+Custom:
+  yaml_specific_field: "This field only exists in YAML"
+  nested_field:
+    sub_field: "nested value from YAML"
