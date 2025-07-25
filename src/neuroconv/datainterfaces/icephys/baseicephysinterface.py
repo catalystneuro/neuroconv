@@ -61,10 +61,10 @@ class BaseIcephysInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         from ...tools.neo import get_number_of_electrodes
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata["Icephys"] = dict(
             Device=[dict(name="DeviceIcephys", description="no description")],
             Electrodes=[

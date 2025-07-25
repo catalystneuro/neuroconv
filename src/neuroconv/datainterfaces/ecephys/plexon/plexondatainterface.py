@@ -53,8 +53,8 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         neo_reader = self.recording_extractor.neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
@@ -116,8 +116,8 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         neo_reader = self.recording_extractor.neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
@@ -182,8 +182,8 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         neo_reader = self.recording_extractor.neo_reader
 
@@ -225,8 +225,8 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         neo_reader = self.sorting_extractor.neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):

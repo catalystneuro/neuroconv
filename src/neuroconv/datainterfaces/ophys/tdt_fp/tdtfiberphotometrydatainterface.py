@@ -6,7 +6,7 @@ from typing import Literal
 
 import numpy as np
 import pytz
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -46,7 +46,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # This module should be here so ndx_fiber_photometry is in the global namespace when an pynwb.io object is created
         import ndx_fiber_photometry  # noqa: F401
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the TDTFiberPhotometryInterface.
 
@@ -55,7 +55,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         DeepDict
             The metadata dictionary for this interface.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
         session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=pytz.utc)

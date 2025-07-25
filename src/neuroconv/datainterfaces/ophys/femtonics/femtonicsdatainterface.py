@@ -134,7 +134,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # TODO: remove this once roiextractors 0.6.1
         self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
 
@@ -144,7 +144,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing extracted metadata including device information,
             optical channels, imaging plane details, and acquisition parameters.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         femtonics_metadata = self.imaging_extractor._get_metadata()
 

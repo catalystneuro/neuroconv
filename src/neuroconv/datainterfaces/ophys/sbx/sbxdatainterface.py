@@ -37,7 +37,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             photon_series_type=photon_series_type,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the Scanbox imaging data.
 
@@ -47,6 +47,6 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information and imaging details
             specific to the Scanbox system.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

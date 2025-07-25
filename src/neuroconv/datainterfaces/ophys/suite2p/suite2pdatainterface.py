@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -146,7 +146,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the Suite2p segmentation data.
 
@@ -156,7 +156,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             Dictionary containing metadata including plane segmentation details,
             fluorescence data, and segmentation images.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         # No need to update the metadata links for the default plane segmentation name
         default_plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]

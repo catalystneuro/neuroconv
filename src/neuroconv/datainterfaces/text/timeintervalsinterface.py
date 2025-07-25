@@ -40,8 +40,8 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.dataframe = self._read_file(file_path, **read_kwargs)
         self.time_intervals = None
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata["TimeIntervals"] = dict(
             trials=dict(
                 table_name="trials",

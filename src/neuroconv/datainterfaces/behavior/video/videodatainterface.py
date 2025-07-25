@@ -96,8 +96,8 @@ class VideoInterface(BaseDataInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         behavior_metadata = {
             self.metadata_key_name: [
                 dict(name=f"Video {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")

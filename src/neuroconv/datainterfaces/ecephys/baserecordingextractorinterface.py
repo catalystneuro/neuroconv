@@ -2,6 +2,7 @@ import warnings
 from typing import Literal
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
@@ -93,8 +94,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         from ...tools.spikeinterface.spikeinterface import _get_group_name
 

@@ -1,4 +1,4 @@
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict
@@ -42,8 +42,8 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         annotation = self.recording_extractor.neo_reader.raw_annotations
         metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])
         return metadata

@@ -1,5 +1,5 @@
 from dateutil.parser import parse
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -46,7 +46,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         channel_name = self.imaging_extractor._channel_names[0]
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the Micro-Manager TIFF imaging data.
 
@@ -56,7 +56,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time, imaging plane details,
             and two-photon series configuration.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         micromanager_metadata = self.imaging_extractor.micromanager_metadata
         session_start_time = parse(micromanager_metadata["Summary"]["StartTime"])

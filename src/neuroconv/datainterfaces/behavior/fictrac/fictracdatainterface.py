@@ -192,8 +192,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self._timestamps = None
         self._starting_time = None
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         session_start_time = extract_session_start_time(
             file_path=self.file_path,

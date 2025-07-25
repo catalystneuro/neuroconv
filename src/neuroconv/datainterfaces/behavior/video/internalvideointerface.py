@@ -102,8 +102,8 @@ class InternalVideoInterface(BaseDataInterface):
         }
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         video_metadata = {
             "Behavior": {
                 "InternalVideos": {

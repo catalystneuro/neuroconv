@@ -27,7 +27,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix segmentation data.
 
@@ -43,7 +43,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         See related issue: https://github.com/inscopix/pyisx/issues/62
 
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         extractor = self.segmentation_extractor
 
         # Get all metadata from extractor using the consolidated method

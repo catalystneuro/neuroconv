@@ -60,7 +60,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
         self.channel_name = channel_name
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Retrieve the metadata for the Thor imaging data.
 
@@ -70,7 +70,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             and photon series configuration.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         # Access the experiment XML dictionary from the extractor
         xml_dict = self.imaging_extractor._experiment_xml_dict

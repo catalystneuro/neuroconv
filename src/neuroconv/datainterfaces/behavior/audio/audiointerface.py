@@ -90,7 +90,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [
@@ -102,7 +102,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         ]
         behavior_metadata = dict(Audio=audio_metadata)
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata.update(Behavior=behavior_metadata)
         return metadata
 

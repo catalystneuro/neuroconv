@@ -4,6 +4,7 @@ import warnings
 from typing import Literal
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
@@ -106,6 +107,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata(
         self,
+        metadata_file_path: FilePath | None = None,
     ) -> DeepDict:
         """
         Retrieve the metadata for the imaging data.
@@ -119,7 +121,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
         metadata = dict_deep_update(default_metadata, metadata)
 
