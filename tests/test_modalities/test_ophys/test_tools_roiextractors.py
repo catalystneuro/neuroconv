@@ -360,7 +360,7 @@ class TestAddPlaneSegmentation(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.num_rois = 10
-        cls.num_frames = 20
+        cls.num_samples = 20
         cls.num_rows = 25
         cls.num_columns = 20
 
@@ -372,7 +372,7 @@ class TestAddPlaneSegmentation(TestCase):
     def setUp(self):
         self.segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -511,7 +511,7 @@ class TestAddPlaneSegmentation(TestCase):
         the plane segmentation ROI table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
             rejected_list=rejected_list,
@@ -560,7 +560,7 @@ class TestAddPlaneSegmentation(TestCase):
         """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -592,7 +592,7 @@ class TestAddPlaneSegmentation(TestCase):
         """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -624,7 +624,7 @@ class TestAddPlaneSegmentation(TestCase):
         """Test that an invalid mask_type raises a AssertionError."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -643,7 +643,7 @@ class TestAddPlaneSegmentation(TestCase):
     def test_pixel_masks_auto_switch(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -681,7 +681,7 @@ class TestAddPlaneSegmentation(TestCase):
     def test_voxel_masks_auto_switch(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -806,7 +806,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.num_rois = 10
-        cls.num_frames = 20
+        cls.num_samples = 20
         cls.num_rows = 25
         cls.num_columns = 20
 
@@ -839,7 +839,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
     def setUp(self):
         self.segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -939,7 +939,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=300,
             num_columns=400,
             has_raw_signal=True,
@@ -989,7 +989,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
             has_neuropil_signal=False,
@@ -1011,7 +1011,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
     def test_add_fluorescence_one_of_the_traces_is_empty(self):
         """Test that roi response series with empty values are not added to the nwbfile."""
 
-        self.segmentation_extractor._roi_response_deconvolved = np.empty((self.num_frames, 0))
+        self.segmentation_extractor._roi_response_deconvolved = np.empty((self.num_samples, 0))
 
         add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
@@ -1029,7 +1029,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         """Test that roi response series with all zero values are not added to the
         nwbfile."""
 
-        self.segmentation_extractor._roi_response_deconvolved = np.zeros((self.num_rois, self.num_frames))
+        self.segmentation_extractor._roi_response_deconvolved = np.zeros((self.num_rois, self.num_samples))
 
         add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
@@ -1048,7 +1048,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         None."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
             has_raw_signal=True,
@@ -1097,7 +1097,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
             has_raw_signal=True,
@@ -1121,7 +1121,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -1146,7 +1146,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         times = [0.0, 0.12, 0.15, 0.19, 0.1]
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=2,
-            num_frames=5,
+            num_samples=5,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -1172,7 +1172,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         times = np.arange(0, 5)
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=2,
-            num_frames=5,
+            num_samples=5,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -1196,7 +1196,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         times = np.arange(0, 5)
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=2,
-            num_frames=5,
+            num_samples=5,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -1224,7 +1224,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         times = [0.0, 0.12, 0.15, 0.19, 0.1]
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=2,
-            num_frames=5,
+            num_samples=5,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -1276,7 +1276,7 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
     def setUpClass(cls):
         cls.num_rois_first_plane = 10
         cls.num_rois_second_plane = 5
-        cls.num_frames = 20
+        cls.num_samples = 20
         cls.num_rows = 25
         cls.num_columns = 20
 
@@ -1335,13 +1335,13 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
     def setUp(self):
         self.segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois_first_plane,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
         self.segmentation_extractor_second_plane = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois_second_plane,
-            num_frames=self.num_frames,
+            num_samples=self.num_samples,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
@@ -1414,11 +1414,11 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         self.assertEqual(
             fluorescence.roi_response_series["RoiResponseSeriesSecondPlane"].data.maxshape,
-            (self.num_frames, self.num_rois_second_plane),
+            (self.num_samples, self.num_rois_second_plane),
         )
         self.assertEqual(
             df_over_f.roi_response_series["RoiResponseSeriesSecondPlane"].data.maxshape,
-            (self.num_frames, self.num_rois_second_plane),
+            (self.num_samples, self.num_rois_second_plane),
         )
 
 
@@ -1426,7 +1426,7 @@ class TestAddPhotonSeries(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now().astimezone()
-        cls.num_frames = 30
+        cls.num_samples = 30
         cls.num_rows = 10
         cls.num_columns = 15
 
@@ -1479,7 +1479,7 @@ class TestAddPhotonSeries(TestCase):
         )
 
         self.imaging_extractor = generate_dummy_imaging_extractor(
-            self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
+            num_samples=self.num_samples, num_rows=self.num_rows, num_columns=self.num_columns
         )
 
     def test_default_values(self):
@@ -1496,7 +1496,7 @@ class TestAddPhotonSeries(TestCase):
 
         two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
-        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
         expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
@@ -1563,7 +1563,7 @@ class TestAddPhotonSeries(TestCase):
         two_photon_series_extracted = acquisition_modules[self.two_photon_series_name].data
 
         # NWB stores images as num_columns x num_rows
-        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
         expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
@@ -1586,7 +1586,7 @@ class TestAddPhotonSeries(TestCase):
 
         two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
-        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
         expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
@@ -1677,7 +1677,7 @@ class TestAddPhotonSeries(TestCase):
             two_photon_series = acquisition_modules[self.two_photon_series_name].data
 
             # NWB stores images as num_columns x num_rows
-            expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+            expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
             assert two_photon_series.shape == expected_two_photon_series_shape
 
             # Check device
@@ -1766,7 +1766,7 @@ class TestAddPhotonSeries(TestCase):
             one_photon_series = acquisition_modules[self.one_photon_series_name].data
 
             # NWB stores images as num_columns x num_rows
-            expected_one_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+            expected_one_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
 
     def test_add_photon_series_to_nwbfile_invalid_module_name_raises(self):
