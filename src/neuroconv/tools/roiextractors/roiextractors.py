@@ -810,24 +810,16 @@ def add_plane_segmentation_to_nwbfile(
         roi_locations = None
 
     # Prepare quality metrics data - always attempt to include if available
-    quality_metrics = {}
+    segmentation_extractor_properties  = {}
     available_properties = segmentation_extractor.get_property_keys()
-
-    # Define quality metrics with their descriptions
-    quality_metrics_definitions = {
-        "snr": "Signal-to-noise ratio for each component",
-        "r_values": "Spatial correlation values for each component",
-        "cnn_preds": "CNN classifier predictions for component quality",
-    }
 
     # Extract available quality metrics
     for property_key in available_properties:
-        if property_key in quality_metrics_definitions:
-            values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
-            quality_metrics[property_key] = {
-                "data": values,
-                "description": quality_metrics_definitions[property_key],
-            }
+        values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
+        segmentation_extractor_properties[property_key] = {
+            "data": values,
+            "description": "",
+        }
 
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
@@ -843,7 +835,7 @@ def add_plane_segmentation_to_nwbfile(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
-        quality_metrics=quality_metrics,
+        segmentation_extractor_properties =segmentation_extractor_properties ,
     )
     return nwbfile
 
@@ -862,7 +854,7 @@ def _add_plane_segmentation(
     is_id_rejected: list | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    quality_metrics: dict | None = None,
+    segmentation_extractor_properties : dict | None = None,
 ) -> NWBFile:
     iterator_options = iterator_options or dict()
 
@@ -968,12 +960,21 @@ def _add_plane_segmentation(
             description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
             data=is_id_rejected,
         )
-
+    
+    default_segmentation_extractor_properties = {
+        "snr": "Signal-to-noise ratio for each component",
+        "r_values": "Spatial correlation values for each component",
+        "cnn_preds": "CNN classifier predictions for component quality",
+        }
+    
     # Always add quality metrics if they are available
-    if quality_metrics:
-        for column_name, column_info in quality_metrics.items():
+    if segmentation_extractor_properties:
+        for column_name, column_info in segmentation_extractor_properties.items():
+            description = default_segmentation_extractor_properties.get(column_name, column_info.get("description", ""))
             plane_segmentation.add_column(
-                name=column_name, description=column_info["description"], data=column_info["data"]
+                name=column_name,
+                description=description,
+                data=column_info["data"]
             )
 
     image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])

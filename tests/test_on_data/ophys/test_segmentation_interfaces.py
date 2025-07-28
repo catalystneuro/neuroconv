@@ -76,7 +76,7 @@ class TestCaimanSegmentationInterface450(SegmentationExtractorInterfaceTestMixin
     )
     save_directory = OUTPUT_PATH
 
-    def test_quality_metrics_propagated(self, setup_interface):
+    def test_segmentation_extractor_properties_propagated(self, setup_interface):
         """Test that quality metrics are automatically propagated to the NWB file."""
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -153,7 +153,7 @@ class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin
     )
     save_directory = OUTPUT_PATH
 
-    def test_quality_metrics_propagated(self, setup_interface):
+    def test_segmentation_extractor_properties_propagated(self, setup_interface):
         """Test that quality metrics are automatically propagated to the NWB file."""
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -230,7 +230,7 @@ class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixi
     )
     save_directory = OUTPUT_PATH
 
-    def test_quality_metrics_propagated(self, setup_interface):
+    def test_segmentation_extractor_properties_propagated(self, setup_interface):
         """Test that quality metrics are automatically propagated to the NWB file."""
         nwbfile = mock_NWBFile()
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
