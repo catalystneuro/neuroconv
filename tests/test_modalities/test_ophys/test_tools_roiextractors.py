@@ -804,9 +804,7 @@ class TestAddPlaneSegmentation(TestCase):
 
         # Ensure metadata contains the correct plane segmentation name
         plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name,
-            description="Segmented ROIs",
-            imaging_plane="ImagingPlane"
+            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
         )
         image_segmentation_metadata = dict(
             ImageSegmentation=dict(
@@ -1856,7 +1854,6 @@ class TestAddPhotonSeries(TestCase):
         """Test that photon series with the same name are not added to nwbfile.processing."""
 
         with self.assertRaisesWith(
-
             exc_type=ValueError,
             exc_msg=f"{self.two_photon_series_name} already added to nwbfile.processing['ophys'].",
         ):
