@@ -90,6 +90,13 @@ class SortedSpikeGLXConverter(ConverterPipe):
         self.sorting_configuration = sorting_configuration
         self.verbose = verbose
 
+        # Validate that sorting configuration is not empty
+        if not sorting_configuration:
+            raise ValueError(
+                "SortedSpikeGLXConverter requires at least one sorting configuration. "
+                "Use SpikeGLXConverterPipe directly if no sorting data is available."
+            )
+
         # Create mapping of stream_ids that have sorting data
         self._sorted_stream_ids = {config["stream_id"] for config in sorting_configuration}
 
@@ -128,13 +135,17 @@ class SortedSpikeGLXConverter(ConverterPipe):
         # Include all non-sorted streams and sorted converters
         data_interfaces = {}
 
-        for stream_id, interface in self.spikeglx_converter.data_interface_objects.items():
+        # Sort stream IDs to ensure deterministic ordering for consistent electrode table indices
+        sorted_stream_ids = sorted(self.spikeglx_converter.data_interface_objects.keys())
+        for stream_id in sorted_stream_ids:
+            interface = self.spikeglx_converter.data_interface_objects[stream_id]
             if stream_id not in self._sorted_stream_ids:
                 # Non-sorted stream (could be AP without sorting, LF, or NIDQ)
                 data_interfaces[stream_id] = interface
 
-        # Add sorted converters with unique names
-        for stream_id, sorted_converter in self._sorted_converters.items():
+        # Add sorted converters with unique names in sorted order
+        for stream_id in sorted(self._sorted_converters.keys()):
+            sorted_converter = self._sorted_converters[stream_id]
             data_interfaces[f"{stream_id}_sorted"] = sorted_converter
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
