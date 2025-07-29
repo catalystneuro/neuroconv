@@ -1,7 +1,6 @@
 """Femtonics imaging interface for NeuroConv."""
 
 from typing import Optional
-
 from pydantic import DirectoryPath
 
 from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface

@@ -73,7 +73,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             Path to OpenEphys directory.
         stream_name : str, optional
             The name of the recording stream.
