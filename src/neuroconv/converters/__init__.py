@@ -16,6 +16,7 @@ from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffSinglePlaneConverter,
 )
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
+from .sorted_spikeglx_converter import SortedSpikeGLXConverter
 
 converter_list = [
     LightningPoseConverter,
@@ -24,4 +25,5 @@ converter_list = [
     BrukerTiffSinglePlaneConverter,
     MiniscopeConverter,
     SortedRecordingConverter,
+    SortedSpikeGLXConverter,
 ]
