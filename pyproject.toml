@@ -437,7 +437,7 @@ known-first-party = ["neuroconv"]
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin'
+ignore-words-list = 'assertin,sortings'
 
 [dependency-groups]
 test = [
