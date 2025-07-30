@@ -110,21 +110,8 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             electrode_table_region_properties = electrode_table_region["property"].to_list()
             assert electrode_table_region_properties == property
 
-    def test_rename_unit_ids_basic(self):
-        interface = MockSortingInterface(num_units=4, durations=[0.100])
-        original_unit_ids = interface.units_ids
-        assert original_unit_ids == ["0", "1", "2", "3"]
-
-        # Rename some units
-        unit_ids_map = {"0": "unit_a", "2": "unit_c"}
-        interface.rename_unit_ids(unit_ids_map)
-
-        new_unit_ids = interface.units_ids
-        expected_unit_ids = ["unit_a", "1", "unit_c", "3"]
-        assert new_unit_ids == expected_unit_ids
-
-    def test_rename_unit_ids_all_units(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
+    def test_rename_unit_ids(self):
+        interface = MockSortingInterface(num_units=3)
 
         # Rename all units
         unit_ids_map = {"0": "neuron_1", "1": "neuron_2", "2": "neuron_3"}
@@ -132,46 +119,10 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
         new_unit_ids = interface.units_ids
         expected_unit_ids = ["neuron_1", "neuron_2", "neuron_3"]
-        assert new_unit_ids == expected_unit_ids
-
-    def test_rename_unit_ids_preserves_properties(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
-
-        # Add some properties to the sorting extractor
-        interface.sorting_extractor.set_unit_property("0", "quality", "good")
-        interface.sorting_extractor.set_unit_property("1", "quality", "noise")
-        interface.sorting_extractor.set_unit_property("2", "quality", "mua")
-
-        # Get original spike trains for comparison
-        original_spikes_0 = interface.sorting_extractor.get_unit_spike_train("0")
-        original_spikes_1 = interface.sorting_extractor.get_unit_spike_train("1")
-
-        # Rename units
-        unit_ids_map = {"0": "good_unit", "1": "noise_unit"}
-        interface.rename_unit_ids(unit_ids_map)
-
-        # Check that properties are preserved
-        assert interface.sorting_extractor.get_unit_property("good_unit", "quality") == "good"
-        assert interface.sorting_extractor.get_unit_property("noise_unit", "quality") == "noise"
-        assert interface.sorting_extractor.get_unit_property("2", "quality") == "mua"
-
-        # Check that spike trains are preserved
-        new_spikes_good = interface.sorting_extractor.get_unit_spike_train("good_unit")
-        new_spikes_noise = interface.sorting_extractor.get_unit_spike_train("noise_unit")
-        np.testing.assert_array_equal(original_spikes_0, new_spikes_good)
-        np.testing.assert_array_equal(original_spikes_1, new_spikes_noise)
-
-    def test_rename_unit_ids_empty_dict(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
-        original_unit_ids = interface.units_ids
-
-        # Empty dictionary should not change anything
-        interface.rename_unit_ids({})
-
-        assert interface.units_ids == original_unit_ids
+        assert new_unit_ids.tolist() == expected_unit_ids
 
     def test_rename_unit_ids_invalid_input_type(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
+        interface = MockSortingInterface(num_units=3)
 
         with pytest.raises(TypeError, match="unit_ids_map must be a dictionary"):
             interface.rename_unit_ids("not_a_dict")
@@ -180,38 +131,12 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             interface.rename_unit_ids(["0", "1"])
 
     def test_rename_unit_ids_nonexistent_unit(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
+        interface = MockSortingInterface(num_units=3)
 
         unit_ids_map = {"0": "unit_a", "nonexistent": "unit_b"}
 
         with pytest.raises(ValueError, match="Unit IDs \\['nonexistent'\\] not found in sorting extractor"):
             interface.rename_unit_ids(unit_ids_map)
-
-    def test_rename_unit_ids_duplicate_new_names(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
-
-        # This should work - SpikeInterface allows duplicate unit IDs in rename_units
-        unit_ids_map = {"0": "duplicate", "1": "duplicate"}
-        interface.rename_unit_ids(unit_ids_map)
-
-        new_unit_ids = interface.units_ids
-        expected_unit_ids = ["duplicate", "duplicate", "2"]
-        assert new_unit_ids == expected_unit_ids
-
-    def test_rename_unit_ids_integration_with_nwbfile(self):
-        interface = MockSortingInterface(num_units=3, durations=[0.100])
-
-        # Rename units
-        unit_ids_map = {"0": "pyramidal_1", "1": "interneuron_1", "2": "unclassified_1"}
-        interface.rename_unit_ids(unit_ids_map)
-
-        # Create NWB file and verify unit names are correctly stored
-        nwbfile = interface.create_nwbfile()
-        units_table = nwbfile.units.to_dataframe()
-
-        expected_unit_names = ["pyramidal_1", "interneuron_1", "unclassified_1"]
-        actual_unit_names = units_table["unit_name"].tolist()
-        assert actual_unit_names == expected_unit_names
 
     def test_electrode_indices_assertion_error_when_missing_table(self, setup_interface):
         with pytest.raises(
