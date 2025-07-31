@@ -148,6 +148,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         stub_samples: int = 100,
     ):
         """
+        Add segmentation data to the NWB file.
 
         Parameters
         ----------
@@ -168,7 +169,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             you may wish to disable this for faster write speeds.
         include_roi_acceptance : bool, default: True
             Whether to include if the detected ROI was 'accepted' or 'rejected'.
-            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
+            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         mask_type : str, default: 'image'
             There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
