@@ -1,0 +1,2 @@
+outpath_top=/Volumes/scratch/neuropixels/data/sample_data/CatGT/CatGT-B/catgt_5-19-2022-CI0_g0
+supercat_element={/Volumes/scratch/neuropixels/data/sample_data/CatGT/CatGT-B,catgt_5-19-2022-CI0_g0}

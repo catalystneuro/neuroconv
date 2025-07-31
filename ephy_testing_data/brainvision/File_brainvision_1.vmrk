@@ -1,0 +1,17 @@
+Brain Vision Data Exchange Marker File, Version 1.0
+; Data created from history path: ARJM/Raw Data/DS for Export Sam/Segment 21 40s
+; The channel numbers are related to the channels in the exported file.
+
+[Common Infos]
+Codepage=UTF-8
+DataFile=monoSegmentSam.eeg
+
+[Marker Infos]
+; Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,
+; <Size in data points>, <Channel number (0 = marker is related to all channels)>,
+; <Date (YYYYMMDDhhmmssuuuuuu)>
+; Fields are delimited by commas, some fields might be omited (empty).
+; Commas in type or description text are coded as "\1".
+Mk1=Time 0,,1,1,0
+Mk2=New Segment,,1,1,0,20111027121155320000
+Mk3=Stimulus,S 21,1,1,0
