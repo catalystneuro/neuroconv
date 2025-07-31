@@ -1,4 +1,4 @@
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
@@ -110,10 +110,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if len(neural_channels) < len(channel_ids):
             self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:

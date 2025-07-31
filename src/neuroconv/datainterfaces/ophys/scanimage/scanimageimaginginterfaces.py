@@ -148,7 +148,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         times = self.imaging_extractor.get_times()
         self.imaging_extractor.set_times(times=times)
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -163,7 +163,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - Imaging plane details including grid spacing and origin coordinates if available
             - Photon series metadata with scan line rate and other acquisition parameters
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
@@ -443,7 +443,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         self.sampling_frequency = sampling_frequency
         super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -455,7 +455,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         """
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
@@ -640,7 +640,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -650,7 +650,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time and device information
             specific to the ScanImage system.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         extracted_session_start_time = datetime.datetime.strptime(
             self.image_metadata["epoch"], "[%Y %m %d %H %M %S.%f]"
@@ -776,7 +776,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
             verbose=verbose,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -786,7 +786,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
             Dictionary containing metadata including session start time, device information,
             and imaging plane configuration specific to the ScanImage system.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         extracted_session_start_time = datetime.datetime.strptime(
             self.image_metadata["epoch"], "[%Y %m %d %H %M %S.%f]"
@@ -924,7 +924,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -934,7 +934,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time, device information,
             and imaging plane configuration specific to the ScanImage system.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         extracted_session_start_time = datetime.datetime.strptime(
             self.image_metadata["epoch"], "[%Y %m %d %H %M %S.%f]"
@@ -1074,7 +1074,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
             verbose=verbose,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
@@ -1084,7 +1084,7 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
             Dictionary containing metadata including session start time, device information,
             and imaging plane configuration specific to the ScanImage system.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         extracted_session_start_time = datetime.datetime.strptime(
             self.image_metadata["epoch"], "[%Y %m %d %H %M %S.%f]"

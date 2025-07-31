@@ -6,6 +6,7 @@ from typing import Literal
 
 import numpy as np
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.base import Images
 from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
@@ -213,7 +214,7 @@ class ImageInterface(BaseDataInterface):
 
         self.file_paths = [Path(p) for p in file_paths]
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the images.
 
@@ -275,7 +276,7 @@ class ImageInterface(BaseDataInterface):
         - If resolution or description are not specified, they will not be passed to the NWB image objects
         - Image names default to the file stem but can be overridden in the metadata
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
 
         # Add basic metadata about the images under the specified key
         if "Images" not in metadata:

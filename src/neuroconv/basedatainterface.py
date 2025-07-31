@@ -22,6 +22,7 @@ from .tools.nwb_helpers._metadata_and_file_helpers import (
     configure_and_write_nwbfile,
 )
 from .utils import (
+    dict_deep_update,
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
@@ -83,14 +84,22 @@ class BaseDataInterface(ABC):
         metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Child DataInterface classes should override this to match their metadata.
+
+        Parameters
+        ----------
+        metadata_file_path : FilePath, optional
+            Path to a YAML or JSON file containing additional metadata to merge with
+            the metadata extracted from source files. If provided, the file contents will be loaded
+            and merged with the extracted metadata using deep update.
 
         Returns
         -------
         DeepDict
-            The metadata dictionary containing basic NWBFile metadata.
+            The metadata dictionary containing basic NWBFile metadata,
+            optionally merged with metadata from the provided file.
         """
         metadata = DeepDict()
         metadata["NWBFile"]["session_description"] = ""
@@ -100,6 +109,11 @@ class BaseDataInterface(ABC):
         neuroconv_version = importlib.metadata.version("neuroconv")
         metadata["NWBFile"]["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
         metadata["NWBFile"]["source_script_file_name"] = __file__  # Required for validation
+
+        # If a metadata file is provided, load and merge it
+        if metadata_file_path is not None:
+            file_metadata = load_dict_from_file(metadata_file_path)
+            metadata = dict_deep_update(metadata, file_metadata)
 
         return metadata
 

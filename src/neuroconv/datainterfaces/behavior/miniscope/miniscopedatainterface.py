@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
 from .... import BaseDataInterface
@@ -68,8 +68,8 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         assert len(self._starting_frames) == len(self._behav_avi_file_paths)
         self._timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata["NWBFile"].update(session_start_time=self._recording_start_times[0])
 
         metadata["Behavior"]["Device"] = [self._miniscope_config]

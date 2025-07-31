@@ -120,8 +120,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time

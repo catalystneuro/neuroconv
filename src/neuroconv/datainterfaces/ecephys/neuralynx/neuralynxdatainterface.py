@@ -1,7 +1,7 @@
 import json
 
 import numpy as np
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -70,7 +70,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
@@ -98,7 +98,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
         nwb_metadata["NWBFile"]["notes"] = json.dumps(neo_metadata, ensure_ascii=True)
 
-        return dict_deep_update(super().get_metadata(), nwb_metadata)
+        return dict_deep_update(super().get_metadata(metadata_file_path=metadata_file_path), nwb_metadata)
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):

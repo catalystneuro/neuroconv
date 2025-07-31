@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal
 
 import numpy as np
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
@@ -59,7 +59,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
         self.photon_series_type = "OnePhotonSeries"
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the Miniscope imaging data.
 
@@ -71,7 +71,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         """
         from ....tools.roiextractors import get_nwb_imaging_metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
         metadata = dict_deep_update(metadata, default_metadata)
         metadata["Ophys"].pop("TwoPhotonSeries", None)

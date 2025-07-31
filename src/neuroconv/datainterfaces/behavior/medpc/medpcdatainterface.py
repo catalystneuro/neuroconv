@@ -87,8 +87,8 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         )
         self.timestamps_dict = {}
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_dict = read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=self.source_data["metadata_medpc_name_to_info_dict"],

@@ -79,6 +79,40 @@ dictionary using :py:meth:`~neuroconv.utils.dict.load_dict_from_file`. Then the 
 
 Note that any metadata extracted in by ``spikeglx_interface.get_metadata()`` will be updated by the YAML data.
 
+Simplified YAML Loading with metadata_file_path
+------------------------------------------------
+
+Both :py:class:`~neuroconv.basedatainterface.BaseDataInterface` and :py:class:`~neuroconv.nwbconverter.NWBConverter`
+classes now support loading YAML metadata files directly through their :py:meth:`~neuroconv.basedatainterface.BaseDataInterface.get_metadata`
+methods using the ``metadata_file_path`` parameter:
+
+.. code-block:: python
+
+    from neuroconv import NWBConverter
+    from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
+
+    class ExampleNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            SpikeGLXRecording=SpikeGLXRecordingInterface,
+            PhySorting=PhySortingInterface
+        )
+
+    source_data = dict(
+        SpikeGLXRecording=dict(folder_path="raw_dataset_folder_path"),
+        PhySorting=dict(folder_path="sorted_dataset_path")
+    )
+
+    converter = ExampleNWBConverter(source_data)
+
+    # Load metadata with YAML file automatically merged
+    metadata = converter.get_metadata(metadata_file_path="my_lab_metadata.yml")
+
+    converter.run_conversion(metadata=metadata, nwbfile_path="my_nwbfile.nwb")
+
+The method supports both YAML (``.yml``, ``.yaml``) and JSON (``.json``) files. The file metadata
+will be merged with the metadata extracted from your data interfaces using deep update, meaning
+nested dictionaries will be properly combined rather than replaced.
+
 The above YAML is common to all :py:class:`~neuroconv.basedatainterface.BaseDataInterface`, :py:class:`~neuroconv.nwbconverter.NWBConverter`,
 or :py:class:`~neuroconv.nwbconverter.ConverterPipe`, and an analogous workflow for incorporating this data will work
 for each. Specific interfaces and converters will have additional fields, which you can see using the method

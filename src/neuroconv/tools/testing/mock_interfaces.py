@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
 from pynwb.device import Device
@@ -36,8 +37,8 @@ class MockInterface(BaseDataInterface):
 
         super().__init__(verbose=verbose, **source_data)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
@@ -225,7 +226,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -234,7 +235,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         dict
             The metadata dictionary containing NWBFile metadata with session start time.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
@@ -286,8 +287,8 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         string_unit_ids = [str(id) for id in self.sorting_extractor.unit_ids]
         self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
@@ -368,9 +369,9 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
@@ -460,9 +461,9 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed=seed,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
@@ -600,9 +601,9 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         """Set aligned timestamps."""
         self._timestamps = aligned_timestamps
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, metadata_file_path: FilePath | None = None) -> DeepDict:
         """Get metadata for the mock pose estimation interface."""
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(metadata_file_path=metadata_file_path)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
 
