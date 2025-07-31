@@ -110,6 +110,34 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             electrode_table_region_properties = electrode_table_region["property"].to_list()
             assert electrode_table_region_properties == property
 
+    def test_rename_unit_ids(self):
+        interface = MockSortingInterface(num_units=3)
+
+        # Rename all units
+        unit_ids_map = {"0": "neuron_1", "1": "neuron_2", "2": "neuron_3"}
+        interface.rename_unit_ids(unit_ids_map)
+
+        new_unit_ids = interface.units_ids
+        expected_unit_ids = ["neuron_1", "neuron_2", "neuron_3"]
+        assert new_unit_ids.tolist() == expected_unit_ids
+
+    def test_rename_unit_ids_invalid_input_type(self):
+        interface = MockSortingInterface(num_units=3)
+
+        with pytest.raises(TypeError, match="unit_ids_map must be a dictionary"):
+            interface.rename_unit_ids("not_a_dict")
+
+        with pytest.raises(TypeError, match="unit_ids_map must be a dictionary"):
+            interface.rename_unit_ids(["0", "1"])
+
+    def test_rename_unit_ids_nonexistent_unit(self):
+        interface = MockSortingInterface(num_units=3)
+
+        unit_ids_map = {"0": "unit_a", "nonexistent": "unit_b"}
+
+        with pytest.raises(ValueError, match="Unit IDs \\['nonexistent'\\] not found in sorting extractor"):
+            interface.rename_unit_ids(unit_ids_map)
+
     def test_electrode_indices_assertion_error_when_missing_table(self, setup_interface):
         with pytest.raises(
             ValueError,
