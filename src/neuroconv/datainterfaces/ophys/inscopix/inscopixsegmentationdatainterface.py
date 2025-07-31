@@ -1,6 +1,10 @@
 from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    convert_ophys_metadata_to_dict,
+    is_old_ophys_metadata_format,
+)
 from ....utils import DeepDict
 
 
@@ -16,6 +20,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -24,8 +29,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             Path to the .isxd Inscopix file.
         verbose : bool, optional
             If True, outputs additional information during processing.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and ImageSegmentation.
+            Default is "default".
         """
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose, metadata_key=metadata_key)
 
     def get_metadata(self) -> DeepDict:
         """
@@ -44,6 +53,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         """
         metadata = super().get_metadata()
+
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = convert_ophys_metadata_to_dict(metadata)
+
         extractor = self.segmentation_extractor
 
         # Get all metadata from extractor using the consolidated method
@@ -74,7 +88,17 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Device information
         if device_info:
-            device_metadata = metadata["Ophys"]["Device"][0]
+            # Get device metadata using the metadata_key
+            if "Device" in metadata["Ophys"] and isinstance(metadata["Ophys"]["Device"], list):
+                # Old structure (backward compatibility)
+                device_metadata = metadata["Ophys"]["Device"][0]
+            else:
+                # New dictionary structure - we need to update the device in the global Devices
+                if "Devices" not in metadata:
+                    metadata["Devices"] = {}
+                if self.metadata_key not in metadata["Devices"]:
+                    metadata["Devices"][self.metadata_key] = {"name": "Device", "description": ""}
+                device_metadata = metadata["Devices"][self.metadata_key]
 
             # Update the actual device name
             if device_info.get("device_name"):
@@ -107,11 +131,17 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 device_metadata["description"] = "; ".join(device_desc_parts)
 
             # Update imaging plane metadata
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            if "ImagingPlanes" in metadata["Ophys"]:
+                # New dictionary structure
+                imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+            else:
+                # Old list structure (backward compatibility)
+                imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
 
-            # Update imaging plane device reference to match the actual device name
+            # Update imaging plane device reference
             if device_info.get("device_name"):
-                imaging_plane_metadata["device"] = device_info["device_name"]
+                # In new structure, device reference is the metadata_key
+                imaging_plane_metadata["device"] = self.metadata_key
 
             # Build imaging plane description
             plane_desc = "Inscopix imaging plane"
@@ -158,7 +188,14 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if analysis_info and analysis_info.get("trace_units"):
             segmentation_desc += f" with traces in {analysis_info['trace_units']}"
 
-        metadata["Ophys"]["ImageSegmentation"]["description"] = segmentation_desc
+        # Update ImageSegmentation metadata with new dictionary structure
+        if "ImageSegmentation" in metadata["Ophys"]:
+            if self.metadata_key in metadata["Ophys"]["ImageSegmentation"]:
+                # New dictionary structure
+                metadata["Ophys"]["ImageSegmentation"][self.metadata_key]["description"] = segmentation_desc
+            else:
+                # If we have ImageSegmentation but not our key yet, add it
+                metadata["Ophys"]["ImageSegmentation"][self.metadata_key] = {"description": segmentation_desc}
 
         # Subject metadata
         subject_metadata = {}
