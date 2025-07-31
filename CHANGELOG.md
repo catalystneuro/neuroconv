@@ -16,6 +16,7 @@
 * Segmentation interfaces now support roi ids that are strings [PR #1390](https://github.com/catalystneuro/neuroconv/pull/1390)
 * Added `InscopixImagingInterface` for converting Inscopix imaging data. [PR #1361](https://github.com/catalystneuro/neuroconv/pull/1361)
 * Added `InscopixSegmentationInterface` for converting Inscopix segmentation data. [PR #1364](https://github.com/catalystneuro/neuroconv/pull/1364)
+* Added `AxonRecordingInterface` for converting extracellular electrophysiology data from Axon Binary Format (ABF) files with automatic session start time extraction [PR #1413](https://github.com/catalystneuro/neuroconv/pull/1413)
 * Added `FemtonicsImagingInterface`for converting Femtonics imaging data. [PR #1408](https://github.com/catalystneuro/neuroconv/pull/1408)
 * Added `get_available_subjects` static method to `DeepLabCutInterface` for extracting subject names from DeepLabCut output files [PR #1425](https://github.com/catalystneuro/neuroconv/pull/1425)
 * Added `MockPoseEstimationInterface` for testing pose estimation workflows with deterministic Lissajous figure motion patterns [PR #1435](https://github.com/catalystneuro/neuroconv/pull/1435)
