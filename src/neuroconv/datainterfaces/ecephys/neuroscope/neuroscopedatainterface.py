@@ -62,7 +62,7 @@ def filter_non_neural_channels(recording_extractor, xml_file_path: str):
         if len(neural_channel_ids) == len(channel_ids_in_recorder):
             return recording_extractor
 
-        sub_recording = recording_extractor.channel_slice(channel_ids=neural_channel_ids)
+        sub_recording = recording_extractor.select_channels(channel_ids=neural_channel_ids)
         return sub_recording
 
 
