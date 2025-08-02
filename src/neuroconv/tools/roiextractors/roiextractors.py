@@ -438,12 +438,12 @@ def add_photon_series_to_nwbfile(
 
     # Add timestamps or rate
     if always_write_timestamps:
-        timestamps = imaging.sample_indices_to_time(np.arange(imaging.get_num_samples()))
+        timestamps = imaging.get_timestamps()
         photon_series_kwargs.update(timestamps=timestamps)
     else:
         imaging_has_timestamps = imaging.has_time_vector()
         if imaging_has_timestamps:
-            timestamps = imaging.sample_indices_to_time(np.arange(imaging.get_num_samples()))
+            timestamps = imaging.get_timestamps()
             estimated_rate = calculate_regular_series_rate(series=timestamps)
             starting_time = timestamps[0]
         else:
@@ -804,10 +804,22 @@ def add_plane_segmentation_to_nwbfile(
             "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel'. " f"Received '{mask_type}'."
         )
     if include_roi_centroids:
-        tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+        tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_frame_shape()) == 2 else (1, 0, 2)
         roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :].T
     else:
         roi_locations = None
+
+    # Prepare quality metrics data - always attempt to include if available
+    segmentation_extractor_properties = {}
+    available_properties = segmentation_extractor.get_property_keys()
+
+    # Extract available quality metrics
+    for property_key in available_properties:
+        values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
+        segmentation_extractor_properties[property_key] = {
+            "data": values,
+            "description": "",
+        }
 
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
@@ -823,6 +835,7 @@ def add_plane_segmentation_to_nwbfile(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
+        segmentation_extractor_properties=segmentation_extractor_properties,
     )
     return nwbfile
 
@@ -841,8 +854,8 @@ def _add_plane_segmentation(
     is_id_rejected: list | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
+    segmentation_extractor_properties: dict | None = None,
 ) -> NWBFile:
-
     iterator_options = iterator_options or dict()
 
     # Set the defaults and required infrastructure
@@ -896,12 +909,10 @@ def _add_plane_segmentation(
     )
 
     if mask_type == "image":
-
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
             plane_segmentation.add_roi(**{"id": roi_index, "roi_name": roi_name, "image_mask": image_mask})
-
     else:  # mask_type is "pixel" or "voxel"
         pixel_masks = image_or_pixel_masks
         num_pixel_dims = pixel_masks[0].shape[1]
@@ -949,6 +960,18 @@ def _add_plane_segmentation(
             description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
             data=is_id_rejected,
         )
+
+    default_segmentation_extractor_properties = {
+        "snr": "Signal-to-noise ratio for each component",
+        "r_values": "Spatial correlation values for each component",
+        "cnn_preds": "CNN classifier predictions for component quality",
+    }
+
+    # Always add quality metrics if they are available
+    if segmentation_extractor_properties:
+        for column_name, column_info in segmentation_extractor_properties.items():
+            description = default_segmentation_extractor_properties.get(column_name, column_info.get("description", ""))
+            plane_segmentation.add_column(name=column_name, description=description, data=column_info["data"])
 
     image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
@@ -1111,7 +1134,7 @@ def _add_fluorescence_traces_to_nwbfile(
 
     # Add timestamps or rate
     if segmentation_extractor.has_time_vector():
-        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+        timestamps = segmentation_extractor.get_timestamps()
         estimated_rate = calculate_regular_series_rate(series=timestamps)
         if estimated_rate:
             roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
@@ -1410,7 +1433,6 @@ def add_segmentation_to_nwbfile(
     iterator_options : dict, optional
         Options for iterating over the data, by default None.
 
-
     Returns
     -------
     NWBFile
@@ -1540,7 +1562,7 @@ def write_segmentation_to_nwbfile(
 
     iterator_options = iterator_options or dict()
 
-    # parse metadata correctly considering the MultiSegmentationExtractor function:
+    # Parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
         segmentation_extractors = segmentation_extractor.segmentations
         if metadata is not None:
@@ -1560,7 +1582,7 @@ def write_segmentation_to_nwbfile(
         get_nwb_segmentation_metadata(segmentation_extractor) for segmentation_extractor in segmentation_extractors
     ]
 
-    # updating base metadata with new:
+    # Updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
         metadata_input = metadata[num] if metadata else {}
         metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)

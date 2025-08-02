@@ -737,3 +737,73 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
         pose_estimation_container = read_nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
 
         assert len(pose_estimation_container.fields) > 0
+
+
+class TestDeepLabCutInterfaceGetAvailableSubjects:
+    """Test the get_available_subjects static method of DeepLabCutInterface."""
+
+    default_subject_name = "ind1"
+
+    def test_get_available_subjects_multi_subject_h5(self):
+        """Test extracting subjects from a multi-subject H5 file."""
+        file_path = (
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "multi_subject_h5"
+            / "log07-20-2023(1-XFN1-XFN3).1DLC_resnet50_SocialWSep18shuffle5_100000_el_stubbed.h5"
+        )
+
+        subjects = DeepLabCutInterface.get_available_subjects(file_path)
+        expected_subjects = ["rat 1", "rat 2"]
+
+        assert isinstance(subjects, list)
+        assert len(subjects) == 2
+        assert set(subjects) == set(expected_subjects)
+
+    def test_get_available_subjects_single_subject_h5(self):
+        """Test extracting subjects from a single-subject H5 file."""
+        file_path = (
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        )
+
+        subjects = DeepLabCutInterface.get_available_subjects(file_path)
+        expected_subjects = [self.default_subject_name]
+
+        assert isinstance(subjects, list)
+        assert len(subjects) == 1
+        assert subjects == expected_subjects
+
+    def test_get_available_subjects_csv(self):
+        """Test extracting subjects from a CSV file."""
+        file_path = (
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "SL18_csv"
+            / "SL18_D19_S01_F01_BOX_SLP_20230503_112642.1DLC_resnet50_SubLearnSleepBoxRedLightJun26shuffle1_100000_stubbed.csv"
+        )
+
+        subjects = DeepLabCutInterface.get_available_subjects(file_path)
+        expected_subjects = [self.default_subject_name]
+
+        assert isinstance(subjects, list)
+        assert len(subjects) == 1
+        assert subjects == expected_subjects
+
+    def test_get_available_subjects_file_not_found(self):
+        """Test that FileNotFoundError is raised for non-existent files."""
+        non_existent_file = Path("/non/existent/file.h5")
+
+        with pytest.raises(FileNotFoundError, match="File .* does not exist"):
+            DeepLabCutInterface.get_available_subjects(non_existent_file)
+
+    def test_get_available_subjects_invalid_file(self, tmp_path):
+        """Test that IOError is raised for invalid DLC files."""
+        # Create a temporary file with invalid suffix
+        invalid_file = tmp_path / "test_file.invalid_suffix"
+        invalid_file.touch()
+
+        with pytest.raises(IOError, match="not a valid DeepLabCut output data file"):
+            DeepLabCutInterface.get_available_subjects(invalid_file)
