@@ -1,6 +1,6 @@
 Neuralynx Base Log File Opened - File Name:  C:\Windows\TEMP\2016-11-28_21-50-00\CheetahLogFile.txt
 Time Opened: (m/d/y)  11/28/2016 at time 21:50:0.364
-Cheetah Version: 5.6.3 
+Cheetah Version: 5.6.3
 Cheetah Build Number: 20120711A0851
 PC Host ID: 001517d18af2
 Licensed User: NTNU_6862
@@ -19,7 +19,7 @@ Monitor 0 Resolution: 3840 x 2160
 
 -* NOTICE  *-  21:50:00.366 - 0 - RealTimeClock::InitRealTimeClock() - CPU clock frequency for timestamp calculations is 2
 -* NOTICE  *-  21:50:00.366 - 409 - DigitalIOContainer::InitializeMeasurementComputingDigitalIOBoards() - There are no Measurement Computing boards installed on this computer. 			The driver returned 126. Check to ensure all boards are installed and visible in Instacal.  Otherwise, contact Neuralynx for assistance.
--* NOTICE  *-  21:50:00.482 - 116304 - D3D Primary Graphics Adapter: NVIDIA Quadro 400 
+-* NOTICE  *-  21:50:00.482 - 116304 - D3D Primary Graphics Adapter: NVIDIA Quadro 400
 -* NOTICE  *-  21:50:00.482 - 116341 - D3D Primary Graphics Driver Version: 8.17.12.7090
 -* NOTICE  *-  21:50:00.535 - 169637 - RealTimeClock::InitRealTimeClock() - CPU clock frequency for timestamp calculations is 2
 -* NOTICE  *-  21:50:00.639 - 273453 - Allocated  10440000 Bytes, #entries:10000   EntrySize:1044 PreEntries 0
@@ -32,11 +32,11 @@ Monitor 0 Resolution: 3840 x 2160
 -* NOTICE  *-  21:50:00.790 - 423463 - FormatCmdLine::GetNextLine() - Processing line number: 1
 -* NOTICE  *-  21:50:00.790 - 423491 - FormatCmdLine::GetNextLine() - Processing line: #Cheetah system setup file
 -* NOTICE  *-  21:50:00.790 - 423513 - FormatCmdLine::GetNextLine() - Processing line number: 2
--* NOTICE  *-  21:50:00.790 - 423530 - FormatCmdLine::GetNextLine() - Processing line: #Generated using Cheetah v5.6.3 
+-* NOTICE  *-  21:50:00.790 - 423530 - FormatCmdLine::GetNextLine() - Processing line: #Generated using Cheetah v5.6.3
 -* NOTICE  *-  21:50:00.790 - 423549 - FormatCmdLine::GetNextLine() - Processing line number: 3
 -* NOTICE  *-  21:50:00.790 - 423566 - FormatCmdLine::GetNextLine() - Processing line: #File Generation Date: 2016-11-27 16:20:50
 -* NOTICE  *-  21:50:00.790 - 423584 - FormatCmdLine::GetNextLine() - Processing line number: 4
--* NOTICE  *-  21:50:00.790 - 423601 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:00.790 - 423601 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:00.790 - 423619 - FormatCmdLine::GetNextLine() - Processing line number: 5
 -* NOTICE  *-  21:50:00.790 - 423636 - FormatCmdLine::GetNextLine() - Processing line: #Cheetah Setup
 -* NOTICE  *-  21:50:00.790 - 423654 - FormatCmdLine::GetNextLine() - Processing line number: 6
@@ -44,20 +44,20 @@ Monitor 0 Resolution: 3840 x 2160
 -* NOTICE  *-  21:50:00.790 - 423694 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 6, Command Line: -SetDataDirectory "C:\CheetahData\", Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile.txt
 -* NOTICE  *-  21:50:00.793 - 426014 - FormatCmdLine::GetNextLine() - Processing line number: 7
--* NOTICE  *-  21:50:00.793 - 426037 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:00.793 - 426037 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:00.793 - 426057 - FormatCmdLine::GetNextLine() - Processing line number: 8
--* NOTICE  *-  21:50:00.793 - 426108 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:00.793 - 426108 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:00.793 - 426134 - FormatCmdLine::GetNextLine() - Processing line number: 9
 -* NOTICE  *-  21:50:00.793 - 426153 - FormatCmdLine::GetNextLine() - Processing line: #Log File setup
 -* NOTICE  *-  21:50:00.793 - 426172 - FormatCmdLine::GetNextLine() - Processing line number: 10
 -* NOTICE  *-  21:50:00.793 - 426191 - FormatCmdLine::GetNextLine() - Processing line: -SetLogFile "\"
 -* NOTICE  *-  21:50:00.793 - 426213 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 10, Command Line: -SetLogFile "\", Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:00.793 - 426249 - FormatCmdLine::GetNextLine() - Processing line number: 11
--* NOTICE  *-  21:50:00.793 - 426270 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:00.793 - 426270 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:00.793 - 426289 - FormatCmdLine::GetNextLine() - Processing line number: 12
--* NOTICE  *-  21:50:00.793 - 426307 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:00.793 - 426307 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:00.793 - 426327 - FormatCmdLine::GetNextLine() - Processing line number: 13
--* NOTICE  *-  21:50:00.793 - 426345 - FormatCmdLine::GetNextLine() - Processing line: #Hardware Subsystem Creation and Setup for:  AcqSystem1 
+-* NOTICE  *-  21:50:00.793 - 426345 - FormatCmdLine::GetNextLine() - Processing line: #Hardware Subsystem Creation and Setup for:  AcqSystem1
 -* NOTICE  *-  21:50:00.793 - 426366 - FormatCmdLine::GetNextLine() - Processing line number: 14
 -* NOTICE  *-  21:50:00.793 - 426387 - FormatCmdLine::GetNextLine() - Processing line: -CreateHardwareSubSystem "AcqSystem1" DigitalLynxSX "32000" "192.168.3.10" "26011" "192.168.3.100" "26090"
 -* NOTICE  *-  21:50:00.793 - 426413 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 14, Command Line: -CreateHardwareSubSystem "AcqSystem1" DigitalLynxSX "32000" "192.168.3.10" "26011" "192.168.3.100" "26090", Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
@@ -268,13 +268,13 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:31.641 - 31245282 - FormatCmdLine::GetNextLine() - Processing line: -SetDialogVisible "Hardware" False
 -* NOTICE  *-  21:50:31.641 - 31245306 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 17, Command Line: -SetDialogVisible "Hardware" False, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:31.641 - 31245414 - FormatCmdLine::GetNextLine() - Processing line number: 18
--* NOTICE  *-  21:50:31.641 - 31245444 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:31.641 - 31245444 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:31.641 - 31245464 - FormatCmdLine::GetNextLine() - Processing line number: 19
--* NOTICE  *-  21:50:31.641 - 31245484 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:31.641 - 31245484 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:31.641 - 31245502 - FormatCmdLine::GetNextLine() - Processing line number: 20
--* NOTICE  *-  21:50:31.641 - 31245520 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:31.641 - 31245520 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:31.641 - 31245538 - FormatCmdLine::GetNextLine() - Processing line number: 21
--* NOTICE  *-  21:50:31.641 - 31245558 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:31.641 - 31245558 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:31.641 - 31245576 - FormatCmdLine::GetNextLine() - Processing line number: 22
 -* NOTICE  *-  21:50:31.641 - 31245596 - FormatCmdLine::GetNextLine() - Processing line: # Device Setup for VT1 (Hauppauge WinTV 885 Video Capture)
 -* NOTICE  *-  21:50:31.641 - 31245616 - FormatCmdLine::GetNextLine() - Processing line number: 23
@@ -336,9 +336,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.210 - 32813814 - FormatCmdLine::GetNextLine() - Processing line: -SetVideoGain "VT1" -1
 -* NOTICE  *-  21:50:33.210 - 32813836 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 36, Command Line: -SetVideoGain "VT1" -1, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.210 - 32813878 - FormatCmdLine::GetNextLine() - Processing line number: 37
--* NOTICE  *-  21:50:33.210 - 32813900 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.210 - 32813900 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.211 - 32813922 - FormatCmdLine::GetNextLine() - Processing line number: 38
--* NOTICE  *-  21:50:33.211 - 32813942 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.211 - 32813942 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.211 - 32813962 - FormatCmdLine::GetNextLine() - Processing line number: 39
 -* NOTICE  *-  21:50:33.211 - 32813980 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: Events
 -* NOTICE  *-  21:50:33.211 - 32814000 - FormatCmdLine::GetNextLine() - Processing line number: 40
@@ -351,9 +351,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.211 - 32814212 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize Events 3000
 -* NOTICE  *-  21:50:33.211 - 32814234 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 42, Command Line: -SetNetComDataBufferSize Events 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.211 - 32814280 - FormatCmdLine::GetNextLine() - Processing line number: 43
--* NOTICE  *-  21:50:33.211 - 32814300 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.211 - 32814300 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.211 - 32814322 - FormatCmdLine::GetNextLine() - Processing line number: 44
--* NOTICE  *-  21:50:33.211 - 32814342 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.211 - 32814342 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.211 - 32814362 - FormatCmdLine::GetNextLine() - Processing line number: 45
 -* NOTICE  *-  21:50:33.211 - 32814380 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT1"
 -* NOTICE  *-  21:50:33.211 - 32814402 - FormatCmdLine::GetNextLine() - Processing line number: 46
@@ -532,33 +532,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.222 - 32825126 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT1" 3 True
 -* NOTICE  *-  21:50:33.222 - 32825148 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 74, Command Line: -SetSubChannelEnabled "TT1" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825186 - FormatCmdLine::GetNextLine() - Processing line number: 75
--* NOTICE  *-  21:50:33.222 - 32825206 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825206 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.222 - 32825228 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 75, Command Line: -SetWaveformFeature "TT1" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825286 - FormatCmdLine::GetNextLine() - Processing line number: 76
--* NOTICE  *-  21:50:33.222 - 32825306 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825306 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.222 - 32825328 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 76, Command Line: -SetWaveformFeature "TT1" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825382 - FormatCmdLine::GetNextLine() - Processing line number: 77
--* NOTICE  *-  21:50:33.222 - 32825404 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825404 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.222 - 32825426 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 77, Command Line: -SetWaveformFeature "TT1" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825480 - FormatCmdLine::GetNextLine() - Processing line number: 78
--* NOTICE  *-  21:50:33.222 - 32825502 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825502 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.222 - 32825524 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 78, Command Line: -SetWaveformFeature "TT1" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825578 - FormatCmdLine::GetNextLine() - Processing line number: 79
--* NOTICE  *-  21:50:33.222 - 32825598 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825598 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.222 - 32825620 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 79, Command Line: -SetWaveformFeature "TT1" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825676 - FormatCmdLine::GetNextLine() - Processing line number: 80
--* NOTICE  *-  21:50:33.222 - 32825696 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825696 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.222 - 32825720 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 80, Command Line: -SetWaveformFeature "TT1" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.222 - 32825774 - FormatCmdLine::GetNextLine() - Processing line number: 81
--* NOTICE  *-  21:50:33.222 - 32825796 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.222 - 32825796 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.222 - 32825818 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 81, Command Line: -SetWaveformFeature "TT1" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.223 - 32825948 - FormatCmdLine::GetNextLine() - Processing line number: 82
--* NOTICE  *-  21:50:33.223 - 32825972 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.223 - 32825972 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT1" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.223 - 32825996 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 82, Command Line: -SetWaveformFeature "TT1" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.223 - 32826050 - FormatCmdLine::GetNextLine() - Processing line number: 83
--* NOTICE  *-  21:50:33.223 - 32826070 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.223 - 32826070 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.223 - 32826088 - FormatCmdLine::GetNextLine() - Processing line number: 84
--* NOTICE  *-  21:50:33.223 - 32826106 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.223 - 32826106 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.223 - 32826126 - FormatCmdLine::GetNextLine() - Processing line number: 85
 -* NOTICE  *-  21:50:33.223 - 32826144 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT2"
 -* NOTICE  *-  21:50:33.223 - 32826164 - FormatCmdLine::GetNextLine() - Processing line number: 86
@@ -666,33 +666,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.229 - 32832110 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT2" 3 True
 -* NOTICE  *-  21:50:33.229 - 32832132 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 114, Command Line: -SetSubChannelEnabled "TT2" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832172 - FormatCmdLine::GetNextLine() - Processing line number: 115
--* NOTICE  *-  21:50:33.229 - 32832190 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832190 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.229 - 32832212 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 115, Command Line: -SetWaveformFeature "TT2" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832270 - FormatCmdLine::GetNextLine() - Processing line number: 116
--* NOTICE  *-  21:50:33.229 - 32832290 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832290 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.229 - 32832314 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 116, Command Line: -SetWaveformFeature "TT2" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832370 - FormatCmdLine::GetNextLine() - Processing line number: 117
--* NOTICE  *-  21:50:33.229 - 32832390 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832390 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.229 - 32832412 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 117, Command Line: -SetWaveformFeature "TT2" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832468 - FormatCmdLine::GetNextLine() - Processing line number: 118
--* NOTICE  *-  21:50:33.229 - 32832488 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832488 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.229 - 32832510 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 118, Command Line: -SetWaveformFeature "TT2" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832566 - FormatCmdLine::GetNextLine() - Processing line number: 119
--* NOTICE  *-  21:50:33.229 - 32832586 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832586 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.229 - 32832608 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 119, Command Line: -SetWaveformFeature "TT2" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832666 - FormatCmdLine::GetNextLine() - Processing line number: 120
--* NOTICE  *-  21:50:33.229 - 32832686 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832686 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.229 - 32832708 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 120, Command Line: -SetWaveformFeature "TT2" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832772 - FormatCmdLine::GetNextLine() - Processing line number: 121
--* NOTICE  *-  21:50:33.229 - 32832794 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832794 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.229 - 32832816 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 121, Command Line: -SetWaveformFeature "TT2" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.229 - 32832880 - FormatCmdLine::GetNextLine() - Processing line number: 122
--* NOTICE  *-  21:50:33.229 - 32832900 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.229 - 32832900 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT2" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.230 - 32832926 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 122, Command Line: -SetWaveformFeature "TT2" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.230 - 32832986 - FormatCmdLine::GetNextLine() - Processing line number: 123
--* NOTICE  *-  21:50:33.230 - 32833006 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.230 - 32833006 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.230 - 32833026 - FormatCmdLine::GetNextLine() - Processing line number: 124
--* NOTICE  *-  21:50:33.230 - 32833042 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.230 - 32833042 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.230 - 32833062 - FormatCmdLine::GetNextLine() - Processing line number: 125
 -* NOTICE  *-  21:50:33.230 - 32833080 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT3"
 -* NOTICE  *-  21:50:33.230 - 32833098 - FormatCmdLine::GetNextLine() - Processing line number: 126
@@ -800,33 +800,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.251 - 32854062 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT3" 3 True
 -* NOTICE  *-  21:50:33.251 - 32854084 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 154, Command Line: -SetSubChannelEnabled "TT3" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854124 - FormatCmdLine::GetNextLine() - Processing line number: 155
--* NOTICE  *-  21:50:33.251 - 32854142 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854142 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.251 - 32854164 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 155, Command Line: -SetWaveformFeature "TT3" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854224 - FormatCmdLine::GetNextLine() - Processing line number: 156
--* NOTICE  *-  21:50:33.251 - 32854246 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854246 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.251 - 32854268 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 156, Command Line: -SetWaveformFeature "TT3" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854322 - FormatCmdLine::GetNextLine() - Processing line number: 157
--* NOTICE  *-  21:50:33.251 - 32854344 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854344 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.251 - 32854472 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 157, Command Line: -SetWaveformFeature "TT3" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854532 - FormatCmdLine::GetNextLine() - Processing line number: 158
--* NOTICE  *-  21:50:33.251 - 32854552 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854552 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.251 - 32854574 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 158, Command Line: -SetWaveformFeature "TT3" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854628 - FormatCmdLine::GetNextLine() - Processing line number: 159
--* NOTICE  *-  21:50:33.251 - 32854648 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854648 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.251 - 32854670 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 159, Command Line: -SetWaveformFeature "TT3" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854730 - FormatCmdLine::GetNextLine() - Processing line number: 160
--* NOTICE  *-  21:50:33.251 - 32854752 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854752 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.251 - 32854776 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 160, Command Line: -SetWaveformFeature "TT3" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.251 - 32854830 - FormatCmdLine::GetNextLine() - Processing line number: 161
--* NOTICE  *-  21:50:33.251 - 32854850 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.251 - 32854850 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.251 - 32854872 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 161, Command Line: -SetWaveformFeature "TT3" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.252 - 32854932 - FormatCmdLine::GetNextLine() - Processing line number: 162
--* NOTICE  *-  21:50:33.252 - 32854954 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.252 - 32854954 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT3" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.252 - 32854976 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 162, Command Line: -SetWaveformFeature "TT3" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.252 - 32855030 - FormatCmdLine::GetNextLine() - Processing line number: 163
--* NOTICE  *-  21:50:33.252 - 32855050 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.252 - 32855050 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.252 - 32855068 - FormatCmdLine::GetNextLine() - Processing line number: 164
--* NOTICE  *-  21:50:33.252 - 32855086 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.252 - 32855086 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.252 - 32855104 - FormatCmdLine::GetNextLine() - Processing line number: 165
 -* NOTICE  *-  21:50:33.252 - 32855122 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT4"
 -* NOTICE  *-  21:50:33.252 - 32855142 - FormatCmdLine::GetNextLine() - Processing line number: 166
@@ -930,33 +930,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.257 - 32860880 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT4" 3 True
 -* NOTICE  *-  21:50:33.257 - 32860904 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 194, Command Line: -SetSubChannelEnabled "TT4" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32860946 - FormatCmdLine::GetNextLine() - Processing line number: 195
--* NOTICE  *-  21:50:33.258 - 32860966 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.258 - 32860966 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.258 - 32860988 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 195, Command Line: -SetWaveformFeature "TT4" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861048 - FormatCmdLine::GetNextLine() - Processing line number: 196
--* NOTICE  *-  21:50:33.258 - 32861068 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861068 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.258 - 32861090 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 196, Command Line: -SetWaveformFeature "TT4" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861146 - FormatCmdLine::GetNextLine() - Processing line number: 197
--* NOTICE  *-  21:50:33.258 - 32861166 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861166 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.258 - 32861188 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 197, Command Line: -SetWaveformFeature "TT4" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861244 - FormatCmdLine::GetNextLine() - Processing line number: 198
--* NOTICE  *-  21:50:33.258 - 32861264 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861264 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.258 - 32861286 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 198, Command Line: -SetWaveformFeature "TT4" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861340 - FormatCmdLine::GetNextLine() - Processing line number: 199
--* NOTICE  *-  21:50:33.258 - 32861362 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861362 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.258 - 32861382 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 199, Command Line: -SetWaveformFeature "TT4" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861444 - FormatCmdLine::GetNextLine() - Processing line number: 200
--* NOTICE  *-  21:50:33.258 - 32861466 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861466 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.258 - 32861488 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 200, Command Line: -SetWaveformFeature "TT4" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861546 - FormatCmdLine::GetNextLine() - Processing line number: 201
--* NOTICE  *-  21:50:33.258 - 32861566 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861566 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.258 - 32861588 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 201, Command Line: -SetWaveformFeature "TT4" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861642 - FormatCmdLine::GetNextLine() - Processing line number: 202
--* NOTICE  *-  21:50:33.258 - 32861664 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.258 - 32861664 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT4" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.258 - 32861686 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 202, Command Line: -SetWaveformFeature "TT4" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.258 - 32861742 - FormatCmdLine::GetNextLine() - Processing line number: 203
--* NOTICE  *-  21:50:33.258 - 32861762 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.258 - 32861762 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.258 - 32861780 - FormatCmdLine::GetNextLine() - Processing line number: 204
--* NOTICE  *-  21:50:33.258 - 32861798 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.258 - 32861798 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.258 - 32861816 - FormatCmdLine::GetNextLine() - Processing line number: 205
 -* NOTICE  *-  21:50:33.258 - 32861834 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT5"
 -* NOTICE  *-  21:50:33.258 - 32861854 - FormatCmdLine::GetNextLine() - Processing line number: 206
@@ -1064,33 +1064,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.264 - 32867736 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT5" 3 True
 -* NOTICE  *-  21:50:33.264 - 32867890 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 234, Command Line: -SetSubChannelEnabled "TT5" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.265 - 32867938 - FormatCmdLine::GetNextLine() - Processing line number: 235
--* NOTICE  *-  21:50:33.265 - 32867960 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.265 - 32867960 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.265 - 32867982 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 235, Command Line: -SetWaveformFeature "TT5" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.265 - 32868040 - FormatCmdLine::GetNextLine() - Processing line number: 236
--* NOTICE  *-  21:50:33.265 - 32868062 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.265 - 32868062 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.265 - 32868086 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 236, Command Line: -SetWaveformFeature "TT5" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.265 - 32868142 - FormatCmdLine::GetNextLine() - Processing line number: 237
--* NOTICE  *-  21:50:33.265 - 32868164 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.265 - 32868164 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.265 - 32868188 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 237, Command Line: -SetWaveformFeature "TT5" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.265 - 32868244 - FormatCmdLine::GetNextLine() - Processing line number: 238
--* NOTICE  *-  21:50:33.265 - 32868266 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.265 - 32868266 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.265 - 32868290 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 238, Command Line: -SetWaveformFeature "TT5" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.265 - 32868350 - FormatCmdLine::GetNextLine() - Processing line number: 239
--* NOTICE  *-  21:50:33.265 - 32868374 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.265 - 32868374 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.265 - 32868398 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 239, Command Line: -SetWaveformFeature "TT5" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.272 - 32875736 - FormatCmdLine::GetNextLine() - Processing line number: 240
--* NOTICE  *-  21:50:33.272 - 32875760 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.272 - 32875760 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.272 - 32875786 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 240, Command Line: -SetWaveformFeature "TT5" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.272 - 32875846 - FormatCmdLine::GetNextLine() - Processing line number: 241
--* NOTICE  *-  21:50:33.272 - 32875868 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.272 - 32875868 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.272 - 32875892 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 241, Command Line: -SetWaveformFeature "TT5" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.273 - 32875954 - FormatCmdLine::GetNextLine() - Processing line number: 242
--* NOTICE  *-  21:50:33.273 - 32875976 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.273 - 32875976 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT5" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.273 - 32875998 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 242, Command Line: -SetWaveformFeature "TT5" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.273 - 32876054 - FormatCmdLine::GetNextLine() - Processing line number: 243
--* NOTICE  *-  21:50:33.273 - 32876074 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.273 - 32876074 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.273 - 32876094 - FormatCmdLine::GetNextLine() - Processing line number: 244
--* NOTICE  *-  21:50:33.273 - 32876110 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.273 - 32876110 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.273 - 32876130 - FormatCmdLine::GetNextLine() - Processing line number: 245
 -* NOTICE  *-  21:50:33.273 - 32876148 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT6"
 -* NOTICE  *-  21:50:33.273 - 32876168 - FormatCmdLine::GetNextLine() - Processing line number: 246
@@ -1194,33 +1194,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.278 - 32881894 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT6" 3 True
 -* NOTICE  *-  21:50:33.278 - 32881920 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 274, Command Line: -SetSubChannelEnabled "TT6" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32881962 - FormatCmdLine::GetNextLine() - Processing line number: 275
--* NOTICE  *-  21:50:33.279 - 32881982 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.279 - 32881982 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.279 - 32882004 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 275, Command Line: -SetWaveformFeature "TT6" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882062 - FormatCmdLine::GetNextLine() - Processing line number: 276
--* NOTICE  *-  21:50:33.279 - 32882084 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882084 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.279 - 32882106 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 276, Command Line: -SetWaveformFeature "TT6" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882162 - FormatCmdLine::GetNextLine() - Processing line number: 277
--* NOTICE  *-  21:50:33.279 - 32882182 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882182 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.279 - 32882204 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 277, Command Line: -SetWaveformFeature "TT6" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882260 - FormatCmdLine::GetNextLine() - Processing line number: 278
--* NOTICE  *-  21:50:33.279 - 32882282 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882282 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.279 - 32882306 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 278, Command Line: -SetWaveformFeature "TT6" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882364 - FormatCmdLine::GetNextLine() - Processing line number: 279
--* NOTICE  *-  21:50:33.279 - 32882390 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882390 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.279 - 32882414 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 279, Command Line: -SetWaveformFeature "TT6" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882470 - FormatCmdLine::GetNextLine() - Processing line number: 280
--* NOTICE  *-  21:50:33.279 - 32882490 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882490 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.279 - 32882512 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 280, Command Line: -SetWaveformFeature "TT6" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882568 - FormatCmdLine::GetNextLine() - Processing line number: 281
--* NOTICE  *-  21:50:33.279 - 32882588 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882588 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.279 - 32882610 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 281, Command Line: -SetWaveformFeature "TT6" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882666 - FormatCmdLine::GetNextLine() - Processing line number: 282
--* NOTICE  *-  21:50:33.279 - 32882686 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.279 - 32882686 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT6" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.279 - 32882708 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 282, Command Line: -SetWaveformFeature "TT6" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.279 - 32882764 - FormatCmdLine::GetNextLine() - Processing line number: 283
--* NOTICE  *-  21:50:33.279 - 32882784 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.279 - 32882784 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.279 - 32882802 - FormatCmdLine::GetNextLine() - Processing line number: 284
--* NOTICE  *-  21:50:33.279 - 32882820 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.279 - 32882820 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.279 - 32882838 - FormatCmdLine::GetNextLine() - Processing line number: 285
 -* NOTICE  *-  21:50:33.279 - 32882856 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT7"
 -* NOTICE  *-  21:50:33.279 - 32882876 - FormatCmdLine::GetNextLine() - Processing line number: 286
@@ -1328,33 +1328,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.285 - 32888822 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT7" 3 True
 -* NOTICE  *-  21:50:33.285 - 32888844 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 314, Command Line: -SetSubChannelEnabled "TT7" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.285 - 32888884 - FormatCmdLine::GetNextLine() - Processing line number: 315
--* NOTICE  *-  21:50:33.285 - 32888902 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.285 - 32888902 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.286 - 32888928 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 315, Command Line: -SetWaveformFeature "TT7" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32888986 - FormatCmdLine::GetNextLine() - Processing line number: 316
--* NOTICE  *-  21:50:33.286 - 32889006 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889006 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.286 - 32889028 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 316, Command Line: -SetWaveformFeature "TT7" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889082 - FormatCmdLine::GetNextLine() - Processing line number: 317
--* NOTICE  *-  21:50:33.286 - 32889102 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889102 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.286 - 32889124 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 317, Command Line: -SetWaveformFeature "TT7" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889178 - FormatCmdLine::GetNextLine() - Processing line number: 318
--* NOTICE  *-  21:50:33.286 - 32889268 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889268 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.286 - 32889296 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 318, Command Line: -SetWaveformFeature "TT7" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889354 - FormatCmdLine::GetNextLine() - Processing line number: 319
--* NOTICE  *-  21:50:33.286 - 32889376 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889376 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.286 - 32889398 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 319, Command Line: -SetWaveformFeature "TT7" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889454 - FormatCmdLine::GetNextLine() - Processing line number: 320
--* NOTICE  *-  21:50:33.286 - 32889474 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889474 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.286 - 32889496 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 320, Command Line: -SetWaveformFeature "TT7" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889550 - FormatCmdLine::GetNextLine() - Processing line number: 321
--* NOTICE  *-  21:50:33.286 - 32889570 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889570 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.286 - 32889592 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 321, Command Line: -SetWaveformFeature "TT7" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889648 - FormatCmdLine::GetNextLine() - Processing line number: 322
--* NOTICE  *-  21:50:33.286 - 32889668 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.286 - 32889668 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT7" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.286 - 32889688 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 322, Command Line: -SetWaveformFeature "TT7" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.286 - 32889744 - FormatCmdLine::GetNextLine() - Processing line number: 323
--* NOTICE  *-  21:50:33.286 - 32889764 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.286 - 32889764 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.286 - 32889782 - FormatCmdLine::GetNextLine() - Processing line number: 324
--* NOTICE  *-  21:50:33.286 - 32889798 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.286 - 32889798 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.286 - 32889818 - FormatCmdLine::GetNextLine() - Processing line number: 325
 -* NOTICE  *-  21:50:33.286 - 32889836 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT8"
 -* NOTICE  *-  21:50:33.286 - 32889854 - FormatCmdLine::GetNextLine() - Processing line number: 326
@@ -1462,33 +1462,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.292 - 32895654 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT8" 3 True
 -* NOTICE  *-  21:50:33.292 - 32895676 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 354, Command Line: -SetSubChannelEnabled "TT8" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.292 - 32895734 - FormatCmdLine::GetNextLine() - Processing line number: 355
--* NOTICE  *-  21:50:33.292 - 32895754 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.292 - 32895754 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.292 - 32895776 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 355, Command Line: -SetWaveformFeature "TT8" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.292 - 32895834 - FormatCmdLine::GetNextLine() - Processing line number: 356
--* NOTICE  *-  21:50:33.292 - 32895854 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.292 - 32895854 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.292 - 32895876 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 356, Command Line: -SetWaveformFeature "TT8" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32895934 - FormatCmdLine::GetNextLine() - Processing line number: 357
--* NOTICE  *-  21:50:33.293 - 32895960 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.293 - 32895960 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.293 - 32895982 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 357, Command Line: -SetWaveformFeature "TT8" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32896040 - FormatCmdLine::GetNextLine() - Processing line number: 358
--* NOTICE  *-  21:50:33.293 - 32896060 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.293 - 32896060 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.293 - 32896082 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 358, Command Line: -SetWaveformFeature "TT8" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32896138 - FormatCmdLine::GetNextLine() - Processing line number: 359
--* NOTICE  *-  21:50:33.293 - 32896158 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.293 - 32896158 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.293 - 32896180 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 359, Command Line: -SetWaveformFeature "TT8" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32896236 - FormatCmdLine::GetNextLine() - Processing line number: 360
--* NOTICE  *-  21:50:33.293 - 32896256 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.293 - 32896256 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.293 - 32896278 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 360, Command Line: -SetWaveformFeature "TT8" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32896334 - FormatCmdLine::GetNextLine() - Processing line number: 361
--* NOTICE  *-  21:50:33.293 - 32896354 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.293 - 32896354 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.293 - 32896374 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 361, Command Line: -SetWaveformFeature "TT8" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32896430 - FormatCmdLine::GetNextLine() - Processing line number: 362
--* NOTICE  *-  21:50:33.293 - 32896450 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.293 - 32896450 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT8" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.293 - 32896472 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 362, Command Line: -SetWaveformFeature "TT8" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.293 - 32896526 - FormatCmdLine::GetNextLine() - Processing line number: 363
--* NOTICE  *-  21:50:33.293 - 32896546 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.293 - 32896546 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.293 - 32896564 - FormatCmdLine::GetNextLine() - Processing line number: 364
--* NOTICE  *-  21:50:33.293 - 32896582 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.293 - 32896582 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.293 - 32896602 - FormatCmdLine::GetNextLine() - Processing line number: 365
 -* NOTICE  *-  21:50:33.293 - 32896620 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT9"
 -* NOTICE  *-  21:50:33.293 - 32896638 - FormatCmdLine::GetNextLine() - Processing line number: 366
@@ -1596,33 +1596,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.299 - 32902662 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT9" 3 True
 -* NOTICE  *-  21:50:33.299 - 32902684 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 394, Command Line: -SetSubChannelEnabled "TT9" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.299 - 32902724 - FormatCmdLine::GetNextLine() - Processing line number: 395
--* NOTICE  *-  21:50:33.299 - 32902744 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.299 - 32902744 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.299 - 32902764 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 395, Command Line: -SetWaveformFeature "TT9" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.299 - 32902822 - FormatCmdLine::GetNextLine() - Processing line number: 396
--* NOTICE  *-  21:50:33.299 - 32902846 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.299 - 32902846 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.299 - 32902870 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 396, Command Line: -SetWaveformFeature "TT9" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32902930 - FormatCmdLine::GetNextLine() - Processing line number: 397
--* NOTICE  *-  21:50:33.300 - 32902950 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.300 - 32902950 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.300 - 32902974 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 397, Command Line: -SetWaveformFeature "TT9" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32903028 - FormatCmdLine::GetNextLine() - Processing line number: 398
--* NOTICE  *-  21:50:33.300 - 32903050 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.300 - 32903050 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.300 - 32903072 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 398, Command Line: -SetWaveformFeature "TT9" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32903126 - FormatCmdLine::GetNextLine() - Processing line number: 399
--* NOTICE  *-  21:50:33.300 - 32903146 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.300 - 32903146 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.300 - 32903168 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 399, Command Line: -SetWaveformFeature "TT9" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32903224 - FormatCmdLine::GetNextLine() - Processing line number: 400
--* NOTICE  *-  21:50:33.300 - 32903244 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.300 - 32903244 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.300 - 32903266 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 400, Command Line: -SetWaveformFeature "TT9" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32903320 - FormatCmdLine::GetNextLine() - Processing line number: 401
--* NOTICE  *-  21:50:33.300 - 32903340 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.300 - 32903340 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.300 - 32903362 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 401, Command Line: -SetWaveformFeature "TT9" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32903418 - FormatCmdLine::GetNextLine() - Processing line number: 402
--* NOTICE  *-  21:50:33.300 - 32903438 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.300 - 32903438 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT9" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.300 - 32903460 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 402, Command Line: -SetWaveformFeature "TT9" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.300 - 32903514 - FormatCmdLine::GetNextLine() - Processing line number: 403
--* NOTICE  *-  21:50:33.300 - 32903534 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.300 - 32903534 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.300 - 32903552 - FormatCmdLine::GetNextLine() - Processing line number: 404
--* NOTICE  *-  21:50:33.300 - 32903570 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.300 - 32903570 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.300 - 32903590 - FormatCmdLine::GetNextLine() - Processing line number: 405
 -* NOTICE  *-  21:50:33.300 - 32903606 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT10"
 -* NOTICE  *-  21:50:33.300 - 32903626 - FormatCmdLine::GetNextLine() - Processing line number: 406
@@ -1730,33 +1730,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.306 - 32909564 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT10" 3 True
 -* NOTICE  *-  21:50:33.306 - 32909586 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 434, Command Line: -SetSubChannelEnabled "TT10" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.306 - 32909632 - FormatCmdLine::GetNextLine() - Processing line number: 435
--* NOTICE  *-  21:50:33.306 - 32909654 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.306 - 32909654 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.306 - 32909676 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 435, Command Line: -SetWaveformFeature "TT10" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.306 - 32909732 - FormatCmdLine::GetNextLine() - Processing line number: 436
--* NOTICE  *-  21:50:33.306 - 32909754 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.306 - 32909754 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.306 - 32909776 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 436, Command Line: -SetWaveformFeature "TT10" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.306 - 32909830 - FormatCmdLine::GetNextLine() - Processing line number: 437
--* NOTICE  *-  21:50:33.306 - 32909852 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.306 - 32909852 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.306 - 32909874 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 437, Command Line: -SetWaveformFeature "TT10" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.307 - 32909932 - FormatCmdLine::GetNextLine() - Processing line number: 438
--* NOTICE  *-  21:50:33.307 - 32909954 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.307 - 32909954 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.307 - 32909976 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 438, Command Line: -SetWaveformFeature "TT10" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.307 - 32910032 - FormatCmdLine::GetNextLine() - Processing line number: 439
--* NOTICE  *-  21:50:33.307 - 32910052 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.307 - 32910052 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.307 - 32910074 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 439, Command Line: -SetWaveformFeature "TT10" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.307 - 32910130 - FormatCmdLine::GetNextLine() - Processing line number: 440
--* NOTICE  *-  21:50:33.307 - 32910150 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.307 - 32910150 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.307 - 32910172 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 440, Command Line: -SetWaveformFeature "TT10" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.307 - 32910228 - FormatCmdLine::GetNextLine() - Processing line number: 441
--* NOTICE  *-  21:50:33.307 - 32910248 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.307 - 32910248 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.307 - 32910272 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 441, Command Line: -SetWaveformFeature "TT10" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.307 - 32910326 - FormatCmdLine::GetNextLine() - Processing line number: 442
--* NOTICE  *-  21:50:33.307 - 32910348 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.307 - 32910348 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT10" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.307 - 32910370 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 442, Command Line: -SetWaveformFeature "TT10" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.307 - 32910424 - FormatCmdLine::GetNextLine() - Processing line number: 443
--* NOTICE  *-  21:50:33.307 - 32910518 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.307 - 32910518 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.307 - 32910542 - FormatCmdLine::GetNextLine() - Processing line number: 444
--* NOTICE  *-  21:50:33.307 - 32910560 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.307 - 32910560 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.307 - 32910580 - FormatCmdLine::GetNextLine() - Processing line number: 445
 -* NOTICE  *-  21:50:33.307 - 32910598 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT11"
 -* NOTICE  *-  21:50:33.307 - 32910618 - FormatCmdLine::GetNextLine() - Processing line number: 446
@@ -1860,33 +1860,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.313 - 32916562 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT11" 3 True
 -* NOTICE  *-  21:50:33.313 - 32916584 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 474, Command Line: -SetSubChannelEnabled "TT11" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.313 - 32916628 - FormatCmdLine::GetNextLine() - Processing line number: 475
--* NOTICE  *-  21:50:33.313 - 32916646 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.313 - 32916646 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.313 - 32916670 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 475, Command Line: -SetWaveformFeature "TT11" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.313 - 32916726 - FormatCmdLine::GetNextLine() - Processing line number: 476
--* NOTICE  *-  21:50:33.313 - 32916746 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.313 - 32916746 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.313 - 32916768 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 476, Command Line: -SetWaveformFeature "TT11" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.313 - 32916824 - FormatCmdLine::GetNextLine() - Processing line number: 477
--* NOTICE  *-  21:50:33.313 - 32916844 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.313 - 32916844 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.313 - 32916866 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 477, Command Line: -SetWaveformFeature "TT11" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.314 - 32916924 - FormatCmdLine::GetNextLine() - Processing line number: 478
--* NOTICE  *-  21:50:33.314 - 32916946 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.314 - 32916946 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.314 - 32916968 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 478, Command Line: -SetWaveformFeature "TT11" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.314 - 32917022 - FormatCmdLine::GetNextLine() - Processing line number: 479
--* NOTICE  *-  21:50:33.314 - 32917042 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.314 - 32917042 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.314 - 32917064 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 479, Command Line: -SetWaveformFeature "TT11" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.314 - 32917122 - FormatCmdLine::GetNextLine() - Processing line number: 480
--* NOTICE  *-  21:50:33.314 - 32917142 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.314 - 32917142 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.314 - 32917164 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 480, Command Line: -SetWaveformFeature "TT11" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.314 - 32917222 - FormatCmdLine::GetNextLine() - Processing line number: 481
--* NOTICE  *-  21:50:33.314 - 32917242 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.314 - 32917242 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.314 - 32917264 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 481, Command Line: -SetWaveformFeature "TT11" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.314 - 32917322 - FormatCmdLine::GetNextLine() - Processing line number: 482
--* NOTICE  *-  21:50:33.314 - 32917342 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.314 - 32917342 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT11" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.314 - 32917364 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 482, Command Line: -SetWaveformFeature "TT11" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.314 - 32917418 - FormatCmdLine::GetNextLine() - Processing line number: 483
--* NOTICE  *-  21:50:33.314 - 32917440 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.314 - 32917440 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.314 - 32917460 - FormatCmdLine::GetNextLine() - Processing line number: 484
--* NOTICE  *-  21:50:33.314 - 32917478 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.314 - 32917478 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.314 - 32917496 - FormatCmdLine::GetNextLine() - Processing line number: 485
 -* NOTICE  *-  21:50:33.314 - 32917516 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "TT12"
 -* NOTICE  *-  21:50:33.314 - 32917536 - FormatCmdLine::GetNextLine() - Processing line number: 486
@@ -1994,33 +1994,33 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.320 - 32923466 - FormatCmdLine::GetNextLine() - Processing line: -SetSubChannelEnabled "TT12" 3 True
 -* NOTICE  *-  21:50:33.320 - 32923488 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 514, Command Line: -SetSubChannelEnabled "TT12" 3 True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.320 - 32923530 - FormatCmdLine::GetNextLine() - Processing line number: 515
--* NOTICE  *-  21:50:33.320 - 32923548 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 0 0 0 31 
+-* NOTICE  *-  21:50:33.320 - 32923548 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 0 0 0 31
 -* NOTICE  *-  21:50:33.320 - 32923570 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 515, Command Line: -SetWaveformFeature "TT12" Peak 0 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.320 - 32923628 - FormatCmdLine::GetNextLine() - Processing line number: 516
--* NOTICE  *-  21:50:33.320 - 32923648 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 1 1 0 31 
+-* NOTICE  *-  21:50:33.320 - 32923648 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 1 1 0 31
 -* NOTICE  *-  21:50:33.320 - 32923670 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 516, Command Line: -SetWaveformFeature "TT12" Peak 1 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.320 - 32923726 - FormatCmdLine::GetNextLine() - Processing line number: 517
--* NOTICE  *-  21:50:33.320 - 32923748 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 2 2 0 31 
+-* NOTICE  *-  21:50:33.320 - 32923748 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 2 2 0 31
 -* NOTICE  *-  21:50:33.320 - 32923768 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 517, Command Line: -SetWaveformFeature "TT12" Peak 2 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.320 - 32923826 - FormatCmdLine::GetNextLine() - Processing line number: 518
--* NOTICE  *-  21:50:33.320 - 32923846 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 3 3 0 31 
+-* NOTICE  *-  21:50:33.320 - 32923846 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Peak 3 3 0 31
 -* NOTICE  *-  21:50:33.320 - 32923868 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 518, Command Line: -SetWaveformFeature "TT12" Peak 3 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.321 - 32923926 - FormatCmdLine::GetNextLine() - Processing line number: 519
--* NOTICE  *-  21:50:33.321 - 32923948 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 4 0 0 31 
+-* NOTICE  *-  21:50:33.321 - 32923948 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 4 0 0 31
 -* NOTICE  *-  21:50:33.321 - 32923970 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 519, Command Line: -SetWaveformFeature "TT12" Valley 4 0 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.321 - 32924026 - FormatCmdLine::GetNextLine() - Processing line number: 520
--* NOTICE  *-  21:50:33.321 - 32924048 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 5 1 0 31 
+-* NOTICE  *-  21:50:33.321 - 32924048 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 5 1 0 31
 -* NOTICE  *-  21:50:33.321 - 32924070 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 520, Command Line: -SetWaveformFeature "TT12" Valley 5 1 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.321 - 32924126 - FormatCmdLine::GetNextLine() - Processing line number: 521
--* NOTICE  *-  21:50:33.321 - 32924146 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 6 2 0 31 
+-* NOTICE  *-  21:50:33.321 - 32924146 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 6 2 0 31
 -* NOTICE  *-  21:50:33.321 - 32924168 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 521, Command Line: -SetWaveformFeature "TT12" Valley 6 2 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.321 - 32924230 - FormatCmdLine::GetNextLine() - Processing line number: 522
--* NOTICE  *-  21:50:33.321 - 32924252 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 7 3 0 31 
+-* NOTICE  *-  21:50:33.321 - 32924252 - FormatCmdLine::GetNextLine() - Processing line: -SetWaveformFeature "TT12" Valley 7 3 0 31
 -* NOTICE  *-  21:50:33.321 - 32924274 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 522, Command Line: -SetWaveformFeature "TT12" Valley 7 3 0 31 , Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.321 - 32924330 - FormatCmdLine::GetNextLine() - Processing line number: 523
--* NOTICE  *-  21:50:33.321 - 32924350 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.321 - 32924350 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.321 - 32924368 - FormatCmdLine::GetNextLine() - Processing line number: 524
--* NOTICE  *-  21:50:33.321 - 32924386 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.321 - 32924386 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.321 - 32924406 - FormatCmdLine::GetNextLine() - Processing line number: 525
 -* NOTICE  *-  21:50:33.321 - 32924424 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC1"
 -* NOTICE  *-  21:50:33.321 - 32924442 - FormatCmdLine::GetNextLine() - Processing line number: 526
@@ -2097,9 +2097,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.326 - 32928966 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC1" 3000
 -* NOTICE  *-  21:50:33.326 - 32928988 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 541, Command Line: -SetNetComDataBufferSize "CSC1" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.326 - 32929028 - FormatCmdLine::GetNextLine() - Processing line number: 542
--* NOTICE  *-  21:50:33.326 - 32929048 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.326 - 32929048 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.326 - 32929066 - FormatCmdLine::GetNextLine() - Processing line number: 543
--* NOTICE  *-  21:50:33.326 - 32929090 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.326 - 32929090 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.326 - 32929110 - FormatCmdLine::GetNextLine() - Processing line number: 544
 -* NOTICE  *-  21:50:33.326 - 32929128 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC2"
 -* NOTICE  *-  21:50:33.326 - 32929148 - FormatCmdLine::GetNextLine() - Processing line number: 545
@@ -2153,9 +2153,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.329 - 32932126 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC2" 3000
 -* NOTICE  *-  21:50:33.329 - 32932150 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 560, Command Line: -SetNetComDataBufferSize "CSC2" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.329 - 32932194 - FormatCmdLine::GetNextLine() - Processing line number: 561
--* NOTICE  *-  21:50:33.329 - 32932216 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.329 - 32932216 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.329 - 32932234 - FormatCmdLine::GetNextLine() - Processing line number: 562
--* NOTICE  *-  21:50:33.329 - 32932252 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.329 - 32932252 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.329 - 32932272 - FormatCmdLine::GetNextLine() - Processing line number: 563
 -* NOTICE  *-  21:50:33.329 - 32932290 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC3"
 -* NOTICE  *-  21:50:33.329 - 32932310 - FormatCmdLine::GetNextLine() - Processing line number: 564
@@ -2209,9 +2209,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.332 - 32935362 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC3" 3000
 -* NOTICE  *-  21:50:33.332 - 32935386 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 579, Command Line: -SetNetComDataBufferSize "CSC3" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.332 - 32935428 - FormatCmdLine::GetNextLine() - Processing line number: 580
--* NOTICE  *-  21:50:33.332 - 32935448 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.332 - 32935448 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.332 - 32935466 - FormatCmdLine::GetNextLine() - Processing line number: 581
--* NOTICE  *-  21:50:33.332 - 32935484 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.332 - 32935484 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.332 - 32935504 - FormatCmdLine::GetNextLine() - Processing line number: 582
 -* NOTICE  *-  21:50:33.332 - 32935522 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC4"
 -* NOTICE  *-  21:50:33.332 - 32935540 - FormatCmdLine::GetNextLine() - Processing line number: 583
@@ -2265,9 +2265,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.335 - 32938560 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC4" 3000
 -* NOTICE  *-  21:50:33.335 - 32938582 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 598, Command Line: -SetNetComDataBufferSize "CSC4" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.335 - 32938624 - FormatCmdLine::GetNextLine() - Processing line number: 599
--* NOTICE  *-  21:50:33.335 - 32938644 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.335 - 32938644 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.335 - 32938662 - FormatCmdLine::GetNextLine() - Processing line number: 600
--* NOTICE  *-  21:50:33.335 - 32938680 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.335 - 32938680 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.335 - 32938700 - FormatCmdLine::GetNextLine() - Processing line number: 601
 -* NOTICE  *-  21:50:33.335 - 32938718 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC5"
 -* NOTICE  *-  21:50:33.335 - 32938736 - FormatCmdLine::GetNextLine() - Processing line number: 602
@@ -2321,9 +2321,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.338 - 32941754 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC5" 3000
 -* NOTICE  *-  21:50:33.338 - 32941778 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 617, Command Line: -SetNetComDataBufferSize "CSC5" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.338 - 32941820 - FormatCmdLine::GetNextLine() - Processing line number: 618
--* NOTICE  *-  21:50:33.338 - 32941840 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.338 - 32941840 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.338 - 32941858 - FormatCmdLine::GetNextLine() - Processing line number: 619
--* NOTICE  *-  21:50:33.338 - 32941876 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.338 - 32941876 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.338 - 32941894 - FormatCmdLine::GetNextLine() - Processing line number: 620
 -* NOTICE  *-  21:50:33.338 - 32941912 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC6"
 -* NOTICE  *-  21:50:33.339 - 32941936 - FormatCmdLine::GetNextLine() - Processing line number: 621
@@ -2377,9 +2377,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.342 - 32945202 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC6" 3000
 -* NOTICE  *-  21:50:33.342 - 32945224 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 636, Command Line: -SetNetComDataBufferSize "CSC6" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.342 - 32945266 - FormatCmdLine::GetNextLine() - Processing line number: 637
--* NOTICE  *-  21:50:33.342 - 32945286 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.342 - 32945286 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.342 - 32945304 - FormatCmdLine::GetNextLine() - Processing line number: 638
--* NOTICE  *-  21:50:33.342 - 32945322 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.342 - 32945322 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.342 - 32945340 - FormatCmdLine::GetNextLine() - Processing line number: 639
 -* NOTICE  *-  21:50:33.342 - 32945358 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC7"
 -* NOTICE  *-  21:50:33.342 - 32945378 - FormatCmdLine::GetNextLine() - Processing line number: 640
@@ -2433,9 +2433,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.345 - 32948354 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC7" 3000
 -* NOTICE  *-  21:50:33.345 - 32948376 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 655, Command Line: -SetNetComDataBufferSize "CSC7" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.345 - 32948420 - FormatCmdLine::GetNextLine() - Processing line number: 656
--* NOTICE  *-  21:50:33.345 - 32948438 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.345 - 32948438 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.345 - 32948456 - FormatCmdLine::GetNextLine() - Processing line number: 657
--* NOTICE  *-  21:50:33.345 - 32948474 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.345 - 32948474 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.345 - 32948494 - FormatCmdLine::GetNextLine() - Processing line number: 658
 -* NOTICE  *-  21:50:33.345 - 32948510 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC8"
 -* NOTICE  *-  21:50:33.345 - 32948530 - FormatCmdLine::GetNextLine() - Processing line number: 659
@@ -2489,9 +2489,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.348 - 32951522 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC8" 3000
 -* NOTICE  *-  21:50:33.348 - 32951544 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 674, Command Line: -SetNetComDataBufferSize "CSC8" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.348 - 32951586 - FormatCmdLine::GetNextLine() - Processing line number: 675
--* NOTICE  *-  21:50:33.348 - 32951606 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.348 - 32951606 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.348 - 32951624 - FormatCmdLine::GetNextLine() - Processing line number: 676
--* NOTICE  *-  21:50:33.348 - 32951642 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.348 - 32951642 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.348 - 32951660 - FormatCmdLine::GetNextLine() - Processing line number: 677
 -* NOTICE  *-  21:50:33.348 - 32951680 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC9"
 -* NOTICE  *-  21:50:33.348 - 32951698 - FormatCmdLine::GetNextLine() - Processing line number: 678
@@ -2545,9 +2545,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.351 - 32954696 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC9" 3000
 -* NOTICE  *-  21:50:33.351 - 32954718 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 693, Command Line: -SetNetComDataBufferSize "CSC9" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.351 - 32954762 - FormatCmdLine::GetNextLine() - Processing line number: 694
--* NOTICE  *-  21:50:33.351 - 32954780 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.351 - 32954780 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.351 - 32954798 - FormatCmdLine::GetNextLine() - Processing line number: 695
--* NOTICE  *-  21:50:33.351 - 32954816 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.351 - 32954816 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.351 - 32954836 - FormatCmdLine::GetNextLine() - Processing line number: 696
 -* NOTICE  *-  21:50:33.351 - 32954854 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC10"
 -* NOTICE  *-  21:50:33.351 - 32954874 - FormatCmdLine::GetNextLine() - Processing line number: 697
@@ -2601,9 +2601,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.355 - 32958174 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC10" 3000
 -* NOTICE  *-  21:50:33.355 - 32958196 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 712, Command Line: -SetNetComDataBufferSize "CSC10" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.355 - 32958240 - FormatCmdLine::GetNextLine() - Processing line number: 713
--* NOTICE  *-  21:50:33.355 - 32958260 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.355 - 32958260 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.355 - 32958346 - FormatCmdLine::GetNextLine() - Processing line number: 714
--* NOTICE  *-  21:50:33.355 - 32958370 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.355 - 32958370 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.355 - 32958390 - FormatCmdLine::GetNextLine() - Processing line number: 715
 -* NOTICE  *-  21:50:33.355 - 32958408 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC11"
 -* NOTICE  *-  21:50:33.355 - 32958428 - FormatCmdLine::GetNextLine() - Processing line number: 716
@@ -2657,9 +2657,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.358 - 32961434 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC11" 3000
 -* NOTICE  *-  21:50:33.358 - 32961460 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 731, Command Line: -SetNetComDataBufferSize "CSC11" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.358 - 32961508 - FormatCmdLine::GetNextLine() - Processing line number: 732
--* NOTICE  *-  21:50:33.358 - 32961528 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.358 - 32961528 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.358 - 32961546 - FormatCmdLine::GetNextLine() - Processing line number: 733
--* NOTICE  *-  21:50:33.358 - 32961564 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.358 - 32961564 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.358 - 32961582 - FormatCmdLine::GetNextLine() - Processing line number: 734
 -* NOTICE  *-  21:50:33.358 - 32961600 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSC12"
 -* NOTICE  *-  21:50:33.358 - 32961620 - FormatCmdLine::GetNextLine() - Processing line number: 735
@@ -2713,9 +2713,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.361 - 32964642 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSC12" 3000
 -* NOTICE  *-  21:50:33.361 - 32964666 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 750, Command Line: -SetNetComDataBufferSize "CSC12" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.361 - 32964710 - FormatCmdLine::GetNextLine() - Processing line number: 751
--* NOTICE  *-  21:50:33.361 - 32964730 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.361 - 32964730 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.361 - 32964748 - FormatCmdLine::GetNextLine() - Processing line number: 752
--* NOTICE  *-  21:50:33.361 - 32964766 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.361 - 32964766 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.361 - 32964784 - FormatCmdLine::GetNextLine() - Processing line number: 753
 -* NOTICE  *-  21:50:33.361 - 32964802 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSCR1"
 -* NOTICE  *-  21:50:33.361 - 32964822 - FormatCmdLine::GetNextLine() - Processing line number: 754
@@ -2769,9 +2769,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.364 - 32967838 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSCR1" 3000
 -* NOTICE  *-  21:50:33.364 - 32967860 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 769, Command Line: -SetNetComDataBufferSize "CSCR1" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.364 - 32967904 - FormatCmdLine::GetNextLine() - Processing line number: 770
--* NOTICE  *-  21:50:33.365 - 32967928 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.365 - 32967928 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.365 - 32967948 - FormatCmdLine::GetNextLine() - Processing line number: 771
--* NOTICE  *-  21:50:33.365 - 32967964 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.365 - 32967964 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.365 - 32967984 - FormatCmdLine::GetNextLine() - Processing line number: 772
 -* NOTICE  *-  21:50:33.365 - 32968002 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSCR2"
 -* NOTICE  *-  21:50:33.365 - 32968022 - FormatCmdLine::GetNextLine() - Processing line number: 773
@@ -2825,9 +2825,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.368 - 32971110 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSCR2" 3000
 -* NOTICE  *-  21:50:33.368 - 32971132 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 788, Command Line: -SetNetComDataBufferSize "CSCR2" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.368 - 32971178 - FormatCmdLine::GetNextLine() - Processing line number: 789
--* NOTICE  *-  21:50:33.368 - 32971198 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.368 - 32971198 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.368 - 32971216 - FormatCmdLine::GetNextLine() - Processing line number: 790
--* NOTICE  *-  21:50:33.368 - 32971234 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.368 - 32971234 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.368 - 32971254 - FormatCmdLine::GetNextLine() - Processing line number: 791
 -* NOTICE  *-  21:50:33.368 - 32971272 - FormatCmdLine::GetNextLine() - Processing line: #Acquisition Entity creation and setup for: "CSCHc"
 -* NOTICE  *-  21:50:33.368 - 32971292 - FormatCmdLine::GetNextLine() - Processing line number: 792
@@ -2881,11 +2881,11 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.371 - 32974632 - FormatCmdLine::GetNextLine() - Processing line: -SetNetComDataBufferSize "CSCHc" 3000
 -* NOTICE  *-  21:50:33.371 - 32974654 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 807, Command Line: -SetNetComDataBufferSize "CSCHc" 3000, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.371 - 32974700 - FormatCmdLine::GetNextLine() - Processing line number: 808
--* NOTICE  *-  21:50:33.371 - 32974720 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.371 - 32974720 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.371 - 32974738 - FormatCmdLine::GetNextLine() - Processing line number: 809
--* NOTICE  *-  21:50:33.371 - 32974756 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.371 - 32974756 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.371 - 32974774 - FormatCmdLine::GetNextLine() - Processing line number: 810
--* NOTICE  *-  21:50:33.371 - 32974792 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.371 - 32974792 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.371 - 32974810 - FormatCmdLine::GetNextLine() - Processing line number: 811
 -* NOTICE  *-  21:50:33.371 - 32974828 - FormatCmdLine::GetNextLine() - Processing line: -SetDSPDelayCompensationEnabled False
 -* NOTICE  *-  21:50:33.371 - 32974850 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 811, Command Line: -SetDSPDelayCompensationEnabled False, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
@@ -2957,9 +2957,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.375 - 32978076 - FormatCmdLine::GetNextLine() - Processing line: -SetIntensityThresholdEnabled "VT1" false
 -* NOTICE  *-  21:50:33.375 - 32978098 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 833, Command Line: -SetIntensityThresholdEnabled "VT1" false, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.375 - 32978138 - FormatCmdLine::GetNextLine() - Processing line number: 834
--* NOTICE  *-  21:50:33.375 - 32978158 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.375 - 32978158 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.375 - 32978176 - FormatCmdLine::GetNextLine() - Processing line number: 835
--* NOTICE  *-  21:50:33.375 - 32978194 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.375 - 32978194 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.375 - 32978212 - FormatCmdLine::GetNextLine() - Processing line number: 836
 -* NOTICE  *-  21:50:33.375 - 32978230 - FormatCmdLine::GetNextLine() - Processing line: #Main window setup
 -* NOTICE  *-  21:50:33.375 - 32978250 - FormatCmdLine::GetNextLine() - Processing line number: 837
@@ -2969,9 +2969,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.376 - 32979220 - FormatCmdLine::GetNextLine() - Processing line: -SetDialogVisible Main True
 -* NOTICE  *-  21:50:33.376 - 32979244 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 838, Command Line: -SetDialogVisible Main True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.380 - 32983026 - FormatCmdLine::GetNextLine() - Processing line number: 839
--* NOTICE  *-  21:50:33.380 - 32983058 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.380 - 32983058 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.380 - 32983078 - FormatCmdLine::GetNextLine() - Processing line number: 840
--* NOTICE  *-  21:50:33.380 - 32983096 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.380 - 32983096 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.380 - 32983116 - FormatCmdLine::GetNextLine() - Processing line number: 841
 -* NOTICE  *-  21:50:33.380 - 32983134 - FormatCmdLine::GetNextLine() - Processing line: #System Status Dialog Setup
 -* NOTICE  *-  21:50:33.380 - 32983154 - FormatCmdLine::GetNextLine() - Processing line number: 842
@@ -2999,9 +2999,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.381 - 32984328 - FormatCmdLine::GetNextLine() - Processing line: -SetDialogVisible Status True
 -* NOTICE  *-  21:50:33.381 - 32984350 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 849, Command Line: -SetDialogVisible Status True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.384 - 32987498 - FormatCmdLine::GetNextLine() - Processing line number: 850
--* NOTICE  *-  21:50:33.384 - 32987530 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.384 - 32987530 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.384 - 32987550 - FormatCmdLine::GetNextLine() - Processing line number: 851
--* NOTICE  *-  21:50:33.384 - 32987568 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.384 - 32987568 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.384 - 32987586 - FormatCmdLine::GetNextLine() - Processing line number: 852
 -* NOTICE  *-  21:50:33.384 - 32987604 - FormatCmdLine::GetNextLine() - Processing line: #Properties Display Setup
 -* NOTICE  *-  21:50:33.384 - 32987628 - FormatCmdLine::GetNextLine() - Processing line number: 853
@@ -3011,9 +3011,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.385 - 32988038 - FormatCmdLine::GetNextLine() - Processing line: -SetDialogVisible Properties True
 -* NOTICE  *-  21:50:33.385 - 32988062 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 854, Command Line: -SetDialogVisible Properties True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.407 - 33010212 - FormatCmdLine::GetNextLine() - Processing line number: 855
--* NOTICE  *-  21:50:33.407 - 33010242 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.407 - 33010242 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.407 - 33010262 - FormatCmdLine::GetNextLine() - Processing line number: 856
--* NOTICE  *-  21:50:33.407 - 33010280 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.407 - 33010280 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.407 - 33010298 - FormatCmdLine::GetNextLine() - Processing line number: 857
 -* NOTICE  *-  21:50:33.407 - 33010316 - FormatCmdLine::GetNextLine() - Processing line: #Event Dialog Setup
 -* NOTICE  *-  21:50:33.407 - 33010336 - FormatCmdLine::GetNextLine() - Processing line number: 858
@@ -3032,9 +3032,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.409 - 33012376 - FormatCmdLine::GetNextLine() - Processing line: -SetEventDisplayTTLValueFormat Binary
 -* NOTICE  *-  21:50:33.409 - 33012398 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 862, Command Line: -SetEventDisplayTTLValueFormat Binary, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.409 - 33012430 - FormatCmdLine::GetNextLine() - Processing line number: 863
--* NOTICE  *-  21:50:33.409 - 33012524 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.409 - 33012524 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.409 - 33012548 - FormatCmdLine::GetNextLine() - Processing line number: 864
--* NOTICE  *-  21:50:33.409 - 33012568 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.409 - 33012568 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.409 - 33012586 - FormatCmdLine::GetNextLine() - Processing line number: 865
 -* NOTICE  *-  21:50:33.409 - 33012604 - FormatCmdLine::GetNextLine() - Processing line: # Plot Window Setup for Tracker1
 -* NOTICE  *-  21:50:33.409 - 33012624 - FormatCmdLine::GetNextLine() - Processing line number: 866
@@ -3073,9 +3073,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:33.531 - 33134576 - FormatCmdLine::GetNextLine() - Processing line: -SetPlotWindowMaximizeView "Tracker1" false
 -* NOTICE  *-  21:50:33.531 - 33134600 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 877, Command Line: -SetPlotWindowMaximizeView "Tracker1" false, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:33.531 - 33134634 - FormatCmdLine::GetNextLine() - Processing line number: 878
--* NOTICE  *-  21:50:33.531 - 33134654 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.531 - 33134654 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.531 - 33134672 - FormatCmdLine::GetNextLine() - Processing line number: 879
--* NOTICE  *-  21:50:33.531 - 33134690 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:33.531 - 33134690 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:33.531 - 33134710 - FormatCmdLine::GetNextLine() - Processing line number: 880
 -* NOTICE  *-  21:50:33.531 - 33134728 - FormatCmdLine::GetNextLine() - Processing line: # Plot Window Setup for Spike Window 1
 -* NOTICE  *-  21:50:33.531 - 33134748 - FormatCmdLine::GetNextLine() - Processing line number: 881
@@ -4773,9 +4773,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:34.191 - 33793512 - FormatCmdLine::GetNextLine() - Processing line: -SetPlotWindowMaximizeView "Spike Window 1" false
 -* NOTICE  *-  21:50:34.191 - 33793540 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1445, Command Line: -SetPlotWindowMaximizeView "Spike Window 1" false, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:34.195 - 33797648 - FormatCmdLine::GetNextLine() - Processing line number: 1446
--* NOTICE  *-  21:50:34.195 - 33797676 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.195 - 33797676 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.195 - 33797696 - FormatCmdLine::GetNextLine() - Processing line number: 1447
--* NOTICE  *-  21:50:34.195 - 33797712 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.195 - 33797712 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.195 - 33797736 - FormatCmdLine::GetNextLine() - Processing line number: 1448
 -* NOTICE  *-  21:50:34.195 - 33797752 - FormatCmdLine::GetNextLine() - Processing line: # Plot Window Setup for Time Window 1
 -* NOTICE  *-  21:50:34.195 - 33797772 - FormatCmdLine::GetNextLine() - Processing line number: 1449
@@ -4958,9 +4958,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:34.623 - 34225756 - FormatCmdLine::GetNextLine() - Processing line: -SetPlotWindowMaximizeView "Time Window 1" false
 -* NOTICE  *-  21:50:34.623 - 34225780 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1508, Command Line: -SetPlotWindowMaximizeView "Time Window 1" false, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:34.636 - 34238848 - FormatCmdLine::GetNextLine() - Processing line number: 1509
--* NOTICE  *-  21:50:34.636 - 34238880 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.636 - 34238880 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.636 - 34238900 - FormatCmdLine::GetNextLine() - Processing line number: 1510
--* NOTICE  *-  21:50:34.636 - 34238916 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.636 - 34238916 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.636 - 34238936 - FormatCmdLine::GetNextLine() - Processing line number: 1511
 -* NOTICE  *-  21:50:34.636 - 34238952 - FormatCmdLine::GetNextLine() - Processing line: #Audio Output Dialog Setup
 -* NOTICE  *-  21:50:34.637 - 34238980 - FormatCmdLine::GetNextLine() - Processing line number: 1512
@@ -4970,9 +4970,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:34.637 - 34239264 - FormatCmdLine::GetNextLine() - Processing line: -SetDialogVisible Audio True
 -* NOTICE  *-  21:50:34.637 - 34239292 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1513, Command Line: -SetDialogVisible Audio True, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:34.645 - 34247284 - FormatCmdLine::GetNextLine() - Processing line number: 1514
--* NOTICE  *-  21:50:34.645 - 34247316 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.645 - 34247316 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.645 - 34247340 - FormatCmdLine::GetNextLine() - Processing line number: 1515
--* NOTICE  *-  21:50:34.645 - 34247360 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.645 - 34247360 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.645 - 34247380 - FormatCmdLine::GetNextLine() - Processing line number: 1516
 -* NOTICE  *-  21:50:34.645 - 34247400 - FormatCmdLine::GetNextLine() - Processing line: #TTL Response Dialog Setup
 -* NOTICE  *-  21:50:34.645 - 34247420 - FormatCmdLine::GetNextLine() - Processing line number: 1517
@@ -4982,9 +4982,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:34.645 - 34247672 - FormatCmdLine::GetNextLine() - Processing line: -SetDialogVisible TTLResponse False
 -* NOTICE  *-  21:50:34.645 - 34247696 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1518, Command Line: -SetDialogVisible TTLResponse False, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:34.645 - 34247736 - FormatCmdLine::GetNextLine() - Processing line number: 1519
--* NOTICE  *-  21:50:34.645 - 34247756 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.645 - 34247756 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.645 - 34247776 - FormatCmdLine::GetNextLine() - Processing line number: 1520
--* NOTICE  *-  21:50:34.645 - 34247792 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.645 - 34247792 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.645 - 34247812 - FormatCmdLine::GetNextLine() - Processing line number: 1521
 -* NOTICE  *-  21:50:34.645 - 34247832 - FormatCmdLine::GetNextLine() - Processing line: #Audio Device Setup for Primary Sound Driver
 -* NOTICE  *-  21:50:34.645 - 34247852 - FormatCmdLine::GetNextLine() - Processing line number: 1522
@@ -5030,9 +5030,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:34.668 - 34270688 - FormatCmdLine::GetNextLine() - Processing line: -SetAudioMute "Primary Sound Driver" Right Off
 -* NOTICE  *-  21:50:34.668 - 34270708 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1535, Command Line: -SetAudioMute "Primary Sound Driver" Right Off, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:34.668 - 34270756 - FormatCmdLine::GetNextLine() - Processing line number: 1536
--* NOTICE  *-  21:50:34.668 - 34270780 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.668 - 34270780 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.668 - 34270800 - FormatCmdLine::GetNextLine() - Processing line number: 1537
--* NOTICE  *-  21:50:34.668 - 34270816 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:34.668 - 34270816 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:34.668 - 34270836 - FormatCmdLine::GetNextLine() - Processing line number: 1538
 -* NOTICE  *-  21:50:34.668 - 34270856 - FormatCmdLine::GetNextLine() - Processing line: #Audio Device Setup for AcqSystem1_Audio0
 -* NOTICE  *-  21:50:34.668 - 34270876 - FormatCmdLine::GetNextLine() - Processing line number: 1539
@@ -5054,9 +5054,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:58.390 - 57969196 - FormatCmdLine::GetNextLine() - Processing line: -SetAudioMute "AcqSystem1_Audio0" Right Off
 -* NOTICE  *-  21:50:58.390 - 57969220 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1544, Command Line: -SetAudioMute "AcqSystem1_Audio0" Right Off, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:58.530 - 58109372 - FormatCmdLine::GetNextLine() - Processing line number: 1545
--* NOTICE  *-  21:50:58.530 - 58109400 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:58.530 - 58109400 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:58.530 - 58109424 - FormatCmdLine::GetNextLine() - Processing line number: 1546
--* NOTICE  *-  21:50:58.530 - 58109444 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:58.530 - 58109444 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:58.530 - 58109464 - FormatCmdLine::GetNextLine() - Processing line number: 1547
 -* NOTICE  *-  21:50:58.530 - 58109480 - FormatCmdLine::GetNextLine() - Processing line: #Audio Device Setup for AcqSystem1_Audio1
 -* NOTICE  *-  21:50:58.530 - 58109500 - FormatCmdLine::GetNextLine() - Processing line number: 1548
@@ -5078,9 +5078,9 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:50:58.972 - 58550092 - FormatCmdLine::GetNextLine() - Processing line: -SetAudioMute "AcqSystem1_Audio1" Right Off
 -* NOTICE  *-  21:50:58.972 - 58550124 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1553, Command Line: -SetAudioMute "AcqSystem1_Audio1" Right Off, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:50:59.132 - 58710284 - FormatCmdLine::GetNextLine() - Processing line number: 1554
--* NOTICE  *-  21:50:59.132 - 58710316 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:59.132 - 58710316 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:59.132 - 58710336 - FormatCmdLine::GetNextLine() - Processing line number: 1555
--* NOTICE  *-  21:50:59.132 - 58710356 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:50:59.132 - 58710356 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:50:59.132 - 58710376 - FormatCmdLine::GetNextLine() - Processing line number: 1556
 -* NOTICE  *-  21:50:59.132 - 58710396 - FormatCmdLine::GetNextLine() - Processing line: #Digital IO Device Creation and Setup for: AcqSystem1_0
 -* NOTICE  *-  21:50:59.132 - 58710420 - FormatCmdLine::GetNextLine() - Processing line number: 1557
@@ -5145,19 +5145,19 @@ Log file successfully moved to C:\CheetahData\2016-11-28_21-50-00\CheetahLogFile
 -* NOTICE  *-  21:51:00.616 - 60193220 - FormatCmdLine::GetNextLine() - Processing line: -SetDigitalIOInputScanDelay "AcqSystem1_0" 1
 -* NOTICE  *-  21:51:00.616 - 60193244 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 1575, Command Line: -SetDigitalIOInputScanDelay "AcqSystem1_0" 1, Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:51:00.616 - 60193292 - FormatCmdLine::GetNextLine() - Processing line number: 1576
--* NOTICE  *-  21:51:00.616 - 60193312 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:51:00.616 - 60193312 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:51:00.616 - 60193332 - FormatCmdLine::GetNextLine() - Processing line number: 1577
 -* NOTICE  *-  21:51:00.616 - 60193348 - FormatCmdLine::GetNextLine() - Processing line: #Spike TTL setup for AcqSystem1_0
 -* NOTICE  *-  21:51:00.616 - 60193368 - FormatCmdLine::GetNextLine() - Processing line number: 1578
--* NOTICE  *-  21:51:00.616 - 60193388 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:51:00.616 - 60193388 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:51:00.616 - 60193408 - FormatCmdLine::GetNextLine() - Processing line number: 1579
--* NOTICE  *-  21:51:00.616 - 60193424 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:51:00.616 - 60193424 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:51:00.616 - 60193448 - FormatCmdLine::GetNextLine() - Processing line number: 1580
 -* NOTICE  *-  21:51:00.616 - 60193468 - FormatCmdLine::GetNextLine() - Processing line: #Spike TTL setup for AcqSystem1_0
 -* NOTICE  *-  21:51:00.616 - 60193488 - FormatCmdLine::GetNextLine() - Processing line number: 1581
--* NOTICE  *-  21:51:00.616 - 60193504 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:51:00.616 - 60193504 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:51:00.616 - 60193524 - FormatCmdLine::GetNextLine() - Processing line number: 1582
--* NOTICE  *-  21:51:00.616 - 60193540 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  21:51:00.616 - 60193540 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  21:51:00.616 - 60193568 - FormatCmdLine::GetLineFromFile() - The end of the file has been reached.
 -* NOTICE  *-  21:51:00.616 - 60193596 - ConfigFileProcessor::ProcessScript() - Finished Processing Filename: N:\richarga\rats\Ivanov (22703)\cfg\Cheetah_2016-11-27_16-20-48.cfg
 -* NOTICE  *-  21:51:00.617 - 60194396 - NetComServer::InitializeServer() - Attempting to initialize Message Server. portNumber: 26100

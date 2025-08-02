@@ -11,4 +11,3 @@ Intermittent and Randomized Digital Signal
 No Serial Data
 
 No Tracking Data
-

@@ -1405,7 +1405,7 @@ parameters:
 - rmsWindowLength represents the  root mean square (rms) integration window for detection.
 - peakWindowLength represents the window (number of samples to test) to search for spike peak, seams to be used for eigen calculation or finding of the true spike peak.
 - windowPeakAlign represents the middle of the peakWindowLength, where to take the spike peak in peakWindowLength.
-- thresholdFactor is a factor to compute the detection threshold: 
+- thresholdFactor is a factor to compute the detection threshold:
 threshold = thresholdFactor  * baseline
 - spikesFromDatBool: set to 1 if you want detrended spikes from wideband dat file; set to 0 if from high-passed fil file
 </help>
@@ -1429,7 +1429,7 @@ process_findCommonThreshold fileBaseName [fileBaseName ...]
 
 for each electrodeGroup in fileBaseName.xml
 the value in fileBaseName.threshold.electrodeGroup is replaced by the minimum threshold value across passed fileBaseNames.
- 
+
 parameters:
 - executeScriptBool determines whether the script should be run with the next batch process.
 - maxThreshold default = 500</help>
@@ -1617,7 +1617,7 @@ parameters:
      <status>Mandatory</status>
     </parameter>
    </parameters>
-   <help>This script updates the parameter file. 
+   <help>This script updates the parameter file.
 It adds for each spike group, the number of samples in each waveform, the sample index of the peak in a waveform and the number of feaures to use to do the PCA.
 
 The variables used by the different programs depend on the sampling rate. The default is for a sampling rate of 10khz.

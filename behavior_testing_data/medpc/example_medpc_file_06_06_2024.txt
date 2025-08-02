@@ -4,8 +4,8 @@ File: Z:\Basic_Sciences\Phys\Lerner_Lab_tnl2633\Cate\MEDPC Data\95.259
 Start Date: 04/09/19
 End Date: 04/09/19
 Subject: 95.259
-Experiment: 
-Group: 
+Experiment:
+Group:
 Box: 1
 Start Time: 10:34:30
 End Time: 11:35:53
@@ -1464,8 +1464,8 @@ Y:
 Start Date: 04/10/19
 End Date: 04/10/19
 Subject: 95.259
-Experiment: 
-Group: 
+Experiment:
+Group:
 Box: 1
 Start Time: 12:36:13
 End Time: 13:38:19
@@ -2970,8 +2970,8 @@ Y:
 Start Date: 04/11/19
 End Date: 04/11/19
 Subject: 95.259
-Experiment: 
-Group: 
+Experiment:
+Group:
 Box: 1
 Start Time: 09:41:34
 End Time: 10:41:38
@@ -4430,5 +4430,3 @@ X:
 Y:
      0:        0.000        0.000        0.000        0.000        0.000
      5:        0.000
-
-

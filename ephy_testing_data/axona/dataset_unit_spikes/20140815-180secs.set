@@ -1,7 +1,7 @@
 trial_date Friday, 15 Aug 2014
 trial_time 15:21:10
 experimenter Abid
-comments 
+comments
 duration 180
 sw_version 1.2.2.16
 ADC_fullscale_mv 1500
@@ -20,7 +20,7 @@ filtfreq2_ch_0 0
 filtripple_ch_0 0.00
 filtdcblock_ch_0 0
 dispmode_ch_0 1
-channame_ch_0 
+channame_ch_0
 gain_ch_1 10000
 filter_ch_1 2
 a_in_ch_1 1
@@ -33,7 +33,7 @@ filtfreq2_ch_1 0
 filtripple_ch_1 0.00
 filtdcblock_ch_1 0
 dispmode_ch_1 1
-channame_ch_1 
+channame_ch_1
 gain_ch_2 10000
 filter_ch_2 2
 a_in_ch_2 2
@@ -46,7 +46,7 @@ filtfreq2_ch_2 0
 filtripple_ch_2 0.00
 filtdcblock_ch_2 0
 dispmode_ch_2 1
-channame_ch_2 
+channame_ch_2
 gain_ch_3 10000
 filter_ch_3 2
 a_in_ch_3 3
@@ -59,7 +59,7 @@ filtfreq2_ch_3 0
 filtripple_ch_3 0.00
 filtdcblock_ch_3 0
 dispmode_ch_3 1
-channame_ch_3 
+channame_ch_3
 gain_ch_4 13000
 filter_ch_4 2
 a_in_ch_4 4
@@ -72,7 +72,7 @@ filtfreq2_ch_4 0
 filtripple_ch_4 0.00
 filtdcblock_ch_4 0
 dispmode_ch_4 1
-channame_ch_4 
+channame_ch_4
 gain_ch_5 16000
 filter_ch_5 2
 a_in_ch_5 5
@@ -85,7 +85,7 @@ filtfreq2_ch_5 0
 filtripple_ch_5 0.00
 filtdcblock_ch_5 0
 dispmode_ch_5 1
-channame_ch_5 
+channame_ch_5
 gain_ch_6 16000
 filter_ch_6 2
 a_in_ch_6 6
@@ -98,7 +98,7 @@ filtfreq2_ch_6 0
 filtripple_ch_6 0.00
 filtdcblock_ch_6 0
 dispmode_ch_6 1
-channame_ch_6 
+channame_ch_6
 gain_ch_7 13000
 filter_ch_7 2
 a_in_ch_7 7
@@ -111,7 +111,7 @@ filtfreq2_ch_7 0
 filtripple_ch_7 0.00
 filtdcblock_ch_7 0
 dispmode_ch_7 1
-channame_ch_7 
+channame_ch_7
 gain_ch_8 18000
 filter_ch_8 2
 a_in_ch_8 8
@@ -124,7 +124,7 @@ filtfreq2_ch_8 7000
 filtripple_ch_8 0.10
 filtdcblock_ch_8 1
 dispmode_ch_8 1
-channame_ch_8 
+channame_ch_8
 gain_ch_9 21000
 filter_ch_9 2
 a_in_ch_9 9
@@ -137,7 +137,7 @@ filtfreq2_ch_9 7000
 filtripple_ch_9 0.10
 filtdcblock_ch_9 1
 dispmode_ch_9 1
-channame_ch_9 
+channame_ch_9
 gain_ch_10 21000
 filter_ch_10 2
 a_in_ch_10 10
@@ -150,7 +150,7 @@ filtfreq2_ch_10 7000
 filtripple_ch_10 0.10
 filtdcblock_ch_10 1
 dispmode_ch_10 1
-channame_ch_10 
+channame_ch_10
 gain_ch_11 19000
 filter_ch_11 2
 a_in_ch_11 11
@@ -163,7 +163,7 @@ filtfreq2_ch_11 7000
 filtripple_ch_11 0.10
 filtdcblock_ch_11 1
 dispmode_ch_11 1
-channame_ch_11 
+channame_ch_11
 gain_ch_12 12000
 filter_ch_12 2
 a_in_ch_12 12
@@ -176,7 +176,7 @@ filtfreq2_ch_12 7000
 filtripple_ch_12 0.10
 filtdcblock_ch_12 1
 dispmode_ch_12 1
-channame_ch_12 
+channame_ch_12
 gain_ch_13 14000
 filter_ch_13 2
 a_in_ch_13 13
@@ -189,7 +189,7 @@ filtfreq2_ch_13 7000
 filtripple_ch_13 0.10
 filtdcblock_ch_13 1
 dispmode_ch_13 1
-channame_ch_13 
+channame_ch_13
 gain_ch_14 12000
 filter_ch_14 2
 a_in_ch_14 14
@@ -202,7 +202,7 @@ filtfreq2_ch_14 7000
 filtripple_ch_14 0.10
 filtdcblock_ch_14 1
 dispmode_ch_14 1
-channame_ch_14 
+channame_ch_14
 gain_ch_15 14000
 filter_ch_15 2
 a_in_ch_15 15
@@ -215,7 +215,7 @@ filtfreq2_ch_15 7000
 filtripple_ch_15 0.10
 filtdcblock_ch_15 1
 dispmode_ch_15 1
-channame_ch_15 
+channame_ch_15
 gain_ch_16 1000
 filter_ch_16 4
 a_in_ch_16 16
@@ -228,7 +228,7 @@ filtfreq2_ch_16 0
 filtripple_ch_16 0.00
 filtdcblock_ch_16 0
 dispmode_ch_16 1
-channame_ch_16 
+channame_ch_16
 gain_ch_17 4000
 filter_ch_17 4
 a_in_ch_17 17
@@ -241,7 +241,7 @@ filtfreq2_ch_17 0
 filtripple_ch_17 0.00
 filtdcblock_ch_17 0
 dispmode_ch_17 1
-channame_ch_17 
+channame_ch_17
 gain_ch_18 2000
 filter_ch_18 4
 a_in_ch_18 18
@@ -254,7 +254,7 @@ filtfreq2_ch_18 0
 filtripple_ch_18 0.00
 filtdcblock_ch_18 0
 dispmode_ch_18 1
-channame_ch_18 
+channame_ch_18
 gain_ch_19 500
 filter_ch_19 4
 a_in_ch_19 19
@@ -267,7 +267,7 @@ filtfreq2_ch_19 0
 filtripple_ch_19 0.00
 filtdcblock_ch_19 0
 dispmode_ch_19 1
-channame_ch_19 
+channame_ch_19
 gain_ch_20 4000
 filter_ch_20 2
 a_in_ch_20 20
@@ -280,7 +280,7 @@ filtfreq2_ch_20 7000
 filtripple_ch_20 0.10
 filtdcblock_ch_20 1
 dispmode_ch_20 1
-channame_ch_20 
+channame_ch_20
 gain_ch_21 4000
 filter_ch_21 2
 a_in_ch_21 21
@@ -293,7 +293,7 @@ filtfreq2_ch_21 7000
 filtripple_ch_21 0.10
 filtdcblock_ch_21 1
 dispmode_ch_21 1
-channame_ch_21 
+channame_ch_21
 gain_ch_22 4000
 filter_ch_22 2
 a_in_ch_22 22
@@ -306,7 +306,7 @@ filtfreq2_ch_22 7000
 filtripple_ch_22 0.10
 filtdcblock_ch_22 1
 dispmode_ch_22 1
-channame_ch_22 
+channame_ch_22
 gain_ch_23 4000
 filter_ch_23 2
 a_in_ch_23 23
@@ -319,7 +319,7 @@ filtfreq2_ch_23 7000
 filtripple_ch_23 0.10
 filtdcblock_ch_23 1
 dispmode_ch_23 1
-channame_ch_23 
+channame_ch_23
 gain_ch_24 4000
 filter_ch_24 2
 a_in_ch_24 24
@@ -332,7 +332,7 @@ filtfreq2_ch_24 7000
 filtripple_ch_24 0.10
 filtdcblock_ch_24 1
 dispmode_ch_24 1
-channame_ch_24 
+channame_ch_24
 gain_ch_25 4000
 filter_ch_25 2
 a_in_ch_25 25
@@ -345,7 +345,7 @@ filtfreq2_ch_25 7000
 filtripple_ch_25 0.10
 filtdcblock_ch_25 1
 dispmode_ch_25 1
-channame_ch_25 
+channame_ch_25
 gain_ch_26 4000
 filter_ch_26 2
 a_in_ch_26 26
@@ -358,7 +358,7 @@ filtfreq2_ch_26 7000
 filtripple_ch_26 0.10
 filtdcblock_ch_26 1
 dispmode_ch_26 1
-channame_ch_26 
+channame_ch_26
 gain_ch_27 4000
 filter_ch_27 2
 a_in_ch_27 27
@@ -371,7 +371,7 @@ filtfreq2_ch_27 7000
 filtripple_ch_27 0.10
 filtdcblock_ch_27 1
 dispmode_ch_27 1
-channame_ch_27 
+channame_ch_27
 gain_ch_28 4000
 filter_ch_28 2
 a_in_ch_28 28
@@ -384,7 +384,7 @@ filtfreq2_ch_28 7000
 filtripple_ch_28 0.10
 filtdcblock_ch_28 1
 dispmode_ch_28 1
-channame_ch_28 
+channame_ch_28
 gain_ch_29 4000
 filter_ch_29 2
 a_in_ch_29 29
@@ -397,7 +397,7 @@ filtfreq2_ch_29 7000
 filtripple_ch_29 0.10
 filtdcblock_ch_29 1
 dispmode_ch_29 1
-channame_ch_29 
+channame_ch_29
 gain_ch_30 4000
 filter_ch_30 2
 a_in_ch_30 30
@@ -410,7 +410,7 @@ filtfreq2_ch_30 7000
 filtripple_ch_30 0.10
 filtdcblock_ch_30 1
 dispmode_ch_30 1
-channame_ch_30 
+channame_ch_30
 gain_ch_31 4000
 filter_ch_31 2
 a_in_ch_31 31
@@ -423,7 +423,7 @@ filtfreq2_ch_31 7000
 filtripple_ch_31 0.10
 filtdcblock_ch_31 1
 dispmode_ch_31 1
-channame_ch_31 
+channame_ch_31
 gain_ch_32 4000
 filter_ch_32 2
 a_in_ch_32 32
@@ -436,7 +436,7 @@ filtfreq2_ch_32 7000
 filtripple_ch_32 0.10
 filtdcblock_ch_32 1
 dispmode_ch_32 1
-channame_ch_32 
+channame_ch_32
 gain_ch_33 4000
 filter_ch_33 2
 a_in_ch_33 33
@@ -449,7 +449,7 @@ filtfreq2_ch_33 7000
 filtripple_ch_33 0.10
 filtdcblock_ch_33 1
 dispmode_ch_33 1
-channame_ch_33 
+channame_ch_33
 gain_ch_34 4000
 filter_ch_34 2
 a_in_ch_34 34
@@ -462,7 +462,7 @@ filtfreq2_ch_34 7000
 filtripple_ch_34 0.10
 filtdcblock_ch_34 1
 dispmode_ch_34 1
-channame_ch_34 
+channame_ch_34
 gain_ch_35 4000
 filter_ch_35 2
 a_in_ch_35 35
@@ -475,7 +475,7 @@ filtfreq2_ch_35 7000
 filtripple_ch_35 0.10
 filtdcblock_ch_35 1
 dispmode_ch_35 1
-channame_ch_35 
+channame_ch_35
 gain_ch_36 4000
 filter_ch_36 2
 a_in_ch_36 36
@@ -488,7 +488,7 @@ filtfreq2_ch_36 7000
 filtripple_ch_36 0.10
 filtdcblock_ch_36 1
 dispmode_ch_36 1
-channame_ch_36 
+channame_ch_36
 gain_ch_37 4000
 filter_ch_37 2
 a_in_ch_37 37
@@ -501,7 +501,7 @@ filtfreq2_ch_37 7000
 filtripple_ch_37 0.10
 filtdcblock_ch_37 1
 dispmode_ch_37 1
-channame_ch_37 
+channame_ch_37
 gain_ch_38 4000
 filter_ch_38 2
 a_in_ch_38 38
@@ -514,7 +514,7 @@ filtfreq2_ch_38 7000
 filtripple_ch_38 0.10
 filtdcblock_ch_38 1
 dispmode_ch_38 1
-channame_ch_38 
+channame_ch_38
 gain_ch_39 4000
 filter_ch_39 2
 a_in_ch_39 39
@@ -527,7 +527,7 @@ filtfreq2_ch_39 7000
 filtripple_ch_39 0.10
 filtdcblock_ch_39 1
 dispmode_ch_39 1
-channame_ch_39 
+channame_ch_39
 gain_ch_40 4000
 filter_ch_40 2
 a_in_ch_40 40
@@ -540,7 +540,7 @@ filtfreq2_ch_40 7000
 filtripple_ch_40 0.10
 filtdcblock_ch_40 1
 dispmode_ch_40 1
-channame_ch_40 
+channame_ch_40
 gain_ch_41 4000
 filter_ch_41 2
 a_in_ch_41 41
@@ -553,7 +553,7 @@ filtfreq2_ch_41 7000
 filtripple_ch_41 0.10
 filtdcblock_ch_41 1
 dispmode_ch_41 1
-channame_ch_41 
+channame_ch_41
 gain_ch_42 4000
 filter_ch_42 2
 a_in_ch_42 42
@@ -566,7 +566,7 @@ filtfreq2_ch_42 7000
 filtripple_ch_42 0.10
 filtdcblock_ch_42 1
 dispmode_ch_42 1
-channame_ch_42 
+channame_ch_42
 gain_ch_43 4000
 filter_ch_43 2
 a_in_ch_43 43
@@ -579,7 +579,7 @@ filtfreq2_ch_43 7000
 filtripple_ch_43 0.10
 filtdcblock_ch_43 1
 dispmode_ch_43 1
-channame_ch_43 
+channame_ch_43
 gain_ch_44 4000
 filter_ch_44 2
 a_in_ch_44 44
@@ -592,7 +592,7 @@ filtfreq2_ch_44 7000
 filtripple_ch_44 0.10
 filtdcblock_ch_44 1
 dispmode_ch_44 1
-channame_ch_44 
+channame_ch_44
 gain_ch_45 4000
 filter_ch_45 2
 a_in_ch_45 45
@@ -605,7 +605,7 @@ filtfreq2_ch_45 7000
 filtripple_ch_45 0.10
 filtdcblock_ch_45 1
 dispmode_ch_45 1
-channame_ch_45 
+channame_ch_45
 gain_ch_46 4000
 filter_ch_46 2
 a_in_ch_46 46
@@ -618,7 +618,7 @@ filtfreq2_ch_46 7000
 filtripple_ch_46 0.10
 filtdcblock_ch_46 1
 dispmode_ch_46 1
-channame_ch_46 
+channame_ch_46
 gain_ch_47 4000
 filter_ch_47 2
 a_in_ch_47 47
@@ -631,7 +631,7 @@ filtfreq2_ch_47 7000
 filtripple_ch_47 0.10
 filtdcblock_ch_47 1
 dispmode_ch_47 1
-channame_ch_47 
+channame_ch_47
 gain_ch_48 4000
 filter_ch_48 2
 a_in_ch_48 48
@@ -644,7 +644,7 @@ filtfreq2_ch_48 7000
 filtripple_ch_48 0.10
 filtdcblock_ch_48 1
 dispmode_ch_48 1
-channame_ch_48 
+channame_ch_48
 gain_ch_49 4000
 filter_ch_49 2
 a_in_ch_49 49
@@ -657,7 +657,7 @@ filtfreq2_ch_49 7000
 filtripple_ch_49 0.10
 filtdcblock_ch_49 1
 dispmode_ch_49 1
-channame_ch_49 
+channame_ch_49
 gain_ch_50 4000
 filter_ch_50 2
 a_in_ch_50 50
@@ -670,7 +670,7 @@ filtfreq2_ch_50 7000
 filtripple_ch_50 0.10
 filtdcblock_ch_50 1
 dispmode_ch_50 1
-channame_ch_50 
+channame_ch_50
 gain_ch_51 4000
 filter_ch_51 2
 a_in_ch_51 51
@@ -683,7 +683,7 @@ filtfreq2_ch_51 7000
 filtripple_ch_51 0.10
 filtdcblock_ch_51 1
 dispmode_ch_51 1
-channame_ch_51 
+channame_ch_51
 gain_ch_52 4000
 filter_ch_52 2
 a_in_ch_52 52
@@ -696,7 +696,7 @@ filtfreq2_ch_52 7000
 filtripple_ch_52 0.10
 filtdcblock_ch_52 1
 dispmode_ch_52 1
-channame_ch_52 
+channame_ch_52
 gain_ch_53 4000
 filter_ch_53 2
 a_in_ch_53 53
@@ -709,7 +709,7 @@ filtfreq2_ch_53 7000
 filtripple_ch_53 0.10
 filtdcblock_ch_53 1
 dispmode_ch_53 1
-channame_ch_53 
+channame_ch_53
 gain_ch_54 4000
 filter_ch_54 2
 a_in_ch_54 54
@@ -722,7 +722,7 @@ filtfreq2_ch_54 7000
 filtripple_ch_54 0.10
 filtdcblock_ch_54 1
 dispmode_ch_54 1
-channame_ch_54 
+channame_ch_54
 gain_ch_55 4000
 filter_ch_55 2
 a_in_ch_55 55
@@ -735,7 +735,7 @@ filtfreq2_ch_55 7000
 filtripple_ch_55 0.10
 filtdcblock_ch_55 1
 dispmode_ch_55 1
-channame_ch_55 
+channame_ch_55
 gain_ch_56 4000
 filter_ch_56 2
 a_in_ch_56 56
@@ -748,7 +748,7 @@ filtfreq2_ch_56 7000
 filtripple_ch_56 0.10
 filtdcblock_ch_56 1
 dispmode_ch_56 1
-channame_ch_56 
+channame_ch_56
 gain_ch_57 4000
 filter_ch_57 2
 a_in_ch_57 57
@@ -761,7 +761,7 @@ filtfreq2_ch_57 7000
 filtripple_ch_57 0.10
 filtdcblock_ch_57 1
 dispmode_ch_57 1
-channame_ch_57 
+channame_ch_57
 gain_ch_58 4000
 filter_ch_58 2
 a_in_ch_58 58
@@ -774,7 +774,7 @@ filtfreq2_ch_58 7000
 filtripple_ch_58 0.10
 filtdcblock_ch_58 1
 dispmode_ch_58 1
-channame_ch_58 
+channame_ch_58
 gain_ch_59 4000
 filter_ch_59 2
 a_in_ch_59 59
@@ -787,7 +787,7 @@ filtfreq2_ch_59 7000
 filtripple_ch_59 0.10
 filtdcblock_ch_59 1
 dispmode_ch_59 1
-channame_ch_59 
+channame_ch_59
 gain_ch_60 4000
 filter_ch_60 2
 a_in_ch_60 60
@@ -800,7 +800,7 @@ filtfreq2_ch_60 7000
 filtripple_ch_60 0.10
 filtdcblock_ch_60 1
 dispmode_ch_60 1
-channame_ch_60 
+channame_ch_60
 gain_ch_61 4000
 filter_ch_61 2
 a_in_ch_61 61
@@ -813,7 +813,7 @@ filtfreq2_ch_61 7000
 filtripple_ch_61 0.10
 filtdcblock_ch_61 1
 dispmode_ch_61 1
-channame_ch_61 
+channame_ch_61
 gain_ch_62 4000
 filter_ch_62 2
 a_in_ch_62 62
@@ -826,7 +826,7 @@ filtfreq2_ch_62 7000
 filtripple_ch_62 0.10
 filtdcblock_ch_62 1
 dispmode_ch_62 1
-channame_ch_62 
+channame_ch_62
 gain_ch_63 4000
 filter_ch_63 2
 a_in_ch_63 63
@@ -839,7 +839,7 @@ filtfreq2_ch_63 7000
 filtripple_ch_63 0.10
 filtdcblock_ch_63 1
 dispmode_ch_63 1
-channame_ch_63 
+channame_ch_63
 second_audio 3
 default_filtresp_hp 2
 default_filtkind_hp 0
@@ -1136,14 +1136,14 @@ stim_start_delay 1
 biphasic 1
 use_dacstim 0
 stimscript 0
-stimfile 
+stimfile
 numPatterns 1
 stim_patt_1 "One 100 us pulse every 30 s" 100 100 30000000 0 1 1000 0 1 1000000 0 1
 numProtocols 1
 stim_prot_1 "Ten minutes of 30 s pulse baseline" 1 600 "One 100 us pulse every 30 s" 0 0 "Pause (no stimulation)" 0 0 "Pause (no stimulation)" 0 0 "Pause (no stimulation)" 0 0 "Pause (no stimulation)"
 stim_during_rec 0
-info_subject 
-info_trial 
+info_subject
+info_trial
 waveform_period 32
 pretrig_period 1
 deadzone_period 500
@@ -1375,10 +1375,10 @@ dacqtrackPos 0
 stimSerial 0
 recordSerial 0
 useScript 0
-script 
+script
 postProcess 0
-postProcessor 
-postProcessorParams 
+postProcessor
+postProcessorParams
 sync_out 0
 syncRate 25.00000
 autoTrial 0
@@ -1395,7 +1395,7 @@ rawGateChan 0
 rawGatePol 1
 defaultTime 600
 defaultMode 0
-trial_comment 
+trial_comment
 experimenter Abid
 digout_state 0
 stim_phase 90
@@ -1498,9 +1498,9 @@ lastfileext set
 lasttrialdatetime 1408116070
 lastupdatecheck 0
 useupdateproxy 0
-updateproxy 
-updateproxyid 
-updateproxypw 
+updateproxy
+updateproxyid
+updateproxypw
 contaudio 0
 mode128channels 0
 modeanalog32 1

@@ -1,6 +1,6 @@
 Neuralynx Base Log File Opened - File Name:  C:\Users\admin\AppData\Local\Temp\2013-11-29_17-05-05\CheetahLogFile.txt
 Time Opened: (m/d/y)  11/29/2013 at time 17:5:5.254
-Cheetah Version: 5.5.1 
+Cheetah Version: 5.5.1
 Cheetah Build Number: 20110419A0747
 PC Host ID: 2c27d72d93eb
 Licensed User: Leibeniz Inst. for Neuralbiology 6493
@@ -17,7 +17,7 @@ Monitor 0 Resolution: 1920 x 1200
 
 -* NOTICE  *-  17:05:05.255 - 0 - RealTimeClock::InitRealTimeClock() - CPU clock frequency for timestamp calculations is 2
 -* NOTICE  *-  17:05:05.255 - 351 - DigitalIOContainer::InitializeMeasurementComputingDigitalIOBoards() - There are no Measurement Computing boards installed on this computer. 			The driver returned 126. Check to ensure all boards are installed and visible in Instacal.  Otherwise, contact Neuralynx for assistance.
--* NOTICE  *-  17:05:05.257 - 2917 - D3D Primary Graphics Adapter: NVIDIA Quadro 400 
+-* NOTICE  *-  17:05:05.257 - 2917 - D3D Primary Graphics Adapter: NVIDIA Quadro 400
 -* NOTICE  *-  17:05:05.257 - 2943 - D3D Primary Graphics Driver Version: 8.17.12.6710
 -* NOTICE  *-  17:05:05.286 - 31539 - RealTimeClock::InitRealTimeClock() - CPU clock frequency for timestamp calculations is 2
 -* NOTICE  *-  17:05:05.354 - 99787 - Allocated  10440000 Bytes, #entries:10000   EntrySize:1044 PreEntries 0
@@ -40,20 +40,20 @@ Monitor 0 Resolution: 1920 x 1200
 -* NOTICE  *-  17:05:05.400 - 145808 - FormatCmdLine::GetNextLine() - Processing line number: 6
 -* NOTICE  *-  17:05:05.400 - 145823 - FormatCmdLine::GetNextLine() - Processing line: #
 -* NOTICE  *-  17:05:05.400 - 145839 - FormatCmdLine::GetNextLine() - Processing line number: 7
--* NOTICE  *-  17:05:05.400 - 145853 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.400 - 145853 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.400 - 145869 - FormatCmdLine::GetNextLine() - Processing line number: 8
--* NOTICE  *-  17:05:05.400 - 145883 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.400 - 145883 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.400 - 145899 - FormatCmdLine::GetNextLine() - Processing line number: 9
 -* NOTICE  *-  17:05:05.400 - 145959 - FormatCmdLine::GetNextLine() - Processing line: ######### BASIC SOFTWARE SETUP
 -* NOTICE  *-  17:05:05.401 - 145997 - FormatCmdLine::GetNextLine() - Processing line number: 10
--* NOTICE  *-  17:05:05.401 - 146013 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.401 - 146013 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.401 - 146029 - FormatCmdLine::GetNextLine() - Processing line number: 11
 -* NOTICE  *-  17:05:05.401 - 146043 - FormatCmdLine::GetNextLine() - Processing line: 	-SetDataDirectory "C:\CheetahData"
 -* NOTICE  *-  17:05:05.401 - 146064 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 11, Command Line: 	-SetDataDirectory "C:\CheetahData", Filename: C:\Program Files\Neuralynx\Cheetah5\Configuration\K\implStd\impl16.130510.cfg
 -* NOTICE  *-  17:05:05.402 - 147032 - Allocated  184000 Bytes, #entries:1000   EntrySize:184 PreEntries 0
 Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile.txt
 -* NOTICE  *-  17:05:05.402 - 147817 - FormatCmdLine::GetNextLine() - Processing line number: 12
--* NOTICE  *-  17:05:05.402 - 147836 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.402 - 147836 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.402 - 147853 - FormatCmdLine::GetNextLine() - Processing line number: 13
 -* NOTICE  *-  17:05:05.402 - 147868 - FormatCmdLine::GetNextLine() - Processing line: 	#System Status Dialog Setup
 -* NOTICE  *-  17:05:05.402 - 147885 - FormatCmdLine::GetNextLine() - Processing line number: 14
@@ -66,7 +66,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:05.404 - 149793 - FormatCmdLine::GetNextLine() - Processing line: 	-SetSystemStatusShowDetails True
 -* NOTICE  *-  17:05:05.404 - 149813 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 16, Command Line: 	-SetSystemStatusShowDetails True, Filename: C:\Program Files\Neuralynx\Cheetah5\Configuration\K\implStd\impl16.130510.cfg
 -* NOTICE  *-  17:05:05.405 - 150216 - FormatCmdLine::GetNextLine() - Processing line number: 17
--* NOTICE  *-  17:05:05.405 - 150241 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.405 - 150241 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.405 - 150258 - FormatCmdLine::GetNextLine() - Processing line number: 18
 -* NOTICE  *-  17:05:05.405 - 150272 - FormatCmdLine::GetNextLine() - Processing line: 	#Properties Display Setup
 -* NOTICE  *-  17:05:05.405 - 150289 - FormatCmdLine::GetNextLine() - Processing line number: 19
@@ -76,15 +76,15 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:05.405 - 150634 - FormatCmdLine::GetNextLine() - Processing line: 	-SetDialogVisible Properties True
 -* NOTICE  *-  17:05:05.405 - 150653 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 20, Command Line: 	-SetDialogVisible Properties True, Filename: C:\Program Files\Neuralynx\Cheetah5\Configuration\K\implStd\impl16.130510.cfg
 -* NOTICE  *-  17:05:05.407 - 152625 - FormatCmdLine::GetNextLine() - Processing line number: 21
--* NOTICE  *-  17:05:05.407 - 152653 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.407 - 152653 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.407 - 152671 - FormatCmdLine::GetNextLine() - Processing line number: 22
--* NOTICE  *-  17:05:05.407 - 152686 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.407 - 152686 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.407 - 152702 - FormatCmdLine::GetNextLine() - Processing line number: 23
 -* NOTICE  *-  17:05:05.407 - 152717 - FormatCmdLine::GetNextLine() - Processing line: ######### ACQUISITION SYSTEM SETUP
 -* NOTICE  *-  17:05:05.407 - 152734 - FormatCmdLine::GetNextLine() - Processing line number: 24
 -* NOTICE  *-  17:05:05.407 - 152749 - FormatCmdLine::GetNextLine() - Processing line: # Do the basic setup for your acquisition hardware - uncomment one only!
 -* NOTICE  *-  17:05:05.407 - 152766 - FormatCmdLine::GetNextLine() - Processing line number: 25
--* NOTICE  *-  17:05:05.407 - 152788 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.407 - 152788 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.407 - 152805 - FormatCmdLine::GetNextLine() - Processing line number: 26
 -* NOTICE  *-  17:05:05.407 - 152819 - FormatCmdLine::GetNextLine() - Processing line: 	 -ProcessConfigurationFile DigitalLynxSX.cfg
 -* NOTICE  *-  17:05:05.407 - 152839 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 26, Command Line: 	 -ProcessConfigurationFile DigitalLynxSX.cfg, Filename: C:\Program Files\Neuralynx\Cheetah5\Configuration\K\implStd\impl16.130510.cfg
@@ -104,13 +104,13 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:05.408 - 153294 - FormatCmdLine::GetNextLine() - Processing line number: 7
 -* NOTICE  *-  17:05:05.408 - 153310 - FormatCmdLine::GetNextLine() - Processing line: %dataPortNumber = 26090
 -* NOTICE  *-  17:05:05.408 - 153331 - FormatCmdLine::GetNextLine() - Processing line number: 8
--* NOTICE  *-  17:05:05.408 - 153346 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.408 - 153346 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.408 - 153362 - FormatCmdLine::GetNextLine() - Processing line number: 9
--* NOTICE  *-  17:05:05.408 - 153376 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.408 - 153376 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.408 - 153391 - FormatCmdLine::GetNextLine() - Processing line number: 10
--* NOTICE  *-  17:05:05.408 - 153405 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:05.408 - 153405 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:05.408 - 153421 - FormatCmdLine::GetNextLine() - Processing line number: 11
--* NOTICE  *-  17:05:05.408 - 153435 - FormatCmdLine::GetNextLine() - Processing line: # Hardware Sub System Creation 
+-* NOTICE  *-  17:05:05.408 - 153435 - FormatCmdLine::GetNextLine() - Processing line: # Hardware Sub System Creation
 -* NOTICE  *-  17:05:05.408 - 153453 - FormatCmdLine::GetNextLine() - Processing line number: 12
 -* NOTICE  *-  17:05:05.408 - 153502 - FormatCmdLine::GetNextLine() - Processing line: 	-CreateHardwareSubSystem %subSystemName DigitalLynxSX %sampleFrequency %hardwareIPAddress %commandPortNumber %dataIPAddress %dataPortNumber
 -* NOTICE  *-  17:05:05.408 - 153531 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 12, Command Line: 	-CreateHardwareSubSystem AcqSystem1 DigitalLynxSX 32000 192.168.3.10 26011 192.168.3.100 26090, Filename: DigitalLynxSX.cfg
@@ -231,7 +231,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:15.870 - 10615851 - DigitalIOLynxSX::SetDigitalIOPortDirection() - Digital IO port direction set successfully for device AcqSystem1_0. BoardNumber: 0, Port: 2, Direction: Input.
 -* NOTICE  *-  17:05:15.950 - 10696302 - DigitalIOLynxSX::SetDigitalIOPortDirection() - Digital IO port direction set successfully for device AcqSystem1_0. BoardNumber: 0, Port: 3, Direction: Input.
 -* NOTICE  *-  17:05:16.368 - 11113719 - FormatCmdLine::GetNextLine() - Processing line number: 13
--* NOTICE  *-  17:05:16.368 - 11113762 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.368 - 11113762 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.368 - 11113785 - FormatCmdLine::GetNextLine() - Processing line number: 14
 -* NOTICE  *-  17:05:16.368 - 11113804 - FormatCmdLine::GetNextLine() - Processing line: # Acquisition Dma Buffer Configuration
 -* NOTICE  *-  17:05:16.368 - 11113825 - FormatCmdLine::GetNextLine() - Processing line number: 15
@@ -239,24 +239,24 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.368 - 11113876 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 15, Command Line: 	-SetDmaBuffers AcqSystem1 64 2, Filename: DigitalLynxSX.cfg
 -* NOTICE  *-  17:05:16.368 - 11113943 - HardwareSubSys::CreateDmaBuffers() - Notice, DMA buffer allocation completed.  Total buffer size in bytes: 2129920, Buffer Count: 65.  Sub System Name: AcqSystem1
 -* NOTICE  *-  17:05:16.368 - 11114027 - FormatCmdLine::GetNextLine() - Processing line number: 16
--* NOTICE  *-  17:05:16.368 - 11114051 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.368 - 11114051 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.368 - 11114072 - FormatCmdLine::GetNextLine() - Processing line number: 17
 -* NOTICE  *-  17:05:16.368 - 11114090 - FormatCmdLine::GetNextLine() - Processing line: # Raw Data File Output
 -* NOTICE  *-  17:05:16.368 - 11114110 - FormatCmdLine::GetNextLine() - Processing line number: 18
 -* NOTICE  *-  17:05:16.368 - 11114129 - FormatCmdLine::GetNextLine() - Processing line: 	#-SetRawDataFile %subSystemName "DigitalLynxSXRawDataFile.nrd"
 -* NOTICE  *-  17:05:16.368 - 11114150 - FormatCmdLine::GetNextLine() - Processing line number: 19
--* NOTICE  *-  17:05:16.368 - 11114168 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.368 - 11114168 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.368 - 11114188 - FormatCmdLine::GetNextLine() - Processing line number: 20
--* NOTICE  *-  17:05:16.368 - 11114206 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.368 - 11114206 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.368 - 11114226 - FormatCmdLine::GetNextLine() - Processing line number: 21
 -* NOTICE  *-  17:05:16.368 - 11114244 - FormatCmdLine::GetNextLine() - Processing line:  	-SetDSPDelayCompensationEnabled true
 -* NOTICE  *-  17:05:16.368 - 11114266 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 21, Command Line:  	-SetDSPDelayCompensationEnabled true, Filename: DigitalLynxSX.cfg
 -* NOTICE  *-  17:05:16.368 - 11114322 - FormatCmdLine::GetNextLine() - Processing line number: 22
--* NOTICE  *-  17:05:16.368 - 11114345 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.368 - 11114345 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.368 - 11114365 - FormatCmdLine::GetNextLine() - Processing line number: 23
--* NOTICE  *-  17:05:16.369 - 11114395 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11114395 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11114416 - FormatCmdLine::GetNextLine() - Processing line number: 24
--* NOTICE  *-  17:05:16.369 - 11114434 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11114434 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11114459 - FormatCmdLine::GetLineFromFile() - The end of the file has been reached.
 -* NOTICE  *-  17:05:16.369 - 11114479 - ConfigFileProcessor::ProcessScript() - Finished Processing Filename: DigitalLynxSX.cfg
 -* NOTICE  *-  17:05:16.369 - 11114515 - FormatCmdLine::GetNextLine() - Processing line number: 27
@@ -270,17 +270,17 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.369 - 11114673 - FormatCmdLine::GetNextLine() - Processing line number: 31
 -* NOTICE  *-  17:05:16.369 - 11114692 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile RawDataFilePlayback.cfg
 -* NOTICE  *-  17:05:16.369 - 11114712 - FormatCmdLine::GetNextLine() - Processing line number: 32
--* NOTICE  *-  17:05:16.369 - 11114735 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11114735 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11114756 - FormatCmdLine::GetNextLine() - Processing line number: 33
--* NOTICE  *-  17:05:16.369 - 11114775 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11114775 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11114794 - FormatCmdLine::GetNextLine() - Processing line number: 34
 -* NOTICE  *-  17:05:16.369 - 11114813 - FormatCmdLine::GetNextLine() - Processing line: ######### VIDEO TRACKING
 -* NOTICE  *-  17:05:16.369 - 11114833 - FormatCmdLine::GetNextLine() - Processing line number: 35
 -* NOTICE  *-  17:05:16.369 - 11114851 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile VideoTracker.cfg
 -* NOTICE  *-  17:05:16.369 - 11114871 - FormatCmdLine::GetNextLine() - Processing line number: 36
--* NOTICE  *-  17:05:16.369 - 11114889 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11114889 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11114909 - FormatCmdLine::GetNextLine() - Processing line number: 37
--* NOTICE  *-  17:05:16.369 - 11114927 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11114927 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11114947 - FormatCmdLine::GetNextLine() - Processing line number: 38
 -* NOTICE  *-  17:05:16.369 - 11114965 - FormatCmdLine::GetNextLine() - Processing line: ######### ELECTRODE CONFIGURATIONS
 -* NOTICE  *-  17:05:16.369 - 11114986 - FormatCmdLine::GetNextLine() - Processing line number: 39
@@ -288,19 +288,19 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.369 - 11115026 - FormatCmdLine::GetNextLine() - Processing line number: 40
 -* NOTICE  *-  17:05:16.369 - 11115044 - FormatCmdLine::GetNextLine() - Processing line: #	others with comment signs ('#') in front of them.
 -* NOTICE  *-  17:05:16.369 - 11115064 - FormatCmdLine::GetNextLine() - Processing line number: 41
--* NOTICE  *-  17:05:16.369 - 11115082 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.369 - 11115082 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.369 - 11115102 - FormatCmdLine::GetNextLine() - Processing line number: 42
 -* NOTICE  *-  17:05:16.369 - 11115120 - FormatCmdLine::GetNextLine() - Processing line:     ### Add your custom setup file here
 -* NOTICE  *-  17:05:16.369 - 11115142 - FormatCmdLine::GetNextLine() - Processing line number: 43
--* NOTICE  *-  17:05:16.369 - 11115161 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile <your file name here>	# This file must be located in the Configuration directory.  
+-* NOTICE  *-  17:05:16.369 - 11115161 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile <your file name here>	# This file must be located in the Configuration directory.
 -* NOTICE  *-  17:05:16.369 - 11115182 - FormatCmdLine::GetNextLine() - Processing line number: 44
--* NOTICE  *-  17:05:16.369 - 11115201 - FormatCmdLine::GetNextLine() - Processing line: 	-ProcessConfigurationFile .\K\implStd\impl16B.cfg		# 
+-* NOTICE  *-  17:05:16.369 - 11115201 - FormatCmdLine::GetNextLine() - Processing line: 	-ProcessConfigurationFile .\K\implStd\impl16B.cfg		#
 -* NOTICE  *-  17:05:16.369 - 11115224 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 44, Command Line: 	-ProcessConfigurationFile .\K\implStd\impl16B.cfg		, Filename: C:\Program Files\Neuralynx\Cheetah5\Configuration\K\implStd\impl16.130510.cfg
 -* NOTICE  *-  17:05:16.369 - 11115256 - ConfigFileProcessor::ProcessScript() - Started Processing Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.370 - 11115428 - FormatCmdLine::GetNextLine() - Processing line number: 1
 -* NOTICE  *-  17:05:16.370 - 11115452 - FormatCmdLine::GetNextLine() - Processing line: ######## VARIABLE SUBSTITUTION SETUP
 -* NOTICE  *-  17:05:16.370 - 11115473 - FormatCmdLine::GetNextLine() - Processing line number: 2
--* NOTICE  *-  17:05:16.370 - 11115492 - FormatCmdLine::GetNextLine() - Processing line: 	
+-* NOTICE  *-  17:05:16.370 - 11115492 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.370 - 11115512 - FormatCmdLine::GetNextLine() - Processing line number: 3
 -* NOTICE  *-  17:05:16.370 - 11115531 - FormatCmdLine::GetNextLine() - Processing line: 	%subSystemName = AcqSystem1
 -* NOTICE  *-  17:05:16.370 - 11115561 - FormatCmdLine::GetNextLine() - Processing line number: 4
@@ -314,17 +314,17 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.370 - 11115757 - FormatCmdLine::GetNextLine() - Processing line number: 8
 -* NOTICE  *-  17:05:16.370 - 11115779 - FormatCmdLine::GetNextLine() - Processing line: 	%enableNetComBuffering = true	#This is used to create a data buffer that is sent to 3D Spike Sort to perform online clustering
 -* NOTICE  *-  17:05:16.370 - 11115899 - FormatCmdLine::GetNextLine() - Processing line number: 9
--* NOTICE  *-  17:05:16.370 - 11115919 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.370 - 11115919 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.370 - 11115939 - FormatCmdLine::GetNextLine() - Processing line number: 10
--* NOTICE  *-  17:05:16.370 - 11115957 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.370 - 11115957 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.370 - 11115976 - FormatCmdLine::GetNextLine() - Processing line number: 11
--* NOTICE  *-  17:05:16.370 - 11115994 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.370 - 11115994 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.370 - 11116013 - FormatCmdLine::GetNextLine() - Processing line number: 12
--* NOTICE  *-  17:05:16.370 - 11116031 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.370 - 11116031 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.370 - 11116051 - FormatCmdLine::GetNextLine() - Processing line number: 13
 -* NOTICE  *-  17:05:16.370 - 11116069 - FormatCmdLine::GetNextLine() - Processing line: ######## SPIKE ACQUISITION ENTITY CREATION
 -* NOTICE  *-  17:05:16.370 - 11116089 - FormatCmdLine::GetNextLine() - Processing line number: 14
--* NOTICE  *-  17:05:16.370 - 11116107 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.370 - 11116107 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.370 - 11116127 - FormatCmdLine::GetNextLine() - Processing line number: 15
 -* NOTICE  *-  17:05:16.370 - 11116145 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet3a
 -* NOTICE  *-  17:05:16.370 - 11116171 - FormatCmdLine::GetNextLine() - Processing line number: 16
@@ -338,14 +338,14 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.371 - 11116886 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.371 - 11116910 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 18, Command Line: 	-SetChannelNumber STet3a 8, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.371 - 11116963 - FormatCmdLine::GetNextLine() - Processing line number: 19
--* NOTICE  *-  17:05:16.371 - 11116986 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.371 - 11116986 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.371 - 11117015 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 19, Command Line: 	-SetNetComDataBufferingEnabled 	STet3a true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.371 - 11117195 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.371 - 11117225 - FormatCmdLine::GetNextLine() - Processing line number: 20
 -* NOTICE  *-  17:05:16.371 - 11117244 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.371 - 11117268 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 20, Command Line:  -SetInputInverted STet3a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.371 - 11117310 - FormatCmdLine::GetNextLine() - Processing line number: 21
--* NOTICE  *-  17:05:16.371 - 11117330 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.371 - 11117330 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.371 - 11117351 - FormatCmdLine::GetNextLine() - Processing line number: 22
 -* NOTICE  *-  17:05:16.371 - 11117378 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet3b
 -* NOTICE  *-  17:05:16.372 - 11117408 - FormatCmdLine::GetNextLine() - Processing line number: 23
@@ -359,7 +359,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.372 - 11118067 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.372 - 11118091 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 25, Command Line: 	-SetChannelNumber STet3b 9, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.372 - 11118139 - FormatCmdLine::GetNextLine() - Processing line number: 26
--* NOTICE  *-  17:05:16.372 - 11118161 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.372 - 11118161 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.372 - 11118186 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 26, Command Line: 	-SetNetComDataBufferingEnabled 	STet3b true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.372 - 11118337 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.372 - 11118367 - FormatCmdLine::GetNextLine() - Processing line number: 27
@@ -378,7 +378,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.373 - 11119130 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.373 - 11119154 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 31, Command Line: 	-SetChannelNumber STet3c 10, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.373 - 11119202 - FormatCmdLine::GetNextLine() - Processing line number: 32
--* NOTICE  *-  17:05:16.373 - 11119224 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.373 - 11119224 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.373 - 11119248 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 32, Command Line: 	-SetNetComDataBufferingEnabled 	STet3c true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.374 - 11119423 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.374 - 11119453 - FormatCmdLine::GetNextLine() - Processing line number: 33
@@ -397,18 +397,18 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.374 - 11120207 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.374 - 11120232 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 37, Command Line: 	-SetChannelNumber STet3d 11, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.374 - 11120280 - FormatCmdLine::GetNextLine() - Processing line number: 38
--* NOTICE  *-  17:05:16.374 - 11120302 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.374 - 11120302 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.374 - 11120326 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 38, Command Line: 	-SetNetComDataBufferingEnabled 	STet3d true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.375 - 11120576 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.375 - 11120609 - FormatCmdLine::GetNextLine() - Processing line number: 39
 -* NOTICE  *-  17:05:16.375 - 11120629 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.375 - 11120653 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 39, Command Line:  -SetInputInverted STet3d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.375 - 11120690 - FormatCmdLine::GetNextLine() - Processing line number: 40
--* NOTICE  *-  17:05:16.375 - 11120711 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.375 - 11120711 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.375 - 11120730 - FormatCmdLine::GetNextLine() - Processing line number: 41
--* NOTICE  *-  17:05:16.375 - 11120749 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.375 - 11120749 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.375 - 11120768 - FormatCmdLine::GetNextLine() - Processing line number: 42
--* NOTICE  *-  17:05:16.375 - 11120787 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.375 - 11120787 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.375 - 11120806 - FormatCmdLine::GetNextLine() - Processing line number: 43
 -* NOTICE  *-  17:05:16.375 - 11120825 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet4a
 -* NOTICE  *-  17:05:16.375 - 11120850 - FormatCmdLine::GetNextLine() - Processing line number: 44
@@ -422,14 +422,14 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.376 - 11121501 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.376 - 11121525 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 46, Command Line: 	-SetChannelNumber STet4a 12, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.376 - 11121574 - FormatCmdLine::GetNextLine() - Processing line number: 47
--* NOTICE  *-  17:05:16.376 - 11121597 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.376 - 11121597 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.376 - 11121622 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 47, Command Line: 	-SetNetComDataBufferingEnabled 	STet4a true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.376 - 11121773 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.376 - 11121803 - FormatCmdLine::GetNextLine() - Processing line number: 48
 -* NOTICE  *-  17:05:16.376 - 11121823 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.376 - 11121847 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 48, Command Line:  -SetInputInverted STet4a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.376 - 11121884 - FormatCmdLine::GetNextLine() - Processing line number: 49
--* NOTICE  *-  17:05:16.376 - 11121904 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.376 - 11121904 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.376 - 11121928 - FormatCmdLine::GetNextLine() - Processing line number: 50
 -* NOTICE  *-  17:05:16.376 - 11121948 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet4b
 -* NOTICE  *-  17:05:16.376 - 11121974 - FormatCmdLine::GetNextLine() - Processing line number: 51
@@ -443,7 +443,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.377 - 11122614 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.377 - 11122638 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 53, Command Line: 	-SetChannelNumber STet4b 13, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.377 - 11122688 - FormatCmdLine::GetNextLine() - Processing line number: 54
--* NOTICE  *-  17:05:16.377 - 11122710 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.377 - 11122710 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.377 - 11122735 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 54, Command Line: 	-SetNetComDataBufferingEnabled 	STet4b true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.377 - 11122894 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.377 - 11122924 - FormatCmdLine::GetNextLine() - Processing line number: 55
@@ -462,7 +462,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.378 - 11123695 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.378 - 11123722 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 59, Command Line: 	-SetChannelNumber STet4c 14, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.378 - 11123775 - FormatCmdLine::GetNextLine() - Processing line number: 60
--* NOTICE  *-  17:05:16.378 - 11123799 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.378 - 11123799 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.378 - 11123824 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 60, Command Line: 	-SetNetComDataBufferingEnabled 	STet4c true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.378 - 11123970 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.378 - 11124000 - FormatCmdLine::GetNextLine() - Processing line number: 61
@@ -481,16 +481,16 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.379 - 11124775 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.379 - 11124799 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 65, Command Line: 	-SetChannelNumber STet4d 15, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.379 - 11124850 - FormatCmdLine::GetNextLine() - Processing line number: 66
--* NOTICE  *-  17:05:16.379 - 11124872 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.379 - 11124872 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.379 - 11124897 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 66, Command Line: 	-SetNetComDataBufferingEnabled 	STet4d true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.379 - 11125069 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.379 - 11125099 - FormatCmdLine::GetNextLine() - Processing line number: 67
 -* NOTICE  *-  17:05:16.379 - 11125118 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.379 - 11125142 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 67, Command Line:  -SetInputInverted STet4d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.379 - 11125180 - FormatCmdLine::GetNextLine() - Processing line number: 68
--* NOTICE  *-  17:05:16.379 - 11125199 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.379 - 11125199 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.379 - 11125223 - FormatCmdLine::GetNextLine() - Processing line number: 69
--* NOTICE  *-  17:05:16.379 - 11125243 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.379 - 11125243 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.379 - 11125263 - FormatCmdLine::GetNextLine() - Processing line number: 70
 -* NOTICE  *-  17:05:16.379 - 11125281 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet7a
 -* NOTICE  *-  17:05:16.379 - 11125306 - FormatCmdLine::GetNextLine() - Processing line number: 71
@@ -504,14 +504,14 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.380 - 11125947 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.380 - 11125971 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 73, Command Line: 	-SetChannelNumber STet7a 24, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.380 - 11126021 - FormatCmdLine::GetNextLine() - Processing line number: 74
--* NOTICE  *-  17:05:16.380 - 11126043 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.380 - 11126043 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.380 - 11126069 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 74, Command Line: 	-SetNetComDataBufferingEnabled 	STet7a true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.380 - 11126219 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.380 - 11126249 - FormatCmdLine::GetNextLine() - Processing line number: 75
 -* NOTICE  *-  17:05:16.380 - 11126268 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.380 - 11126292 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 75, Command Line:  -SetInputInverted STet7a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.380 - 11126330 - FormatCmdLine::GetNextLine() - Processing line number: 76
--* NOTICE  *-  17:05:16.380 - 11126349 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.380 - 11126349 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.380 - 11126370 - FormatCmdLine::GetNextLine() - Processing line number: 77
 -* NOTICE  *-  17:05:16.381 - 11126400 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet7b
 -* NOTICE  *-  17:05:16.381 - 11126427 - FormatCmdLine::GetNextLine() - Processing line number: 78
@@ -525,7 +525,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.381 - 11127042 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.381 - 11127065 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 80, Command Line: 	-SetChannelNumber STet7b 25, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.381 - 11127116 - FormatCmdLine::GetNextLine() - Processing line number: 81
--* NOTICE  *-  17:05:16.381 - 11127139 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.381 - 11127139 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.381 - 11127163 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 81, Command Line: 	-SetNetComDataBufferingEnabled 	STet7b true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.381 - 11127324 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.381 - 11127354 - FormatCmdLine::GetNextLine() - Processing line number: 82
@@ -544,7 +544,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.382 - 11128118 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.382 - 11128142 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 86, Command Line: 	-SetChannelNumber STet7c 26, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.382 - 11128193 - FormatCmdLine::GetNextLine() - Processing line number: 87
--* NOTICE  *-  17:05:16.382 - 11128215 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.382 - 11128215 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.382 - 11128239 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 87, Command Line: 	-SetNetComDataBufferingEnabled 	STet7c true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.383 - 11128425 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.383 - 11128455 - FormatCmdLine::GetNextLine() - Processing line number: 88
@@ -563,18 +563,18 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.383 - 11129219 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.383 - 11129243 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 92, Command Line: 	-SetChannelNumber STet7d 27, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.383 - 11129294 - FormatCmdLine::GetNextLine() - Processing line number: 93
--* NOTICE  *-  17:05:16.383 - 11129317 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.383 - 11129317 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.383 - 11129341 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 93, Command Line: 	-SetNetComDataBufferingEnabled 	STet7d true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.384 - 11129491 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.384 - 11129522 - FormatCmdLine::GetNextLine() - Processing line number: 94
 -* NOTICE  *-  17:05:16.384 - 11129541 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.384 - 11129565 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 94, Command Line:  -SetInputInverted STet7d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.384 - 11129605 - FormatCmdLine::GetNextLine() - Processing line number: 95
--* NOTICE  *-  17:05:16.384 - 11129626 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.384 - 11129626 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.384 - 11129646 - FormatCmdLine::GetNextLine() - Processing line number: 96
--* NOTICE  *-  17:05:16.384 - 11129665 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.384 - 11129665 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.384 - 11129684 - FormatCmdLine::GetNextLine() - Processing line number: 97
--* NOTICE  *-  17:05:16.384 - 11129702 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.384 - 11129702 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.384 - 11129721 - FormatCmdLine::GetNextLine() - Processing line number: 98
 -* NOTICE  *-  17:05:16.384 - 11129739 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet8a
 -* NOTICE  *-  17:05:16.384 - 11129765 - FormatCmdLine::GetNextLine() - Processing line number: 99
@@ -588,14 +588,14 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.385 - 11130404 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.385 - 11130427 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 101, Command Line: 	-SetChannelNumber STet8a 28, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.385 - 11130481 - FormatCmdLine::GetNextLine() - Processing line number: 102
--* NOTICE  *-  17:05:16.385 - 11130503 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.385 - 11130503 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.385 - 11130528 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 102, Command Line: 	-SetNetComDataBufferingEnabled 	STet8a true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.385 - 11130707 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.385 - 11130737 - FormatCmdLine::GetNextLine() - Processing line number: 103
 -* NOTICE  *-  17:05:16.385 - 11130756 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.385 - 11130780 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 103, Command Line:  -SetInputInverted STet8a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.385 - 11130818 - FormatCmdLine::GetNextLine() - Processing line number: 104
--* NOTICE  *-  17:05:16.385 - 11130838 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.385 - 11130838 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.385 - 11130858 - FormatCmdLine::GetNextLine() - Processing line number: 105
 -* NOTICE  *-  17:05:16.385 - 11130876 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = STet8b
 -* NOTICE  *-  17:05:16.385 - 11130901 - FormatCmdLine::GetNextLine() - Processing line number: 106
@@ -609,7 +609,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.386 - 11131531 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.386 - 11131555 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 108, Command Line: 	-SetChannelNumber STet8b 29, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.386 - 11131607 - FormatCmdLine::GetNextLine() - Processing line number: 109
--* NOTICE  *-  17:05:16.386 - 11131629 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.386 - 11131629 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.386 - 11131657 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 109, Command Line: 	-SetNetComDataBufferingEnabled 	STet8b true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.386 - 11131813 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.386 - 11131863 - FormatCmdLine::GetNextLine() - Processing line number: 110
@@ -628,7 +628,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.387 - 11132623 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.387 - 11132647 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 114, Command Line: 	-SetChannelNumber STet8c 30, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.387 - 11132700 - FormatCmdLine::GetNextLine() - Processing line number: 115
--* NOTICE  *-  17:05:16.387 - 11132723 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.387 - 11132723 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.387 - 11132747 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 115, Command Line: 	-SetNetComDataBufferingEnabled 	STet8c true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.387 - 11132919 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.387 - 11132949 - FormatCmdLine::GetNextLine() - Processing line number: 116
@@ -647,24 +647,24 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.388 - 11133713 - FormatCmdLine::GetNextLine() - Processing line: 	-SetChannelNumber %acqEntName %currentADChannel
 -* NOTICE  *-  17:05:16.388 - 11133736 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 120, Command Line: 	-SetChannelNumber STet8d 31, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.388 - 11133789 - FormatCmdLine::GetNextLine() - Processing line number: 121
--* NOTICE  *-  17:05:16.388 - 11133812 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering 
+-* NOTICE  *-  17:05:16.388 - 11133812 - FormatCmdLine::GetNextLine() - Processing line: 	-SetNetComDataBufferingEnabled 	%acqEntName %enableNetComBuffering
 -* NOTICE  *-  17:05:16.388 - 11133836 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 121, Command Line: 	-SetNetComDataBufferingEnabled 	STet8d true , Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.388 - 11133998 - Allocated  336000 Bytes, #entries:3000   EntrySize:112 PreEntries 0
 -* NOTICE  *-  17:05:16.388 - 11134028 - FormatCmdLine::GetNextLine() - Processing line number: 122
 -* NOTICE  *-  17:05:16.388 - 11134047 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.388 - 11134071 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 122, Command Line:  -SetInputInverted STet8d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.388 - 11134110 - FormatCmdLine::GetNextLine() - Processing line number: 123
--* NOTICE  *-  17:05:16.388 - 11134130 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.388 - 11134130 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.388 - 11134149 - FormatCmdLine::GetNextLine() - Processing line number: 124
--* NOTICE  *-  17:05:16.388 - 11134168 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.388 - 11134168 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.388 - 11134186 - FormatCmdLine::GetNextLine() - Processing line number: 125
--* NOTICE  *-  17:05:16.388 - 11134204 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.388 - 11134204 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.388 - 11134223 - FormatCmdLine::GetNextLine() - Processing line number: 126
--* NOTICE  *-  17:05:16.388 - 11134241 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.388 - 11134241 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.388 - 11134259 - FormatCmdLine::GetNextLine() - Processing line number: 127
 -* NOTICE  *-  17:05:16.388 - 11134278 - FormatCmdLine::GetNextLine() - Processing line: ######## SPIKE WINDOW CREATION
 -* NOTICE  *-  17:05:16.388 - 11134298 - FormatCmdLine::GetNextLine() - Processing line number: 128
--* NOTICE  *-  17:05:16.388 - 11134316 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.388 - 11134316 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.388 - 11134335 - FormatCmdLine::GetNextLine() - Processing line number: 129
 -* NOTICE  *-  17:05:16.388 - 11134354 - FormatCmdLine::GetNextLine() - Processing line: -CreatePlotWindow Spike %spikeWindowName
 -* NOTICE  *-  17:05:16.389 - 11134389 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 129, Command Line: -CreatePlotWindow Spike "Spike Window 1", Filename: .\K\implStd\impl16B.cfg
@@ -681,7 +681,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.439 - 11184968 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet3d
 -* NOTICE  *-  17:05:16.439 - 11184995 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 133, Command Line: 	-AddPlot "Spike Window 1" STet3d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.454 - 11199820 - FormatCmdLine::GetNextLine() - Processing line number: 134
--* NOTICE  *-  17:05:16.454 - 11199854 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.454 - 11199854 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.454 - 11199875 - FormatCmdLine::GetNextLine() - Processing line number: 135
 -* NOTICE  *-  17:05:16.454 - 11199894 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet4a
 -* NOTICE  *-  17:05:16.454 - 11199919 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 135, Command Line: 	-AddPlot "Spike Window 1" STet4a, Filename: .\K\implStd\impl16B.cfg
@@ -695,7 +695,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.486 - 11232093 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet4d
 -* NOTICE  *-  17:05:16.486 - 11232120 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 138, Command Line: 	-AddPlot "Spike Window 1" STet4d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.492 - 11237781 - FormatCmdLine::GetNextLine() - Processing line number: 139
--* NOTICE  *-  17:05:16.492 - 11237811 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.492 - 11237811 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.492 - 11237833 - FormatCmdLine::GetNextLine() - Processing line number: 140
 -* NOTICE  *-  17:05:16.492 - 11237851 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet7a
 -* NOTICE  *-  17:05:16.492 - 11237877 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 140, Command Line: 	-AddPlot "Spike Window 1" STet7a, Filename: .\K\implStd\impl16B.cfg
@@ -709,7 +709,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.521 - 11267300 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet7d
 -* NOTICE  *-  17:05:16.521 - 11267327 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 143, Command Line: 	-AddPlot "Spike Window 1" STet7d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.533 - 11279333 - FormatCmdLine::GetNextLine() - Processing line number: 144
--* NOTICE  *-  17:05:16.533 - 11279365 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.533 - 11279365 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.534 - 11279402 - FormatCmdLine::GetNextLine() - Processing line number: 145
 -* NOTICE  *-  17:05:16.534 - 11279422 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet8a
 -* NOTICE  *-  17:05:16.534 - 11279448 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 145, Command Line: 	-AddPlot "Spike Window 1" STet8a, Filename: .\K\implStd\impl16B.cfg
@@ -723,22 +723,22 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.563 - 11308414 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %spikeWindowName STet8d
 -* NOTICE  *-  17:05:16.563 - 11308443 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 148, Command Line: 	-AddPlot "Spike Window 1" STet8d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.568 - 11314076 - FormatCmdLine::GetNextLine() - Processing line number: 149
--* NOTICE  *-  17:05:16.568 - 11314107 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.568 - 11314107 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.568 - 11314129 - FormatCmdLine::GetNextLine() - Processing line number: 150
 -* NOTICE  *-  17:05:16.568 - 11314148 - FormatCmdLine::GetNextLine() - Processing line: -SetPlotWindowPosition %spikeWindowName 6 69 590 498
 -* NOTICE  *-  17:05:16.568 - 11314173 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 150, Command Line: -SetPlotWindowPosition "Spike Window 1" 6 69 590 498, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.608 - 11354205 - FormatCmdLine::GetNextLine() - Processing line number: 151
--* NOTICE  *-  17:05:16.608 - 11354243 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.608 - 11354243 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.608 - 11354264 - FormatCmdLine::GetNextLine() - Processing line number: 152
--* NOTICE  *-  17:05:16.608 - 11354282 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.608 - 11354282 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.608 - 11354309 - FormatCmdLine::GetNextLine() - Processing line number: 153
--* NOTICE  *-  17:05:16.608 - 11354331 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.608 - 11354331 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.608 - 11354350 - FormatCmdLine::GetNextLine() - Processing line number: 154
--* NOTICE  *-  17:05:16.608 - 11354368 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.608 - 11354368 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.609 - 11354402 - FormatCmdLine::GetNextLine() - Processing line number: 155
 -* NOTICE  *-  17:05:16.609 - 11354423 - FormatCmdLine::GetNextLine() - Processing line: ######## CSC ACQUISITION ENTITY CREATION
 -* NOTICE  *-  17:05:16.609 - 11354443 - FormatCmdLine::GetNextLine() - Processing line number: 156
--* NOTICE  *-  17:05:16.609 - 11354462 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.609 - 11354462 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.609 - 11354481 - FormatCmdLine::GetNextLine() - Processing line number: 157
 -* NOTICE  *-  17:05:16.609 - 11354499 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet3a
 -* NOTICE  *-  17:05:16.609 - 11354527 - FormatCmdLine::GetNextLine() - Processing line number: 158
@@ -754,7 +754,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.609 - 11355102 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.609 - 11355125 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 161, Command Line:  -SetInputInverted Tet3a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.609 - 11355165 - FormatCmdLine::GetNextLine() - Processing line number: 162
--* NOTICE  *-  17:05:16.609 - 11355185 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.609 - 11355185 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.609 - 11355204 - FormatCmdLine::GetNextLine() - Processing line number: 163
 -* NOTICE  *-  17:05:16.609 - 11355222 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet3b
 -* NOTICE  *-  17:05:16.609 - 11355247 - FormatCmdLine::GetNextLine() - Processing line number: 164
@@ -770,7 +770,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.610 - 11355855 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.610 - 11355879 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 167, Command Line:  -SetInputInverted Tet3b False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.610 - 11355919 - FormatCmdLine::GetNextLine() - Processing line number: 168
--* NOTICE  *-  17:05:16.610 - 11355939 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.610 - 11355939 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.610 - 11355959 - FormatCmdLine::GetNextLine() - Processing line number: 169
 -* NOTICE  *-  17:05:16.610 - 11355977 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet3c
 -* NOTICE  *-  17:05:16.610 - 11356002 - FormatCmdLine::GetNextLine() - Processing line number: 170
@@ -786,7 +786,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.611 - 11356547 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.611 - 11356571 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 173, Command Line:  -SetInputInverted Tet3c False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.611 - 11356609 - FormatCmdLine::GetNextLine() - Processing line number: 174
--* NOTICE  *-  17:05:16.611 - 11356630 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.611 - 11356630 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.611 - 11356649 - FormatCmdLine::GetNextLine() - Processing line number: 175
 -* NOTICE  *-  17:05:16.611 - 11356667 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet3d
 -* NOTICE  *-  17:05:16.611 - 11356692 - FormatCmdLine::GetNextLine() - Processing line number: 176
@@ -802,9 +802,9 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.611 - 11357205 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.611 - 11357229 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 179, Command Line:  -SetInputInverted Tet3d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.611 - 11357267 - FormatCmdLine::GetNextLine() - Processing line number: 180
--* NOTICE  *-  17:05:16.611 - 11357287 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.611 - 11357287 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.611 - 11357306 - FormatCmdLine::GetNextLine() - Processing line number: 181
--* NOTICE  *-  17:05:16.611 - 11357324 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.611 - 11357324 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.611 - 11357343 - FormatCmdLine::GetNextLine() - Processing line number: 182
 -* NOTICE  *-  17:05:16.611 - 11357361 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet4a
 -* NOTICE  *-  17:05:16.612 - 11357401 - FormatCmdLine::GetNextLine() - Processing line number: 183
@@ -820,7 +820,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.612 - 11357920 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.612 - 11357943 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 186, Command Line:  -SetInputInverted Tet4a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.612 - 11357982 - FormatCmdLine::GetNextLine() - Processing line number: 187
--* NOTICE  *-  17:05:16.612 - 11358002 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.612 - 11358002 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.612 - 11358021 - FormatCmdLine::GetNextLine() - Processing line number: 188
 -* NOTICE  *-  17:05:16.612 - 11358040 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet4b
 -* NOTICE  *-  17:05:16.612 - 11358065 - FormatCmdLine::GetNextLine() - Processing line number: 189
@@ -836,7 +836,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.613 - 11358602 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.613 - 11358626 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 192, Command Line:  -SetInputInverted Tet4b False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.613 - 11358664 - FormatCmdLine::GetNextLine() - Processing line number: 193
--* NOTICE  *-  17:05:16.613 - 11358684 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.613 - 11358684 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.613 - 11358703 - FormatCmdLine::GetNextLine() - Processing line number: 194
 -* NOTICE  *-  17:05:16.613 - 11358721 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet4c
 -* NOTICE  *-  17:05:16.613 - 11358746 - FormatCmdLine::GetNextLine() - Processing line number: 195
@@ -852,7 +852,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.613 - 11359253 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.613 - 11359277 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 198, Command Line:  -SetInputInverted Tet4c False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.613 - 11359316 - FormatCmdLine::GetNextLine() - Processing line number: 199
--* NOTICE  *-  17:05:16.613 - 11359336 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.613 - 11359336 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.613 - 11359355 - FormatCmdLine::GetNextLine() - Processing line number: 200
 -* NOTICE  *-  17:05:16.613 - 11359374 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet4d
 -* NOTICE  *-  17:05:16.614 - 11359416 - FormatCmdLine::GetNextLine() - Processing line number: 201
@@ -868,13 +868,13 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.614 - 11359952 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.614 - 11359976 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 204, Command Line:  -SetInputInverted Tet4d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.614 - 11360015 - FormatCmdLine::GetNextLine() - Processing line number: 205
--* NOTICE  *-  17:05:16.614 - 11360034 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.614 - 11360034 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.614 - 11360054 - FormatCmdLine::GetNextLine() - Processing line number: 206
--* NOTICE  *-  17:05:16.614 - 11360072 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.614 - 11360072 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.614 - 11360090 - FormatCmdLine::GetNextLine() - Processing line number: 207
--* NOTICE  *-  17:05:16.614 - 11360108 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.614 - 11360108 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.614 - 11360127 - FormatCmdLine::GetNextLine() - Processing line number: 208
--* NOTICE  *-  17:05:16.614 - 11360145 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.614 - 11360145 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.614 - 11360164 - FormatCmdLine::GetNextLine() - Processing line number: 209
 -* NOTICE  *-  17:05:16.614 - 11360183 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet7a
 -* NOTICE  *-  17:05:16.614 - 11360208 - FormatCmdLine::GetNextLine() - Processing line number: 210
@@ -890,7 +890,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.615 - 11360741 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.615 - 11360765 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 213, Command Line:  -SetInputInverted Tet7a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.615 - 11360804 - FormatCmdLine::GetNextLine() - Processing line number: 214
--* NOTICE  *-  17:05:16.615 - 11360823 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.615 - 11360823 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.615 - 11360852 - FormatCmdLine::GetNextLine() - Processing line number: 215
 -* NOTICE  *-  17:05:16.615 - 11360873 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet7b
 -* NOTICE  *-  17:05:16.615 - 11360900 - FormatCmdLine::GetNextLine() - Processing line number: 216
@@ -906,7 +906,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.616 - 11361442 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.616 - 11361466 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 219, Command Line:  -SetInputInverted Tet7b False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.616 - 11361507 - FormatCmdLine::GetNextLine() - Processing line number: 220
--* NOTICE  *-  17:05:16.616 - 11361526 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.616 - 11361526 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.616 - 11361545 - FormatCmdLine::GetNextLine() - Processing line number: 221
 -* NOTICE  *-  17:05:16.616 - 11361564 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet7c
 -* NOTICE  *-  17:05:16.616 - 11361589 - FormatCmdLine::GetNextLine() - Processing line number: 222
@@ -922,7 +922,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.616 - 11362100 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.616 - 11362124 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 225, Command Line:  -SetInputInverted Tet7c False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.616 - 11362163 - FormatCmdLine::GetNextLine() - Processing line number: 226
--* NOTICE  *-  17:05:16.616 - 11362190 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.616 - 11362190 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.616 - 11362212 - FormatCmdLine::GetNextLine() - Processing line number: 227
 -* NOTICE  *-  17:05:16.616 - 11362230 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet7d
 -* NOTICE  *-  17:05:16.616 - 11362257 - FormatCmdLine::GetNextLine() - Processing line number: 228
@@ -938,9 +938,9 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.617 - 11362797 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.617 - 11362820 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 231, Command Line:  -SetInputInverted Tet7d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.617 - 11362860 - FormatCmdLine::GetNextLine() - Processing line number: 232
--* NOTICE  *-  17:05:16.617 - 11362880 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.617 - 11362880 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.617 - 11362899 - FormatCmdLine::GetNextLine() - Processing line number: 233
--* NOTICE  *-  17:05:16.617 - 11362917 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.617 - 11362917 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.617 - 11362936 - FormatCmdLine::GetNextLine() - Processing line number: 234
 -* NOTICE  *-  17:05:16.617 - 11362954 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet8a
 -* NOTICE  *-  17:05:16.617 - 11362979 - FormatCmdLine::GetNextLine() - Processing line number: 235
@@ -956,7 +956,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.618 - 11363522 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.618 - 11363553 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 238, Command Line:  -SetInputInverted Tet8a False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.618 - 11363596 - FormatCmdLine::GetNextLine() - Processing line number: 239
--* NOTICE  *-  17:05:16.618 - 11363617 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.618 - 11363617 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.618 - 11363636 - FormatCmdLine::GetNextLine() - Processing line number: 240
 -* NOTICE  *-  17:05:16.618 - 11363654 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet8b
 -* NOTICE  *-  17:05:16.618 - 11363679 - FormatCmdLine::GetNextLine() - Processing line number: 241
@@ -972,7 +972,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.618 - 11364204 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.618 - 11364228 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 244, Command Line:  -SetInputInverted Tet8b False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.618 - 11364268 - FormatCmdLine::GetNextLine() - Processing line number: 245
--* NOTICE  *-  17:05:16.618 - 11364287 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.618 - 11364287 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.618 - 11364307 - FormatCmdLine::GetNextLine() - Processing line number: 246
 -* NOTICE  *-  17:05:16.618 - 11364325 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet8c
 -* NOTICE  *-  17:05:16.618 - 11364350 - FormatCmdLine::GetNextLine() - Processing line number: 247
@@ -988,7 +988,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.619 - 11364890 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.619 - 11364916 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 250, Command Line:  -SetInputInverted Tet8c False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.619 - 11364959 - FormatCmdLine::GetNextLine() - Processing line number: 251
--* NOTICE  *-  17:05:16.619 - 11364979 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.619 - 11364979 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.619 - 11364998 - FormatCmdLine::GetNextLine() - Processing line number: 252
 -* NOTICE  *-  17:05:16.619 - 11365017 - FormatCmdLine::GetNextLine() - Processing line: %acqEntName = Tet8d
 -* NOTICE  *-  17:05:16.619 - 11365054 - FormatCmdLine::GetNextLine() - Processing line number: 253
@@ -1004,20 +1004,20 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.620 - 11365621 - FormatCmdLine::GetNextLine() - Processing line:  -SetInputInverted %acqEntName False
 -* NOTICE  *-  17:05:16.620 - 11365645 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 256, Command Line:  -SetInputInverted Tet8d False, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.620 - 11365686 - FormatCmdLine::GetNextLine() - Processing line number: 257
--* NOTICE  *-  17:05:16.620 - 11365706 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.620 - 11365706 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.620 - 11365725 - FormatCmdLine::GetNextLine() - Processing line number: 258
--* NOTICE  *-  17:05:16.620 - 11365743 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.620 - 11365743 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.620 - 11365762 - FormatCmdLine::GetNextLine() - Processing line number: 259
--* NOTICE  *-  17:05:16.620 - 11365779 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.620 - 11365779 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.620 - 11365798 - FormatCmdLine::GetNextLine() - Processing line number: 260
 -* NOTICE  *-  17:05:16.620 - 11365817 - FormatCmdLine::GetNextLine() - Processing line: ######## TIME WINDOW CREATION
 -* NOTICE  *-  17:05:16.620 - 11365838 - FormatCmdLine::GetNextLine() - Processing line number: 261
--* NOTICE  *-  17:05:16.620 - 11365856 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.620 - 11365856 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.620 - 11365876 - FormatCmdLine::GetNextLine() - Processing line number: 262
 -* NOTICE  *-  17:05:16.620 - 11365894 - FormatCmdLine::GetNextLine() - Processing line: -CreatePlotWindow Time %timeWindowName
 -* NOTICE  *-  17:05:16.620 - 11365918 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 262, Command Line: -CreatePlotWindow Time "Time Window 1", Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.634 - 11380252 - FormatCmdLine::GetNextLine() - Processing line number: 263
--* NOTICE  *-  17:05:16.634 - 11380286 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.634 - 11380286 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.634 - 11380307 - FormatCmdLine::GetNextLine() - Processing line number: 264
 -* NOTICE  *-  17:05:16.634 - 11380329 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet3a
 -* NOTICE  *-  17:05:16.634 - 11380357 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 264, Command Line: 	-AddPlot "Time Window 1" Tet3a, Filename: .\K\implStd\impl16B.cfg
@@ -1031,7 +1031,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.655 - 11400849 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet3d
 -* NOTICE  *-  17:05:16.655 - 11400876 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 267, Command Line: 	-AddPlot "Time Window 1" Tet3d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.660 - 11405880 - FormatCmdLine::GetNextLine() - Processing line number: 268
--* NOTICE  *-  17:05:16.660 - 11405915 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.660 - 11405915 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.660 - 11405937 - FormatCmdLine::GetNextLine() - Processing line number: 269
 -* NOTICE  *-  17:05:16.660 - 11405955 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet4a
 -* NOTICE  *-  17:05:16.660 - 11405981 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 269, Command Line: 	-AddPlot "Time Window 1" Tet4a, Filename: .\K\implStd\impl16B.cfg
@@ -1045,9 +1045,9 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.678 - 11423808 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet4d
 -* NOTICE  *-  17:05:16.678 - 11423834 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 272, Command Line: 	-AddPlot "Time Window 1" Tet4d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.685 - 11430661 - FormatCmdLine::GetNextLine() - Processing line number: 273
--* NOTICE  *-  17:05:16.685 - 11430698 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.685 - 11430698 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.685 - 11430719 - FormatCmdLine::GetNextLine() - Processing line number: 274
--* NOTICE  *-  17:05:16.685 - 11430737 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.685 - 11430737 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.685 - 11430756 - FormatCmdLine::GetNextLine() - Processing line number: 275
 -* NOTICE  *-  17:05:16.685 - 11430779 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet7a
 -* NOTICE  *-  17:05:16.685 - 11430808 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 275, Command Line: 	-AddPlot "Time Window 1" Tet7a, Filename: .\K\implStd\impl16B.cfg
@@ -1061,7 +1061,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.718 - 11463783 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet7d
 -* NOTICE  *-  17:05:16.718 - 11463810 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 278, Command Line: 	-AddPlot "Time Window 1" Tet7d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.721 - 11467359 - FormatCmdLine::GetNextLine() - Processing line number: 279
--* NOTICE  *-  17:05:16.722 - 11467409 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.722 - 11467409 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.722 - 11467433 - FormatCmdLine::GetNextLine() - Processing line number: 280
 -* NOTICE  *-  17:05:16.722 - 11467451 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet8a
 -* NOTICE  *-  17:05:16.722 - 11467476 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 280, Command Line: 	-AddPlot "Time Window 1" Tet8a, Filename: .\K\implStd\impl16B.cfg
@@ -1075,7 +1075,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.740 - 11485657 - FormatCmdLine::GetNextLine() - Processing line: 	-AddPlot %timeWindowName Tet8d
 -* NOTICE  *-  17:05:16.740 - 11485683 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 283, Command Line: 	-AddPlot "Time Window 1" Tet8d, Filename: .\K\implStd\impl16B.cfg
 -* NOTICE  *-  17:05:16.744 - 11489836 - FormatCmdLine::GetNextLine() - Processing line number: 284
--* NOTICE  *-  17:05:16.744 - 11489873 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.744 - 11489873 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.744 - 11489895 - FormatCmdLine::GetNextLine() - Processing line number: 285
 -* NOTICE  *-  17:05:16.744 - 11489914 - FormatCmdLine::GetNextLine() - Processing line: -SetPlotWindowPosition %timeWindowName 600 65 669 321
 -* NOTICE  *-  17:05:16.744 - 11489940 - ConfigFileProcessor::ProcessScript() - Next Ascii Command to Process.  Line Number: 285, Command Line: -SetPlotWindowPosition "Time Window 1" 600 65 669 321, Filename: .\K\implStd\impl16B.cfg
@@ -1084,13 +1084,13 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.779 - 11524889 - FormatCmdLine::GetNextLine() - Processing line number: 45
 -* NOTICE  *-  17:05:16.779 - 11524910 - FormatCmdLine::GetNextLine() - Processing line: 								# If it is not, the full path must be specified along with the file name.
 -* NOTICE  *-  17:05:16.779 - 11524931 - FormatCmdLine::GetNextLine() - Processing line number: 46
--* NOTICE  *-  17:05:16.779 - 11524949 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.779 - 11524949 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.779 - 11524968 - FormatCmdLine::GetNextLine() - Processing line number: 47
 -* NOTICE  *-  17:05:16.779 - 11524987 - FormatCmdLine::GetNextLine() - Processing line:     ### 4 channel configurations
 -* NOTICE  *-  17:05:16.779 - 11525008 - FormatCmdLine::GetNextLine() - Processing line number: 48
 -* NOTICE  *-  17:05:16.779 - 11525026 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 4CSC.cfg  		# 4 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.779 - 11525047 - FormatCmdLine::GetNextLine() - Processing line number: 49
--* NOTICE  *-  17:05:16.779 - 11525065 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.779 - 11525065 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.779 - 11525084 - FormatCmdLine::GetNextLine() - Processing line number: 50
 -* NOTICE  *-  17:05:16.779 - 11525102 - FormatCmdLine::GetNextLine() - Processing line:     ### 8 channel configurations
 -* NOTICE  *-  17:05:16.779 - 11525123 - FormatCmdLine::GetNextLine() - Processing line number: 51
@@ -1104,9 +1104,9 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.779 - 11525278 - FormatCmdLine::GetNextLine() - Processing line number: 55
 -* NOTICE  *-  17:05:16.779 - 11525296 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 8SE.cfg  		# 8 Single Electrodes
 -* NOTICE  *-  17:05:16.779 - 11525316 - FormatCmdLine::GetNextLine() - Processing line number: 56
--* NOTICE  *-  17:05:16.779 - 11525333 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.779 - 11525333 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.779 - 11525352 - FormatCmdLine::GetNextLine() - Processing line number: 57
--* NOTICE  *-  17:05:16.779 - 11525370 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.779 - 11525370 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.780 - 11525398 - FormatCmdLine::GetNextLine() - Processing line number: 58
 -* NOTICE  *-  17:05:16.780 - 11525419 - FormatCmdLine::GetNextLine() - Processing line:     ### 16 channel configurations
 -* NOTICE  *-  17:05:16.780 - 11525441 - FormatCmdLine::GetNextLine() - Processing line number: 59
@@ -1116,13 +1116,13 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.780 - 11525524 - FormatCmdLine::GetNextLine() - Processing line number: 61
 -* NOTICE  *-  17:05:16.780 - 11525545 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 2tt4st.cfg		# 2 Tetrodes, 4 Stereotrodes
 -* NOTICE  *-  17:05:16.780 - 11525565 - FormatCmdLine::GetNextLine() - Processing line number: 62
--* NOTICE  *-  17:05:16.780 - 11525583 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 16SE.cfg		# 16 Single Electrodes 
+-* NOTICE  *-  17:05:16.780 - 11525583 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 16SE.cfg		# 16 Single Electrodes
 -* NOTICE  *-  17:05:16.780 - 11525603 - FormatCmdLine::GetNextLine() - Processing line number: 63
--* NOTICE  *-  17:05:16.780 - 11525621 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 8ST.cfg		# 8 Stereotrodes 
+-* NOTICE  *-  17:05:16.780 - 11525621 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 8ST.cfg		# 8 Stereotrodes
 -* NOTICE  *-  17:05:16.780 - 11525641 - FormatCmdLine::GetNextLine() - Processing line number: 64
 -* NOTICE  *-  17:05:16.780 - 11525660 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProceSssConfigurationFile 16csc.cfg		# 16 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.780 - 11525680 - FormatCmdLine::GetNextLine() - Processing line number: 65
--* NOTICE  *-  17:05:16.780 - 11525698 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.780 - 11525698 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.780 - 11525717 - FormatCmdLine::GetNextLine() - Processing line number: 66
 -* NOTICE  *-  17:05:16.780 - 11525735 - FormatCmdLine::GetNextLine() - Processing line:     ### 32 channel configurations
 -* NOTICE  *-  17:05:16.780 - 11525756 - FormatCmdLine::GetNextLine() - Processing line number: 67
@@ -1134,7 +1134,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.780 - 11525876 - FormatCmdLine::GetNextLine() - Processing line number: 70
 -* NOTICE  *-  17:05:16.780 - 11525895 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 6tt8csc.cfg		# 6 Tetrodes, 8 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.780 - 11525915 - FormatCmdLine::GetNextLine() - Processing line number: 71
--* NOTICE  *-  17:05:16.780 - 11525933 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.780 - 11525933 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.780 - 11525952 - FormatCmdLine::GetNextLine() - Processing line number: 72
 -* NOTICE  *-  17:05:16.780 - 11525970 - FormatCmdLine::GetNextLine() - Processing line:     ### 48 channel configurations
 -* NOTICE  *-  17:05:16.780 - 11525990 - FormatCmdLine::GetNextLine() - Processing line number: 73
@@ -1144,7 +1144,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.780 - 11526079 - FormatCmdLine::GetNextLine() - Processing line number: 75
 -* NOTICE  *-  17:05:16.780 - 11526098 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 48csc_HS-54.cfg	# 48 Continuously Sampled Channels with HS-54 Channel Mappings
 -* NOTICE  *-  17:05:16.780 - 11526119 - FormatCmdLine::GetNextLine() - Processing line number: 76
--* NOTICE  *-  17:05:16.780 - 11526137 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.780 - 11526137 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.780 - 11526156 - FormatCmdLine::GetNextLine() - Processing line number: 77
 -* NOTICE  *-  17:05:16.780 - 11526176 - FormatCmdLine::GetNextLine() - Processing line:     ### 64 channel configurations
 -* NOTICE  *-  17:05:16.780 - 11526198 - FormatCmdLine::GetNextLine() - Processing line number: 78
@@ -1158,19 +1158,19 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.780 - 11526361 - FormatCmdLine::GetNextLine() - Processing line number: 82
 -* NOTICE  *-  17:05:16.780 - 11526380 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 24st16csc.cfg	# 24 Stereotrodes, 16 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.781 - 11526412 - FormatCmdLine::GetNextLine() - Processing line number: 83
--* NOTICE  *-  17:05:16.781 - 11526431 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.781 - 11526431 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.781 - 11526450 - FormatCmdLine::GetNextLine() - Processing line number: 84
 -* NOTICE  *-  17:05:16.781 - 11526468 - FormatCmdLine::GetNextLine() - Processing line:     ### 72 channel configurations
 -* NOTICE  *-  17:05:16.781 - 11526489 - FormatCmdLine::GetNextLine() - Processing line number: 85
 -* NOTICE  *-  17:05:16.781 - 11526508 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 12tt16csc8se.cfg	# 12 Tetrodes, 16 Continuously Sampled Channels, 8 Single Electrodes
 -* NOTICE  *-  17:05:16.781 - 11526529 - FormatCmdLine::GetNextLine() - Processing line number: 86
--* NOTICE  *-  17:05:16.781 - 11526547 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.781 - 11526547 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.781 - 11526566 - FormatCmdLine::GetNextLine() - Processing line number: 87
 -* NOTICE  *-  17:05:16.781 - 11526584 - FormatCmdLine::GetNextLine() - Processing line:     ### 96 channel configurations
 -* NOTICE  *-  17:05:16.781 - 11526605 - FormatCmdLine::GetNextLine() - Processing line number: 88
 -* NOTICE  *-  17:05:16.781 - 11526623 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 96csc.cfg		# 96 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.781 - 11526644 - FormatCmdLine::GetNextLine() - Processing line number: 89
--* NOTICE  *-  17:05:16.781 - 11526662 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.781 - 11526662 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.781 - 11526681 - FormatCmdLine::GetNextLine() - Processing line number: 90
 -* NOTICE  *-  17:05:16.781 - 11526699 - FormatCmdLine::GetNextLine() - Processing line:     ### 128 channel configurations
 -* NOTICE  *-  17:05:16.781 - 11526720 - FormatCmdLine::GetNextLine() - Processing line number: 91
@@ -1188,7 +1188,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.781 - 11526979 - FormatCmdLine::GetNextLine() - Processing line number: 97
 -* NOTICE  *-  17:05:16.781 - 11526998 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 96se32csc.cfg	# 96 Single Electrodes, 32 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.781 - 11527019 - FormatCmdLine::GetNextLine() - Processing line number: 98
--* NOTICE  *-  17:05:16.781 - 11527037 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.781 - 11527037 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.781 - 11527056 - FormatCmdLine::GetNextLine() - Processing line number: 99
 -* NOTICE  *-  17:05:16.781 - 11527074 - FormatCmdLine::GetNextLine() - Processing line:     ### 160 Channel configurations.
 -* NOTICE  *-  17:05:16.781 - 11527095 - FormatCmdLine::GetNextLine() - Processing line number: 100
@@ -1200,7 +1200,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.781 - 11527214 - FormatCmdLine::GetNextLine() - Processing line number: 103
 -* NOTICE  *-  17:05:16.781 - 11527233 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 72st16csc.cfg	# 72 Stereotrodes, 16 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.781 - 11527252 - FormatCmdLine::GetNextLine() - Processing line number: 104
--* NOTICE  *-  17:05:16.781 - 11527270 - FormatCmdLine::GetNextLine() - Processing line: 		
+-* NOTICE  *-  17:05:16.781 - 11527270 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.781 - 11527289 - FormatCmdLine::GetNextLine() - Processing line number: 105
 -* NOTICE  *-  17:05:16.781 - 11527307 - FormatCmdLine::GetNextLine() - Processing line:     ### 192 Channel configurations.
 -* NOTICE  *-  17:05:16.781 - 11527328 - FormatCmdLine::GetNextLine() - Processing line number: 106
@@ -1212,7 +1212,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.782 - 11527455 - FormatCmdLine::GetNextLine() - Processing line number: 109
 -* NOTICE  *-  17:05:16.782 - 11527473 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 192csc.cfg		# 192 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.782 - 11527495 - FormatCmdLine::GetNextLine() - Processing line number: 110
--* NOTICE  *-  17:05:16.782 - 11527514 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.782 - 11527514 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.782 - 11527533 - FormatCmdLine::GetNextLine() - Processing line number: 111
 -* NOTICE  *-  17:05:16.782 - 11527552 - FormatCmdLine::GetNextLine() - Processing line:     ### 224 Channel configurations.
 -* NOTICE  *-  17:05:16.782 - 11527572 - FormatCmdLine::GetNextLine() - Processing line number: 112
@@ -1224,7 +1224,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.782 - 11527688 - FormatCmdLine::GetNextLine() - Processing line number: 115
 -* NOTICE  *-  17:05:16.782 - 11527706 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 224csc.cfg		# 224 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.782 - 11527726 - FormatCmdLine::GetNextLine() - Processing line number: 116
--* NOTICE  *-  17:05:16.782 - 11527744 - FormatCmdLine::GetNextLine() - Processing line: 	
+-* NOTICE  *-  17:05:16.782 - 11527744 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.782 - 11527763 - FormatCmdLine::GetNextLine() - Processing line number: 117
 -* NOTICE  *-  17:05:16.782 - 11527781 - FormatCmdLine::GetNextLine() - Processing line:     ### 256 Channel configurations.
 -* NOTICE  *-  17:05:16.782 - 11527802 - FormatCmdLine::GetNextLine() - Processing line number: 118
@@ -1236,7 +1236,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.782 - 11527917 - FormatCmdLine::GetNextLine() - Processing line number: 121
 -* NOTICE  *-  17:05:16.782 - 11527935 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 256csc.cfg		# 256 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.782 - 11527955 - FormatCmdLine::GetNextLine() - Processing line number: 122
--* NOTICE  *-  17:05:16.782 - 11527974 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.782 - 11527974 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.782 - 11527993 - FormatCmdLine::GetNextLine() - Processing line number: 123
 -* NOTICE  *-  17:05:16.782 - 11528011 - FormatCmdLine::GetNextLine() - Processing line:     ### 288 Channel configurations.
 -* NOTICE  *-  17:05:16.782 - 11528031 - FormatCmdLine::GetNextLine() - Processing line number: 124
@@ -1248,7 +1248,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.782 - 11528148 - FormatCmdLine::GetNextLine() - Processing line number: 127
 -* NOTICE  *-  17:05:16.782 - 11528167 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 288csc.cfg		# 288 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.782 - 11528188 - FormatCmdLine::GetNextLine() - Processing line number: 128
--* NOTICE  *-  17:05:16.782 - 11528206 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.782 - 11528206 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.782 - 11528225 - FormatCmdLine::GetNextLine() - Processing line number: 129
 -* NOTICE  *-  17:05:16.782 - 11528243 - FormatCmdLine::GetNextLine() - Processing line:     ### 320 Channel configurations.
 -* NOTICE  *-  17:05:16.782 - 11528264 - FormatCmdLine::GetNextLine() - Processing line number: 130
@@ -1260,7 +1260,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.782 - 11528379 - FormatCmdLine::GetNextLine() - Processing line number: 133
 -* NOTICE  *-  17:05:16.783 - 11528409 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 320csc.cfg		# 320 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.783 - 11528430 - FormatCmdLine::GetNextLine() - Processing line number: 134
--* NOTICE  *-  17:05:16.783 - 11528448 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.783 - 11528448 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.783 - 11528467 - FormatCmdLine::GetNextLine() - Processing line number: 135
 -* NOTICE  *-  17:05:16.783 - 11528486 - FormatCmdLine::GetNextLine() - Processing line:     ### 352 Channel configurations.
 -* NOTICE  *-  17:05:16.783 - 11528506 - FormatCmdLine::GetNextLine() - Processing line number: 136
@@ -1272,7 +1272,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.783 - 11528622 - FormatCmdLine::GetNextLine() - Processing line number: 139
 -* NOTICE  *-  17:05:16.783 - 11528641 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 352csc.cfg		# 352 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.783 - 11528661 - FormatCmdLine::GetNextLine() - Processing line number: 140
--* NOTICE  *-  17:05:16.783 - 11528679 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.783 - 11528679 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.783 - 11528698 - FormatCmdLine::GetNextLine() - Processing line number: 141
 -* NOTICE  *-  17:05:16.783 - 11528716 - FormatCmdLine::GetNextLine() - Processing line:     ### 384 Channel configurations.
 -* NOTICE  *-  17:05:16.783 - 11528737 - FormatCmdLine::GetNextLine() - Processing line number: 142
@@ -1284,7 +1284,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.783 - 11528857 - FormatCmdLine::GetNextLine() - Processing line number: 145
 -* NOTICE  *-  17:05:16.783 - 11528875 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 384csc.cfg		# 384 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.783 - 11528895 - FormatCmdLine::GetNextLine() - Processing line number: 146
--* NOTICE  *-  17:05:16.783 - 11528914 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.783 - 11528914 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.783 - 11528933 - FormatCmdLine::GetNextLine() - Processing line number: 147
 -* NOTICE  *-  17:05:16.783 - 11528951 - FormatCmdLine::GetNextLine() - Processing line:     ### 416 Channel configurations.
 -* NOTICE  *-  17:05:16.783 - 11528972 - FormatCmdLine::GetNextLine() - Processing line number: 148
@@ -1296,7 +1296,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.783 - 11529087 - FormatCmdLine::GetNextLine() - Processing line number: 151
 -* NOTICE  *-  17:05:16.783 - 11529105 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 416csc.cfg		# 416 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.783 - 11529126 - FormatCmdLine::GetNextLine() - Processing line number: 152
--* NOTICE  *-  17:05:16.783 - 11529144 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.783 - 11529144 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.783 - 11529163 - FormatCmdLine::GetNextLine() - Processing line number: 153
 -* NOTICE  *-  17:05:16.783 - 11529181 - FormatCmdLine::GetNextLine() - Processing line:     ### 448 Channel configurations.
 -* NOTICE  *-  17:05:16.783 - 11529202 - FormatCmdLine::GetNextLine() - Processing line number: 154
@@ -1308,7 +1308,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.783 - 11529317 - FormatCmdLine::GetNextLine() - Processing line number: 157
 -* NOTICE  *-  17:05:16.783 - 11529336 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 448csc.cfg		# 448 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.783 - 11529363 - FormatCmdLine::GetNextLine() - Processing line number: 158
--* NOTICE  *-  17:05:16.783 - 11529381 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.783 - 11529381 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.784 - 11529412 - FormatCmdLine::GetNextLine() - Processing line number: 159
 -* NOTICE  *-  17:05:16.784 - 11529430 - FormatCmdLine::GetNextLine() - Processing line:     ### 480 Channel configurations.
 -* NOTICE  *-  17:05:16.784 - 11529451 - FormatCmdLine::GetNextLine() - Processing line number: 160
@@ -1320,7 +1320,7 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.784 - 11529570 - FormatCmdLine::GetNextLine() - Processing line number: 163
 -* NOTICE  *-  17:05:16.784 - 11529588 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 480csc.cfg		# 480 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.784 - 11529608 - FormatCmdLine::GetNextLine() - Processing line number: 164
--* NOTICE  *-  17:05:16.784 - 11529626 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.784 - 11529626 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.784 - 11529645 - FormatCmdLine::GetNextLine() - Processing line number: 165
 -* NOTICE  *-  17:05:16.784 - 11529663 - FormatCmdLine::GetNextLine() - Processing line:     ### 512 Channel configurations.
 -* NOTICE  *-  17:05:16.784 - 11529684 - FormatCmdLine::GetNextLine() - Processing line number: 166
@@ -1332,17 +1332,17 @@ Log file successfully moved to C:\CheetahData\2013-11-29_17-05-05\CheetahLogFile
 -* NOTICE  *-  17:05:16.784 - 11529805 - FormatCmdLine::GetNextLine() - Processing line number: 169
 -* NOTICE  *-  17:05:16.784 - 11529824 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile 512csc.cfg		# 512 Continuously Sampled Channels
 -* NOTICE  *-  17:05:16.784 - 11529844 - FormatCmdLine::GetNextLine() - Processing line number: 170
--* NOTICE  *-  17:05:16.784 - 11529862 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.784 - 11529862 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.784 - 11529881 - FormatCmdLine::GetNextLine() - Processing line number: 171
--* NOTICE  *-  17:05:16.784 - 11529898 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.784 - 11529898 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.784 - 11529917 - FormatCmdLine::GetNextLine() - Processing line number: 172
--* NOTICE  *-  17:05:16.784 - 11529935 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.784 - 11529935 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.784 - 11529954 - FormatCmdLine::GetNextLine() - Processing line number: 173
 -* NOTICE  *-  17:05:16.784 - 11529972 - FormatCmdLine::GetNextLine() - Processing line: ######### SPIKE RESPONSE
 -* NOTICE  *-  17:05:16.784 - 11529993 - FormatCmdLine::GetNextLine() - Processing line number: 174
 -* NOTICE  *-  17:05:16.784 - 11530012 - FormatCmdLine::GetNextLine() - Processing line: 	#-ProcessConfigurationFile SpikeTTLResponse.cfg
 -* NOTICE  *-  17:05:16.784 - 11530031 - FormatCmdLine::GetNextLine() - Processing line number: 175
--* NOTICE  *-  17:05:16.784 - 11530050 - FormatCmdLine::GetNextLine() - Processing line: 
+-* NOTICE  *-  17:05:16.784 - 11530050 - FormatCmdLine::GetNextLine() - Processing line:
 -* NOTICE  *-  17:05:16.784 - 11530069 - FormatCmdLine::GetNextLine() - Processing line number: 176
 -* NOTICE  *-  17:05:16.784 - 11530087 - FormatCmdLine::GetNextLine() - Processing line: ######### DIGITAL IO
 -* NOTICE  *-  17:05:16.784 - 11530106 - FormatCmdLine::GetNextLine() - Processing line number: 177

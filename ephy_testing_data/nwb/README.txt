@@ -1,6 +1,6 @@
 Test file kindly provided by:
 
-Allen Institute 
+Allen Institute
 https://alleninstitute.org/
 
 © 2019 Allen Institute for Brain Science. Download page of the Allen Institute. Available from: http://download.alleninstitute.org/informatics-archive/prerelease/

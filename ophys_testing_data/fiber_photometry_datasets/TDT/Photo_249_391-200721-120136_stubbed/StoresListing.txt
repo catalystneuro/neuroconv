@@ -37,4 +37,3 @@ PrtN     RZn(1)
 PrtR     RZn(1)
 RNPS     RZn(1)
 Sock     RZn(1)
-

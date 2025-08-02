@@ -1,4 +1,4 @@
-# Thor 
+# Thor
 
 ## single_channel_single_plane
 

@@ -43,4 +43,3 @@ mts=NEV.Data.SerialDigitalIO.TimeStamp;
 mid=NEV.Data.SerialDigitalIO.UnparsedData;
 
 save('../FileSpec2.3001.mat','lfp','ts','el','un','wf','mts','mid');
-

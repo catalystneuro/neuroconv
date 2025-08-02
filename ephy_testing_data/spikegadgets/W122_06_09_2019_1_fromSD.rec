@@ -12,45 +12,45 @@
    <Channel startByte="0" dataType="digital" bit="6" id="MCU_Aux1"/>
    <Channel startByte="0" dataType="digital" bit="7" id="MCU_Aux2"/>
   </Device>
-  
+
   <!--Accel/Gyro/Magnetometer sensor on headstage -->
   <Device name="headstageSensor" packetOrderPreference="30" numBytes="8" available="1">
       <Channel id="AccelX" interleavedDataIDByte="0" interleavedDataIDBit="3" dataType="analog" startByte="2" bit="0" />
       <Channel id="AccelY" interleavedDataIDByte="0" interleavedDataIDBit="3" dataType="analog" startByte="4" bit="0" />
       <Channel id="AccelZ" interleavedDataIDByte="0" interleavedDataIDBit="3" dataType="analog" startByte="6" bit="0" />
-      
+
       <Channel id="GyroX" interleavedDataIDByte="0" interleavedDataIDBit="2" dataType="analog" startByte="2" bit="0" />
       <Channel id="GyroY" interleavedDataIDByte="0" interleavedDataIDBit="2" dataType="analog" startByte="4" bit="0" />
       <Channel id="GyroZ" interleavedDataIDByte="0" interleavedDataIDBit="2" dataType="analog" startByte="6" bit="0" />
-      
+
       <Channel id="MagX" interleavedDataIDByte="0" interleavedDataIDBit="1" dataType="analog" startByte="2" bit="0" />
       <Channel id="MagY" interleavedDataIDByte="0" interleavedDataIDBit="1" dataType="analog" startByte="4" bit="0" />
       <Channel id="MagZ" interleavedDataIDByte="0" interleavedDataIDBit="1" dataType="analog" startByte="6" bit="0" />
-      
+
       <Channel id="RFINPUT" interleavedDataIDByte="0" interleavedDataIDBit="0" dataType="digital" startByte="3" bit="7" />
-      
+
   </Device>
 
  </HardwareConfiguration>
  <ModuleConfiguration>
-  
+
  </ModuleConfiguration>
  <StreamDisplay columns="2" pages="2" backgroundColor="#030303"/>
  <AuxDisplayConfiguration>
   <DispChannel id="AccelX" device="headstageSensor" maxDisp="200" color="#AA0000"/>
   <DispChannel id="AccelY" device="headstageSensor" maxDisp="200" color="#AA0000"/>
   <DispChannel id="AccelZ" device="headstageSensor" maxDisp="200" color="#AA0000"/>
-     
+
   <DispChannel id="GyroX" device="headstageSensor" maxDisp="2000" color="#00AA00"/>
   <DispChannel id="GyroY" device="headstageSensor" maxDisp="2000" color="#00AA00"/>
   <DispChannel id="GyroZ" device="headstageSensor" maxDisp="2000" color="#00AA00"/>
-     
+
   <DispChannel id="MagX" device="headstageSensor" maxDisp="200" color="#0000AA"/>
   <DispChannel id="MagY" device="headstageSensor" maxDisp="200" color="#0000AA"/>
   <DispChannel id="MagZ" device="headstageSensor" maxDisp="200" color="#0000AA"/>
-  
+
   <DispChannel id="RFINPUT" device="headstageSensor" maxDisp="2" color="#aaaaaa"/>
-  
+
  </AuxDisplayConfiguration>
  <SpikeConfiguration>
   <SpikeNTrode highFilter="6000" color="#ffffff" lowFilter="600" LFPHighFilter="200" refChan="1" refOn="0" id="1" LFPChan="1" moduleDataOn="1" filterOn="1" refNTrode="1">

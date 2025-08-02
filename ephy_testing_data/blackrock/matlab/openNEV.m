@@ -4,14 +4,14 @@ function NEV = openNEV(varargin)
 % Opens an .nev file for reading, returns all file information in a NEV
 % structure. Works with File Spec 2.1 & 2.2.
 % This version reads only waveforms of a specified list of neuron IDs.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Use OUTPUT = openNEV(fname,  'read', 'wave_elec', 'wave_unit', 'report', 'noparse', 'nowarning', 'precision').
-% 
+%
 % All input arguments are optional. Input arguments can be in any order.
 %
 %   fname:        Name of the file to be opened. If the fname is omitted
-%                 the user will be prompted to select a file using an open 
-%                 file user interface. 
+%                 the user will be prompted to select a file using an open
+%                 file user interface.
 %                 DEFAULT: Will open Open File UI.
 %
 %   'read':       Will read the waveform data if user passes this argument.
@@ -22,7 +22,7 @@ function NEV = openNEV(varargin)
 %                 and 'wave_elec').
 %                 DEFAULT: will not read data.
 %
-%   'wave_unit':  User can specify which units are used to read spike 
+%   'wave_unit':  User can specify which units are used to read spike
 %                 waveforms (option "read"). The units can be selected
 %                 either by specifying a range (e.g. 1:3) or by indicating
 %                 individual units (e.g. 1,2,4) or both. This field needs
@@ -30,14 +30,14 @@ function NEV = openNEV(varargin)
 %                 details.
 %                 DEFAULT: will read all existing units.
 %
-%   'wave_elec':  User can specify which electrodes are used to read spike 
+%   'wave_elec':  User can specify which electrodes are used to read spike
 %                 waveforms (option "read"). The number of electrodes can
 %                 be greater than or equal to 1 and less than or equal to
 %                 128. The electrodes can be selected either by specifying
 %                 a range (e.g. 20:45) or by indicating individual
 %                 electrodes (e.g. 3,6,7,90) or both. This field needs to
 %                 be followed by the prefix 'e:'. See example for more
-%                 details. 
+%                 details.
 %                 DEFAULT: will read from all existing channels.
 %
 %   'report':     Will show a summary report if user passes this argument.
@@ -55,24 +55,24 @@ function NEV = openNEV(varargin)
 %                 MAT file. By default the code will save a copy in the
 %                 same folder as the NEV file for easy future access. If
 %                 "wave_elec" (e:) or "wave_unit" (u:) is specified, the
-%                 mat file is never saved! 
-%                 DEFAULT: will save the MAT file, unless e: or u: is 
+%                 mat file is never saved!
+%                 DEFAULT: will save the MAT file, unless e: or u: is
 %                 specified.
 %
 %   'nomat':      Will not look for a MAT file. This option will force
 %                 openNEV to open a NEV file instead of any available MAT
 %                 files. If "wave_elec" (e:) or "wave_unit" (u:) is
-%                 specified, the mat file is never loaded! 
-%                 DEFAULT: will load the MAT file if available, unless e: 
+%                 specified, the mat file is never loaded!
+%                 DEFAULT: will load the MAT file if available, unless e:
 %                 or u: is specified.
 %
-%   'compact':    If specified the spike data is stored in 'int16' type 
+%   'compact':    If specified the spike data is stored in 'int16' type
 %                 instead of default double precision.
 %
 %   OUTPUT:       Contains the NEV structure.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%   USAGE EXAMPLE: 
-%   
+%   USAGE EXAMPLE:
+%
 %   openNEV('report','read','c:\data\sample.nev','u:1','e:80');
 %
 %   In the example above, the file c:\data\sample.nev will be used. A
@@ -94,7 +94,7 @@ function NEV = openNEV(varargin)
 %
 %   The above line is an "ExpParameter". The parameters are, "Intensity,
 %   Duration, Trials, and PageSement." The values of those parameters are,
-%   respectively, "1.02, 400, 1, and 14." The second example is a 
+%   respectively, "1.02, 400, 1, and 14." The second example is a
 %   "Stimulation". The name of the parameters are "StimCount" and
 %   "Duration" and the values are "5" and "10" respectively.
 %
@@ -106,17 +106,17 @@ function NEV = openNEV(varargin)
 %   *WaitSeconds=10;# OR
 %   *JuiceStatus=ON;#
 %
-%   The above line is a "Marker". The marker value is 10 in the first 
+%   The above line is a "Marker". The marker value is 10 in the first
 %   and it's ON in the second example.
 %
 %   The label, parameter name, and values are flexible and can be anything.
 %   The only required formatting is that the user needs to have a label
 %   followed by a colon ':', followed by a field name 'MarkerVal', followed
 %   by an equal sign '=', followed by the parameter value '10', and end
-%   with a semi-colon ';'. 
+%   with a semi-colon ';'.
 %
 %   NOTE:
-%   Every parameter requires a pound-sign '#' at the very end. 
+%   Every parameter requires a pound-sign '#' at the very end.
 %   Every parameter requires a star sign '*' at the very beginning. If you
 %   use my LabVIEW SendtoCerebus VI then there is no need for a '*' in the
 %   beginning.
@@ -126,15 +126,15 @@ function NEV = openNEV(varargin)
 %   Department of Bioengineering
 %   University of Utah
 %   Version 3.5.0 - March 22, 2010
-% 
+%
 %   2010-06-28: - Added code for selecting only specific waveforms using the
-%                 directives "e:" and "u:". A further field 
+%                 directives "e:" and "u:". A further field
 %                 .Data.Spikes.WaveformIndices was added to save the packet
 %                 indices of those waveforms that make up
 %                 .Data.Spikes.Waveform. A few clear statements have been
 %                 removed/moved to enable this functionality -- this should
 %                 not cause siginificant memory problems (however, current
-%                 optimizations with "clear" are very quick-and-dirty 
+%                 optimizations with "clear" are very quick-and-dirty
 %                 anyhow, so there should be room for improvement/cleanup).
 %               - Changed default behavior to NOT read the matlab files or
 %                 write them if either e: or u: is supplied for obvious
@@ -186,7 +186,7 @@ for i=1:length(varargin)
                 ParseData = 'noparse';
             case 'compact'
                 Compact = 'compact';
-                
+
             otherwise
                 temp = varargin{i};
                 if length(temp)>3 && strcmpi(temp(end-3),'.')
@@ -267,7 +267,7 @@ t                         = typecast(BasicHeader(29:44), 'uint16');
 NEV.MetaTags.Comment      = char(BasicHeader(77:332)');
 NEV.MetaTags.Filename     = fname;
 ExtHeaderCount            = typecast(BasicHeader(333:336), 'uint32');
-if strcmpi(NEV.MetaTags.FileTypeID, 'NEURALEV') 
+if strcmpi(NEV.MetaTags.FileTypeID, 'NEURALEV')
     disp(['Current NEV Filespec: ' fileSpec]);
     if exist([fpath fname(1:end-8) '.sif'], 'file') == 2
         METATAGS = textread([fpath fname(1:end-8) '.sif'], '%s');
@@ -332,8 +332,8 @@ for ii=1:ExtHeaderCount
             Label                                 = char(ExtendedHeader(9:24));
             Mode                                  = ExtendedHeader(25);
             NEV.IOLabels{Mode+1, 1} = Label;
-        case 'NSASEXEV' %% Not implemented in the Cerebus firmware. 
-                        %% Needs to be updated once implemented into the 
+        case 'NSASEXEV' %% Not implemented in the Cerebus firmware.
+                        %% Needs to be updated once implemented into the
                         %% firmware by Blackrock Microsystems.
             NEV.NSAS.Freq          = typecast(ExtendedHeader(9:10),'uint16');
             NEV.NSAS.DigInputConf  = char(ExtendedHeader(11));
@@ -422,7 +422,7 @@ if strcmp(ParseData, 'parse')
                         disp(['Error parsing: ' splitDigiValues{idx}]);
                         disp('Please refer to the help for more information on how to properly format the digital data for parsing.');
                     end
-                end            
+                end
                 % Populate the NEV structure with timestamps and inputtypes for the
                 % digital data
                 if ~isempty(DataBegTimestamps)
@@ -467,13 +467,13 @@ if strcmp(ReadData, 'read')
                                     8)';
         %remove non neural indices -- these have no waveform
         NEV.Data.Spikes.Waveform(nonNeuralIndices, :) = [];
-        %retain a list of all packet indices 
+        %retain a list of all packet indices
         NEV.Data.Spikes.WaveformIndices=neuralIndices;
     else
         %find all data packets that correspond to this electrode and/or
         %unit
         waveform_inds=find((isempty(Units) | ismember(tempClassOrReason,Units)) & ((isempty(Electrodes) & PacketIDs~=0) | ismember(PacketIDs,Electrodes)));
-        
+
         %pre-allocate waveform array
         NEV.Data.Spikes.Waveform=zeros(length(waveform_inds),(PacketBytes-8)/2,SpikeWaveformType);
 
@@ -483,7 +483,7 @@ if strcmp(ReadData, 'read')
                                             [(PacketBytes-8)/2 1], ...
                                             [num2str((PacketBytes-8)/2) '*int16=>' SpikeWaveformType])';
         end
-        
+
         %retain a list of all packet indices -- this time respective the
         %neural data packets only
         NEV.Data.Spikes.WaveformIndices=find((isempty(Units) | ismember(tempClassOrReason(neuralIndices),Units)) & (isempty(Electrodes) | ismember(PacketIDs(neuralIndices),Electrodes)));
@@ -492,7 +492,7 @@ end
 
 % save memory
 clear nonNeuralIndices;
-clear neuralIndices; 
+clear neuralIndices;
 
 %% Calculating the length of the data
 fseek(FID, -PacketBytes, 'eof');
@@ -506,7 +506,7 @@ if strcmp(Report, 'report')
     disp(['Data Duration (min) = ' num2str(round(DataDuration/NEV.MetaTags.SampleRes/60))]);
     disp(['Packet Counts       = ' num2str(DataPacketCount)]);
     disp(' ');
-    disp( '*** BASIC HEADER ***********************');    
+    disp( '*** BASIC HEADER ***********************');
     disp(['File Type ID        = '         NEV.MetaTags.FileTypeID]);
     disp(['Sample Resolution   = ' num2str(NEV.MetaTags.SampleRes)]);
     disp(['Date and Time       = '         NEV.MetaTags.DateTime]);
