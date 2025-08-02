@@ -60,7 +60,7 @@ def transfer_globus_content(
         *i.e.*, `source_files` is recommended to have at most 3 items all of similar total byte size.
     destination_endpoint_id : str
         Destination Globus ID.
-    destination_folder : FolderPathType
+    destination_folder : DirectoryPath
         Absolute path to a local folder where all content will be transferred to.
     display_progress : bool, default: True
         Whether to display the transfer as progress bars using `tqdm`.

@@ -1456,3 +1456,43 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.check_shift_timestamps_by_start_time()
                 self.check_interface_original_timestamps_inmutability()
                 self.check_nwbfile_temporal_alignment()
+
+
+class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    Generic class for testing any pose estimation interface.
+    """
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Check that pose estimation data can be read back from NWB file."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            # Check that behavior module exists
+            assert "behavior" in nwbfile.processing
+            behavior_module = nwbfile.processing["behavior"]
+
+            # Check for pose estimation container (this may vary by interface)
+            # Most interfaces will have some pose estimation container in behavior
+            pose_containers = [
+                data_interface
+                for name, data_interface in behavior_module.data_interfaces.items()
+                if hasattr(data_interface, "pose_estimation_series")
+            ]
+            assert len(pose_containers) > 0, "No pose estimation containers found in behavior module"
+
+            # Check that pose estimation series exist
+            pose_container = pose_containers[0]
+            assert hasattr(pose_container, "pose_estimation_series")
+            assert len(pose_container.pose_estimation_series) > 0
+
+            # Check that timestamps are properly written
+            for series_name, series in pose_container.pose_estimation_series.items():
+                assert hasattr(series, "timestamps")
+                assert len(series.timestamps) > 0
+                assert hasattr(series, "data")
+                assert len(series.data) > 0
+
+                # Check data dimensions (should be 2D: time x spatial_dims)
+                assert len(series.data.shape) == 2
+                assert series.data.shape[0] == len(series.timestamps)

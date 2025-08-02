@@ -87,7 +87,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
-        self._image_size = self.imaging_extractor.get_image_size()
+        self._frame_shape = self.imaging_extractor.get_frame_shape()
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -191,8 +191,8 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         z_plane_current_position_in_meters = abs(origin_coords[-1]) / 1e6
         grid_spacing = [y_position_in_meters, x_position_in_meters, z_plane_current_position_in_meters]
         field_of_view = [
-            y_position_in_meters * self._image_size[1],
-            x_position_in_meters * self._image_size[0],
+            y_position_in_meters * self._frame_shape[1],
+            x_position_in_meters * self._frame_shape[0],
             z_plane_current_position_in_meters,
         ]
 
@@ -274,7 +274,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
         self.folder_path = folder_path
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
-        self._image_size = self.imaging_extractor.get_image_size()
+        self._frame_shape = self.imaging_extractor.get_frame_shape()
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -378,8 +378,8 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         grid_spacing = [y_position_in_meters, x_position_in_meters]
         origin_coords = self._determine_position_current()
         field_of_view = [
-            y_position_in_meters * self._image_size[1],
-            x_position_in_meters * self._image_size[0],
+            y_position_in_meters * self._frame_shape[1],
+            x_position_in_meters * self._frame_shape[0],
         ]
 
         if len(streams["plane_streams"]) and len(origin_coords) == 3:

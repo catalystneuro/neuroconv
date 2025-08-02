@@ -48,7 +48,9 @@ jobs:
           python -m pip install -U pip  # Official recommended way
 
       - name: Install test requirements
-        run: pip install ".[test,dandi,spikeglx,phy]"
+        run: |
+          pip install ".[dandi,spikeglx,phy]"
+          pip install --group test
 
       - name: Prepare data for tests
         uses: ./.github/actions/load-data

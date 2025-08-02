@@ -9,6 +9,10 @@ Install NeuroConv with the additional dependencies necessary for reading multime
 
 This interface can handle conversions from avi, mov, mp4, wmv, flv and most `FFmpeg <https://ffmpeg.org/>`_ supported formats to NWB.
 
+.. note::
+    If your video files are not in a DANDI-compatible format, see our guide on
+    :doc:`../../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
+
 When storing videos of natural behavior, it is recommended to store this data as an external file with a link pointing
 from the ImageSeries in NWB to the external file
 (see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_).
