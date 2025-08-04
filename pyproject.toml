@@ -131,10 +131,13 @@ behavior = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.102.3",
+    "spikeinterface>=0.103.0",
     "neo>=0.14.1"
 ]
 alphaomega = [
+    "neuroconv[ecephys_minimal]",
+]
+axon = [
     "neuroconv[ecephys_minimal]",
 ]
 axona = [
@@ -216,6 +219,7 @@ whitematter = [
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
+    "neuroconv[axon]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
     "neuroconv[blackrock]",

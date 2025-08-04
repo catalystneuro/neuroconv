@@ -13,6 +13,10 @@ Bruker Tiff Imaging
 -------------------
 .. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffconverter
 
+Femtonics Imaging
+-----------------
+.. automodule:: neuroconv.datainterfaces.ophys.femtonics.femtonicsdatainterface
+
 HDF5 Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface

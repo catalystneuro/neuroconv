@@ -781,6 +781,60 @@ class TestAddPlaneSegmentation(TestCase):
                 plane_segmentation_name=plane_segmentation_name,
             )
 
+    def test_add_plane_segmentation_with_custom_properties(self):
+        """Test that custom properties of various dtypes are added as columns and values are correct."""
+        # Create a dummy segmentation extractor with known ROI count
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=num_rois,
+            num_samples=self.num_samples,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+
+        # Add custom properties with known values and types
+        roi_ids = segmentation_extractor.get_roi_ids()
+        custom_float = np.arange(num_rois, dtype=np.float32) * 0.5
+        custom_bool = np.array([True, False, True, False, True])
+        custom_label = np.array(["A", "B", "A", "C", "B"], dtype=object)
+
+        segmentation_extractor.set_property("custom_float", custom_float, ids=roi_ids)
+        segmentation_extractor.set_property("custom_bool", custom_bool, ids=roi_ids)
+        segmentation_extractor.set_property("custom_label", custom_label, ids=roi_ids)
+
+        # Ensure metadata contains the correct plane segmentation name
+        plane_segmentation_metadata = dict(
+            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
+        )
+        image_segmentation_metadata = dict(
+            ImageSegmentation=dict(
+                name=self.image_segmentation_name,
+                plane_segmentations=[plane_segmentation_metadata],
+            )
+        )
+        self.metadata["Ophys"].update(image_segmentation_metadata)
+
+        # Add to NWB
+        add_plane_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            plane_segmentation_name=self.plane_segmentation_name,
+        )
+
+        # Retrieve plane segmentation
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
+
+        # Check that properties are present and values match
+        for prop, expected in [
+            ("custom_float", custom_float),
+            ("custom_bool", custom_bool),
+            ("custom_label", custom_label),
+        ]:
+            assert prop in plane_segmentation
+            np.testing.assert_array_equal(plane_segmentation[prop].data, expected)
+
 
 class TestAddFluorescenceTraces(unittest.TestCase):
     @classmethod
@@ -2009,7 +2063,3 @@ class TestAddSummaryImages(TestCase):
         for image_name, image_data in expected_images_second_plane.items():
             image_name_from_metadata = images_metadata[image_name]["name"]
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
-
-
-if __name__ == "__main__":
-    unittest.main()
