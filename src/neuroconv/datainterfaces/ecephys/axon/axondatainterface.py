@@ -11,15 +11,15 @@ from ....utils import DeepDict, get_schema_from_hdmf_class
 
 class AxonRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary data interface class for converting Axon Binary Format (ABF) data using the
+    Data interface class for converting extracellular data recorded in Axon Binary Format (ABF) data using the
 
     :py:class:`~spikeinterface.extractors.AxonRecordingExtractor`.
     """
 
     display_name = "Axon Recording"
-    keywords = BaseRecordingExtractorInterface.keywords + ("axon", "abf", "pclamp", "axoscope")
+    keywords = BaseRecordingExtractorInterface.keywords + ("axon", "abf")
     associated_suffixes = (".abf",)
-    info = "Interface for Axon Binary Format (ABF) recording data from pCLAMP and AxoScope."
+    info = "Interface for extracellular data recorded in Axon Binary Format (ABF) recordings."
 
     @classmethod
     def get_source_schema(cls) -> dict:
