@@ -13,6 +13,10 @@ AlphaOmega
 ----------
 .. automodule:: neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface
 
+Axon Recording
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.axon.axondatainterface
+
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface

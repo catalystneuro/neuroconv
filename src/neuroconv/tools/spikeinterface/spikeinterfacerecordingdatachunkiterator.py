@@ -98,7 +98,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             channel_ids=self.channel_ids[selection[1]],
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
-            return_scaled=self.return_scaled,
+            return_in_uV=self.return_scaled,
         )
 
     def _get_dtype(self):
