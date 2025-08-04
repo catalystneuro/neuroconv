@@ -1397,20 +1397,20 @@ class TestFemtonicsImagingInterfaceStaticMethods:
     def test_get_available_channels_p29(self):
         """Test getting available channels for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
+        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path, munit_name="MUnit_0")
         assert channels == ["UG", "UR"]
-
-    def test_get_available_sessions_p29(self):
-        """Test getting available sessions for p29.mesc."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert sessions == ["MSession_0"]
 
     def test_get_available_munits_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_name="MSession_0")
         assert units == ["MUnit_0", "MUnit_1"]
+
+    def test_get_available_sessions_p29(self):
+        """Test getting available sessions for p29.mesc."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
+        assert sessions == ["MSession_0"]
 
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
@@ -1437,12 +1437,24 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 channel_name="WRONG_CHANNEL",
             )
 
+    def test_channel_name_not_specified_multiple_channels(self):
+        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        with pytest.raises(
+            ValueError,
+            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
+        ):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="MUnit_0",
+            )
+
     def test_munit_not_specified_with_multiple_units(self):
         """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"Multiple units found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\. Please specify 'munit_name'\.",
+            match=r"Multiple units found in session MSession_0 of Femtonics file: /Users/daphnedequatrebarbes/Documents/Catalystneuro/ophys_testing_data/imaging_datasets/Femtonics/moser_lab_mec/p29.mesc. Available units: \['MUnit_0', 'MUnit_1'\]. Please specify 'munit_name'",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
@@ -1455,7 +1467,7 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"Specified munit_name 'WRONG_UNIT' not found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\.",
+            match=r"Specified munit_name 'WRONG_UNIT' not found in session MSession_0 of Femtonics file: /Users/daphnedequatrebarbes/Documents/Catalystneuro/ophys_testing_data/imaging_datasets/Femtonics/moser_lab_mec/p29.mesc. Available units: \['MUnit_0', 'MUnit_1'\]",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
@@ -1468,23 +1480,11 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         with pytest.raises(
             ValueError,
-            match=r"Specified session_name 'WRONG_SESSION' not found in Femtonics file: .+\. Available sessions: \['MSession_0'\]\.",
+            match=r"Specified session_name 'WRONG_SESSION' not found in Femtonics file: /Users/daphnedequatrebarbes/Documents/Catalystneuro/ophys_testing_data/imaging_datasets/Femtonics/moser_lab_mec/p29.mesc. Available sessions: \['MSession_0'\]",
         ):
             FemtonicsImagingInterface(
                 file_path=file_path,
                 session_name="WRONG_SESSION",
                 munit_name="MUnit_0",
                 channel_name="UG",
-            )
-
-    def test_channel_name_not_specified_multiple_channels(self):
-        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
             )
