@@ -164,11 +164,9 @@ def get_nwb_imaging_metadata(
     metadata = _get_default_ophys_metadata()
 
     # TODO: get_num_channels is deprecated, remove
-    channel_name_list = imgextractor.get_channel_names() or (
-        ["OpticalChannel"]
-        if imgextractor.get_num_channels() == 1
-        else [f"OpticalChannel{idx}" for idx in range(imgextractor.get_num_channels())]
-    )
+    channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
+
+    
 
     imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
     for index, channel_name in enumerate(channel_name_list):
