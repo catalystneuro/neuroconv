@@ -9,7 +9,10 @@ from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from .._dataset_configuration import get_default_dataset_io_configurations
+from .._dataset_configuration import (
+    get_default_dataset_io_configurations,
+    get_existing_dataset_io_configurations,
+)
 
 
 class BackendConfiguration(BaseModel):
@@ -56,11 +59,31 @@ class BackendConfiguration(BaseModel):
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
-    def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
-        default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
+    def from_nwbfile(cls, nwbfile: NWBFile, use_default_dataset_io_configurations: bool = True) -> Self:
+        """
+        Create a backend configuration from an NWBFile.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to extract the backend configuration from.
+        use_default_dataset_io_configurations : bool, optional
+            Whether to use default dataset configurations, by default True. If False, the existing dataset
+            configurations in the NWBFile will be used, which requires that the NWBFile was read from an io object.
+
+        Returns
+        -------
+        Self
+            The backend configuration extracted from the NWBFile.
+        """
+
+        if use_default_dataset_io_configurations:
+            dataset_io_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
+        else:
+            dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile)
         dataset_configurations = {
             default_dataset_configuration.location_in_file: default_dataset_configuration
-            for default_dataset_configuration in default_dataset_configurations
+            for default_dataset_configuration in dataset_io_configurations
         }
 
         return cls(dataset_configurations=dataset_configurations)
