@@ -10,9 +10,6 @@ try:
 except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
-if not ECEPHY_DATA_PATH.exists():
-    pytest.fail(f"No folder found in location: {ECEPHY_DATA_PATH}!")
-
 
 class TestIntanAnalogInterface:
     """Test suite for IntanAnalogInterface."""
