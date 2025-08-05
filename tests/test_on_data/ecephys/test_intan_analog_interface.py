@@ -95,7 +95,6 @@ class TestIntanAnalogInterface:
         assert "Devices" in metadata
         assert "TimeSeries" in metadata
         assert interface.metadata_key in metadata["TimeSeries"]
-        assert interface.time_series_name in metadata["TimeSeries"][interface.metadata_key]
 
         # Check device metadata for RHD
         device = metadata["Devices"][0]
@@ -112,7 +111,6 @@ class TestIntanAnalogInterface:
         assert "Devices" in metadata
         assert "TimeSeries" in metadata
         assert interface.metadata_key in metadata["TimeSeries"]
-        assert interface.time_series_name in metadata["TimeSeries"][interface.metadata_key]
 
         # Check device metadata for RHS
         device = metadata["Devices"][0]

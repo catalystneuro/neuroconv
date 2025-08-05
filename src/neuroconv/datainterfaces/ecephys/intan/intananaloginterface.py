@@ -57,9 +57,8 @@ class IntanAnalogInterface(BaseDataInterface):
         """
         from spikeinterface.extractors import read_intan
 
-        self.file_path = Path(file_path)
-        self.stream_name = stream_name
-        self.verbose = verbose
+        self._file_path = Path(file_path)
+        self._stream_name = stream_name
         self.metadata_key = metadata_key
 
         # Stream type descriptions and time series name mapping
@@ -87,25 +86,25 @@ class IntanAnalogInterface(BaseDataInterface):
         }
 
         # Validate stream_name
-        if self.stream_name not in self.stream_info:
+        if self._stream_name not in self.stream_info:
             raise ValueError(
-                f"Invalid stream_name '{self.stream_name}'. "
+                f"Invalid stream_name '{self._stream_name}'. "
                 f"Valid analog stream names are: {list(self.stream_info.keys())}"
             )
 
         # Generate time series name
-        self.time_series_name = self.stream_info[self.stream_name]["time_series_name"]
+        self._time_series_name = self.stream_info[self._stream_name]["time_series_name"]
 
         # Load the recording extractor using stream_name
         self.recording_extractor = read_intan(
-            file_path=self.file_path,
-            stream_name=self.stream_name,
+            file_path=self._file_path,
+            stream_name=self._stream_name,
             all_annotations=True,
         )
 
         super().__init__(
-            file_path=self.file_path,
-            stream_name=self.stream_name,
+            file_path=self._file_path,
+            stream_name=self._stream_name,
             verbose=verbose,
         )
 
@@ -113,7 +112,7 @@ class IntanAnalogInterface(BaseDataInterface):
         metadata = super().get_metadata()
 
         # Add device metadata (reuse from main Intan interface)
-        system = self.file_path.suffix  # .rhd or .rhs
+        system = self._file_path.suffix  # .rhd or .rhs
         device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
 
         intan_device = dict(
@@ -126,12 +125,12 @@ class IntanAnalogInterface(BaseDataInterface):
         # Add TimeSeries metadata
         channel_names = self.get_channel_names()
         description = (
-            f"{self.stream_info[self.stream_name]['description']}. " f"Channels are {channel_names} in that order."
+            f"{self.stream_info[self._stream_name]['description']}. " f"Channels are {channel_names} in that order."
         )
 
         metadata["TimeSeries"] = {
             self.metadata_key: dict(
-                name=self.time_series_name,
+                name=self._time_series_name,
                 description=description,
             )
         }
@@ -191,9 +190,9 @@ class IntanAnalogInterface(BaseDataInterface):
         # Update metadata with description
         channel_names = self.get_channel_names()
         description = (
-            f"{self.stream_info[self.stream_name]['description']}. " f"Channels are {channel_names} in that order."
+            f"{self.stream_info[self._stream_name]['description']}. " f"Channels are {channel_names} in that order."
         )
-        metadata["TimeSeries"][self.time_series_name] = dict(description=description)
+        metadata["TimeSeries"][self._time_series_name] = dict(description=description)
 
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
@@ -202,5 +201,5 @@ class IntanAnalogInterface(BaseDataInterface):
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=self.time_series_name,
+            time_series_name=self._time_series_name,
         )
