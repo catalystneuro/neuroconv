@@ -226,7 +226,6 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[cellexplorer]",
     "neuroconv[edf]",
     "neuroconv[intan]",
-    "neuroconv[intan_analog]",
     "neuroconv[kilosort]",
     "neuroconv[maxwell]",
     "neuroconv[mcsraw]",
