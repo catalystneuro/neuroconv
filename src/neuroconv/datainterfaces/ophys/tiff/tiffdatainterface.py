@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import FilePath, validate_call
 
