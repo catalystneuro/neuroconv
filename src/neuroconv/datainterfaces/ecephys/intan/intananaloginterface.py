@@ -34,7 +34,7 @@ class IntanAnalogInterface(BaseDataInterface):
         file_path: FilePath,
         stream_name: str,
         verbose: bool = False,
-        time_series_metadata_key: str = "TimeSeries",
+        metadata_key: str = "TimeSeries",
     ):
         """
         Load and prepare analog data from Intan format (.rhd or .rhs files).
@@ -52,7 +52,7 @@ class IntanAnalogInterface(BaseDataInterface):
             - "DC Amplifier channel": DC amplifier channels (RHS system only)
         verbose : bool, default: False
             Verbose output
-        time_series_metadata_key : str, default: "TimeSeries"
+        metadata_key : str, default: "TimeSeries"
             Key for the TimeSeries metadata in the metadata dictionary.
         """
         from spikeinterface.extractors import read_intan
@@ -60,7 +60,7 @@ class IntanAnalogInterface(BaseDataInterface):
         self.file_path = Path(file_path)
         self.stream_name = stream_name
         self.verbose = verbose
-        self.time_series_metadata_key = time_series_metadata_key
+        self.metadata_key = metadata_key
 
         # Stream type descriptions and time series name mapping
         self.stream_info = {
@@ -130,12 +130,10 @@ class IntanAnalogInterface(BaseDataInterface):
         )
 
         metadata["TimeSeries"] = {
-            self.time_series_metadata_key: {
-                self.time_series_name: dict(
-                    name=self.time_series_name,
-                    description=description,
-                )
-            }
+            self.metadata_key: dict(
+                name=self.time_series_name,
+                description=description,
+            )
         }
 
         return metadata

@@ -38,7 +38,7 @@ This interface handles the primary neural recordings from the RHD2000 or RHS2000
 Intan Analog Data Conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert non-amplifier analog data from Intan systems to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
+Convert non-amplifier analog data from Intan systems to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandatainterface.IntanAnalogInterface`.
 This includes signals from auxiliary inputs, ADC inputs, and DC amplifiers.
 
 This interface supports analog streams including:

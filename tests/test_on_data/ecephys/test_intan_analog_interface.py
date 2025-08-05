@@ -77,9 +77,9 @@ class TestIntanAnalogInterface:
         custom_key = "CustomTimeSeries"
 
         interface = IntanAnalogInterface(
-            file_path=file_path, stream_name="USB board ADC input channel", time_series_metadata_key=custom_key
+            file_path=file_path, stream_name="USB board ADC input channel", metadata_key=custom_key
         )
-        assert interface.time_series_metadata_key == custom_key
+        assert interface.metadata_key == custom_key
 
         # Check that metadata uses the custom key
         metadata = interface.get_metadata()
@@ -94,8 +94,8 @@ class TestIntanAnalogInterface:
 
         assert "Devices" in metadata
         assert "TimeSeries" in metadata
-        assert interface.time_series_metadata_key in metadata["TimeSeries"]
-        assert interface.time_series_name in metadata["TimeSeries"][interface.time_series_metadata_key]
+        assert interface.metadata_key in metadata["TimeSeries"]
+        assert interface.time_series_name in metadata["TimeSeries"][interface.metadata_key]
 
         # Check device metadata for RHD
         device = metadata["Devices"][0]
@@ -111,8 +111,8 @@ class TestIntanAnalogInterface:
 
         assert "Devices" in metadata
         assert "TimeSeries" in metadata
-        assert interface.time_series_metadata_key in metadata["TimeSeries"]
-        assert interface.time_series_name in metadata["TimeSeries"][interface.time_series_metadata_key]
+        assert interface.metadata_key in metadata["TimeSeries"]
+        assert interface.time_series_name in metadata["TimeSeries"][interface.metadata_key]
 
         # Check device metadata for RHS
         device = metadata["Devices"][0]
