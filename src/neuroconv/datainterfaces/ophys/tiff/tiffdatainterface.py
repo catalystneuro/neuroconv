@@ -24,8 +24,9 @@ class GeneralTiffImagingInterface(BaseImagingExtractorInterface):
             The name of the extractor class to be used with this interface.
         """
         from roiextractors import MultiTIFFMultiPageExtractor
+
         return MultiTIFFMultiPageExtractor
-    
+
     @classmethod
     def get_source_schema(cls) -> dict:
         """
@@ -51,7 +52,7 @@ class GeneralTiffImagingInterface(BaseImagingExtractorInterface):
         channel_index: int = 0,
         num_planes: int = 1,
         num_acquisition_cycles: Optional[int] = None,
-        verbose: bool=False,
+        verbose: bool = False,
     ):
         """
         Initialize reading of TIFF file.
