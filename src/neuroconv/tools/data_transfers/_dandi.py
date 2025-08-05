@@ -15,7 +15,8 @@ def automatic_dandi_upload(
     nwb_folder_path: DirectoryPath,
     dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
-    staging: bool = False,
+    sandbox: bool | None = None,
+    staging: bool | None = None,
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
@@ -45,8 +46,13 @@ def automatic_dandi_upload(
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
-    staging : bool, default: False
-        Is the Dandiset hosted on the staging server? This is mostly for testing purposes.
+    sandbox : bool, optional
+        Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
+        Defaults to False.
+    staging : bool, optional
+        .. deprecated:: 0.6.0
+            The 'staging' parameter is deprecated and will be removed in February 2026.
+            Use 'sandbox' instead.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
@@ -57,6 +63,21 @@ def automatic_dandi_upload(
     from dandi.download import download as dandi_download
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
+
+    # Handle deprecated 'staging' parameter and set defaults
+    if staging is not None and sandbox is not None:
+        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
+
+    if staging is not None:
+        warn(
+            "The 'staging' parameter is deprecated and will be removed in February 2026. " "Use 'sandbox' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        sandbox = staging
+
+    if sandbox is None:
+        sandbox = False
 
     assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
@@ -71,7 +92,7 @@ def automatic_dandi_upload(
     if number_of_threads is not None and number_of_threads > 1 and number_of_jobs is None:
         number_of_jobs = -1
 
-    url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
+    url_base = "https://sandbox.dandiarchive.org" if sandbox else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
@@ -100,7 +121,7 @@ def automatic_dandi_upload(
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
-    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
+    dandi_instance = "dandi-sandbox" if sandbox else "dandi"  # Test
 
     dandi_upload(
         paths=organized_nwbfiles,
