@@ -21,8 +21,8 @@ class TestIntanAnalogInterface:
         file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
         interface = IntanAnalogInterface(file_path=file_path, stream_name="USB board ADC input channel")
 
-        assert interface.stream_name == "USB board ADC input channel"
-        assert interface.time_series_name == "TimeSeriesIntanADCInput"
+        assert interface._stream_name == "USB board ADC input channel"
+        assert interface._time_series_name == "TimeSeriesIntanADCInput"
         assert interface.recording_extractor is not None
 
         # Should have 8 ADC channels according to the README
@@ -37,8 +37,8 @@ class TestIntanAnalogInterface:
         file_path = ECEPHY_DATA_PATH / "intan" / "test_fcs_dc_250327_154333" / "info.rhs"
         interface = IntanAnalogInterface(file_path=file_path, stream_name="DC Amplifier channel")
 
-        assert interface.stream_name == "DC Amplifier channel"
-        assert interface.time_series_name == "TimeSeriesIntanDC"
+        assert interface._stream_name == "DC Amplifier channel"
+        assert interface._time_series_name == "TimeSeriesIntanDC"
         assert interface.recording_extractor is not None
 
     def test_interface_initialization_auxiliary_stream_rhd_data(self):
@@ -48,8 +48,8 @@ class TestIntanAnalogInterface:
         file_path = ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500" / "info.rhd"
         interface = IntanAnalogInterface(file_path=file_path, stream_name="RHD2000 auxiliary input channel")
 
-        assert interface.stream_name == "RHD2000 auxiliary input channel"
-        assert interface.time_series_name == "TimeSeriesIntanAuxiliary"
+        assert interface._stream_name == "RHD2000 auxiliary input channel"
+        assert interface._time_series_name == "TimeSeriesIntanAuxiliary"
 
     def test_interface_initialization_adc_stream_rhd_data(self):
         """
@@ -58,8 +58,8 @@ class TestIntanAnalogInterface:
         file_path = ECEPHY_DATA_PATH / "intan" / "intan_fpc_test_231117_052630" / "info.rhd"
         interface = IntanAnalogInterface(file_path=file_path, stream_name="USB board ADC input channel")
 
-        assert interface.stream_name == "USB board ADC input channel"
-        assert interface.time_series_name == "TimeSeriesIntanADCInput"
+        assert interface._stream_name == "USB board ADC input channel"
+        assert interface._time_series_name == "TimeSeriesIntanADCInput"
 
     def test_invalid_stream_name(self):
         """Test that invalid stream names raise appropriate errors."""
@@ -144,11 +144,11 @@ class TestIntanAnalogInterface:
             nwbfile = io.read()
 
             # Check that the TimeSeries was added to acquisition
-            assert interface.time_series_name in nwbfile.acquisition
-            time_series = nwbfile.acquisition[interface.time_series_name]
+            assert interface._time_series_name in nwbfile.acquisition
+            time_series = nwbfile.acquisition[interface._time_series_name]
 
             # Check properties of the TimeSeries
-            assert time_series.name == interface.time_series_name
+            assert time_series.name == interface._time_series_name
             assert "USB board ADC input channels" in time_series.description
 
             # Check data dimensions - should have 8 ADC channels
@@ -174,8 +174,8 @@ class TestIntanAnalogInterface:
             nwbfile = io.read()
 
             # Check that the TimeSeries was added
-            assert interface.time_series_name in nwbfile.acquisition
-            time_series = nwbfile.acquisition[interface.time_series_name]
+            assert interface._time_series_name in nwbfile.acquisition
+            time_series = nwbfile.acquisition[interface._time_series_name]
 
             # Check that data is present but smaller (stub)
             assert len(time_series.data.shape) == 2
