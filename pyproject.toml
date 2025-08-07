@@ -217,6 +217,9 @@ tdt = [
 whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
+waveformdatabase = [
+    "wfdb>= 2.2.1",
+]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axon]",
@@ -241,6 +244,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
     "neuroconv[whitematter]",
+    "neuroconv[waveformdatabase]"
 ]
 
 ## Icephys
