@@ -218,7 +218,7 @@ whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
 waveformdatabase = [
-    "wfdb>= 2.2.1",
+    "wfdb",
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
