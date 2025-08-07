@@ -90,11 +90,11 @@ class WFDBDataInterface(BaseDataInterface):
 
         return None
 
-    def get_channel_info(self) -> Dict[str, list]:
+    def get_channel_info(self) -> dict[str, list]:
         record = self._load_record()
         return self._extract_channel_info(record)
 
-    def get_channel_info_from_segment(self, segment) -> Dict[str, list]:
+    def get_channel_info_from_segment(self, segment) -> dict[str, list]:
         return self._extract_channel_info(segment)
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[Dict] = None):
@@ -144,7 +144,7 @@ class WFDBDataInterface(BaseDataInterface):
             return str(record.sig_name[channel_index])
         return f"Channel_{channel_index}"
 
-    def get_metadata(self, include_ecephys_metadata: bool = True) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         record = self._load_record()
         metadata = super().get_metadata()
 
