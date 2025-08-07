@@ -22,6 +22,9 @@ class WFDBDataInterface(BaseDataInterface):
         self._record = None
         self._is_multisegment = False
         self._segments = []
+        
+        import wfdb
+        from wfdb import MultiRecord
 
         try:
             record = wfdb.rdrecord(self.file_path, m2s=False, physical=True)
