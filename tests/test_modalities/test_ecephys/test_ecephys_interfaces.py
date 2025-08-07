@@ -117,7 +117,6 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         ):
             self.interface.create_nwbfile(unit_electrode_indices=[[0], [1], [2], [3]])
 
-
     def test_rename_unit_ids(self):
         interface = MockSortingInterface(num_units=3)
 
@@ -156,7 +155,6 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
         with pytest.raises(ValueError, match="Unit IDs \\['nonexistent'\\] not found in sorting extractor"):
             interface.rename_unit_ids(unit_ids_map)
-
 
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
