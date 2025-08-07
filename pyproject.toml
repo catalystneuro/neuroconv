@@ -53,6 +53,7 @@ dependencies = [
     "packaging",  # Issue 903
     "referencing", # for the json schema references
     "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "wfdb"
 ]
 
 
@@ -218,6 +219,7 @@ whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
 waveformdatabase = [
+    "neuroconv[ecephys_minimal]",
     "wfdb",
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
