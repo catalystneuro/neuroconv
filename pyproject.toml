@@ -245,7 +245,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
     "neuroconv[whitematter]",
-    "neuroconv[waveformdatabase]", 
+    "neuroconv[waveformdatabase]",
     "wfdb"
 ]
 
