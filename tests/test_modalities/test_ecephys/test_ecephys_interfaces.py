@@ -110,6 +110,14 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             electrode_table_region_properties = electrode_table_region["property"].to_list()
             assert electrode_table_region_properties == property
 
+    def test_electrode_indices_assertion_error_when_missing_table(self, setup_interface):
+        with pytest.raises(
+            ValueError,
+            match="Electrodes table is required to map units to electrodes. Add an electrode table to the NWBFile first.",
+        ):
+            self.interface.create_nwbfile(unit_electrode_indices=[[0], [1], [2], [3]])
+
+
     def test_rename_unit_ids(self):
         interface = MockSortingInterface(num_units=3)
 
@@ -119,6 +127,17 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
         new_unit_ids = interface.units_ids
         expected_unit_ids = ["neuron_1", "neuron_2", "neuron_3"]
+        assert new_unit_ids.tolist() == expected_unit_ids
+
+    def test_rename_unit_ids_partial(self):
+        interface = MockSortingInterface(num_units=3)
+
+        # Rename only some units
+        unit_ids_map = {"0": "neuron_1", "2": "neuron_3"}
+        interface.rename_unit_ids(unit_ids_map)
+
+        new_unit_ids = interface.units_ids
+        expected_unit_ids = ["neuron_1", "1", "neuron_3"]  # Unit "1" remains unchanged
         assert new_unit_ids.tolist() == expected_unit_ids
 
     def test_rename_unit_ids_invalid_input_type(self):
@@ -138,12 +157,6 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         with pytest.raises(ValueError, match="Unit IDs \\['nonexistent'\\] not found in sorting extractor"):
             interface.rename_unit_ids(unit_ids_map)
 
-    def test_electrode_indices_assertion_error_when_missing_table(self, setup_interface):
-        with pytest.raises(
-            ValueError,
-            match="Electrodes table is required to map units to electrodes. Add an electrode table to the NWBFile first.",
-        ):
-            self.interface.create_nwbfile(unit_electrode_indices=[[0], [1], [2], [3]])
 
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
