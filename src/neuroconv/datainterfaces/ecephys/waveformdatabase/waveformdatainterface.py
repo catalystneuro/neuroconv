@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional
 
 import wfdb
 from pynwb import NWBFile, TimeSeries
-from wfdb import MultiRecord
 
 from neuroconv.basedatainterface import BaseDataInterface
 
@@ -22,7 +21,7 @@ class WFDBDataInterface(BaseDataInterface):
         self._record = None
         self._is_multisegment = False
         self._segments = []
-        
+
         import wfdb
         from wfdb import MultiRecord
 
