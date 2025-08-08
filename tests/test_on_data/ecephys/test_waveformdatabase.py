@@ -1,4 +1,4 @@
-from datetime import datetime, time, date
+from datetime import datetime, time
 from pathlib import Path
 
 from pynwb import NWBFile
@@ -164,7 +164,6 @@ class TestWFDBDataInterface100:
         assert len(interface._segments) == 0, "Single-segment record should have empty segments list"
 
 
-
 class TestWFDBDataInterface12726:
     """Test suite for WFDBDataInterface using record 12726."""
 
@@ -264,15 +263,15 @@ class TestWFDBDataInterface12726:
         # Should have notes with patient info
         notes = nwb_meta.get("notes", "")
         assert "28" in notes  # age
-        assert "M" in notes   # sex
-        assert "170" in notes # height
+        assert "M" in notes  # sex
+        assert "170" in notes  # height
         assert "64" in notes  # weight
 
         # Should have data collection info with ADC gains
         data_collection = nwb_meta.get("data_collection", "")
         assert "64.02" in data_collection  # ABP ADC gain
-        assert "6554.0" in data_collection # ECG ADC gain
-        assert "174.83" in data_collection # Angle ADC gain
+        assert "6554.0" in data_collection  # ECG ADC gain
+        assert "174.83" in data_collection  # Angle ADC gain
 
         # Check required keys exist and have proper types
         required_keys = ["session_description", "experiment_description"]
@@ -306,7 +305,7 @@ class TestWFDBDataInterface12726:
 
         # Verify each TimeSeries has expected properties
         expected_units = {"ABP": "mmHg", "ECG": "mV", "Angle": "degrees"}
-        
+
         for name, ts in nwbfile.acquisition.items():
             assert hasattr(ts, "data")
             assert hasattr(ts, "rate")
@@ -345,27 +344,25 @@ class TestWFDBDataInterface12726:
         assert record.n_sig == 3
         assert record.fs == 250.0
         assert record.sig_len == 825000
-        
+
         # Test signal data exists and has correct shape
         assert hasattr(record, "p_signal")
         assert record.p_signal is not None
         assert record.p_signal.shape == (825000, 3)
-        
+
         # Test data formats
         expected_formats = ["16", "16", "16"]
         assert record.fmt == expected_formats
-        
+
         # Test base time
         assert record.base_time == time(15, 8, 24)
 
         # Test base date is None
-        assert record.base_date is None 
-        
+        assert record.base_date is None
+
         # Test comments contain patient information
         comments = record.comments
         if comments:
             comments_str = str(comments[0]) if isinstance(comments, list) else str(comments)
             assert "28" in comments_str  # age
-            assert "M" in comments_str   # sex
-
-    
+            assert "M" in comments_str  # sex
