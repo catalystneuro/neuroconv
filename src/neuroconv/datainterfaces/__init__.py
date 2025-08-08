@@ -72,6 +72,7 @@ from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
+from .ecephys.waveformdatabase.waveformdatainterface import WFDBDataInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -153,6 +154,7 @@ interface_list = [
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
     WhiteMatterRecordingInterface,
+    WFDBDataInterface,
     # Icephys
     AbfInterface,
     # Ophys
