@@ -441,7 +441,7 @@ known-first-party = ["neuroconv"]
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin'
+ignore-words-list = 'assertin,sortings'
 
 [dependency-groups]
 test = [
@@ -452,7 +452,7 @@ test = [
 ]
 
 docs = [
-    "Sphinx==8.2.3",  # Latest as of April 2025.
+    "Sphinx==8.2.3; python_version>='3.11'",  # Latest as of April 2025.
     "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
     "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
