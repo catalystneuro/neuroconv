@@ -24,6 +24,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         channel_names: ArrayType | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str = "default",
     ):
         """
 
@@ -32,11 +33,23 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePath
             Path to .h5 or .hdf5 file.
         mov_field : str, default: 'mov'
+            The field in the HDF5 file containing the movie data.
         sampling_frequency : float, optional
+            The sampling frequency in Hz.
         start_time : float, optional
+            The start time of the imaging data.
         metadata : dict, optional
+            Additional metadata to include.
         channel_names : list of str, optional
+            Names of the channels.
         verbose : bool, default: False
+            Whether to print verbose output.
+        photon_series_type : {"OnePhotonSeries", "TwoPhotonSeries"}, default: "TwoPhotonSeries"
+            The type of photon series to create.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and PhotonSeries.
+            Default is "default".
         """
         super().__init__(
             file_path=file_path,
@@ -47,4 +60,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             channel_names=channel_names,
             verbose=verbose,
             photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )
