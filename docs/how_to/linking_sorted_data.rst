@@ -3,41 +3,56 @@
 How to Link Sorted Data to Electrodes
 =====================================
 
-When converting spike sorting results to NWB format, it's desirable to maintain the
+When converting spike sorting results to NWB format, it is essential to preserve the
 relationship between sorted units and the recording electrodes that detected them.
-This guide explains why this linkage is important and how to achieve it with NeuroConv.
+This linkage ensures that each unit inherits all electrode-level metadata stored in the
+`electrodes` table of the NWB file.
+
+For this linkage to be useful, the `electrodes` table itself must be **well annotated**,
+including accurate information on brain area, anatomical coordinates, electrode geometry,
+and any probe-specific metadata. Without this detail, the benefits of unit–electrode
+linking are severely limited.
 
 Why Link Units to Electrodes?
 -----------------------------
 
-Proper electrode linking enables rich downstream analysis by connecting sorted units
-to their spatial and technical context:
+Proper electrode linking allows each unit to be formally connected to all the metadata
+describing its recording site. This enables both spatial and anatomical localization
+of units—information that is critical for accurate interpretation and reproducibility.
 
 **Spatial Analysis**
-    Understanding where units are located on the probe for laminar analysis,
-    receptive field mapping, and spatial clustering studies.
+    With well-annotated electrode positions (e.g., rel_x, rel_y, rel_z),
+    future users of the NWBFile can determine where units lie within the probe, perform laminar
+    analyses, assess depth-dependent firing properties, and investigate spatial
+    organization such as receptive field gradients or clustering patterns across channels.
 
-**Quality Control**
-    Verifying that units are assigned to correct electrode locations and
-    identifying potential sorting artifacts.
+**Anatomical Analysis**
+    Registering the probe's position in the brain allows anatomical features such as
+    brain area, subregion, or cortical layer to be associated with electrodes and,
+    by extension, with linked units.
+    As an example, Liu et al. (2022) demonstrated how depth-resolved recordings across
+    hippocampal layers reveal distinct current source density and local field potential
+    signatures of sharp wave-ripples. This type of interpretation is only possible when
+    recording channel locations are known and correctly linked to sorted units.
 
-**Cross-referencing**
-    Linking spike sorting results back to raw recording channels for
-    validation and troubleshooting.
+**Quality Control and Traceability**
+    Linking units to electrode metadata ensures full traceability from spike sorting
+    results back to the raw recording channels. This allows you to inspect waveforms,
+    review spike detection events, and confirm that units are spatially plausible
+    (e.g., waveforms localized to nearby electrodes). Such verification helps detect
+    sorting errors, identify artifacts, and maintain reproducibility by making the
+    sorting process transparent and auditable.
 
-**Metadata Preservation**
-    Maintaining electrode properties like impedance, location, and device
-    information for each unit.
+In summary, linking units to well-annotated electrodes in NWB is not merely a bookkeeping
+step—it is a prerequisite for spatially and anatomically grounded neuroscience. Without
+both the linkage and high-quality electrode annotations, many types of interpretation and
+analysis become impossible making the data less useful for future users.
 
-**Downstream Analysis**
-    Enabling analyses that require electrode spatial information, such as
-    current source density analysis or multi-electrode array studies.
+Accessing Electrode Metadata from Units
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-What This Enables in Practice
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-With proper electrode linking, you can easily access rich metadata for each unit
-in your NWB file:
+Once units are properly linked to electrodes and the electrodes table is well annotated,
+you can programmatically retrieve electrode-level metadata for any unit in your NWB file.
 
 .. code-block:: python
 
@@ -63,6 +78,7 @@ in your NWB file:
         print(f"  - Groups: {unit_electrodes['group_name']}")
         print(f"  - X positions: {unit_electrodes['rel_x']}")
         print(f"  - Y positions: {unit_electrodes['rel_y']}")
+
 
 General and Flexible Case: Single Recording and Sorting Interface
 ----------------------------------------------------
@@ -230,6 +246,14 @@ Example with multiple Neuropixels probes, each sorted independently:
     print(spikeglx_converter.data_interface_objects.keys())
     # Example output: dict_keys(['imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', 'nidq'])
 
+When working with multiple sorting interfaces, a common challenge arises when different sorters
+produce units with identical IDs (e.g., both probes generating units "0", "1", "2"). The
+:doc:`adding_multiple_sorting_interfaces` guide provides comprehensive strategies for handling
+such scenarios. However, the :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` automatically
+resolves these conflicts by generating unique unit names using the pattern ``{stream_id}_unit_{original_id}``
+(e.g., ``imec0_ap_unit_0``, ``imec1_ap_unit_0``) when conflicts are detected. If unit IDs are already
+unique across all sorters, the original unit names are preserved.
+
 Create sorting configuration for each sorted probe. Note the channel ID format specific to SpikeGLX:
 
 .. code-block:: python
@@ -277,13 +301,3 @@ Create the converter and run the conversion:
     * Only AP (action potential) streams can have sorting data
     * Currently supports one sorting interface per probe
     * All unit IDs from different probes will be added to the canonical Units table
-
-**Automatic Unit ID Conflict Resolution**
-
-When unit IDs conflict across different sorting interfaces (e.g., both probes produce units "0", "1", "2"),
-the :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` automatically generates unique unit names
-using the pattern ``{stream_id}_unit_{original_id}`` (e.g., ``imec0_ap_unit_0``, ``imec1_ap_unit_0``).
-If unit IDs are already unique across all sorters, original unit names are preserved.
-
-For more advanced control over unit naming and handling complex multi-sorter scenarios, see the
-:doc:`adding_multiple_sorting_interfaces` guide.
