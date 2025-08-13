@@ -290,9 +290,13 @@ class TestSortedSpikeGLXConverter:
             spikeglx_converter=spikeglx_converter, sorting_configuration=sorting_configuration
         )
 
-        # Run conversion
+        # Run conversion with stub_test for faster execution (only for recording interfaces)
         nwbfile_path = tmp_path / "test_multi_trigger_multi_gate.nwb"
-        sorted_converter.run_conversion(nwbfile_path=nwbfile_path)
+        conversion_options = {}
+        for interface_name, interface in sorted_converter.data_interface_objects.items():
+            if hasattr(interface, "recording_extractor"):  # Recording interfaces
+                conversion_options[interface_name] = dict(stub_test=True)
+        sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         # Verify electrode mappings are correct
         with NWBHDF5IO(path=nwbfile_path) as io:
@@ -387,9 +391,13 @@ class TestSortedSpikeGLXConverter:
             spikeglx_converter=spikeglx_converter, sorting_configuration=sorting_configuration
         )
 
-        # Run conversion
+        # Run conversion with stub_test for faster execution (only for recording interfaces)
         nwbfile_path = tmp_path / "test_noise4sam_single_probe.nwb"
-        sorted_converter.run_conversion(nwbfile_path=nwbfile_path)
+        conversion_options = {}
+        for interface_name, interface in sorted_converter.data_interface_objects.items():
+            if hasattr(interface, "recording_extractor"):  # Recording interfaces
+                conversion_options[interface_name] = dict(stub_test=True)
+        sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         # Verify electrode mappings are correct
         with NWBHDF5IO(path=nwbfile_path) as io:
@@ -489,9 +497,13 @@ class TestSortedSpikeGLXConverter:
             spikeglx_converter=spikeglx_converter, sorting_configuration=sorting_configuration
         )
 
-        # Run conversion
+        # Run conversion with stub_test for faster execution (only for recording interfaces)
         nwbfile_path = tmp_path / "test_multi_probe_sorted.nwb"
-        sorted_converter.run_conversion(nwbfile_path=nwbfile_path)
+        conversion_options = {}
+        for interface_name, interface in sorted_converter.data_interface_objects.items():
+            if hasattr(interface, "recording_extractor"):  # Recording interfaces
+                conversion_options[interface_name] = dict(stub_test=True)
+        sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         # Verify electrode mappings are correct
         with NWBHDF5IO(path=nwbfile_path) as io:
