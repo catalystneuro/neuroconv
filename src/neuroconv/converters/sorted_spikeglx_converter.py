@@ -12,6 +12,21 @@ class SortedSpikeGLXConverter(ConverterPipe):
     and their recording channels when dealing with multiple SpikeGLX streams (e.g., multiple
     Neuropixels probes). It ensures that units from each sorting interface are correctly
     associated with electrodes from their corresponding recording stream.
+
+    **Automatic Unit ID Conflict Resolution:**
+    When unit IDs conflict across different sorting interfaces (e.g., multiple sorters producing
+    units with the same IDs like "0", "1", etc.), this converter automatically generates unique
+    unit names using the pattern "{stream_id}_unit_{original_id}" (e.g., "imec0_ap_unit_0").
+    If unit IDs are already unique across all sorters, original unit names are preserved.
+
+    **Device Information:**
+    The converter automatically adds device information to each unit based on the corresponding
+    SpikeGLX recording stream, enabling identification of which probe/device each unit came from.
+
+    **Notes:**
+    For more advanced control over unit naming and identification in multi-sorter scenarios,
+    see the :doc:`adding_multiple_sorting_interfaces` guide which provides detailed strategies
+    for handling complex sorting workflows.
     """
 
     display_name = "Sorted SpikeGLX Converter"
@@ -111,6 +126,16 @@ class SortedSpikeGLXConverter(ConverterPipe):
             if not stream_id.endswith(".ap"):
                 raise ValueError(f"Stream '{stream_id}' is not an AP stream. Only AP streams can have sorting data.")
 
+        # Check for unit ID conflicts across all sorting interfaces
+        all_unit_ids = []
+        for config in sorting_configuration:
+            sorting_interface = config["sorting_interface"]
+            all_unit_ids.extend(sorting_interface.units_ids)
+
+        # Detect if there are duplicate unit IDs across sorters
+        unique_unit_ids = set(all_unit_ids)
+        non_unique_sorting_ids = len(unique_unit_ids) != len(all_unit_ids)
+
         # Create SortedRecordingConverter instances for each sorted stream
         # This will handle validation of unit_ids_to_channel_ids automatically
         self._sorted_converters = {}
@@ -119,6 +144,20 @@ class SortedSpikeGLXConverter(ConverterPipe):
             recording_interface = self.spikeglx_converter.data_interface_objects[stream_id]
             sorting_interface = config["sorting_interface"]
             unit_ids_to_channel_ids = config["unit_ids_to_channel_ids"]
+
+            # Only add unique unit names if there are conflicts between different sorters
+            if non_unique_sorting_ids:
+                # Generate unique unit names for this stream using the stream identifier
+                stream_prefix = stream_id.replace(".", "_")  # Replace dots to make valid identifiers
+                unique_unit_names = [f"{stream_prefix}_unit_{unit_id}" for unit_id in sorting_interface.units_ids]
+                sorting_interface.sorting_extractor.set_property(key="unit_name", values=unique_unit_names)
+
+            # Add device information based on the recording interface's device metadata
+            # Extract device name from the recording interface's metadata following SpikeGLX conventions
+            recording_interface_metadata = recording_interface.get_metadata()
+            device_name = recording_interface_metadata["Ecephys"]["Device"][0]["name"]  # e.g., "NeuropixelsImec0"
+            device_values = [device_name] * len(sorting_interface.units_ids)
+            sorting_interface.sorting_extractor.set_property(key="device", values=device_values)
 
             # Import here to avoid circular imports
             from ..datainterfaces.ecephys.sortedrecordinginterface import (
@@ -131,7 +170,6 @@ class SortedSpikeGLXConverter(ConverterPipe):
                 unit_ids_to_channel_ids=unit_ids_to_channel_ids,
             )
 
-        # Build data interfaces for parent class
         # Include all non-sorted streams and sorted converters
         data_interfaces = {}
 

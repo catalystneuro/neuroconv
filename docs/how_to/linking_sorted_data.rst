@@ -50,9 +50,9 @@ in your NWB file:
     print(units_df)
 
     # Access electrode information for each unit
-    for i in range(len(nwbfile.units)):
-        unit_id = nwbfile.units.id[i]
-        electrode_refs = nwbfile.units.electrodes[i]
+    for unit_index in range(len(nwbfile.units)):
+        unit_id = nwbfile.units.id[unit_index]
+        electrode_refs = nwbfile.units.electrodes[unit_index]
         electrode_indices = list(electrode_refs.index)
 
         # Get electrode properties for this unit
@@ -277,3 +277,13 @@ Create the converter and run the conversion:
     * Only AP (action potential) streams can have sorting data
     * Currently supports one sorting interface per probe
     * All unit IDs from different probes will be added to the canonical Units table
+
+**Automatic Unit ID Conflict Resolution**
+
+When unit IDs conflict across different sorting interfaces (e.g., both probes produce units "0", "1", "2"),
+the :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` automatically generates unique unit names
+using the pattern ``{stream_id}_unit_{original_id}`` (e.g., ``imec0_ap_unit_0``, ``imec1_ap_unit_0``).
+If unit IDs are already unique across all sorters, original unit names are preserved.
+
+For more advanced control over unit naming and handling complex multi-sorter scenarios, see the
+:doc:`adding_multiple_sorting_interfaces` guide.
