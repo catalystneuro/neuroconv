@@ -73,7 +73,6 @@ class GeneralTiffImagingInterface(BaseImagingExtractorInterface):
             num_acquisition_cycles=num_acquisition_cycles,
             verbose=verbose,
         )
-        self.imaging_extractor.get_num_channels = lambda: 1
 
     def get_metadata(self) -> dict:
         return super().get_metadata()
