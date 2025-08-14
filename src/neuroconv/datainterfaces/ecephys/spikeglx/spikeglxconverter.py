@@ -85,6 +85,9 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
         streams_ids = streams or self.get_streams(folder_path=folder_path)
 
+        # Store stream IDs as private attribute for external access
+        self._stream_ids = streams_ids
+
         data_interfaces = dict()
 
         nidq_streams = [stream_id for stream_id in streams_ids if stream_id == "nidq"]
