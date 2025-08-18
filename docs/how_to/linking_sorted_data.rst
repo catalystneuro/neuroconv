@@ -217,7 +217,7 @@ Here's the correct approach:
 
 
 
-Multiple Recording Interfaces: SpikeGLX Multi-Probe Data
+SpikeGLX Multi-Probe Data
 --------------------------------------------------------
 
 SpikeGLX recordings often contain data from multiple probes that have been sorted
@@ -228,9 +228,9 @@ linkage across all probes.
 
 **Interface Names in SpikeGLX:**
 For SpikeGLX data, interface names correspond to recording streams which combine
-probe and band information (e.g., "imec0.ap" = probe 0 + action potential band,
-"imec1.lf" = probe 1 + local field potential band). Only AP (action potential)
-interfaces can have sorting data associated with them.
+probe and band information (e.g., "imec0.ap" = probe 0 + ap band,
+"imec1.lf" = probe 1 + lf band). Only AP interfaces can have sorting data associated
+with them.
 
 Multiple Probes with Independent Sorting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -302,9 +302,3 @@ Create the converter and run the conversion:
     nwbfile = converter.create_nwbfile()
     from neuroconv.tools import configure_and_write_nwbfile
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
-
-.. note::
-
-    * Only AP (action potential) streams can have sorting data
-    * Currently supports one sorting interface per probe
-    * All unit IDs from different probes will be added to the canonical Units table
