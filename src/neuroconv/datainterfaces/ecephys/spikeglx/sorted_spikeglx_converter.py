@@ -1,10 +1,10 @@
 """Converter for handling multiple SpikeGLX streams with their corresponding sorting data."""
 
-from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
-from ..nwbconverter import ConverterPipe
+from .spikeglxconverter import SpikeGLXConverterPipe
+from ..sorted_converter import _SortedConverterPipe
 
 
-class SortedSpikeGLXConverter(ConverterPipe):
+class SortedSpikeGLXConverter(_SortedConverterPipe):
     """
     Converter for handling multiple SpikeGLX streams with their corresponding sorting data.
 
@@ -13,10 +13,14 @@ class SortedSpikeGLXConverter(ConverterPipe):
     Neuropixels probes). It ensures that units from each sorting interface are correctly
     associated with electrodes from their corresponding recording stream.
 
+    For SpikeGLX data, interface names correspond to recording streams which combine
+    probe and band information (e.g., "imec0.ap" = probe 0 + action potential band,
+    "imec1.lf" = probe 1 + local field potential band).
+
     **Automatic Unit ID Conflict Resolution:**
     When unit IDs conflict across different sorting interfaces (e.g., multiple sorters producing
     units with the same IDs like "0", "1", etc.), this converter automatically generates unique
-    unit names using the pattern "{stream_id}_unit_{original_id}" (e.g., "imec0_ap_unit_0").
+    unit names using the pattern "{interface_name}_unit_{original_id}" (e.g., "imec0_ap_unit_0").
     If unit IDs are already unique across all sorters, original unit names are preserved.
 
     **Device Information:**
@@ -49,8 +53,8 @@ class SortedSpikeGLXConverter(ConverterPipe):
             The converter handling all SpikeGLX streams.
         sorting_configuration : list[dict]
             List of configuration dictionaries, each containing:
-            - stream_id: str
-                The stream identifier (e.g., "imec0.ap")
+            - interface_name: str
+                The interface identifier (e.g., "imec0.ap")
             - sorting_interface: BaseSortingExtractorInterface
                 The sorting interface for this stream
             - unit_ids_to_channel_ids: dict[str | int, list[str | int]]
@@ -70,7 +74,7 @@ class SortedSpikeGLXConverter(ConverterPipe):
         >>> # Create sorting configuration for multiple probes
         >>> sorting_configuration = [
         ...     {
-        ...         "stream_id": "imec0.ap",
+        ...         "interface_name": "imec0.ap",
         ...         "sorting_interface": KiloSortSortingInterface(
         ...             folder_path="path/to/imec0_kilosort_output"
         ...         ),
@@ -81,7 +85,7 @@ class SortedSpikeGLXConverter(ConverterPipe):
         ...         }
         ...     },
         ...     {
-        ...         "stream_id": "imec1.ap",
+        ...         "interface_name": "imec1.ap",
         ...         "sorting_interface": KiloSortSortingInterface(
         ...             folder_path="path/to/imec1_kilosort_output"
         ...         ),
@@ -101,56 +105,28 @@ class SortedSpikeGLXConverter(ConverterPipe):
         >>> # Run the conversion
         >>> converter.run_conversion(nwbfile_path="output.nwb")
         """
+        # Store reference to original spikeglx_converter for potential access
         self.spikeglx_converter = spikeglx_converter
-        self.sorting_configuration = sorting_configuration
-        self.verbose = verbose
 
-        # Validate that sorting configuration is not empty
-        if not sorting_configuration:
-            raise ValueError(
-                "SortedSpikeGLXConverter requires at least one sorting configuration. "
-                "Use SpikeGLXConverterPipe directly if no sorting data is available."
-            )
-
-        # Create mapping of stream_ids that have sorting data
-        self._sorted_stream_ids = {config["stream_id"] for config in sorting_configuration}
-
-        # Validate that all sorted streams are AP streams
-        available_streams = self.spikeglx_converter._stream_ids
-        for stream_id in self._sorted_stream_ids:
-            if stream_id not in available_streams:
+        # Validate that all sorted interfaces are AP streams (SpikeGLX-specific requirement)
+        available_streams = spikeglx_converter._stream_ids
+        for config in sorting_configuration:
+            interface_name = config["interface_name"]
+            if interface_name not in available_streams:
                 raise ValueError(
-                    f"Stream '{stream_id}' not found in SpikeGLXConverterPipe. "
-                    f"Available streams: {available_streams}"
+                    f"Interface '{interface_name}' not found in SpikeGLXConverterPipe. "
+                    f"Available interfaces: {available_streams}"
                 )
-            if not stream_id.endswith(".ap"):
-                raise ValueError(f"Stream '{stream_id}' is not an AP stream. Only AP streams can have sorting data.")
+            if not interface_name.endswith(".ap"):
+                raise ValueError(
+                    f"Interface '{interface_name}' is not an AP stream. Only AP streams can have sorting data."
+                )
 
-        # Check for unit ID conflicts across all sorting interfaces
-        all_unit_ids = []
+        # Add device information to sorting interfaces (SpikeGLX-specific feature)
         for config in sorting_configuration:
+            interface_name = config["interface_name"]
             sorting_interface = config["sorting_interface"]
-            all_unit_ids.extend(sorting_interface.units_ids)
-
-        # Detect if there are duplicate unit IDs across sorters
-        unique_unit_ids = set(all_unit_ids)
-        non_unique_sorting_ids = len(unique_unit_ids) != len(all_unit_ids)
-
-        # Create SortedRecordingConverter instances for each sorted stream
-        # This will handle validation of unit_ids_to_channel_ids automatically
-        self._sorted_converters = {}
-        for config in sorting_configuration:
-            stream_id = config["stream_id"]
-            recording_interface = self.spikeglx_converter.data_interface_objects[stream_id]
-            sorting_interface = config["sorting_interface"]
-            unit_ids_to_channel_ids = config["unit_ids_to_channel_ids"]
-
-            # Only add unique unit names if there are conflicts between different sorters
-            if non_unique_sorting_ids:
-                # Generate unique unit names for this stream using the stream identifier
-                stream_prefix = stream_id.replace(".", "_")  # Replace dots to make valid identifiers
-                unique_unit_names = [f"{stream_prefix}_unit_{unit_id}" for unit_id in sorting_interface.units_ids]
-                sorting_interface.sorting_extractor.set_property(key="unit_name", values=unique_unit_names)
+            recording_interface = spikeglx_converter.data_interface_objects[interface_name]
 
             # Add device information based on the recording interface's device metadata
             # Extract device name from the recording interface's metadata following SpikeGLX conventions
@@ -159,31 +135,9 @@ class SortedSpikeGLXConverter(ConverterPipe):
             device_values = [device_name] * len(sorting_interface.units_ids)
             sorting_interface.sorting_extractor.set_property(key="device", values=device_values)
 
-            # Import here to avoid circular imports
-            from ..datainterfaces.ecephys.sortedrecordinginterface import (
-                SortedRecordingConverter,
-            )
-
-            self._sorted_converters[stream_id] = SortedRecordingConverter(
-                recording_interface=recording_interface,
-                sorting_interface=sorting_interface,
-                unit_ids_to_channel_ids=unit_ids_to_channel_ids,
-            )
-
-        # Include all non-sorted streams and sorted converters
-        data_interfaces = {}
-
-        # Sort stream IDs to ensure deterministic ordering for consistent electrode table indices
-        sorted_stream_ids = sorted(self.spikeglx_converter.data_interface_objects.keys())
-        for stream_id in sorted_stream_ids:
-            interface = self.spikeglx_converter.data_interface_objects[stream_id]
-            if stream_id not in self._sorted_stream_ids:
-                # Non-sorted stream (could be AP without sorting, LF, or NIDQ)
-                data_interfaces[stream_id] = interface
-
-        # Add sorted converters with unique names in sorted order
-        for stream_id in sorted(self._sorted_converters.keys()):
-            sorted_converter = self._sorted_converters[stream_id]
-            data_interfaces[f"{stream_id}_sorted"] = sorted_converter
-
-        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+        # Initialize parent class with the converter
+        super().__init__(
+            converter=spikeglx_converter,
+            sorting_configuration=sorting_configuration,
+            verbose=verbose,
+        )

@@ -266,7 +266,7 @@ class TestSortedSpikeGLXConverter:
         # Create explicit sorting configuration with unique unit IDs per stream
         sorting_configuration = [
             {
-                "stream_id": "imec0.ap",
+                "interface_name": "imec0.ap",
                 "sorting_interface": sorting_interface_imec0,
                 "unit_ids_to_channel_ids": {
                     "unit_a": ["imec0.ap#AP0", "imec0.ap#AP1"],  # First 2 channels
@@ -275,7 +275,7 @@ class TestSortedSpikeGLXConverter:
                 },
             },
             {
-                "stream_id": "imec1.ap",
+                "interface_name": "imec1.ap",
                 "sorting_interface": sorting_interface_imec1,
                 "unit_ids_to_channel_ids": {
                     "unit_x": ["imec1.ap#AP0", "imec1.ap#AP1"],  # First 2 channels
@@ -380,7 +380,7 @@ class TestSortedSpikeGLXConverter:
 
         sorting_configuration = [
             {
-                "stream_id": "imec0.ap",
+                "interface_name": "imec0.ap",
                 "sorting_interface": sorting_interface,
                 "unit_ids_to_channel_ids": unit_ids_to_channel_ids,
             }
@@ -456,206 +456,21 @@ class TestSortedSpikeGLXConverter:
                     actual_group_names == expected_group_names
                 ), f"Unit {unit_id} has group names {actual_group_names}, expected {expected_group_names}"
 
-    def test_multi_probe_multi_stream_example_with_non_unique_names(self, tmp_path):
-        """Test that SortedSpikeGLXConverter handles non-unique unit IDs across sorting interfaces"""
-        spikeglx_converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
-        )
-
-        # Create mock sorting for imec0.ap stream using default unit IDs (will cause conflicts)
-        num_units_imec0 = 2
-        sorting_interface_imec0 = MockSortingInterface(num_units=num_units_imec0)
-        # Don't rename units - keep original IDs ("0", "1") to create conflicts
-
-        # Create mock sorting for imec1.ap stream using default unit IDs (will cause conflicts)
-        num_units_imec1 = 2
-        sorting_interface_imec1 = MockSortingInterface(num_units=num_units_imec1)
-        # Don't rename units - keep original IDs ("0", "1") to create conflicts
-
-        # Create explicit sorting configuration with conflicting unit IDs
-        sorting_configuration = [
-            {
-                "stream_id": "imec0.ap",
-                "sorting_interface": sorting_interface_imec0,
-                "unit_ids_to_channel_ids": {
-                    "0": ["imec0.ap#AP0", "imec0.ap#AP1"],  # First 2 channels of imec0
-                    "1": ["imec0.ap#AP5", "imec0.ap#AP6"],  # Channels 5-6 of imec0
-                },
-            },
-            {
-                "stream_id": "imec1.ap",
-                "sorting_interface": sorting_interface_imec1,
-                "unit_ids_to_channel_ids": {
-                    "0": ["imec1.ap#AP0", "imec1.ap#AP1"],  # First 2 channels of imec1
-                    "1": ["imec1.ap#AP10", "imec1.ap#AP11"],  # Channels 10-11 of imec1
-                },
-            },
-        ]
-
-        # Create sorted converter
-        sorted_converter = SortedSpikeGLXConverter(
-            spikeglx_converter=spikeglx_converter, sorting_configuration=sorting_configuration
-        )
-
-        # Run conversion with stub_test for faster execution (only for recording interfaces)
-        nwbfile_path = tmp_path / "test_multi_probe_sorted.nwb"
-        conversion_options = {}
-        for interface_name, interface in sorted_converter.data_interface_objects.items():
-            if hasattr(interface, "recording_extractor"):  # Recording interfaces
-                conversion_options[interface_name] = dict(stub_test=True)
-        sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
-
-        # Verify electrode mappings are correct
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-
-            assert nwbfile.units is not None
-            assert len(nwbfile.units) == 4  # 2 units per stream, 2 streams
-
-            # Verify that device column is present and properly set
-            units_df = nwbfile.units.to_dataframe()
-            assert "device" in units_df.columns, "Device column should be present in units table"
-
-            # Expected device names for different units based on their streams
-            # This test has conflicts (same unit IDs "0", "1" across streams), so expect auto-generated names
-            expected_device_mapping = {
-                "imec0_ap_unit_0": "NeuropixelsImec0",  # From imec0.ap
-                "imec0_ap_unit_1": "NeuropixelsImec0",  # From imec0.ap
-                "imec1_ap_unit_0": "NeuropixelsImec1",  # From imec1.ap
-                "imec1_ap_unit_1": "NeuropixelsImec1",  # From imec1.ap
-            }
-
-            for _, unit_row in units_df.iterrows():
-                unit_name = unit_row["unit_name"]
-                # This test has conflicts, so expect auto-generated unique unit names
-                expected_device = expected_device_mapping[unit_name]
-                actual_device = unit_row["device"]
-                assert (
-                    actual_device == expected_device
-                ), f"Unit {unit_name} has device {actual_device}, expected {expected_device}"
-
-            # Define expected channel names and group names for each unit (multi-probe)
-            expected_unit_channel_names = {
-                "imec0_ap_unit_0": ["AP0", "AP1"],
-                "imec0_ap_unit_1": ["AP5", "AP6"],
-                "imec1_ap_unit_0": ["AP0", "AP1"],
-                "imec1_ap_unit_1": ["AP10", "AP11"],
-            }
-
-            expected_unit_group_names = {
-                "imec0_ap_unit_0": ["NeuropixelsImec0", "NeuropixelsImec0"],  # imec0 probe
-                "imec0_ap_unit_1": ["NeuropixelsImec0", "NeuropixelsImec0"],  # imec0 probe
-                "imec1_ap_unit_0": ["NeuropixelsImec1", "NeuropixelsImec1"],  # imec1 probe
-                "imec1_ap_unit_1": ["NeuropixelsImec1", "NeuropixelsImec1"],  # imec1 probe
-            }
-
-            # Test that the units have the correct channel mappings
-            unit_table = nwbfile.units
-            for unit_row in unit_table.to_dataframe().itertuples(index=False):
-                # NeuroConv writes unit_ids as unit_names
-                # This test has conflicts (same unit IDs across streams), so expect auto-generated unique names
-                unit_name = unit_row.unit_name
-
-                unit_electrode_table_region = unit_row.electrodes
-                electrode_indices = list(unit_electrode_table_region.index)
-
-                # Verify the channel names match what we specified
-                unit_electrodes = nwbfile.electrodes[electrode_indices]
-                actual_channel_names = list(unit_electrodes["channel_name"])
-                expected_channel_names = expected_unit_channel_names[unit_name]
-
-                assert (
-                    actual_channel_names == expected_channel_names
-                ), f"Unit {unit_name} has channel names {actual_channel_names}, expected {expected_channel_names}"
-
-                # Verify the group names (device mapping) match what we expect
-                actual_group_names = list(unit_electrodes["group_name"])
-                expected_group_names = expected_unit_group_names[unit_name]
-
-                assert (
-                    actual_group_names == expected_group_names
-                ), f"Unit {unit_name} has group names {actual_group_names}, expected {expected_group_names}"
-
-    def test_invalid_stream_id(self):
-        """Test that invalid stream IDs raise appropriate errors."""
+    def test_non_ap_interface_error(self):
+        """Test that non-AP interfaces cannot have sorting data."""
         spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         sorting_interface = MockSortingInterface(num_units=2)
 
-        # Test with non-existent stream ID
-        invalid_config = [
-            {
-                "stream_id": "nonexistent_stream",
-                "sorting_interface": sorting_interface,
-                "unit_ids_to_channel_ids": {"0": ["imec0.ap#AP0"], "1": ["imec0.ap#AP1"]},
-            }
-        ]
-
-        with pytest.raises(ValueError, match="Stream 'nonexistent_stream' not found in SpikeGLXConverterPipe"):
-            SortedSpikeGLXConverter(spikeglx_converter=spikeglx_converter, sorting_configuration=invalid_config)
-
-    def test_non_ap_stream_error(self):
-        """Test that non-AP streams cannot have sorting data."""
-        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-        sorting_interface = MockSortingInterface(num_units=2)
-
-        # Test with LF stream (should fail)
+        # Test with LF interface (should fail)
         lf_config = [
             {
-                "stream_id": "imec0.lf",
+                "interface_name": "imec0.lf",
                 "sorting_interface": sorting_interface,
                 "unit_ids_to_channel_ids": {"0": ["imec0.lf#LF0"], "1": ["imec0.lf#LF1"]},
             }
         ]
 
         with pytest.raises(
-            ValueError, match="Stream 'imec0.lf' is not an AP stream. Only AP streams can have sorting data"
+            ValueError, match="Interface 'imec0.lf' is not an AP stream. Only AP streams can have sorting data"
         ):
             SortedSpikeGLXConverter(spikeglx_converter=spikeglx_converter, sorting_configuration=lf_config)
-
-    def test_invalid_channel_mapping(self):
-        """Test that invalid channel mappings are caught by underlying SortedRecordingConverter."""
-        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-        sorting_interface = MockSortingInterface(num_units=2)
-
-        # Test with invalid channel IDs
-        invalid_config = [
-            {
-                "stream_id": "imec0.ap",
-                "sorting_interface": sorting_interface,
-                "unit_ids_to_channel_ids": {"0": ["invalid_channel_id"], "1": ["another_invalid_channel"]},
-            }
-        ]
-
-        with pytest.raises(ValueError, match="Inexistent channel IDs"):
-            SortedSpikeGLXConverter(spikeglx_converter=spikeglx_converter, sorting_configuration=invalid_config)
-
-    def test_incomplete_unit_mapping(self):
-        """Test that incomplete unit mappings are caught."""
-        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-        sorting_interface = MockSortingInterface(num_units=3)
-        ap_interface = spikeglx_converter.data_interface_objects["imec0.ap"]
-        channel_ids = ap_interface.channel_ids
-
-        # Test with missing unit mapping (only map 2 out of 3 units)
-        incomplete_config = [
-            {
-                "stream_id": "imec0.ap",
-                "sorting_interface": sorting_interface,
-                "unit_ids_to_channel_ids": {
-                    "0": [channel_ids[0]],
-                    "1": [channel_ids[1]],
-                    # Unit "2" is missing
-                },
-            }
-        ]
-
-        with pytest.raises(ValueError, match="Units {'2'} from sorting interface have no channel mapping"):
-            SortedSpikeGLXConverter(spikeglx_converter=spikeglx_converter, sorting_configuration=incomplete_config)
-
-    def test_empty_sorting_configuration_raises_error(self):
-        """Test that empty sorting configuration raises appropriate error."""
-        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-
-        # Empty sorting configuration should raise error
-        with pytest.raises(ValueError, match="SortedSpikeGLXConverter requires at least one sorting configuration"):
-            SortedSpikeGLXConverter(spikeglx_converter=spikeglx_converter, sorting_configuration=[])

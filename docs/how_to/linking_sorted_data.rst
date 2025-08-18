@@ -80,7 +80,7 @@ you can programmatically retrieve electrode-level metadata for any unit in your 
         print(f"  - Y positions: {unit_electrodes['rel_y']}")
 
 
-General and Flexible Case: Single Recording and Sorting Interface
+Single Recording and Sorting Interface
 ----------------------------------------------------
 
 For most spike sorting workflows, you have one recording interface and one sorting
@@ -218,14 +218,20 @@ Here's the correct approach:
 
 
 
-Special Case: SpikeGLX Multi-Probe Data
----------------------------------------
+Multiple Recording Interfaces: SpikeGLX Multi-Probe Data
+--------------------------------------------------------
 
 SpikeGLX recordings often contain data from multiple probes that have been sorted
 independently. The :py:class:`~neuroconv.converters.SortedSpikeGLXConverter`
 enhances the standard :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`
 with the ability to preserve sorting metadata and maintain proper unit-to-electrode
 linkage across all probes.
+
+**Interface Names in SpikeGLX:**
+For SpikeGLX data, interface names correspond to recording streams which combine
+probe and band information (e.g., "imec0.ap" = probe 0 + action potential band,
+"imec1.lf" = probe 1 + local field potential band). Only AP (action potential)
+interfaces can have sorting data associated with them.
 
 Multiple Probes with Independent Sorting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,7 +248,7 @@ Example with multiple Neuropixels probes, each sorted independently:
         folder_path="path/to/spikeglx_data"
     )
 
-    # View available streams
+    # View available interfaces
     print(spikeglx_converter.data_interface_objects.keys())
     # Example output: dict_keys(['imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', 'nidq'])
 
@@ -250,7 +256,7 @@ When working with multiple sorting interfaces, a common challenge arises when di
 produce units with identical IDs (e.g., both probes generating units "0", "1", "2"). The
 :doc:`adding_multiple_sorting_interfaces` guide provides comprehensive strategies for handling
 such scenarios. However, the :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` automatically
-resolves these conflicts by generating unique unit names using the pattern ``{stream_id}_unit_{original_id}``
+resolves these conflicts by generating unique unit names using the pattern ``{interface_name}_unit_{original_id}``
 (e.g., ``imec0_ap_unit_0``, ``imec1_ap_unit_0``) when conflicts are detected. If unit IDs are already
 unique across all sorters, the original unit names are preserved.
 
@@ -260,7 +266,7 @@ Create sorting configuration for each sorted probe. Note the channel ID format s
 
     sorting_configuration = [
         {
-            "stream_id": "imec0.ap",
+            "interface_name": "imec0.ap",
             "sorting_interface": KiloSortSortingInterface(
                 folder_path="path/to/imec0_kilosort_output"
             ),
@@ -271,7 +277,7 @@ Create sorting configuration for each sorted probe. Note the channel ID format s
             }
         },
         {
-            "stream_id": "imec1.ap",
+            "interface_name": "imec1.ap",
             "sorting_interface": KiloSortSortingInterface(
                 folder_path="path/to/imec1_kilosort_output"
             ),

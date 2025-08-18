@@ -85,7 +85,7 @@ class SortedRecordingConverter(ConverterPipe):
         "spike sorting",
     )
     display_name = "SortedRecordingConverter"
-    associated_suffixes = ("None",)
+    associated_suffixes = ("electrophysiology", "spike sorting")
     info = "A converter for handling simultaneous recording and sorting data linking metadata properly."
 
     def __init__(
