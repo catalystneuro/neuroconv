@@ -18,8 +18,6 @@ class _SortedConverterPipe(ConverterPipe):
     unit names using the pattern "{interface_name}_unit_{original_id}" (e.g., "imec0_ap_unit_0").
     If unit IDs are already unique across all sorters, original unit names are preserved.
 
-    **Notes:**
-    This is a private class used internally by system-specific converters like SortedSpikeGLXConverter.
     """
 
     display_name = "Sorted Converter Pipe"

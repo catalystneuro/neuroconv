@@ -10,15 +10,16 @@ This linkage ensures that each unit inherits all electrode-level metadata stored
 
 For this linkage to be useful, the `electrodes` table itself must be **well annotated**,
 including accurate information on brain area, anatomical coordinates, electrode geometry,
-and any probe-specific metadata. Without this detail, the benefits of unit–electrode
-linking are severely limited.
+and any probe-specific metadata. Without this detail, the benefits of unit-electrode
+linking are severely limited. For guidance on electrode table annotation, see
+:doc:`annotate_ecephys_data`.
 
 Why Link Units to Electrodes?
 -----------------------------
 
 Proper electrode linking allows each unit to be formally connected to all the metadata
 describing its recording site. This enables both spatial and anatomical localization
-of units—information that is critical for accurate interpretation and reproducibility.
+of units which is critical for accurate interpretation and reproducibility:
 
 **Spatial Analysis**
     With well-annotated electrode positions (e.g., rel_x, rel_y, rel_z),
@@ -30,7 +31,7 @@ of units—information that is critical for accurate interpretation and reproduc
     Registering the probe's position in the brain allows anatomical features such as
     brain area, subregion, or cortical layer to be associated with electrodes and,
     by extension, with linked units.
-    As an example, Liu et al. (2022) demonstrated how depth-resolved recordings across
+    As an example, `Liu et al. (2022) <https://doi.org/10.1038/s41467-022-33536-x>`_ demonstrated how depth-resolved recordings across
     hippocampal layers reveal distinct current source density and local field potential
     signatures of sharp wave-ripples. This type of interpretation is only possible when
     recording channel locations are known and correctly linked to sorted units.
@@ -43,10 +44,6 @@ of units—information that is critical for accurate interpretation and reproduc
     sorting errors, identify artifacts, and maintain reproducibility by making the
     sorting process transparent and auditable.
 
-In summary, linking units to well-annotated electrodes in NWB is not merely a bookkeeping
-step—it is a prerequisite for spatially and anatomically grounded neuroscience. Without
-both the linkage and high-quality electrode annotations, many types of interpretation and
-analysis become impossible making the data less useful for future users.
 
 Accessing Electrode Metadata from Units
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -147,7 +144,9 @@ Create the converter and run the conversion:
         unit_ids_to_channel_ids=unit_ids_to_channel_ids
     )
 
-    nwbfile = converter.run_conversion(nwbfile_path="path/to/output.nwb")
+    nwbfile = converter.create_nwbfile()
+    from neuroconv.tools import configure_and_write_nwbfile
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
 
 Understanding IDs, Indices, and Mapping
 ---------------------------------------
@@ -299,8 +298,10 @@ Create the converter and run the conversion:
         sorting_configuration=sorting_configuration
     )
 
-    # Run the conversion
-    nwbfile = converter.run_conversion(nwbfile_path="path/to/output.nwb")
+    # Create NWB file and write to disk
+    nwbfile = converter.create_nwbfile()
+    from neuroconv.tools import configure_and_write_nwbfile
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
 
 .. note::
 
