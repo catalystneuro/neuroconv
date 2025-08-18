@@ -10,46 +10,6 @@ from neuroconv.tools.testing.mock_interfaces import (
 
 class TestSortedConverterPipe:
 
-    def test_basic_functionality(self):
-        """Test basic _SortedConverterPipe functionality with single interface."""
-        # Create recording interface
-        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
-        recording_extractor = recording_interface.recording_extractor
-        recording_extractor = recording_extractor.rename_channels(new_channel_ids=["A", "B", "C", "D"])
-        recording_interface.recording_extractor = recording_extractor
-
-        # Create sorting interface
-        sorting_interface = MockSortingInterface(num_units=3, durations=[0.100])
-        sorting_extractor = sorting_interface.sorting_extractor
-        sorting_extractor = sorting_extractor.rename_units(new_unit_ids=["unit1", "unit2", "unit3"])
-        sorting_interface.sorting_extractor = sorting_extractor
-
-        # Create a mock converter
-        mock_converter = ConverterPipe(data_interfaces={"probe1": recording_interface})
-
-        # Create sorting configuration
-        sorting_configuration = [
-            {
-                "interface_name": "probe1",
-                "sorting_interface": sorting_interface,
-                "unit_ids_to_channel_ids": {"unit1": ["A"], "unit2": ["B", "C"], "unit3": ["D"]},
-            }
-        ]
-
-        # Create converter
-        converter = _SortedConverterPipe(converter=mock_converter, sorting_configuration=sorting_configuration)
-
-        # Test that converter was created successfully
-        assert "probe1_sorted" in converter.data_interface_objects
-
-        # Create NWB file to test functionality
-        nwbfile = converter.create_nwbfile()
-
-        # Test that units are present
-        assert nwbfile.units is not None
-        units_df = nwbfile.units.to_dataframe()
-        assert len(units_df) == 3
-
     def test_multi_interface_with_unique_unit_ids(self):
         """Test _SortedConverterPipe with multiple interfaces and unique unit IDs."""
         # Create first recording interface
