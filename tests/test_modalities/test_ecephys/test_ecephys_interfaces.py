@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 from hdmf.testing import TestCase
 from packaging.version import Version
+from probeinterface import Probe, ProbeGroup
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
@@ -237,6 +238,142 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         metadata["Ecephys"]["ElectricalSeries"]["name"] = "test/slash"
         with pytest.raises(jsonschema.exceptions.ValidationError):
             interface.validate_metadata(metadata)
+
+    def test_set_probe(self, setup_interface):
+        """Test setting probe with by_probe group mode."""
+        # Create a simple probe
+        probe = Probe(ndim=2, si_units="um")
+        positions = np.array([[0, 0], [0, 20], [0, 40], [0, 60]])
+        probe.set_contacts(positions=positions, shapes="circle", shape_params={"radius": 5})
+
+        # Set device channel indices to match our recording
+        probe.set_device_channel_indices(np.arange(4))
+
+        self.interface.set_probe(probe, group_mode="by_probe")
+
+        # Check that probe is now set
+        assert self.interface.has_probe()
+
+        # With by_probe mode, all channels should be in the same group (group 0)
+        recording = self.interface.recording_extractor
+        groups = recording.get_property("group")
+        expected_groups = np.array([0, 0, 0, 0])
+        np.testing.assert_array_equal(groups, expected_groups)
+
+        # Check that group_name property was set
+        group_names = recording.get_property("group_name")
+        expected_group_names = np.array(["0", "0", "0", "0"])
+        np.testing.assert_array_equal(group_names, expected_group_names)
+
+        # Check NWB file structure
+        nwbfile = self.interface.create_nwbfile()
+
+        # Should have 1 electrode group (all channels in one probe)
+        assert len(nwbfile.electrode_groups) == 1
+        assert "0" in nwbfile.electrode_groups
+
+        # Check electrodes table
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        electrode_group_names = electrodes_df["group_name"].values
+        expected_electrode_groups = ["0", "0", "0", "0"]
+        np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
+
+    def test_set_probe_group(self, setup_interface):
+        """Test setting a ProbeGroup with multiple probes."""
+        # Create first probe (2 channels)
+        probe1 = Probe(ndim=2, si_units="um")
+        positions1 = np.array([[0, 0], [0, 20]])
+        probe1.set_contacts(positions=positions1, shapes="circle", shape_params={"radius": 5})
+        probe1.set_device_channel_indices([0, 1])
+
+        # Create second probe (2 channels)
+        probe2 = Probe(ndim=2, si_units="um")
+        positions2 = np.array([[100, 0], [100, 20]])
+        probe2.set_contacts(positions=positions2, shapes="circle", shape_params={"radius": 5})
+        probe2.set_device_channel_indices([2, 3])
+
+        # Create ProbeGroup
+        probe_group = ProbeGroup()
+        probe_group.add_probe(probe1)
+        probe_group.add_probe(probe2)
+
+        # Set the ProbeGroup using the interface's set_probe method
+        self.interface.set_probe(probe_group, group_mode="by_probe")
+
+        # Check that probe is now set
+        assert self.interface.has_probe()
+
+        # Check that group property was set correctly - each probe should have its own group
+        recording = self.interface.recording_extractor
+        groups = recording.get_property("group")
+        expected_groups = np.array([0, 0, 1, 1])  # First 2 channels in group 0, next 2 in group 1
+        np.testing.assert_array_equal(groups, expected_groups)
+
+        # Check that group_name property was set
+        group_names = recording.get_property("group_name")
+        expected_group_names = np.array(["0", "0", "1", "1"])
+        np.testing.assert_array_equal(group_names, expected_group_names)
+
+        # Check NWB file structure
+        nwbfile = self.interface.create_nwbfile()
+
+        # Should have 2 electrode groups (one per probe)
+        assert len(nwbfile.electrode_groups) == 2
+        assert "0" in nwbfile.electrode_groups
+        assert "1" in nwbfile.electrode_groups
+
+        # Check electrodes table
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        electrode_group_names = electrodes_df["group_name"].values
+        expected_electrode_groups = ["0", "0", "1", "1"]
+        np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
+
+    def test_set_probe_by_shank(self, setup_interface):
+        """Test setting probe with by_shank group mode."""
+        # Create a probe with multiple shanks (6 channels for this test)
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100])
+
+        probe = Probe(ndim=2, si_units="um")
+        positions = np.array([[0, 0], [0, 20], [50, 0], [50, 20], [100, 0], [100, 20]])  # shank 0  # shank 1  # shank 2
+        probe.set_contacts(positions=positions, shapes="circle", shape_params={"radius": 5})
+
+        # Set shank IDs - two channels per shank
+        shank_ids = [0, 0, 1, 1, 2, 2]
+        probe.set_shank_ids(shank_ids)
+
+        # Set device channel indices
+        probe.set_device_channel_indices(np.arange(6))
+
+        interface.set_probe(probe, group_mode="by_shank")
+
+        # Check that probe is now set
+        assert interface.has_probe()
+
+        # With by_shank mode, each shank should be a separate group
+        recording = interface.recording_extractor
+        groups = recording.get_property("group")
+        expected_groups = np.array([0, 0, 1, 1, 2, 2])  # Each pair of channels in different group
+        np.testing.assert_array_equal(groups, expected_groups)
+
+        # Check that group_name property was set
+        group_names = recording.get_property("group_name")
+        expected_group_names = np.array(["0", "0", "1", "1", "2", "2"])
+        np.testing.assert_array_equal(group_names, expected_group_names)
+
+        # Check NWB file structure
+        nwbfile = interface.create_nwbfile()
+
+        # Should have 3 electrode groups (one per shank)
+        assert len(nwbfile.electrode_groups) == 3
+        assert "0" in nwbfile.electrode_groups
+        assert "1" in nwbfile.electrode_groups
+        assert "2" in nwbfile.electrode_groups
+
+        # Check electrodes table
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        electrode_group_names = electrodes_df["group_name"].values
+        expected_electrode_groups = ["0", "0", "1", "1", "2", "2"]
+        np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
 
 
 class TestAssertions(TestCase):
