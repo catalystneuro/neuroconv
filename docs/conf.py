@@ -106,7 +106,8 @@ toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>)
 toggleprompt_default_hidden = "true"
 
 # Copybutton
-copybutton_exclude = '.linenos, .gp'
+copybutton_exclude = '.linenos, .gp'  # This avoids copying prompt (>>>) in the conversion gallery (issue #1465)
+
 
 # Intersphinx
 intersphinx_mapping = {
