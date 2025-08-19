@@ -56,7 +56,7 @@ class TestOphysInterfacesGetMetadata:
 
         # Expected structure for ImagingPlanes (NaN values of excitation/emission lambda excluded for comparison)
         expected_imaging_planes = {
-            metadata_key: {
+            "default_imaging_plane_metadata_key": {
                 "name": "ImagingPlane",
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
@@ -72,7 +72,7 @@ class TestOphysInterfacesGetMetadata:
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": metadata_key,  # References metadata_key
+                "imaging_plane_key": "default_imaging_plane_metadata_key",  # References the default imaging plane
                 "dimension": [10, 10],  # Mock data dimensions
             }
         }
@@ -98,13 +98,13 @@ class TestOphysInterfacesGetMetadata:
             metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
             },
         }
 
         # Expected structure for ImagingPlanes (NaN values of excitation/emission lambda excluded for comparison)
         expected_imaging_planes = {
-            metadata_key: {
+            "default_imaging_plane_metadata_key": {
                 "name": "ImagingPlane",
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
@@ -136,16 +136,9 @@ class TestOphysInterfacesGetMetadata:
         metadata = converter.get_metadata()
 
         # Expected structure for ImagingPlanes (NaN values of excitation/emission lambda excluded for comparison)
+        # Now there's only one default imaging plane that all interfaces share
         expected_imaging_planes = {
-            imaging_metadata_key: {
-                "name": "ImagingPlane",
-                "description": "The plane or volume being imaged by the microscope.",
-                "indicator": "unknown",
-                "location": "unknown",
-                "device": "Microscope",
-                "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
-            },
-            segmentation_metadata_key: {
+            "default_imaging_plane_metadata_key": {
                 "name": "ImagingPlane",
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
@@ -161,7 +154,7 @@ class TestOphysInterfacesGetMetadata:
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": imaging_metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
                 "dimension": [10, 10],
             },
         }
@@ -172,7 +165,7 @@ class TestOphysInterfacesGetMetadata:
             segmentation_metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": segmentation_metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
             },
         }
 
@@ -201,15 +194,7 @@ class TestOphysInterfacesGetMetadata:
 
         # Expected structure for ImagingPlanes (NaN values of excitation/emission lambda excluded for comparison)
         expected_imaging_planes = {
-            imaging1_metadata_key: {
-                "name": "ImagingPlane",
-                "description": "The plane or volume being imaged by the microscope.",
-                "indicator": "unknown",
-                "location": "unknown",
-                "device": "Microscope",
-                "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
-            },
-            imaging2_metadata_key: {
+            "default_imaging_plane_metadata_key": {
                 "name": "ImagingPlane",
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
@@ -225,14 +210,14 @@ class TestOphysInterfacesGetMetadata:
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": imaging1_metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
                 "dimension": [10, 10],
             },
             imaging2_metadata_key: {
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": imaging2_metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
                 "dimension": [10, 10],
             },
         }
@@ -259,15 +244,7 @@ class TestOphysInterfacesGetMetadata:
 
         # Expected structure for ImagingPlanes (NaN values of excitation/emission lambda excluded for comparison)
         expected_imaging_planes = {
-            segmentation1_metadata_key: {
-                "name": "ImagingPlane",
-                "description": "The plane or volume being imaged by the microscope.",
-                "indicator": "unknown",
-                "location": "unknown",
-                "device": "Microscope",
-                "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
-            },
-            segmentation2_metadata_key: {
+            "default_imaging_plane_metadata_key": {
                 "name": "ImagingPlane",
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
@@ -283,12 +260,12 @@ class TestOphysInterfacesGetMetadata:
             segmentation1_metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": segmentation1_metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
             },
             segmentation2_metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": segmentation2_metadata_key,
+                "imaging_plane_key": "default_imaging_plane_metadata_key",
             },
         }
 
@@ -361,8 +338,8 @@ class TestOphysMetadataPropagation:
 
         # First: Create a new imaging plane entry in the metadata
         shared_plane_metadata = dict(
-            metadata["Ophys"]["ImagingPlanes"][series1_metadata_key]
-        )  # Use first one as template
+            metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
+        )  # Use default plane as template
         shared_plane_metadata["name"] = "ImagingPlaneShared"  # Set the plane name
         metadata["Ophys"]["ImagingPlanes"][shared_plane_key] = shared_plane_metadata
 

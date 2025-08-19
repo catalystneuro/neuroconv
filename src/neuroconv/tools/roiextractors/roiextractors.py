@@ -67,7 +67,7 @@ def _get_default_ophys_metadata() -> DeepDict:
     metadata.update(
         Ophys=dict(
             Device=[default_device],  # Keep as list for now
-            ImagingPlanes={"default": default_imaging_plane},  # Dictionary structure
+            ImagingPlanes={"default_imaging_plane_metadata_key": default_imaging_plane},  # Dictionary structure
         ),
     )
 
@@ -169,16 +169,9 @@ def get_nwb_imaging_metadata(
     # TODO: get_num_channels is deprecated, remove
     channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
 
-    # Ensure the key exists in the dictionary structure
-    if metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
-        # If the key doesn't exist, rename the default key
-        if "default" in metadata["Ophys"]["ImagingPlanes"]:
-            metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop("default")
-        else:
-            # Use the first available key and rename it
-            first_key = list(metadata["Ophys"]["ImagingPlanes"].keys())[0]
-            metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop(first_key)
-    imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
+    # Use the default imaging plane (all interfaces share the same plane by default)
+    default_imaging_plane_metadata_key = "default_imaging_plane_metadata_key"
+    imaging_plane = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_metadata_key]
 
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
@@ -198,7 +191,7 @@ def get_nwb_imaging_metadata(
         name=photon_series_type,
         description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
         unit="n.a.",
-        imaging_plane_key=metadata_key,  # Reference by key instead of name
+        imaging_plane_key=default_imaging_plane_metadata_key,  # Reference the default imaging plane
         dimension=list(imgextractor.get_sample_shape()),
     )
 
@@ -760,14 +753,18 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
     # Device metadata
     metadata["Ophys"]["Device"] = [default_template["Ophys"]["Device"][0]]
 
-    # Create only the specific metadata_key entries
-    metadata["Ophys"]["ImagingPlanes"] = {metadata_key: deepcopy(default_template["Ophys"]["ImagingPlanes"]["default"])}
+    # Use the single default imaging plane (all interfaces share the same plane by default)
+    metadata["Ophys"]["ImagingPlanes"] = {
+        "default_imaging_plane_metadata_key": deepcopy(
+            default_template["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
+        )
+    }
 
     metadata["Ophys"]["ImageSegmentation"] = {
         "name": "ImageSegmentation",
         metadata_key: deepcopy(default_template["Ophys"]["ImageSegmentation"]["default"]),
     }
-    metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_key"] = metadata_key
+    metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_key"] = "default_imaging_plane_metadata_key"
 
     # Add other ophys structures that don't use keys
     metadata["Ophys"]["Fluorescence"] = default_template["Ophys"]["Fluorescence"]
@@ -779,8 +776,8 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         "description": default_template["Ophys"]["SegmentationImages"]["description"],
     }
 
-    # Handle optical channels for the imaging plane
-    imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
+    # Handle optical channels for the default imaging plane
+    imaging_plane = metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
 
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
