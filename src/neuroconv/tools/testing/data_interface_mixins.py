@@ -437,7 +437,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
-                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
+                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=False)
 
                 # This was added to test probe, we should just compare the probes
                 for property_name in ["rel_x", "rel_y", "rel_z"]:
@@ -449,7 +449,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                             recording.get_property(property_name), self.nwb_recording.get_property(property_name)
                         )
                 if recording.has_scaleable_traces() and self.nwb_recording.has_scaleable_traces():
-                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
+                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=True)
 
             # Compare channel groups
             # Neuroconv ALWAYS writes a string property `group_name` to the electrode table.
