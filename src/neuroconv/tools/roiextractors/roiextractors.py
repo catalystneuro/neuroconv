@@ -203,23 +203,57 @@ def get_nwb_imaging_metadata(
     return metadata
 
 
+def _add_device_to_nwbfile(nwbfile: NWBFile, metadata: dict, device_metadata_key: str) -> NWBFile:
+    """
+    Add a specific device to the NWBFile.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWBFile to add the device to.
+    metadata : dict
+        The metadata containing device information.
+    device_metadata_key : str
+        The key of the device to add from metadata["Devices"][device_metadata_key].
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile with the device added.
+    """
+    if "Devices" in metadata and device_metadata_key in metadata["Devices"]:
+        device_kwargs = metadata["Devices"][device_metadata_key]
+        device_name = device_kwargs["name"]
+
+        # Only add device if it doesn't already exist
+        if device_name not in nwbfile.devices:
+            device = Device(**device_kwargs)
+            nwbfile.add_device(device)
+
+    return nwbfile
+
+
 def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
-    The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
-    This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
+    The metadata concerning devices should be stored in metadata["Devices"][device_key]
+    where each device_key maps to a dictionary with device parameters for pynwb.Device.
+
+    Example:
+        metadata["Devices"]["microscope_1"] = {"name": "Microscope", "description": "Two-photon microscope"}
     """
     metadata_copy = {} if metadata is None else deepcopy(metadata)
     default_metadata = _get_default_ophys_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
-    device_metadata = metadata_copy["Ophys"]["Device"]
 
-    for device in device_metadata:
-        device_name = device["name"] if isinstance(device, dict) else device.name
-        if device_name not in nwbfile.devices:
-            device = Device(**device) if isinstance(device, dict) else device
-            nwbfile.add_device(device)
+    # Handle new top-level Devices structure
+    if "Devices" in metadata_copy:
+        for device_key, device_info in metadata_copy["Devices"].items():
+            device_name = device_info["name"] if isinstance(device_info, dict) else device_info.name
+            if device_name not in nwbfile.devices:
+                device = Device(**device_info) if isinstance(device_info, dict) else device_info
+                nwbfile.add_device(device)
 
     return nwbfile
 
@@ -267,25 +301,11 @@ def add_imaging_plane_to_nwbfile(
     # Handle device creation/retrieval using device metadata key
     device_metadata_key = imaging_plane_metadata["device_metadata_key"]
 
-    # Get device info from top-level Devices metadata
-    if "Devices" in metadata_copy and device_metadata_key in metadata_copy["Devices"]:
-        device_info = metadata_copy["Devices"][device_metadata_key]
-        device_name = device_info["name"]
+    # Add the device using the private function
+    _add_device_to_nwbfile(nwbfile, metadata_copy, device_metadata_key)
 
-        # Create device if it doesn't exist
-        if device_name not in nwbfile.devices:
-            from pynwb.device import Device
-
-            device = Device(**device_info)
-            nwbfile.add_device(device)
-    else:
-        # Fallback: assume device_metadata_key is the device name
-        device_name = device_metadata_key
-        if device_name not in nwbfile.devices:
-            from pynwb.device import Device
-
-            device = Device(name=device_name)
-            nwbfile.add_device(device)
+    # Get device name from metadata
+    device_name = metadata_copy["Devices"][device_metadata_key]["name"]
 
     # Create and add imaging plane if it doesn't exist
     if imaging_plane_name not in nwbfile.imaging_planes:
@@ -626,7 +646,6 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     nwbfile = add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
@@ -1172,8 +1191,6 @@ def add_fluorescence_traces_to_nwbfile(
         The nwbfile to add the fluorescence traces to.
     metadata : dict
         The metadata for the fluorescence traces.
-    plane_segmentation_name : str, optional
-        The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
     include_background_segmentation : bool, default: False
         Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
         neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
@@ -1333,8 +1350,6 @@ def _create_roi_table_region(
         The NWBFile to add the plane segmentation to.
     metadata : dict, optional
         The metadata for the plane segmentation.
-    plane_segmentation_name : str, optional
-        The name of the plane segmentation that identifies which plane to add the ROI table region to.
     """
     image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
 
@@ -1609,9 +1624,6 @@ def add_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added segmentation data.
     """
-
-    # Add device:
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     # Add PlaneSegmentation:
     add_plane_segmentation_to_nwbfile(

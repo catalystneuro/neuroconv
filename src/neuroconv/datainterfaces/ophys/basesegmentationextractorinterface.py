@@ -51,23 +51,46 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         - Applies temporary fixes, such as setting additional properties for `ImageSegmentation` to True.
         """
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["required"] = ["Ophys"]
-        metadata_schema["properties"]["Ophys"] = get_base_schema()
-        metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items=get_schema_from_hdmf_class(Device)),
+        metadata_schema["required"] = ["Ophys", "Devices"]
+
+        # Add top-level Devices schema for new metadata structure
+        device_schema = get_schema_from_hdmf_class(Device)
+        metadata_schema["properties"]["Devices"] = dict(
+            type="object",
+            patternProperties={"^[a-zA-Z0-9_]+$": device_schema},
+            additionalProperties=False,
         )
+
+        metadata_schema["properties"]["Ophys"] = get_base_schema()
+        metadata_schema["properties"]["Ophys"]["properties"] = dict()
         metadata_schema["properties"]["Ophys"]["properties"].update(
             Fluorescence=get_schema_from_hdmf_class(Fluorescence),
             ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
+        metadata_schema["properties"]["Ophys"]["required"] = ["ImageSegmentation"]
+
+        # Note: We inline the Device schema instead of using references to avoid schema reference issues
+
+        # Update ImagingPlane schema to use device_metadata_key
+        imaging_plane_schema = metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"]
+        if "device" in imaging_plane_schema["properties"]:
+            imaging_plane_schema["properties"].pop("device")
+            imaging_plane_schema["properties"]["device_metadata_key"] = {
+                "type": "string",
+                "description": "Reference key to the device in the Devices dictionary",
+            }
+            # Update required fields if device was required
+            if "required" in imaging_plane_schema and "device" in imaging_plane_schema["required"]:
+                imaging_plane_schema["required"] = [
+                    "device_metadata_key" if req == "device" else req for req in imaging_plane_schema["required"]
+                ]
 
         # Update schema for new dictionary structure
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlanes"] = dict(
             type="object",
-            patternProperties={"^[a-zA-Z0-9_]+$": metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"]},
+            patternProperties={"^[a-zA-Z0-9_]+$": imaging_plane_schema},
             additionalProperties=False,
         )
         if "ImagingPlane" in metadata_schema["properties"]["Ophys"]["properties"]:

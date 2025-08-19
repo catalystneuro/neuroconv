@@ -66,13 +66,20 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         metadata_schema = super().get_metadata_schema()
 
-        metadata_schema["required"] = ["Ophys"]
+        metadata_schema["required"] = ["Ophys", "Devices"]
+
+        # Add top-level Devices schema for new metadata structure
+        device_schema = get_schema_from_hdmf_class(Device)
+        metadata_schema["properties"]["Devices"] = dict(
+            type="object",
+            patternProperties={"^[a-zA-Z0-9_]+$": device_schema},
+            additionalProperties=False,
+        )
 
         # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlanes", self.photon_series_type]
+        metadata_schema["properties"]["Ophys"]["required"] = ["ImagingPlanes", self.photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
             ImagingPlanes=dict(
                 type="object",
                 patternProperties={"^[a-zA-Z0-9_]+$": {"$ref": "#/properties/Ophys/definitions/ImagingPlane"}},
@@ -109,8 +116,9 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                     "device_metadata_key" if req == "device" else req for req in imaging_plane_schema["required"]
                 ]
 
+        # Note: We inline the Device schema instead of using references to avoid schema reference issues
+
         metadata_schema["properties"]["Ophys"]["definitions"] = dict(
-            Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=imaging_plane_schema,
         )
         photon_series = dict(
