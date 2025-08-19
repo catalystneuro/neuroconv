@@ -101,8 +101,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         image_segmentation_schema = metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]
         image_segmentation_schema["type"] = "object"
+        image_segmentation_schema["properties"] = {
+            "name": {"type": "string"}  # Top-level name for the ImageSegmentation container
+        }
         image_segmentation_schema["patternProperties"] = {
-            "^[a-zA-Z0-9_]+$": {
+            "^(?!name$)[a-zA-Z0-9_]+$": {  # Pattern excludes "name" key
                 "type": "object",
                 "properties": {
                     "name": {"type": "string"},
@@ -257,4 +260,5 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
         )

@@ -107,15 +107,16 @@ def _get_default_segmentation_metadata() -> DeepDict:
 
     # Use dictionary structure for ImageSegmentation
     default_image_segmentation = dict(
+        name="ImageSegmentation",  # Top-level name for the ImageSegmentation container
         default=dict(
             name="PlaneSegmentation",
             description="Segmented ROIs",
-            imaging_plane="default",  # Reference by key
+            imaging_plane_key="default",  # Reference by key
         ),
         background=dict(
             name="BackgroundPlaneSegmentation",
             description="Segmented Background Components",
-            imaging_plane="default",  # Reference by key
+            imaging_plane_key="default",  # Reference by key
         ),
     )
 
@@ -168,22 +169,16 @@ def get_nwb_imaging_metadata(
     # TODO: get_num_channels is deprecated, remove
     channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
 
-    # Check if we have the new dictionary structure or old list structure
-    if "ImagingPlanes" in metadata["Ophys"]:
-        # New dictionary structure
-        # Ensure the key exists in the dictionary
-        if metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
-            # If the key doesn't exist, rename the default key
-            if "default" in metadata["Ophys"]["ImagingPlanes"]:
-                metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop("default")
-            else:
-                # Use the first available key and rename it
-                first_key = list(metadata["Ophys"]["ImagingPlanes"].keys())[0]
-                metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop(first_key)
-        imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
-    else:
-        # Old list structure (backward compatibility)
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+    # Ensure the key exists in the dictionary structure
+    if metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
+        # If the key doesn't exist, rename the default key
+        if "default" in metadata["Ophys"]["ImagingPlanes"]:
+            metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop("default")
+        else:
+            # Use the first available key and rename it
+            first_key = list(metadata["Ophys"]["ImagingPlanes"].keys())[0]
+            metadata["Ophys"]["ImagingPlanes"][metadata_key] = metadata["Ophys"]["ImagingPlanes"].pop(first_key)
+    imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
 
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
@@ -203,7 +198,7 @@ def get_nwb_imaging_metadata(
         name=photon_series_type,
         description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
         unit="n.a.",
-        imaging_plane=metadata_key,  # Reference by key instead of name
+        imaging_plane_key=metadata_key,  # Reference by key instead of name
         dimension=list(imgextractor.get_sample_shape()),
     )
 
@@ -294,14 +289,9 @@ def add_imaging_plane_to_nwbfile(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
-    # Get default imaging plane name - handle both old and new structure
-    if "ImagingPlanes" in default_metadata["Ophys"]:
-        # New dictionary structure
-        default_key = list(default_metadata["Ophys"]["ImagingPlanes"].keys())[0]
-        default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlanes"][default_key]["name"]
-    else:
-        # Old list structure
-        default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
+    # Get default imaging plane name from new dictionary structure
+    default_key = list(default_metadata["Ophys"]["ImagingPlanes"].keys())[0]
+    default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlanes"][default_key]["name"]
 
     imaging_plane_name = imaging_plane_name or default_imaging_plane_name
     existing_imaging_planes = nwbfile.imaging_planes
@@ -309,28 +299,15 @@ def add_imaging_plane_to_nwbfile(
     if imaging_plane_name not in existing_imaging_planes:
         imaging_plane_metadata = None
 
-        # Try to find imaging plane metadata in new dictionary structure
-        if "ImagingPlanes" in metadata_copy["Ophys"]:
-            # New dictionary structure - look for the plane by name or key
-            for key, plane_data in metadata_copy["Ophys"]["ImagingPlanes"].items():
-                if plane_data["name"] == imaging_plane_name or key == imaging_plane_name:
-                    imaging_plane_metadata = plane_data
-                    break
-        else:
-            # Old list structure
-            imaging_plane_metadata = next(
-                (
-                    imaging_plane_metadata
-                    for imaging_plane_metadata in metadata_copy["Ophys"]["ImagingPlane"]
-                    if imaging_plane_metadata["name"] == imaging_plane_name
-                ),
-                None,
-            )
+        # Find imaging plane metadata in new dictionary structure
+        for key, plane_data in metadata_copy["Ophys"]["ImagingPlanes"].items():
+            if plane_data["name"] == imaging_plane_name or key == imaging_plane_name:
+                imaging_plane_metadata = plane_data
+                break
 
         if imaging_plane_metadata is None:
-            metadata_location = "ImagingPlanes" if "ImagingPlanes" in metadata_copy["Ophys"] else "ImagingPlane"
             raise ValueError(
-                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['{metadata_location}']."
+                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlanes']."
             )
 
         imaging_plane = _create_imaging_plane_from_metadata(
@@ -379,7 +356,7 @@ def add_photon_series_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict | None = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-    photon_series_index: int = 0,
+    metadata_key: str | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -444,22 +421,25 @@ def add_photon_series_to_nwbfile(
         "processing/ophys",
     ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
-    # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
-    # Handle both list and dictionary structure
+    # Get photon series metadata using the metadata_key
     photon_series_data = metadata_copy["Ophys"][photon_series_type]
     if isinstance(photon_series_data, list):
-        # Old list structure
-        photon_series_metadata = photon_series_data[photon_series_index]
+        # Old list structure - for backward compatibility
+        # Use the first entry if no metadata_key is provided
+        if metadata_key is None:
+            photon_series_metadata = photon_series_data[0]
+        else:
+            # This case should not occur in the new structure
+            raise ValueError("metadata_key provided but photon series data is in old list format")
     else:
         # New dictionary structure
-        # If index is provided, try to get the key by index, otherwise get the first key
-        keys = list(photon_series_data.keys())
-        if photon_series_index < len(keys):
-            metadata_key = keys[photon_series_index]
-        else:
-            metadata_key = keys[0] if keys else None
         if metadata_key is None:
-            raise ValueError(f"No {photon_series_type} metadata found")
+            # If no metadata_key provided, use the first available key
+            keys = list(photon_series_data.keys())
+            metadata_key = keys[0] if keys else None
+
+        if metadata_key is None or metadata_key not in photon_series_data:
+            raise ValueError(f"No {photon_series_type} metadata found for key '{metadata_key}'")
         photon_series_metadata = photon_series_data[metadata_key]
 
     photon_series_name = photon_series_metadata["name"]
@@ -472,10 +452,18 @@ def add_photon_series_to_nwbfile(
             raise ValueError(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
 
     # Add the image plane to nwb
-    imaging_plane_name = photon_series_metadata["imaging_plane"]
-    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+    imaging_plane_key = photon_series_metadata["imaging_plane_key"]
+    # Get the actual imaging plane name from metadata
+    imaging_plane_name = metadata_copy["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"]
+
+    # Check if imaging plane already exists, if not create it
+    if imaging_plane_name not in nwbfile.imaging_planes:
+        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
     photon_series_kwargs = deepcopy(photon_series_metadata)
+    # Remove the key reference and add the actual imaging plane object
+    photon_series_kwargs.pop("imaging_plane_key", None)
     photon_series_kwargs.update(imaging_plane=imaging_plane)
 
     # Add the data
@@ -609,7 +597,7 @@ def add_imaging_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict | None = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-    photon_series_index: int = 0,
+    metadata_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -655,7 +643,7 @@ def add_imaging_to_nwbfile(
         nwbfile=nwbfile,
         metadata=metadata,
         photon_series_type=photon_series_type,
-        photon_series_index=photon_series_index,
+        metadata_key=metadata_key,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
@@ -760,19 +748,39 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         Dictionary containing metadata for devices, imaging planes, image segmentation,
         and fluorescence data specific to the segmentation.
     """
-    metadata = _get_default_segmentation_metadata()
+    # Create minimal structure with only the specified metadata_key
+    default_template = _get_default_segmentation_metadata()
+
+    # Use standard helper for NWBFile metadata
+    from ..nwb_helpers import get_default_nwbfile_metadata
+
+    metadata = get_default_nwbfile_metadata()
+    metadata["Ophys"] = dict()
+
+    # Device metadata
+    metadata["Ophys"]["Device"] = [default_template["Ophys"]["Device"][0]]
+
+    # Create only the specific metadata_key entries
+    metadata["Ophys"]["ImagingPlanes"] = {metadata_key: deepcopy(default_template["Ophys"]["ImagingPlanes"]["default"])}
+
+    metadata["Ophys"]["ImageSegmentation"] = {
+        "name": "ImageSegmentation",
+        metadata_key: deepcopy(default_template["Ophys"]["ImageSegmentation"]["default"]),
+    }
+    metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_key"] = metadata_key
+
+    # Add other ophys structures that don't use keys
+    metadata["Ophys"]["Fluorescence"] = default_template["Ophys"]["Fluorescence"]
+    metadata["Ophys"]["DfOverF"] = default_template["Ophys"]["DfOverF"]
+
+    # SegmentationImages needs to be scoped by metadata_key - start with just the container metadata
+    metadata["Ophys"]["SegmentationImages"] = {
+        "name": default_template["Ophys"]["SegmentationImages"]["name"],
+        "description": default_template["Ophys"]["SegmentationImages"]["description"],
+    }
 
     # Handle optical channels for the imaging plane
-    # Check if we have the new dictionary structure or old list structure
-    if "ImagingPlanes" in metadata["Ophys"]:
-        # New dictionary structure
-        # Create the key if it doesn't exist
-        if metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
-            metadata["Ophys"]["ImagingPlanes"][metadata_key] = deepcopy(metadata["Ophys"]["ImagingPlanes"]["default"])
-        imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
-    else:
-        # Old list structure (backward compatibility)
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+    imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
 
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
@@ -792,18 +800,34 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         metadata["Ophys"]["ImageSegmentation"][metadata_key] = deepcopy(
             metadata["Ophys"]["ImageSegmentation"]["default"]
         )
-        metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane"] = metadata_key
+        metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_key"] = metadata_key
 
     # Get plane segmentation name from the dictionary structure
-    if (
-        isinstance(metadata["Ophys"]["ImageSegmentation"], dict)
-        and metadata_key in metadata["Ophys"]["ImageSegmentation"]
-    ):
-        # New dictionary structure
-        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][metadata_key]["name"]
-    else:
-        # Old list structure (backward compatibility)
-        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][metadata_key]["name"]
+
+    # Create SegmentationImages entry for this metadata_key with unique image names
+    if metadata_key not in metadata["Ophys"]["SegmentationImages"]:
+        # Get default image metadata from template and add metadata for all image types
+        default_images = default_template["Ophys"]["SegmentationImages"]["PlaneSegmentation"]
+        metadata["Ophys"]["SegmentationImages"][metadata_key] = deepcopy(default_images)
+
+        # Get all available image types from the extractor
+        available_images = sgmextractor.get_images_dict()
+
+        # Ensure metadata exists for all available image types
+        for image_type in available_images.keys():
+            if image_type not in metadata["Ophys"]["SegmentationImages"][metadata_key]:
+                # Create default metadata for missing image types
+                metadata["Ophys"]["SegmentationImages"][metadata_key][image_type] = {
+                    "name": image_type,
+                    "description": f"The {image_type} image.",
+                }
+
+        # Make all image names unique by incorporating metadata_key
+        for image_type, image_metadata in metadata["Ophys"]["SegmentationImages"][metadata_key].items():
+            if isinstance(image_metadata, dict) and "name" in image_metadata:
+                unique_name = f"{image_metadata['name']}_{metadata_key}"
+                metadata["Ophys"]["SegmentationImages"][metadata_key][image_type]["name"] = unique_name
 
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
         # raw traces have already default name ("RoiResponseSeries")
@@ -827,6 +851,7 @@ def add_plane_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -871,7 +896,6 @@ def add_plane_segmentation_to_nwbfile(
         The nwbfile passed as an input with the plane segmentation added.
     """
 
-    default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
     if include_roi_acceptance:
         accepted_list = segmentation_extractor.get_accepted_list()
@@ -912,7 +936,6 @@ def add_plane_segmentation_to_nwbfile(
         is_id_accepted=is_id_accepted,
         is_id_rejected=is_id_rejected,
         roi_locations=roi_locations,
-        default_plane_segmentation_index=default_plane_segmentation_index,
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
@@ -921,6 +944,7 @@ def add_plane_segmentation_to_nwbfile(
         mask_type=mask_type,
         iterator_options=iterator_options,
         segmentation_extractor_properties=segmentation_extractor_properties,
+        metadata_key=metadata_key,
     )
     return nwbfile
 
@@ -928,7 +952,6 @@ def add_plane_segmentation_to_nwbfile(
 def _add_plane_segmentation(
     background_or_roi_ids: list[int | str],
     image_or_pixel_masks: np.ndarray,
-    default_plane_segmentation_index: int,
     nwbfile: NWBFile,
     metadata: dict | None,
     plane_segmentation_name: str | None = None,
@@ -940,6 +963,7 @@ def _add_plane_segmentation(
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
     segmentation_extractor_properties: dict | None = None,
+    metadata_key: str | None = None,
 ) -> NWBFile:
     iterator_options = iterator_options or dict()
 
@@ -950,56 +974,50 @@ def _add_plane_segmentation(
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
 
-    # Get default plane segmentation name - handle both old and new structure
-    if plane_segmentation_name is None:
-        if isinstance(default_metadata["Ophys"]["ImageSegmentation"], dict):
-            # New dictionary structure
-            keys = list(default_metadata["Ophys"]["ImageSegmentation"].keys())
-            if default_plane_segmentation_index < len(keys):
-                default_key = keys[default_plane_segmentation_index]
-                plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
-            else:
-                # Use first key if index out of range
-                default_key = keys[0] if keys else None
-                if default_key:
-                    plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
+    # Get plane segmentation name from metadata using metadata_key
+    if metadata_key is not None:
+        # Use the provided metadata_key to get the plane segmentation metadata from actual metadata
+        if metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]:
+            plane_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]
+            plane_segmentation_name = plane_segmentation_metadata["name"]
         else:
-            # Old list structure
-            plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
-                default_plane_segmentation_index
-            ]["name"]
+            raise ValueError(f"metadata_key '{metadata_key}' not found in ImageSegmentation metadata")
+    elif plane_segmentation_name is None:
+        # Fallback: Get default plane segmentation name from new dictionary structure
+        segmentation_keys = [k for k in default_metadata["Ophys"]["ImageSegmentation"].keys() if k != "name"]
+        if default_plane_segmentation_index < len(segmentation_keys):
+            default_key = segmentation_keys[default_plane_segmentation_index]
+            plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
+        else:
+            # Use first key if index out of range
+            default_key = segmentation_keys[0] if segmentation_keys else None
+            if default_key:
+                plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
 
     # Find plane segmentation metadata
     plane_segmentation_metadata = None
 
-    if isinstance(image_segmentation_metadata, dict) and not "plane_segmentations" in image_segmentation_metadata:
-        # New dictionary structure
-        for key, segmentation_data in image_segmentation_metadata.items():
-            if segmentation_data.get("name") == plane_segmentation_name:
-                plane_segmentation_metadata = segmentation_data
-                break
-    else:
-        # Old list structure
-        plane_segmentation_metadata = next(
-            (
-                plane_segmentation_metadata
-                for plane_segmentation_metadata in image_segmentation_metadata["plane_segmentations"]
-                if plane_segmentation_metadata["name"] == plane_segmentation_name
-            ),
-            None,
-        )
+    # Find plane segmentation metadata in new dictionary structure
+    for key, segmentation_data in image_segmentation_metadata.items():
+        if (
+            key != "name"
+            and isinstance(segmentation_data, dict)
+            and segmentation_data.get("name") == plane_segmentation_name
+        ):
+            plane_segmentation_metadata = segmentation_data
+            break
     if plane_segmentation_metadata is None:
-        metadata_location = (
-            "ImageSegmentation"
-            if isinstance(image_segmentation_metadata, dict)
-            else "ImageSegmentation']['plane_segmentations"
-        )
         raise ValueError(
-            f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['{metadata_location}']."
+            f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']."
         )
 
-    imaging_plane_name = plane_segmentation_metadata["imaging_plane"]
-    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+    imaging_plane_key = plane_segmentation_metadata["imaging_plane_key"]
+    # Get the actual imaging plane name from metadata
+    imaging_plane_name = metadata_copy["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"]
+
+    # Check if imaging plane already exists, if not create it
+    if imaging_plane_name not in nwbfile.imaging_planes:
+        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
     ophys = get_module(nwbfile, "ophys")
@@ -1012,6 +1030,8 @@ def _add_plane_segmentation(
 
     imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
     plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
+    # Remove the key reference and add the actual imaging plane object
+    plane_segmentation_kwargs.pop("imaging_plane_key", None)
     plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
     plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
 
@@ -1122,7 +1142,6 @@ def add_background_plane_segmentation_to_nwbfile(
         The NWBFile with the added background plane segmentation data.
     """
 
-    default_plane_segmentation_index = 1
     background_ids = segmentation_extractor.get_background_ids()
     if mask_type == "image":
         image_or_pixel_masks = segmentation_extractor.get_background_image_masks()
@@ -1135,7 +1154,6 @@ def add_background_plane_segmentation_to_nwbfile(
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=background_ids,
         image_or_pixel_masks=image_or_pixel_masks,
-        default_plane_segmentation_index=default_plane_segmentation_index,
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=background_plane_segmentation_name,
@@ -1149,9 +1167,9 @@ def add_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None,
-    plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
     iterator_options: dict | None = None,
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -1178,7 +1196,6 @@ def add_fluorescence_traces_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
-    default_plane_segmentation_index = 0
 
     traces_to_add = segmentation_extractor.get_traces_dict()
     # Filter empty data and background traces
@@ -1197,9 +1214,8 @@ def add_fluorescence_traces_to_nwbfile(
         background_or_roi_ids=roi_ids,
         nwbfile=nwbfile,
         metadata=metadata,
-        default_plane_segmentation_index=default_plane_segmentation_index,
-        plane_segmentation_name=plane_segmentation_name,
         iterator_options=iterator_options,
+        metadata_key=metadata_key,
     )
     return nwbfile
 
@@ -1210,9 +1226,8 @@ def _add_fluorescence_traces_to_nwbfile(
     background_or_roi_ids: list,
     nwbfile: NWBFile,
     metadata: dict | None,
-    default_plane_segmentation_index: int,
-    plane_segmentation_name: str | None = None,
     iterator_options: dict | None = None,
+    metadata_key: str | None = None,
 ):
     iterator_options = iterator_options or dict()
 
@@ -1221,12 +1236,15 @@ def _add_fluorescence_traces_to_nwbfile(
     default_metadata = _get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-    plane_segmentation_name = (
-        plane_segmentation_name
-        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
-            "name"
-        ]
-    )
+    # Get plane segmentation name from metadata using metadata_key
+    if metadata_key is not None and metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]:
+        plane_segmentation_name = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]["name"]
+    else:
+        # Fallback to first available segmentation key
+        segmentation_keys = [k for k in default_metadata["Ophys"]["ImageSegmentation"].keys() if k != "name"]
+        if segmentation_keys:
+            default_key = segmentation_keys[0]
+            plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
     # df/F metadata
     df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
     df_over_f_name = df_over_f_metadata["name"]
@@ -1241,7 +1259,7 @@ def _add_fluorescence_traces_to_nwbfile(
         background_or_roi_ids=background_or_roi_ids,
         nwbfile=nwbfile,
         metadata=metadata_copy,
-        plane_segmentation_name=plane_segmentation_name,
+        metadata_key=metadata_key,
     )
 
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
@@ -1279,10 +1297,14 @@ def _add_fluorescence_traces_to_nwbfile(
         # Extract the response series metadata
         # the name of the trace is retrieved from the metadata, no need to override it here
         # trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
-        assert plane_segmentation_name in data_interface_metadata, (
-            f"Plane segmentation '{plane_segmentation_name}' not found in " f"{data_interface_metadata} metadata."
+        # For Fluorescence metadata, always use "PlaneSegmentation" as the key regardless of actual plane segmentation name
+        fluorescence_key = (
+            "PlaneSegmentation" if "PlaneSegmentation" in data_interface_metadata else plane_segmentation_name
         )
-        trace_metadata = data_interface_metadata[plane_segmentation_name][trace_name]
+        assert fluorescence_key in data_interface_metadata, (
+            f"Fluorescence key '{fluorescence_key}' not found in " f"{data_interface_metadata} metadata."
+        )
+        trace_metadata = data_interface_metadata[fluorescence_key][trace_name]
         if trace_metadata is None:
             raise ValueError(f"Metadata for '{trace_name}' trace not found in {data_interface_metadata}.")
 
@@ -1311,7 +1333,7 @@ def _create_roi_table_region(
     background_or_roi_ids: list,
     nwbfile: NWBFile,
     metadata: dict,
-    plane_segmentation_name: str | None = None,
+    metadata_key: str | None = None,
 ):
     """Private method to create ROI table region.
 
@@ -1332,12 +1354,19 @@ def _create_roi_table_region(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
+        metadata_key=metadata_key,
     )
 
     image_segmentation_name = image_segmentation_metadata["name"]
     ophys = get_module(nwbfile, "ophys")
     image_segmentation = ophys[image_segmentation_name]
+
+    # Get plane segmentation name from metadata using metadata_key
+    if metadata_key is not None and metadata_key in metadata["Ophys"]["ImageSegmentation"]:
+        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][metadata_key]["name"]
+    else:
+        # Fallback to first available plane segmentation
+        plane_segmentation_name = list(image_segmentation.plane_segmentations.keys())[0]
 
     # Get plane segmentation from the image segmentation
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
@@ -1379,9 +1408,9 @@ def add_background_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None,
-    background_plane_segmentation_name: str | None = None,
     iterator_options: dict | None = None,
     compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -1416,8 +1445,6 @@ def add_background_fluorescence_traces_to_nwbfile(
             stacklevel=2,
         )
 
-    default_plane_segmentation_index = 1
-
     traces_to_add = segmentation_extractor.get_traces_dict()
     # Filter empty data and background traces
     traces_to_add = {
@@ -1435,9 +1462,8 @@ def add_background_fluorescence_traces_to_nwbfile(
         background_or_roi_ids=background_ids,
         nwbfile=nwbfile,
         metadata=metadata,
-        default_plane_segmentation_index=default_plane_segmentation_index,
-        plane_segmentation_name=background_plane_segmentation_name,
         iterator_options=iterator_options,
+        metadata_key=metadata_key,
     )
     return nwbfile
 
@@ -1447,6 +1473,7 @@ def add_summary_images_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     metadata: dict | None = None,
     plane_segmentation_name: str | None = None,
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
@@ -1472,7 +1499,18 @@ def add_summary_images_to_nwbfile(
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
     default_metadata = _get_default_segmentation_metadata()
-    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    # Only merge structural elements, not content keys to avoid conflicts
+    # with the new metadata_key scoped structure
+    if "Ophys" not in metadata_copy:
+        metadata_copy["Ophys"] = {}
+    if "SegmentationImages" not in metadata_copy["Ophys"]:
+        # Only copy the container metadata, not the content entries
+        metadata_copy["Ophys"]["SegmentationImages"] = {
+            "name": default_metadata["Ophys"]["SegmentationImages"]["name"],
+            "description": default_metadata["Ophys"]["SegmentationImages"]["description"],
+        }
+    # Don't merge the full default metadata to avoid conflicts with new structure
 
     segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
     images_container_name = segmentation_images_metadata["name"]
@@ -1489,19 +1527,49 @@ def add_summary_images_to_nwbfile(
         ophys.add(Images(name=images_container_name, description=segmentation_images_metadata["description"]))
     image_collection = ophys.data_interfaces[images_container_name]
 
-    plane_segmentation_name = (
-        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
-    )
+    # Find the metadata_key that corresponds to this plane_segmentation_name (if not provided)
+    if metadata_key is None:
+        if plane_segmentation_name is None:
+            # Get default metadata_key from new dictionary structure (use actual metadata, not default)
+            if "ImageSegmentation" in metadata_copy["Ophys"]:
+                segmentation_keys = [k for k in metadata_copy["Ophys"]["ImageSegmentation"].keys() if k != "name"]
+                if segmentation_keys:
+                    metadata_key = segmentation_keys[0]
+                    plane_segmentation_name = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]["name"]
+        else:
+            # Find metadata_key by looking up plane_segmentation_name in ImageSegmentation
+            for key, seg_data in metadata_copy["Ophys"]["ImageSegmentation"].items():
+                if key != "name" and isinstance(seg_data, dict) and seg_data.get("name") == plane_segmentation_name:
+                    metadata_key = key
+                    break
+
+    # If metadata_key is provided but plane_segmentation_name is None, get the plane name
+    if metadata_key is not None and plane_segmentation_name is None:
+        if (
+            "ImageSegmentation" in metadata_copy["Ophys"]
+            and metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]
+        ):
+            plane_segmentation_name = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]["name"]
+
+    if metadata_key is None:
+        raise ValueError(f"Could not find metadata_key for plane segmentation '{plane_segmentation_name}'")
+
+    # Use metadata_key to find images instead of plane_segmentation_name
     assert (
-        plane_segmentation_name in segmentation_images_metadata
-    ), f"Plane segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['SegmentationImages']"
-    images_metadata = segmentation_images_metadata[plane_segmentation_name]
+        metadata_key in segmentation_images_metadata
+    ), f"Metadata key '{metadata_key}' not found in metadata['Ophys']['SegmentationImages']"
+    images_metadata = segmentation_images_metadata[metadata_key]
 
     for img_name, img in images_to_add.items():
-        image_kwargs = dict(name=img_name, data=img.T)
         image_metadata = images_metadata.get(img_name, None)
         if image_metadata is not None:
+            # Use the unique name from metadata instead of the original img_name
+            unique_name = image_metadata.get("name", img_name)
+            image_kwargs = dict(name=unique_name, data=img.T)
             image_kwargs.update(image_metadata)
+        else:
+            # Fallback to original name if no metadata found
+            image_kwargs = dict(name=img_name, data=img.T)
 
         # Note that nwb uses the conversion width x height (columns, rows) and roiextractors uses the transpose
         image_collection.add_image(GrayscaleImage(**image_kwargs))
@@ -1520,6 +1588,7 @@ def add_segmentation_to_nwbfile(
     include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Add segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1566,6 +1635,7 @@ def add_segmentation_to_nwbfile(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
+        metadata_key=metadata_key,
     )
     if include_background_segmentation:
         add_background_plane_segmentation_to_nwbfile(
@@ -1582,9 +1652,9 @@ def add_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
         include_background_segmentation=include_background_segmentation,
         iterator_options=iterator_options,
+        metadata_key=metadata_key,
     )
 
     if include_background_segmentation:
@@ -1592,8 +1662,8 @@ def add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
-            background_plane_segmentation_name=background_plane_segmentation_name,
             iterator_options=iterator_options,
+            metadata_key=metadata_key,
         )
 
     # Adding summary images (mean and correlation)
@@ -1602,6 +1672,7 @@ def add_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
+        metadata_key=metadata_key,
     )
 
     return nwbfile

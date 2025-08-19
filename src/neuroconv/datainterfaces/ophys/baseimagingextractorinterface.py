@@ -159,7 +159,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-        photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int | None = None,
@@ -179,8 +178,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             Metadata for the NWBFile, by default None.
         photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
             The type of photon series to be added, by default "TwoPhotonSeries".
-        photon_series_index : int, optional
-            The index of the photon series in the provided imaging data, by default 0.
         parent_container : {"acquisition", "processing/ophys"}, optional
             Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
             under the "processing/ophys" module, by default "acquisition".
@@ -229,7 +226,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
+            metadata_key=self.metadata_key,
             parent_container=parent_container,
             always_write_timestamps=always_write_timestamps,
             iterator_type=iterator_type,
