@@ -7,8 +7,8 @@ from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -84,7 +84,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
 
         # Handle backward compatibility
         if is_old_ophys_metadata_format(metadata):
-            metadata = convert_ophys_metadata_to_dict(metadata)
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         # Access the experiment XML dictionary from the extractor
         xml_dict = self.imaging_extractor._experiment_xml_dict

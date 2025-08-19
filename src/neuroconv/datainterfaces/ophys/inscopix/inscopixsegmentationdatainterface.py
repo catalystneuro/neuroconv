@@ -2,8 +2,8 @@ from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 from ....tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict
 
@@ -56,7 +56,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Handle backward compatibility
         if is_old_ophys_metadata_format(metadata):
-            metadata = convert_ophys_metadata_to_dict(metadata)
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         extractor = self.segmentation_extractor
 
@@ -88,17 +88,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Device information
         if device_info:
-            # Get device metadata using the metadata_key
-            if "Device" in metadata["Ophys"] and isinstance(metadata["Ophys"]["Device"], list):
-                # Old structure (backward compatibility)
-                device_metadata = metadata["Ophys"]["Device"][0]
-            else:
-                # New dictionary structure - we need to update the device in the global Devices
-                if "Devices" not in metadata:
-                    metadata["Devices"] = {}
-                if self.metadata_key not in metadata["Devices"]:
-                    metadata["Devices"][self.metadata_key] = {"name": "Device", "description": ""}
-                device_metadata = metadata["Devices"][self.metadata_key]
+            # Update device in the global Devices dictionary using metadata_key
+            if "Devices" not in metadata:
+                metadata["Devices"] = {}
+            if self.metadata_key not in metadata["Devices"]:
+                metadata["Devices"][self.metadata_key] = {"name": "Device", "description": ""}
+            device_metadata = metadata["Devices"][self.metadata_key]
 
             # Update the actual device name
             if device_info.get("device_name"):
@@ -131,12 +126,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 device_metadata["description"] = "; ".join(device_desc_parts)
 
             # Update imaging plane metadata
-            if "ImagingPlanes" in metadata["Ophys"]:
-                # New dictionary structure
-                imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
-            else:
-                # Old list structure (backward compatibility)
-                imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
 
             # Update imaging plane device reference
             if device_info.get("device_name"):

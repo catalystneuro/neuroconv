@@ -99,7 +99,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
         )
 
-        # Update ImageSegmentation to use dictionary structure
         image_segmentation_schema = metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]
         image_segmentation_schema["type"] = "object"
         image_segmentation_schema["patternProperties"] = {

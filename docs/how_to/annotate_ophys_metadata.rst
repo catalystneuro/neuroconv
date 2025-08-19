@@ -25,21 +25,21 @@ Each ophys interface now accepts a ``metadata_key`` parameter that organizes all
     # Create interface with a descriptive metadata key
     interface = ScanImageImagingInterface(
         file_path="path/to/data.tif",
-        metadata_key="visual_cortex"  # This key will be used for all components
+        metadata_key="scan_image_metadata"  # This key will be used for all components
     )
 
     # Get metadata - notice the dictionary structure
     metadata = interface.get_metadata()
 
     # Access metadata using the key
-    print(metadata["Devices"]["visual_cortex"])
+    print(metadata["Devices"]["scan_image_metadata"])
     # {'name': 'Microscope', 'description': 'Two-photon microscope'}
 
-    print(metadata["Ophys"]["ImagingPlanes"]["visual_cortex"])
-    # {'name': 'ImagingPlane', 'device': 'visual_cortex', ...}
+    print(metadata["Ophys"]["ImagingPlanes"]["scan_image_metadata"])
+    # {'name': 'ImagingPlane', 'device': 'scan_image_metadata', ...}
 
-    print(metadata["Ophys"]["TwoPhotonSeries"]["visual_cortex"])
-    # {'name': 'TwoPhotonSeries', 'imaging_plane': 'visual_cortex', ...}
+    print(metadata["Ophys"]["TwoPhotonSeries"]["scan_image_metadata"])
+    # {'name': 'TwoPhotonSeries', 'imaging_plane': 'scan_image_metadata', ...}
 
 Multi-Region Experiment Example
 -------------------------------
@@ -66,18 +66,18 @@ This example shows how to combine data from multiple brain regions, each with it
 
     visual_segmentation = Suite2pSegmentationInterface(
         folder_path="data/suite2p/visual_cortex",
-        metadata_key="visual_cortex_suite2p"
+        metadata_key="visual_cortex_suite2p_metadata_key"
     )
 
     # Hippocampus imaging and segmentation
     hippocampus_imaging = MiniscopeImagingInterface(
         folder_path="data/miniscope/hippocampus",
-        metadata_key="hippocampus"
+        metadata_key="hippocampus_miniscope_metadata_key"
     )
 
     hippocampus_segmentation = CaimanSegmentationInterface(
         file_path="data/caiman/hippocampus_results.hdf5",
-        metadata_key="hippocampus_caiman"
+        metadata_key="hippocampus_caiman_metadata_key"
     )
 
     # Step 2: Create converter with all interfaces
@@ -109,8 +109,8 @@ This example shows how to combine data from multiple brain regions, each with it
     #             "hippocampus": {...}
     #         },
     #         "ImageSegmentation": {
-    #             "visual_cortex_suite2p": {...},
-    #             "hippocampus_caiman": {...}
+    #             "visual_cortex_suite2p_metadata_key": {...},
+    #             "hippocampus_caiman_metadata_key": {...}
     #         }
     #     }
     # }
@@ -154,11 +154,11 @@ The dictionary structure makes it easy to edit metadata for specific components:
     )
 
     # Update segmentation descriptions
-    metadata["Ophys"]["ImageSegmentation"]["visual_cortex_suite2p"]["description"] = (
+    metadata["Ophys"]["ImageSegmentation"]["visual_cortex_suite2p_metadata_key"]["description"] = (
         "ROI segmentation of visual cortex neurons responding to oriented gratings"
     )
 
-    metadata["Ophys"]["ImageSegmentation"]["hippocampus_caiman"]["description"] = (
+    metadata["Ophys"]["ImageSegmentation"]["hippocampus_caiman_metadata_key"]["description"] = (
         "ROI segmentation of hippocampal place cells"
     )
 
@@ -184,7 +184,7 @@ Choose descriptive metadata keys that clearly identify the data:
 **Good examples:**
 
 - ``"visual_cortex"`` - Clear anatomical location
-- ``"visual_cortex_suite2p"`` - Location + analysis method
+- ``"visual_cortex_suite2p_metadata_key"`` - Location + analysis method
 - ``"hippocampus_ca1"`` - Specific subregion
 - ``"m1_layer5"`` - Brain region + layer
 - ``"gcamp6s_920nm"`` - Indicator + wavelength

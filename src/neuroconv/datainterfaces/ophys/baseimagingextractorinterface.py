@@ -136,21 +136,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:
             photon_series_data = metadata["Ophys"]["TwoPhotonSeries"]
-            # Handle both old list format and new dictionary format
-            if isinstance(photon_series_data, list):
-                # Old format
-                for two_photon_series in photon_series_data:
-                    if "dimension" in two_photon_series:
-                        two_photon_series["dimension"] = list(two_photon_series["dimension"])
-                    if "rate" in two_photon_series:
-                        two_photon_series["rate"] = float(two_photon_series["rate"])
-            elif isinstance(photon_series_data, dict):
-                # New format
-                for key, two_photon_series in photon_series_data.items():
-                    if "dimension" in two_photon_series:
-                        two_photon_series["dimension"] = list(two_photon_series["dimension"])
-                    if "rate" in two_photon_series:
-                        two_photon_series["rate"] = float(two_photon_series["rate"])
+            # New dictionary format only
+            for two_photon_series in photon_series_data.values():
+                if "dimension" in two_photon_series:
+                    two_photon_series["dimension"] = list(two_photon_series["dimension"])
+                if "rate" in two_photon_series:
+                    two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:

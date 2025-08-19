@@ -8,8 +8,8 @@ from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict
 
@@ -84,7 +84,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         # Handle backward compatibility
         if is_old_ophys_metadata_format(metadata):
-            metadata = convert_ophys_metadata_to_dict(metadata)
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         # Remove TwoPhotonSeries if it exists (Miniscope uses OnePhotonSeries)
         metadata["Ophys"].pop("TwoPhotonSeries", None)

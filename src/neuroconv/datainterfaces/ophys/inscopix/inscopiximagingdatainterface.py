@@ -4,8 +4,8 @@ from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict
 
@@ -91,7 +91,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         # Handle backward compatibility
         if is_old_ophys_metadata_format(metadata):
-            metadata = convert_ophys_metadata_to_dict(metadata)
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         extractor = self.imaging_extractor
         extractor_metadata = extractor._get_metadata()

@@ -3,8 +3,8 @@ from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict
 
@@ -69,7 +69,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
         # Handle backward compatibility
         if is_old_ophys_metadata_format(metadata):
-            metadata = convert_ophys_metadata_to_dict(metadata)
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         micromanager_metadata = self.imaging_extractor.micromanager_metadata
         session_start_time = parse(micromanager_metadata["Summary"]["StartTime"])

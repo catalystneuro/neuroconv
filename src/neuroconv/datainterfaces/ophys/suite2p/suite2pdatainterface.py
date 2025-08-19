@@ -5,8 +5,8 @@ from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 from ....tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict
 
@@ -19,7 +19,7 @@ def _update_metadata_links_for_plane_segmentation_name(
 
     # Handle backward compatibility
     if is_old_ophys_metadata_format(metadata_copy):
-        metadata_copy = convert_ophys_metadata_to_dict(metadata_copy)
+        metadata_copy = update_old_ophys_metadata_format_to_new(metadata_copy)
 
     # Get plane segmentation metadata using the metadata_key
     if "ImageSegmentation" in metadata_copy["Ophys"] and metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]:
@@ -186,7 +186,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Handle backward compatibility
         if is_old_ophys_metadata_format(metadata):
-            metadata = convert_ophys_metadata_to_dict(metadata)
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         # Get the plane segmentation metadata using metadata_key
         if "ImageSegmentation" in metadata["Ophys"] and self.metadata_key in metadata["Ophys"]["ImageSegmentation"]:

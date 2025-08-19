@@ -31,7 +31,7 @@ def is_old_ophys_metadata_format(metadata: Dict[str, Any]) -> bool:
     )
 
 
-def convert_ophys_metadata_to_dict(metadata: Dict[str, Any]) -> Dict[str, Any]:
+def update_old_ophys_metadata_format_to_new(metadata: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert old list-based ophys metadata to new dictionary format.
 

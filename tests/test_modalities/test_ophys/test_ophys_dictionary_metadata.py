@@ -4,8 +4,8 @@ import pytest
 
 from neuroconv import NWBConverter
 from neuroconv.tools.ophys_metadata_conversion import (
-    convert_ophys_metadata_to_dict,
     is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
 )
 from neuroconv.tools.testing.mock_interfaces import (
     MockImagingInterface,
@@ -118,7 +118,7 @@ class TestOphysDictionaryMetadata:
 
         # Test conversion with warning
         with pytest.warns(DeprecationWarning):
-            new_metadata = convert_ophys_metadata_to_dict(old_metadata)
+            new_metadata = update_old_ophys_metadata_format_to_new(old_metadata)
 
         # Check structure was converted
         assert "ImagingPlanes" in new_metadata["Ophys"]

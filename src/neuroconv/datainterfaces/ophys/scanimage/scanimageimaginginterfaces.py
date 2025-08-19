@@ -177,14 +177,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # Update device information
             device_name = "Microscope"
-            # Handle both old list format and new dict format for backward compatibility
-            if "Device" in metadata["Ophys"] and isinstance(metadata["Ophys"]["Device"], list):
-                metadata["Ophys"]["Device"][0].update(
+            # Update device in the global Devices dictionary using metadata_key
+            if "Devices" in metadata and self.metadata_key in metadata["Devices"]:
+                metadata["Devices"][self.metadata_key].update(
                     name=device_name, description="Microscope controlled by ScanImage"
                 )
-            else:
-                # This shouldn't happen with current structure, but future-proofing
-                pass
             channel_name_string = self.channel_name.replace(" ", "").capitalize()
 
             optical_channel_name = f"OpticalChannel{channel_name_string}"
@@ -240,8 +237,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 if "SI.VERSION_MAJOR" in frame_data:
                     version = f"{frame_data.get('SI.VERSION_MAJOR', '')}.{frame_data.get('SI.VERSION_MINOR', '')}.{frame_data.get('SI.VERSION_UPDATE', '')}"
                     # Update device description with version info
-                    if "Device" in metadata["Ophys"] and isinstance(metadata["Ophys"]["Device"], list):
-                        metadata["Ophys"]["Device"][0][
+                    if "Devices" in metadata and self.metadata_key in metadata["Devices"]:
+                        metadata["Devices"][self.metadata_key][
                             "description"
                         ] = f"Microscope and acquisition data with ScanImage (version {version})"
 
