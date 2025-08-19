@@ -95,6 +95,20 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
         imaging_plane_schema["properties"]["optical_channel"].pop("maxItems")
+
+        # Replace 'device' with 'device_metadata_key' to match new metadata structure
+        if "device" in imaging_plane_schema["properties"]:
+            imaging_plane_schema["properties"].pop("device")
+            imaging_plane_schema["properties"]["device_metadata_key"] = {
+                "type": "string",
+                "description": "Reference key to the device in the Devices dictionary",
+            }
+            # Update required fields if device was required
+            if "required" in imaging_plane_schema and "device" in imaging_plane_schema["required"]:
+                imaging_plane_schema["required"] = [
+                    "device_metadata_key" if req == "device" else req for req in imaging_plane_schema["required"]
+                ]
+
         metadata_schema["properties"]["Ophys"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=imaging_plane_schema,

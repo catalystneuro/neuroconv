@@ -51,6 +51,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         plane_name: str | None = None,
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Parameters

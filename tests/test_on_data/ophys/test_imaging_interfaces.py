@@ -419,7 +419,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
-            device=cls.device_metadata["name"],
+            device="bruker_device_default",
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=29.873732099062256,
             grid_spacing=[1.1078125e-06, 1.1078125e-06],
@@ -430,14 +430,13 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
             dimension=[512, 512],
-            imaging_plane=cls.imaging_plane_metadata["name"],
+            imaging_plane_metadata_key="default_imaging_plane_metadata_key",
             scan_line_rate=15840.580398865815,
             field_of_view=[0.0005672, 0.0005672],
         )
         cls.ophys_metadata = dict(
-            Device=[cls.device_metadata],
-            ImagingPlane=[cls.imaging_plane_metadata],
-            TwoPhotonSeries=[cls.two_photon_series_metadata],
+            ImagingPlanes={"default_imaging_plane_metadata_key": cls.imaging_plane_metadata},
+            TwoPhotonSeries={"default": cls.two_photon_series_metadata},
         )
 
     def check_extracted_metadata(self, metadata: dict):

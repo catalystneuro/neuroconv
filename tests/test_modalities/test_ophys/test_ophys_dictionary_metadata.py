@@ -61,7 +61,7 @@ class TestOphysInterfacesGetMetadata:
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
                 "location": "unknown",
-                "device": "Microscope",
+                "device_metadata_key": "default_device_metadata_key",
                 "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
             }
         }
@@ -109,7 +109,7 @@ class TestOphysInterfacesGetMetadata:
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
                 "location": "unknown",
-                "device": "Microscope",
+                "device_metadata_key": "default_device_metadata_key",
                 "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
             }
         }
@@ -143,7 +143,7 @@ class TestOphysInterfacesGetMetadata:
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
                 "location": "unknown",
-                "device": "Microscope",
+                "device_metadata_key": "default_device_metadata_key",
                 "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
             },
         }
@@ -199,7 +199,7 @@ class TestOphysInterfacesGetMetadata:
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
                 "location": "unknown",
-                "device": "Microscope",
+                "device_metadata_key": "default_device_metadata_key",
                 "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
             },
         }
@@ -249,7 +249,7 @@ class TestOphysInterfacesGetMetadata:
                 "description": "The plane or volume being imaged by the microscope.",
                 "indicator": "unknown",
                 "location": "unknown",
-                "device": "Microscope",
+                "device_metadata_key": "default_device_metadata_key",
                 "optical_channel": [{"name": "channel_num_0", "description": "An optical channel of the microscope."}],
             },
         }
@@ -371,7 +371,7 @@ class TestOphysMetadataPropagation:
         assert series_names == {"TwoPhotonSeries1", "TwoPhotonSeries2"}
 
     def test_multiple_imaging_interfaces_linking_to_different_imaging_planes(self):
-        """Test multiple imaging interfaces linking to different planes."""
+        """Test multiple imaging interfaces linking to different planes with different devices."""
         visual_cortex_metadata_key = "visual_cortex"
         hippocampus_metadata_key = "hippocampus"
 
@@ -382,10 +382,24 @@ class TestOphysMetadataPropagation:
         # Create ConverterPipe with both interfaces
         converter = ConverterPipe(data_interfaces=[interface1, interface2])
 
-        # Get metadata and modify it to create distinct imaging planes
+        # Get metadata and modify it to create distinct imaging planes with different devices
         metadata = converter.get_metadata()
 
-        # First: Create new imaging plane entries with unique names
+        # Create different device metadata at top level following new schema
+        visual_cortex_device_key = "visual_cortex_device_metadata_key"
+        hippocampus_device_key = "hippocampus_device_metadata_key"
+
+        # Add devices to top-level Devices
+        metadata["Devices"][visual_cortex_device_key] = {
+            "name": "VisualCortexMicroscope",
+            "description": "Microscope for visual cortex imaging",
+        }
+        metadata["Devices"][hippocampus_device_key] = {
+            "name": "HippocampusMicroscope",
+            "description": "Microscope for hippocampus imaging",
+        }
+
+        # Create new imaging plane entries with unique names and different devices
         visual_cortex_plane_key = "VisualCortexPlane"
         hippocampus_plane_key = "HippocampusPlane"
 
@@ -395,7 +409,7 @@ class TestOphysMetadataPropagation:
             "description": "Visual cortex imaging plane",
             "indicator": "GCaMP6f",
             "location": "visual cortex",
-            "device": "Microscope",
+            "device_metadata_key": visual_cortex_device_key,  # Reference to visual cortex device
             "excitation_lambda": 488.0,
             "optical_channel": [
                 {
@@ -412,7 +426,7 @@ class TestOphysMetadataPropagation:
             "description": "Hippocampus imaging plane",
             "indicator": "GCaMP6f",
             "location": "hippocampus",
-            "device": "Microscope",
+            "device_metadata_key": hippocampus_device_key,  # Reference to hippocampus device
             "excitation_lambda": 488.0,
             "optical_channel": [
                 {
@@ -450,7 +464,7 @@ class TestOphysMetadataPropagation:
         assert visual_cortex_plane.description == visual_cortex_plane_metadata["description"]
         assert visual_cortex_plane.indicator == visual_cortex_plane_metadata["indicator"]
         assert visual_cortex_plane.location == visual_cortex_plane_metadata["location"]
-        assert visual_cortex_plane.device.name == visual_cortex_plane_metadata["device"]
+        assert visual_cortex_plane.device.name == metadata["Devices"][visual_cortex_device_key]["name"]
         assert visual_cortex_plane.excitation_lambda == visual_cortex_plane_metadata["excitation_lambda"]
         assert len(visual_cortex_plane.optical_channel) == len(visual_cortex_plane_metadata["optical_channel"])
         assert visual_cortex_plane.optical_channel[0].name == visual_cortex_plane_metadata["optical_channel"][0]["name"]
@@ -465,7 +479,7 @@ class TestOphysMetadataPropagation:
         assert hippocampus_plane.description == hippocampus_plane_metadata["description"]
         assert hippocampus_plane.indicator == hippocampus_plane_metadata["indicator"]
         assert hippocampus_plane.location == hippocampus_plane_metadata["location"]
-        assert hippocampus_plane.device.name == hippocampus_plane_metadata["device"]
+        assert hippocampus_plane.device.name == metadata["Devices"][hippocampus_device_key]["name"]
         assert hippocampus_plane.excitation_lambda == hippocampus_plane_metadata["excitation_lambda"]
         assert len(hippocampus_plane.optical_channel) == len(hippocampus_plane_metadata["optical_channel"])
         assert hippocampus_plane.optical_channel[0].name == hippocampus_plane_metadata["optical_channel"][0]["name"]
@@ -484,6 +498,22 @@ class TestOphysMetadataPropagation:
         referenced_planes = {series.imaging_plane.name for series in two_photon_series_list}
         expected_plane_names = {visual_cortex_plane_metadata["name"], hippocampus_plane_metadata["name"]}
         assert referenced_planes == expected_plane_names
+
+        # Verify both devices are propagated to NWB file
+        assert len(nwbfile.devices) == 2
+        expected_visual_cortex_device_name = metadata["Devices"][visual_cortex_device_key]["name"]
+        expected_hippocampus_device_name = metadata["Devices"][hippocampus_device_key]["name"]
+
+        assert expected_visual_cortex_device_name in nwbfile.devices
+        assert expected_hippocampus_device_name in nwbfile.devices
+
+        # Verify devices are properly associated with their imaging planes through TwoPhotonSeries
+        series_by_name = {series.name: series for series in two_photon_series_list}
+        visual_cortex_series = series_by_name["TwoPhotonSeriesVisualCortex"]
+        hippocampus_series = series_by_name["TwoPhotonSeriesHippocampus"]
+
+        assert visual_cortex_series.imaging_plane.device.name == expected_visual_cortex_device_name
+        assert hippocampus_series.imaging_plane.device.name == expected_hippocampus_device_name
 
     def test_multiple_segmentation_interfaces_default_behavior(self):
         """Test multiple segmentation interfaces sharing the same plane by default."""
@@ -546,7 +576,7 @@ class TestOphysMetadataPropagation:
             "description": "Shared imaging plane for segmentation",
             "indicator": "GCaMP6f",
             "location": "cortex",
-            "device": "Microscope",
+            "device_metadata_key": "default_device_metadata_key",
             "excitation_lambda": 488.0,
             "optical_channel": [
                 {
@@ -585,7 +615,7 @@ class TestOphysMetadataPropagation:
         assert segmentation_names == {"PlaneSegmentationAnalysis1", "PlaneSegmentationAnalysis2"}
 
     def test_multiple_segmentation_interfaces_linking_to_different_imaging_planes(self):
-        """Test multiple segmentation interfaces linking to different planes."""
+        """Test multiple segmentation interfaces linking to different planes with different devices."""
         visual_cortex_metadata_key = "visual_cortex"
         hippocampus_metadata_key = "hippocampus"
 
@@ -596,10 +626,24 @@ class TestOphysMetadataPropagation:
         # Create ConverterPipe with both interfaces
         converter = ConverterPipe(data_interfaces=[interface1, interface2])
 
-        # Get metadata and modify it to create distinct imaging planes
+        # Get metadata and modify it to create distinct imaging planes with different devices
         metadata = converter.get_metadata()
 
-        # First: Create new imaging plane entries with unique names
+        # Create different device metadata at top level following new schema
+        visual_cortex_device_key = "visual_cortex_device_metadata_key"
+        hippocampus_device_key = "hippocampus_device_metadata_key"
+
+        # Add devices to top-level Devices
+        metadata["Devices"][visual_cortex_device_key] = {
+            "name": "VisualCortexMicroscope",
+            "description": "Microscope for visual cortex segmentation",
+        }
+        metadata["Devices"][hippocampus_device_key] = {
+            "name": "HippocampusMicroscope",
+            "description": "Microscope for hippocampus segmentation",
+        }
+
+        # Create new imaging plane entries with unique names and different devices
         visual_cortex_plane_key = "VisualCortexPlane"
         hippocampus_plane_key = "HippocampusPlane"
 
@@ -609,7 +653,7 @@ class TestOphysMetadataPropagation:
             "description": "Visual cortex imaging plane",
             "indicator": "GCaMP6f",
             "location": "visual cortex",
-            "device": "Microscope",
+            "device_metadata_key": visual_cortex_device_key,  # Reference to visual cortex device
             "excitation_lambda": 488.0,
             "optical_channel": [
                 {
@@ -626,7 +670,7 @@ class TestOphysMetadataPropagation:
             "description": "Hippocampus imaging plane",
             "indicator": "GCaMP6f",
             "location": "hippocampus",
-            "device": "Microscope",
+            "device_metadata_key": hippocampus_device_key,  # Reference to hippocampus device
             "excitation_lambda": 488.0,
             "optical_channel": [
                 {
@@ -664,7 +708,10 @@ class TestOphysMetadataPropagation:
         assert visual_cortex_plane.description == visual_cortex_plane_metadata["description"]
         assert visual_cortex_plane.indicator == visual_cortex_plane_metadata["indicator"]
         assert visual_cortex_plane.location == visual_cortex_plane_metadata["location"]
-        assert visual_cortex_plane.device.name == visual_cortex_plane_metadata["device"]
+        assert (
+            visual_cortex_plane.device.name
+            == metadata["Devices"][visual_cortex_plane_metadata["device_metadata_key"]]["name"]
+        )
         assert visual_cortex_plane.excitation_lambda == visual_cortex_plane_metadata["excitation_lambda"]
         assert len(visual_cortex_plane.optical_channel) == len(visual_cortex_plane_metadata["optical_channel"])
         assert visual_cortex_plane.optical_channel[0].name == visual_cortex_plane_metadata["optical_channel"][0]["name"]
@@ -679,7 +726,10 @@ class TestOphysMetadataPropagation:
         assert hippocampus_plane.description == hippocampus_plane_metadata["description"]
         assert hippocampus_plane.indicator == hippocampus_plane_metadata["indicator"]
         assert hippocampus_plane.location == hippocampus_plane_metadata["location"]
-        assert hippocampus_plane.device.name == hippocampus_plane_metadata["device"]
+        assert (
+            hippocampus_plane.device.name
+            == metadata["Devices"][hippocampus_plane_metadata["device_metadata_key"]]["name"]
+        )
         assert hippocampus_plane.excitation_lambda == hippocampus_plane_metadata["excitation_lambda"]
         assert len(hippocampus_plane.optical_channel) == len(hippocampus_plane_metadata["optical_channel"])
         assert hippocampus_plane.optical_channel[0].name == hippocampus_plane_metadata["optical_channel"][0]["name"]
@@ -709,3 +759,15 @@ class TestOphysMetadataPropagation:
 
         assert visual_cortex_segmentation.imaging_plane.name == visual_cortex_plane_metadata["name"]
         assert hippocampus_segmentation.imaging_plane.name == hippocampus_plane_metadata["name"]
+
+        # Verify both devices are propagated to NWB file
+        assert len(nwbfile.devices) == 2
+        expected_visual_cortex_device_name = metadata["Devices"][visual_cortex_device_key]["name"]
+        expected_hippocampus_device_name = metadata["Devices"][hippocampus_device_key]["name"]
+
+        assert expected_visual_cortex_device_name in nwbfile.devices
+        assert expected_hippocampus_device_name in nwbfile.devices
+
+        # Verify devices are properly associated with their imaging planes
+        assert visual_cortex_segmentation.imaging_plane.device.name == expected_visual_cortex_device_name
+        assert hippocampus_segmentation.imaging_plane.device.name == expected_hippocampus_device_name

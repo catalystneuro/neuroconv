@@ -173,20 +173,20 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         description = f"Version {xml_metadata['version']}"
         device_name = "BrukerFluorescenceMicroscope"
 
-        # Update device metadata in the new structure
+        # Create device metadata at top level following new schema
+        device_key = f"bruker_device_{self.metadata_key}"
         if "Devices" not in metadata:
             metadata["Devices"] = {}
-        if self.metadata_key not in metadata["Devices"]:
-            metadata["Devices"][self.metadata_key] = {}
-        metadata["Devices"][self.metadata_key].update(
-            name=device_name,
-            description=description,
-        )
+        metadata["Devices"][device_key] = {
+            "name": device_name,
+            "description": description,
+        }
 
-        # Update imaging plane metadata
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+        # Update imaging plane metadata - use default_imaging_plane_metadata_key for the shared default plane
+        default_imaging_plane_metadata_key = "default_imaging_plane_metadata_key"
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_metadata_key]
         imaging_plane_metadata.update(
-            device=self.metadata_key,
+            device_metadata_key=device_key,  # Reference to device key, not device name
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
 
@@ -380,20 +380,20 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         description = f"Version {xml_metadata['version']}"
         device_name = "BrukerFluorescenceMicroscope"
 
-        # Update device metadata in the new structure
+        # Create device metadata at top level following new schema
+        device_key = f"bruker_device_{self.metadata_key}"
         if "Devices" not in metadata:
             metadata["Devices"] = {}
-        if self.metadata_key not in metadata["Devices"]:
-            metadata["Devices"][self.metadata_key] = {}
-        metadata["Devices"][self.metadata_key].update(
-            name=device_name,
-            description=description,
-        )
+        metadata["Devices"][device_key] = {
+            "name": device_name,
+            "description": description,
+        }
 
-        # Update imaging plane metadata
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+        # Update imaging plane metadata - use default_imaging_plane_metadata_key for the shared default plane
+        default_imaging_plane_metadata_key = "default_imaging_plane_metadata_key"
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_metadata_key]
         imaging_plane_metadata.update(
-            device=self.metadata_key,
+            device_metadata_key=device_key,  # Reference to device key, not device name
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
 
