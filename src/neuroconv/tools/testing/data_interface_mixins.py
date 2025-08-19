@@ -400,7 +400,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_recordings_equal
-        from spikeinterface.extractors import NwbRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor
 
         recording = self.interface.recording_extractor
 
@@ -626,7 +626,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_sortings_equal
-        from spikeinterface.extractors import NwbSortingExtractor
+        from spikeinterface.extractors.extractor_classes import NwbSortingExtractor
 
         sorting = self.interface.sorting_extractor
         sf = sorting.get_sampling_frequency()

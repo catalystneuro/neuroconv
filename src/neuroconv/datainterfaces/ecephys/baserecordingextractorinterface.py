@@ -19,7 +19,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "voltage", "recording")
 
-    ExtractorModuleName = "spikeinterface.extractors"
+    ExtractorModuleName = "spikeinterface.extractors.extractor_classes"
 
     def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
