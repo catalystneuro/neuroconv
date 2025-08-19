@@ -13,3 +13,4 @@ This section contains practical guides for using NeuroConv effectively.
    annotate_ecephys_data
    annotate_ophys_metadata
    convert_video_formats_with_ffmpeg
+   adding_multiple_sorting_interfaces

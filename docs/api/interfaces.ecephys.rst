@@ -13,6 +13,10 @@ AlphaOmega
 ----------
 .. automodule:: neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface
 
+Axon Recording
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.axon.axondatainterface
+
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
@@ -33,9 +37,13 @@ European Data Format (EDF) Recording
 ------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
 
-Intan Recording
+Intan Amplifier
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
+
+Intan Analog
+------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intananaloginterface
 
 KiloSort Sorting
 ----------------

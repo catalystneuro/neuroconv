@@ -248,7 +248,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             This is a required parameter to avoid the pitfall of using the wrong mode.
         """
         # Set the probe to the recording extractor
-        self.recording_extractor.set_probe(
+        self.recording_extractor._set_probes(
             probe,
             in_place=True,
             group_mode=group_mode,
