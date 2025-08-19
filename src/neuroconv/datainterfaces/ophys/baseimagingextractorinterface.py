@@ -103,9 +103,29 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             OnePhotonSeries=OnePhotonSeries,
             TwoPhotonSeries=TwoPhotonSeries,
         )[self.photon_series_type]
+
+        # Get the base schema and modify it for our new structure
+        photon_series_schema = get_schema_from_hdmf_class(photon_series)
+
+        # Replace 'imaging_plane' with 'imaging_plane_key' to match new metadata structure
+        if "imaging_plane" in photon_series_schema["properties"]:
+            # Remove the old imaging_plane property
+            photon_series_schema["properties"].pop("imaging_plane")
+            # Add the new imaging_plane_metadata_key property as a string reference
+            photon_series_schema["properties"]["imaging_plane_metadata_key"] = {
+                "type": "string",
+                "description": "Reference key to the imaging plane in the ImagingPlanes dictionary",
+            }
+            # Update required fields if imaging_plane was required
+            if "required" in photon_series_schema and "imaging_plane" in photon_series_schema["required"]:
+                photon_series_schema["required"] = [
+                    "imaging_plane_metadata_key" if req == "imaging_plane" else req
+                    for req in photon_series_schema["required"]
+                ]
+
         metadata_schema["properties"]["Ophys"]["definitions"].update(
             {
-                self.photon_series_type: get_schema_from_hdmf_class(photon_series),
+                self.photon_series_type: photon_series_schema,
             }
         )
 

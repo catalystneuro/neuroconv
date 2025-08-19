@@ -110,9 +110,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
                 "properties": {
                     "name": {"type": "string"},
                     "description": {"type": "string"},
-                    "imaging_plane": {"type": "string"},  # Reference by key
+                    "imaging_plane_metadata_key": {"type": "string"},  # Reference by key
                 },
-                "required": ["name", "imaging_plane"],
+                "required": ["name", "imaging_plane_metadata_key"],
             }
         }
         image_segmentation_schema["additionalProperties"] = False

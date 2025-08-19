@@ -72,7 +72,7 @@ class TestOphysInterfacesGetMetadata:
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",  # References the default imaging plane
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",  # References the default imaging plane
                 "dimension": [10, 10],  # Mock data dimensions
             }
         }
@@ -98,7 +98,7 @@ class TestOphysInterfacesGetMetadata:
             metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
             },
         }
 
@@ -154,7 +154,7 @@ class TestOphysInterfacesGetMetadata:
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
                 "dimension": [10, 10],
             },
         }
@@ -165,7 +165,7 @@ class TestOphysInterfacesGetMetadata:
             segmentation_metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
             },
         }
 
@@ -210,14 +210,14 @@ class TestOphysInterfacesGetMetadata:
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
                 "dimension": [10, 10],
             },
             imaging2_metadata_key: {
                 "name": "TwoPhotonSeries",
                 "description": "Imaging data from two-photon excitation microscopy.",
                 "unit": "n.a.",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
                 "dimension": [10, 10],
             },
         }
@@ -260,12 +260,12 @@ class TestOphysInterfacesGetMetadata:
             segmentation1_metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
             },
             segmentation2_metadata_key: {
                 "name": "PlaneSegmentation",
                 "description": "Segmented ROIs",
-                "imaging_plane_key": "default_imaging_plane_metadata_key",
+                "imaging_plane_metadata_key": "default_imaging_plane_metadata_key",
             },
         }
 
@@ -346,8 +346,8 @@ class TestOphysMetadataPropagation:
         # Then: Modify the TwoPhotonSeries to have unique names and reference the new shared plane
         metadata["Ophys"]["TwoPhotonSeries"][series1_metadata_key]["name"] = "TwoPhotonSeries1"
         metadata["Ophys"]["TwoPhotonSeries"][series2_metadata_key]["name"] = "TwoPhotonSeries2"
-        metadata["Ophys"]["TwoPhotonSeries"][series1_metadata_key]["imaging_plane_key"] = shared_plane_key
-        metadata["Ophys"]["TwoPhotonSeries"][series2_metadata_key]["imaging_plane_key"] = shared_plane_key
+        metadata["Ophys"]["TwoPhotonSeries"][series1_metadata_key]["imaging_plane_metadata_key"] = shared_plane_key
+        metadata["Ophys"]["TwoPhotonSeries"][series2_metadata_key]["imaging_plane_metadata_key"] = shared_plane_key
 
         # Create NWB file to verify structure
         nwbfile = converter.create_nwbfile(metadata=metadata)
@@ -426,8 +426,12 @@ class TestOphysMetadataPropagation:
         # Then: Modify the TwoPhotonSeries to have unique names and reference the new planes
         metadata["Ophys"]["TwoPhotonSeries"][visual_cortex_metadata_key]["name"] = "TwoPhotonSeriesVisualCortex"
         metadata["Ophys"]["TwoPhotonSeries"][hippocampus_metadata_key]["name"] = "TwoPhotonSeriesHippocampus"
-        metadata["Ophys"]["TwoPhotonSeries"][visual_cortex_metadata_key]["imaging_plane_key"] = visual_cortex_plane_key
-        metadata["Ophys"]["TwoPhotonSeries"][hippocampus_metadata_key]["imaging_plane_key"] = hippocampus_plane_key
+        metadata["Ophys"]["TwoPhotonSeries"][visual_cortex_metadata_key][
+            "imaging_plane_metadata_key"
+        ] = visual_cortex_plane_key
+        metadata["Ophys"]["TwoPhotonSeries"][hippocampus_metadata_key][
+            "imaging_plane_metadata_key"
+        ] = hippocampus_plane_key
 
         # Create NWB file to verify structure
         nwbfile = converter.create_nwbfile(metadata=metadata)
@@ -556,8 +560,8 @@ class TestOphysMetadataPropagation:
         # Then: Modify the PlaneSegmentation entries to have unique names and reference the new shared plane
         metadata["Ophys"]["ImageSegmentation"][analysis1_metadata_key]["name"] = "PlaneSegmentationAnalysis1"
         metadata["Ophys"]["ImageSegmentation"][analysis2_metadata_key]["name"] = "PlaneSegmentationAnalysis2"
-        metadata["Ophys"]["ImageSegmentation"][analysis1_metadata_key]["imaging_plane_key"] = shared_plane_key
-        metadata["Ophys"]["ImageSegmentation"][analysis2_metadata_key]["imaging_plane_key"] = shared_plane_key
+        metadata["Ophys"]["ImageSegmentation"][analysis1_metadata_key]["imaging_plane_metadata_key"] = shared_plane_key
+        metadata["Ophys"]["ImageSegmentation"][analysis2_metadata_key]["imaging_plane_metadata_key"] = shared_plane_key
 
         # Create NWB file to verify structure
         nwbfile = converter.create_nwbfile(metadata=metadata)
@@ -637,9 +641,11 @@ class TestOphysMetadataPropagation:
         metadata["Ophys"]["ImageSegmentation"][visual_cortex_metadata_key]["name"] = "PlaneSegmentationVisualCortex"
         metadata["Ophys"]["ImageSegmentation"][hippocampus_metadata_key]["name"] = "PlaneSegmentationHippocampus"
         metadata["Ophys"]["ImageSegmentation"][visual_cortex_metadata_key][
-            "imaging_plane_key"
+            "imaging_plane_metadata_key"
         ] = visual_cortex_plane_key
-        metadata["Ophys"]["ImageSegmentation"][hippocampus_metadata_key]["imaging_plane_key"] = hippocampus_plane_key
+        metadata["Ophys"]["ImageSegmentation"][hippocampus_metadata_key][
+            "imaging_plane_metadata_key"
+        ] = hippocampus_plane_key
 
         # Create NWB file to verify structure
         nwbfile = converter.create_nwbfile(metadata=metadata)

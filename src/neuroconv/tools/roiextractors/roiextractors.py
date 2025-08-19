@@ -111,12 +111,12 @@ def _get_default_segmentation_metadata() -> DeepDict:
         default=dict(
             name="PlaneSegmentation",
             description="Segmented ROIs",
-            imaging_plane_key="default",  # Reference by key
+            imaging_plane_metadata_key="default",  # Reference by key
         ),
         background=dict(
             name="BackgroundPlaneSegmentation",
             description="Segmented Background Components",
-            imaging_plane_key="default",  # Reference by key
+            imaging_plane_metadata_key="default",  # Reference by key
         ),
     )
 
@@ -191,7 +191,7 @@ def get_nwb_imaging_metadata(
         name=photon_series_type,
         description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
         unit="n.a.",
-        imaging_plane_key=default_imaging_plane_metadata_key,  # Reference the default imaging plane
+        imaging_plane_metadata_key=default_imaging_plane_metadata_key,  # Reference the default imaging plane
         dimension=list(imgextractor.get_sample_shape()),
     )
 
@@ -445,9 +445,9 @@ def add_photon_series_to_nwbfile(
             raise ValueError(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
 
     # Add the image plane to nwb
-    imaging_plane_key = photon_series_metadata["imaging_plane_key"]
+    imaging_plane_metadata_key = photon_series_metadata["imaging_plane_metadata_key"]
     # Get the actual imaging plane name from metadata
-    imaging_plane_name = metadata_copy["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"]
+    imaging_plane_name = metadata_copy["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]["name"]
 
     # Check if imaging plane already exists, if not create it
     if imaging_plane_name not in nwbfile.imaging_planes:
@@ -456,7 +456,7 @@ def add_photon_series_to_nwbfile(
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
     photon_series_kwargs = deepcopy(photon_series_metadata)
     # Remove the key reference and add the actual imaging plane object
-    photon_series_kwargs.pop("imaging_plane_key", None)
+    photon_series_kwargs.pop("imaging_plane_metadata_key", None)
     photon_series_kwargs.update(imaging_plane=imaging_plane)
 
     # Add the data
@@ -764,7 +764,9 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         "name": "ImageSegmentation",
         metadata_key: deepcopy(default_template["Ophys"]["ImageSegmentation"]["default"]),
     }
-    metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_key"] = "default_imaging_plane_metadata_key"
+    metadata["Ophys"]["ImageSegmentation"][metadata_key][
+        "imaging_plane_metadata_key"
+    ] = "default_imaging_plane_metadata_key"
 
     # Add other ophys structures that don't use keys
     metadata["Ophys"]["Fluorescence"] = default_template["Ophys"]["Fluorescence"]
@@ -797,7 +799,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         metadata["Ophys"]["ImageSegmentation"][metadata_key] = deepcopy(
             metadata["Ophys"]["ImageSegmentation"]["default"]
         )
-        metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_key"] = metadata_key
+        metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_metadata_key"] = metadata_key
 
     # Get plane segmentation name from the dictionary structure
     plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][metadata_key]["name"]
@@ -1008,9 +1010,9 @@ def _add_plane_segmentation(
             f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']."
         )
 
-    imaging_plane_key = plane_segmentation_metadata["imaging_plane_key"]
+    imaging_plane_metadata_key = plane_segmentation_metadata["imaging_plane_metadata_key"]
     # Get the actual imaging plane name from metadata
-    imaging_plane_name = metadata_copy["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"]
+    imaging_plane_name = metadata_copy["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]["name"]
 
     # Check if imaging plane already exists, if not create it
     if imaging_plane_name not in nwbfile.imaging_planes:
@@ -1028,7 +1030,7 @@ def _add_plane_segmentation(
     imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
     plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
     # Remove the key reference and add the actual imaging plane object
-    plane_segmentation_kwargs.pop("imaging_plane_key", None)
+    plane_segmentation_kwargs.pop("imaging_plane_metadata_key", None)
     plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
     plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
 
