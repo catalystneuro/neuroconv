@@ -2,6 +2,7 @@
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "neuroconv"
 version = "0.7.6"
@@ -65,26 +66,8 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-test = [
-    "pytest",
-    "pytest-cov",
-    "parameterized>=0.8.1",
-    "pytest-xdist"  # Runs tests on parallel
-]
 sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
     "scipy",
-]
-
-
-docs = [
-    "Sphinx==8.2.3",  # Latest as of April 2025.
-    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
-    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
-    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
-    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
-    "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.102.2",  # Needed for the API documentation
-    "pytest" # used to build the documentation for tools.testing
 ]
 
 dandi = ["dandi>=0.69"]
@@ -148,10 +131,13 @@ behavior = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.102.3",
+    "spikeinterface>=0.103.0",
     "neo>=0.14.1"
 ]
 alphaomega = [
+    "neuroconv[ecephys_minimal]",
+]
+axon = [
     "neuroconv[ecephys_minimal]",
 ]
 axona = [
@@ -233,6 +219,7 @@ whitematter = [
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
+    "neuroconv[axon]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
     "neuroconv[blackrock]",
@@ -273,12 +260,13 @@ image = [
 ## Fiber Photometry
 fiber_photometry = [
     "ndx-fiber-photometry",
+    "pynwb<3.1.0",
 ]
 
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.6",
+    "roiextractors>=0.6.2",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -296,12 +284,19 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+femtonics = [
+    "neuroconv[ophys_minimal]",
+]
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
 hdf5 = [
     "neuroconv[hdf5imaging]",
 ]
 hdf5imaging = [
+    "neuroconv[ophys_minimal]",
+]
+inscopix = [
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
     "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
@@ -341,8 +336,7 @@ suite2p = [
     "neuroconv[ophys_minimal]",
 ]
 tdt_fp = [
-    "ndx-fiber-photometry",
-    "neuroconv[ophys_minimal]",
+    "neuroconv[fiber_photometry]",
     "tdt",
 ]
 thor = [
@@ -358,6 +352,9 @@ ophys = [
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
+    "neuroconv[femtonics]",
+    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
+    "neuroconv[ophys_minimal]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
@@ -365,7 +362,7 @@ ophys = [
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
-    "neuroconv[tdt_fp]",
+    # "neuroconv[tdt_fp]", # TODO: add tdt_fp back to ophys when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
@@ -388,7 +385,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
@@ -444,4 +441,27 @@ known-first-party = ["neuroconv"]
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin'
+ignore-words-list = 'assertin,sortings'
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov",
+    "parameterized>=0.8.1",
+    "pytest-xdist"  # Runs tests on parallel
+]
+
+docs = [
+    "Sphinx==8.2.3; python_version>='3.11'",  # Latest as of April 2025.
+    "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
+    "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
+    "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
+    "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
+    "roiextractors",  # Needed for the API documentation
+    "spikeinterface>=0.102.2",  # Needed for the API documentation
+    "pytest" # used to build the documentation for tools.testing
+]
+
+dev = [
+    "pre-commit",
+]

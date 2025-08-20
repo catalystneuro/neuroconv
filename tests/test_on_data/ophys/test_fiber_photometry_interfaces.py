@@ -23,6 +23,16 @@ import pytest
 from parameterized import parameterized
 
 
+# TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+# ruff: noqa: I001
+from packaging import version
+import pynwb
+
+
+@pytest.mark.skipif(
+    version.parse(pynwb.__version__) >= version.parse("3.1.0"),
+    reason="TestTDTFiberPhotometryInterface doesn't work with pynwb>=3.1.0.",
+)
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(

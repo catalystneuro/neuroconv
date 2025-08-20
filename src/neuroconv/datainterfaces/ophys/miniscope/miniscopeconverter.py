@@ -47,7 +47,7 @@ class MiniscopeConverter(NWBConverter):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             The path to the main Miniscope folder.
         verbose : bool, default: False
             Controls verbosity.

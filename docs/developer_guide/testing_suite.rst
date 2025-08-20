@@ -30,7 +30,8 @@ Then install all required and optional dependencies in a fresh environment.
 
 .. code:: bash
 
-  pip install --editable ".[test,full]"
+  pip install --editable ".[full]"
+  pip install --group test
 
 
 Then simply run all tests with pytest
@@ -51,7 +52,7 @@ These test internal functionality using only minimal dependencies or pre-downloa
 
 Sub-folders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`_
 
-These can be run using only ``pip install --editable ".[test]"`` and calling ``pytest tests/test_minimal``
+These can be run using only ``pip install --editable "."``, ``pip install --group test`` and calling ``pytest tests/test_minimal``
 
 
 Modality Tests
@@ -69,7 +70,7 @@ Modalities:
 * `behavior <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_behavior>`_
 * `text <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_modalities/test_text>`_
 
-These can be run in isolation using ``pip install --editable ".[test,<modality>]"`` and calling
+These can be run in isolation using ``pip install --editable ".[<modality>]"``, ``pip install --group test`` and calling
 ``pytest tests/test_modalities/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``fiber_photometry``, ``ecephys``, ``image``, ``text``, or ``behavior``.
 
 Ideally, these tests should not require data and run in mock testing interfaces but there are exceptions.
@@ -119,7 +120,7 @@ running. To examine these files for quality assessment purposes, set the flag ``
 
 Sub-folders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_on_data>`_
 
-These can be run in total using ``pip install --editable ".[test,full]"`` and calling ``pytest tests/test_on_data`` or
+These can be run in total using ``pip install --editable ".[full]"``, ``pip install --group test`` and calling ``pytest tests/test_on_data`` or
 in isolation by installing the required ``<modality>`` as in the previous section and calling
 ``pytest tests/test_on_data/<modality>``.
 
@@ -159,7 +160,8 @@ Since these tests are not automatically collected, you need to run them explicit
 .. code:: bash
 
     # Install required dependencies
-    pip install --editable ".[test,aws]"
+    pip install --editable ".[aws]"
+    pip install --group test
 
     # Run specific service tests
     pytest tests/remote_transfer_services/dandi_transfer_tools.py

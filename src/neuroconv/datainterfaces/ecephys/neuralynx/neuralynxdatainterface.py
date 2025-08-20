@@ -49,7 +49,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path: FolderPathType
+        folder_path: DirectoryPath
             Path to Neuralynx directory.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
