@@ -37,9 +37,6 @@ from neuroconv.tools.roiextractors import (
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
-from neuroconv.tools.roiextractors.roiextractors import (
-    _get_default_segmentation_metadata,
-)
 
 
 class TestAddImagingPlane(TestCase):
@@ -1261,12 +1258,12 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         cls.session_start_time = datetime.now().astimezone()
 
-        cls.metadata = _get_default_segmentation_metadata()
+        # Use new metadata structure with metadata keys
+        cls.first_plane_metadata_key = "first_plane"
+        cls.second_plane_metadata_key = "second_plane"
 
         cls.plane_segmentation_first_plane_name = "PlaneSegmentationFirstPlane"
-        cls.metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
-            name=cls.plane_segmentation_first_plane_name
-        )
+        cls.plane_segmentation_second_plane_name = "PlaneSegmentationSecondPlane"
 
         cls.fluorescence_name = "Fluorescence"
         cls.df_over_f_name = "DfOverF"
@@ -1292,24 +1289,57 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
             unit="test_unit",
         )
 
-        cls.metadata["Ophys"]["Fluorescence"].update(
-            {
-                cls.plane_segmentation_first_plane_name: dict(
-                    name=cls.fluorescence_name,
-                    raw=cls.raw_roi_response_series_metadata,
-                    deconvolved=cls.deconvolved_roi_response_series_metadata,
-                    neuropil=cls.neuropil_roi_response_series_metadata,
+        # Create metadata using new dictionary structure
+        cls.metadata = dict(Ophys=dict())
+
+        # Add proper device and imaging plane metadata first
+        device_key = "default_device_key"
+        imaging_plane_key = "default_imaging_plane_key"
+        device_metadata = dict(name="test_device")
+        cls.metadata["Devices"] = {device_key: device_metadata}
+        imaging_plane_metadata = dict(
+            name="test_imaging_plane",
+            device_metadata_key=device_key,
+            description="test imaging plane",
+            excitation_lambda=488.0,
+            indicator="test_indicator",
+            location="test_location",
+            optical_channel=[
+                dict(
+                    name="test_optical_channel",
+                    description="test optical channel description",
+                    emission_lambda=520.0,
                 )
-            }
+            ],
         )
-        cls.metadata["Ophys"]["DfOverF"].update(
-            {
-                cls.plane_segmentation_first_plane_name: dict(
-                    name=cls.df_over_f_name,
-                    dff=cls.dff_roi_response_series_metadata,
-                )
+        cls.metadata["Ophys"]["ImagingPlanes"] = {imaging_plane_key: imaging_plane_metadata}
+
+        # Set up ImageSegmentation metadata using dictionary structure
+        cls.metadata["Ophys"]["ImageSegmentation"] = {
+            cls.first_plane_metadata_key: {
+                "name": cls.plane_segmentation_first_plane_name,
+                "description": "first plane segmentation description",
+                "imaging_plane_metadata_key": imaging_plane_key,
             }
-        )
+        }
+
+        # Set up Fluorescence metadata structure using metadata_key
+        cls.metadata["Ophys"]["Fluorescence"] = {
+            "name": cls.fluorescence_name,
+            cls.first_plane_metadata_key: {
+                "raw": cls.raw_roi_response_series_metadata,
+                "deconvolved": cls.deconvolved_roi_response_series_metadata,
+                "neuropil": cls.neuropil_roi_response_series_metadata,
+            },
+        }
+
+        # Set up DfOverF metadata structure using metadata_key
+        cls.metadata["Ophys"]["DfOverF"] = {
+            "name": cls.df_over_f_name,
+            cls.first_plane_metadata_key: {
+                "dff": cls.dff_roi_response_series_metadata,
+            },
+        }
 
     def setUp(self):
         self.segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(
@@ -1331,46 +1361,64 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         )
 
     def test_add_fluorescence_traces_to_nwbfile_for_two_plane_segmentations(self):
+        # Add first plane segmentation using new API
         add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor_first_plane,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_first_plane_name,
+            metadata_key=self.first_plane_metadata_key,
         )
 
-        # Add second plane segmentation metadata
+        # Set up metadata for second plane segmentation using new structure
         metadata = deepcopy(self.metadata)
-        second_imaging_plane_name = "ImagingPlaneSecondPlane"
-        metadata["Ophys"]["ImagingPlane"][0].update(name=second_imaging_plane_name)
 
-        second_plane_segmentation_name = "PlaneSegmentationSecondPlane"
-        metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
-            name=second_plane_segmentation_name,
-            description="second plane segmentation description",
-            imaging_plane=second_imaging_plane_name,
-        )
+        # Add second imaging plane metadata
+        second_imaging_plane_metadata_key = "second_imaging_plane"
+        metadata["Ophys"]["ImagingPlanes"][second_imaging_plane_metadata_key] = {
+            "name": "ImagingPlaneSecondPlane",
+            "description": "Second imaging plane",
+            "indicator": "GCaMP6f",
+            "location": "visual cortex",
+            "excitation_lambda": 488.0,
+            "device_metadata_key": "default_device_key",
+            "optical_channel": [
+                {
+                    "name": "channel_num_0",
+                    "description": "An optical channel of the microscope.",
+                    "emission_lambda": 520.0,
+                }
+            ],
+        }
 
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name] = deepcopy(
-            metadata["Ophys"]["Fluorescence"][self.plane_segmentation_first_plane_name]
-        )
-        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name] = deepcopy(
-            metadata["Ophys"]["DfOverF"][self.plane_segmentation_first_plane_name]
-        )
+        # Add second plane segmentation to ImageSegmentation
+        metadata["Ophys"]["ImageSegmentation"][self.second_plane_metadata_key] = {
+            "name": self.plane_segmentation_second_plane_name,
+            "description": "second plane segmentation description",
+            "imaging_plane_metadata_key": second_imaging_plane_metadata_key,
+        }
 
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["raw"].update(
-            name="RoiResponseSeriesSecondPlane"
-        )
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["deconvolved"].update(
-            name="DeconvolvedSecondPlane"
-        )
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["neuropil"].update(name="NeuropilSecondPlane")
-        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name]["dff"].update(name="RoiResponseSeriesSecondPlane")
+        # Add second plane to Fluorescence metadata
+        metadata["Ophys"]["Fluorescence"][self.second_plane_metadata_key] = {
+            "raw": {"name": "RoiResponseSeriesSecondPlane", "description": "raw fluorescence signal"},
+            "deconvolved": {"name": "DeconvolvedSecondPlane", "description": "deconvolved fluorescence signal"},
+            "neuropil": {
+                "name": "NeuropilSecondPlane",
+                "description": "neuropil fluorescence signal",
+                "unit": "test_unit",
+            },
+        }
 
+        # Add second plane to DfOverF metadata
+        metadata["Ophys"]["DfOverF"][self.second_plane_metadata_key] = {
+            "dff": {"name": "RoiResponseSeriesSecondPlane", "description": "relative (df/f) fluorescence signal"},
+        }
+
+        # Add second plane segmentation using new API
         add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor_second_plane,
             nwbfile=self.nwbfile,
             metadata=metadata,
-            plane_segmentation_name=second_plane_segmentation_name,
+            metadata_key=self.second_plane_metadata_key,
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1378,9 +1426,9 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         self.assertEqual(len(image_segmentation.plane_segmentations), 2)
         self.assertIn(self.plane_segmentation_first_plane_name, image_segmentation.plane_segmentations)
-        self.assertIn(second_plane_segmentation_name, image_segmentation.plane_segmentations)
-        second_plane_segmentation = image_segmentation.plane_segmentations[second_plane_segmentation_name]
-        self.assertEqual(second_plane_segmentation.name, second_plane_segmentation_name)
+        self.assertIn(self.plane_segmentation_second_plane_name, image_segmentation.plane_segmentations)
+        second_plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_second_plane_name]
+        self.assertEqual(second_plane_segmentation.name, self.plane_segmentation_second_plane_name)
         self.assertEqual(second_plane_segmentation.description, "second plane segmentation description")
 
         fluorescence = ophys.get(self.fluorescence_name)
