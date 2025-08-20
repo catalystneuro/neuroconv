@@ -21,63 +21,6 @@ class SortedRecordingConverter(ConverterPipe):
     - All unit IDs from the sorting interface have corresponding channel mappings
     - All referenced channel IDs exist in the recording interface
     - Proper electrode references are maintained in the NWB Units table
-
-    Parameters
-    ----------
-    recording_interface : BaseRecordingExtractorInterface
-        The interface handling the raw recording data. This typically represents data
-        from a single recording stream (e.g., SpikeGLXRecordingInterface, IntanRecordingInterface).
-    sorting_interface : BaseSortingExtractorInterface
-        The interface handling the sorted units data. This typically represents the
-        output of a spike sorting algorithm (e.g., KiloSortSortingInterface, MountainSortSortingInterface).
-    unit_ids_to_channel_ids : dict[str | int, list[str | int]]
-        A mapping from unit IDs to their associated channel IDs. Each unit ID (key)
-        maps to a list of channel IDs (values) that were used to detect that unit.
-        This mapping ensures proper linkage between sorted units and recording electrodes.
-
-    Examples
-    --------
-    Basic usage with Intan recording and Kilosort sorting:
-
-    >>> from neuroconv.converters import SortedRecordingConverter
-    >>> from neuroconv.datainterfaces import IntanRecordingInterface, KiloSortSortingInterface
-    >>>
-    >>> # Initialize interfaces
-    >>> recording_interface = IntanRecordingInterface(file_path="data.rhd")
-    >>> sorting_interface = KiloSortSortingInterface(folder_path="kilosort_output")
-    >>>
-    >>> # Create unit-to-channel mapping
-    >>> unit_ids_to_channel_ids = {
-    ...     "unit_a": ["A-000", "A-001", "A-002"],    # Unit A detected on 3 channels
-    ...     "unit_b": ["A-003", "A-004"],             # Unit B detected on 2 channels
-    ...     "unit_c": ["A-005", "A-006", "A-007"],    # Unit C detected on 3 channels
-    ... }
-    >>>
-    >>> # Create converter
-    >>> converter = SortedRecordingConverter(
-    ...     recording_interface=recording_interface,
-    ...     sorting_interface=sorting_interface,
-    ...     unit_ids_to_channel_ids=unit_ids_to_channel_ids
-    ... )
-    >>>
-    >>> # Run conversion
-    >>> converter.run_conversion(nwbfile_path="output.nwb")
-
-    Notes
-    -----
-    This converter is particularly useful for:
-
-    - **Spatial Analysis**: Linking units to electrode positions for laminar analysis and receptive field mapping
-    - **Quality Control**: Verifying that units are assigned to correct electrode locations
-    - **Cross-referencing**: Linking spike sorting results back to raw recording channels
-    - **Metadata Preservation**: Maintaining electrode properties (impedance, location, device info) for each unit
-
-    The resulting NWB file will have a Units table where each unit references its associated
-    electrodes, enabling rich downstream analysis possibilities.
-
-    See Also
-    --------
-    SortedSpikeGLXConverter : For handling multiple SpikeGLX streams with sorting data
     """
 
     keywords = (
@@ -94,6 +37,20 @@ class SortedRecordingConverter(ConverterPipe):
         sorting_interface: BaseSortingExtractorInterface,
         unit_ids_to_channel_ids: dict[str | int, list[str | int]],
     ):
+        """
+        Parameters
+        ----------
+        recording_interface : BaseRecordingExtractorInterface
+            The interface handling the raw recording data. This typically represents data
+            from a single recording stream (e.g., SpikeGLXRecordingInterface, IntanRecordingInterface).
+        sorting_interface : BaseSortingExtractorInterface
+            The interface handling the sorted units data. This typically represents the
+            output of a spike sorting algorithm (e.g., KiloSortSortingInterface, MountainSortSortingInterface).
+        unit_ids_to_channel_ids : dict[str | int, list[str | int]]
+            A mapping from unit IDs to their associated channel IDs. Each unit ID (key)
+            maps to a list of channel IDs (values) that were used to detect that unit.
+            This mapping ensures proper linkage between sorted units and recording electrodes.
+        """
 
         self.recording_interface = recording_interface
         self.sorting_interface = sorting_interface
