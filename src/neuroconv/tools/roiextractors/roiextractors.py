@@ -783,9 +783,17 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         "imaging_plane_metadata_key"
     ] = "default_imaging_plane_metadata_key"
 
-    # Add other ophys structures that don't use keys
-    metadata["Ophys"]["Fluorescence"] = default_template["Ophys"]["Fluorescence"]
-    metadata["Ophys"]["DfOverF"] = default_template["Ophys"]["DfOverF"]
+    # Transform Fluorescence to use metadata_key (like ImageSegmentation)
+    metadata["Ophys"]["Fluorescence"] = {
+        "name": "Fluorescence",
+        metadata_key: deepcopy(default_template["Ophys"]["Fluorescence"]["PlaneSegmentation"]),
+    }
+
+    # Transform DfOverF to use metadata_key (like ImageSegmentation)
+    metadata["Ophys"]["DfOverF"] = {
+        "name": "DfOverF",
+        metadata_key: deepcopy(default_template["Ophys"]["DfOverF"]["PlaneSegmentation"]),
+    }
 
     # SegmentationImages needs to be scoped by metadata_key - start with just the container metadata
     metadata["Ophys"]["SegmentationImages"] = {
@@ -816,9 +824,6 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         )
         metadata["Ophys"]["ImageSegmentation"][metadata_key]["imaging_plane_metadata_key"] = metadata_key
 
-    # Get plane segmentation name from the dictionary structure
-    plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][metadata_key]["name"]
-
     # Create SegmentationImages entry for this metadata_key with unique image names
     if metadata_key not in metadata["Ophys"]["SegmentationImages"]:
         # Get default image metadata from template and add metadata for all image types
@@ -848,7 +853,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor, metadata_
         if trace_name in ["raw", "dff"]:
             continue
         if trace_data is not None and len(trace_data.shape) != 0:
-            metadata["Ophys"]["Fluorescence"][plane_segmentation_name][trace_name] = dict(
+            metadata["Ophys"]["Fluorescence"][metadata_key][trace_name] = dict(
                 name=trace_name.capitalize(),
                 description=f"description of {trace_name} traces",
             )
@@ -1241,15 +1246,7 @@ def _add_fluorescence_traces_to_nwbfile(
     default_metadata = _get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-    # Get plane segmentation name from metadata using metadata_key
-    if metadata_key is not None and metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]:
-        plane_segmentation_name = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]["name"]
-    else:
-        # Fallback to first available segmentation key
-        segmentation_keys = [k for k in default_metadata["Ophys"]["ImageSegmentation"].keys() if k != "name"]
-        if segmentation_keys:
-            default_key = segmentation_keys[0]
-            plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"][default_key]["name"]
+    # Note: plane_segmentation_name is no longer needed with the new metadata_key approach
     # df/F metadata
     df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
     df_over_f_name = df_over_f_metadata["name"]
@@ -1302,9 +1299,9 @@ def _add_fluorescence_traces_to_nwbfile(
         # Extract the response series metadata
         # the name of the trace is retrieved from the metadata, no need to override it here
         # trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
-        # For Fluorescence metadata, always use "PlaneSegmentation" as the key regardless of actual plane segmentation name
+        # Use metadata_key for Fluorescence/DfOverF structure (new consistent approach)
         fluorescence_key = (
-            "PlaneSegmentation" if "PlaneSegmentation" in data_interface_metadata else plane_segmentation_name
+            metadata_key if metadata_key and metadata_key in data_interface_metadata else "PlaneSegmentation"
         )
         assert fluorescence_key in data_interface_metadata, (
             f"Fluorescence key '{fluorescence_key}' not found in " f"{data_interface_metadata} metadata."

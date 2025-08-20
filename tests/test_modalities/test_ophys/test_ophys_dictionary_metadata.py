@@ -48,7 +48,7 @@ def remove_nan_for_comparison(data):
 class TestOphysInterfacesGetMetadata:
     """Test suite for ophys interfaces get_metadata() methods with dictionary structure."""
 
-    def test_single_imaging_interface_metadata_structure(self):
+    def test_single_imaging_interface(self):
         """Test that a single imaging interface creates proper dictionary metadata."""
         metadata_key = "interface_metadata_key"
         interface = MockImagingInterface(metadata_key=metadata_key)
@@ -86,7 +86,7 @@ class TestOphysInterfacesGetMetadata:
         actual_two_photon_series = remove_nan_for_comparison(ophys_metadata["TwoPhotonSeries"].to_dict())
         assert actual_two_photon_series == expected_two_photon_series
 
-    def test_single_segmentation_interface_metadata_structure(self):
+    def test_single_segmentation_interface(self):
         """Test that a single segmentation interface creates proper dictionary metadata."""
         metadata_key = "roi_analysis"
         interface = MockSegmentationInterface(metadata_key=metadata_key)
@@ -122,7 +122,37 @@ class TestOphysInterfacesGetMetadata:
         actual_imaging_planes = remove_nan_for_comparison(metadata["Ophys"]["ImagingPlanes"])
         assert actual_imaging_planes == expected_imaging_planes
 
-    def test_multiple_segmentation_interfaces_with_converter(self):
+        # Expected structure for Fluorescence (using new consistent metadata_key approach)
+        expected_fluorescence = {
+            "name": "Fluorescence",
+            metadata_key: {
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Array of raw fluorescence traces.",
+                    "unit": "n.a.",
+                },
+                "neuropil": {"name": "Neuropil", "description": "description of neuropil traces"},
+                "deconvolved": {"name": "Deconvolved", "description": "description of deconvolved traces"},
+            },
+        }
+
+        # Expected structure for DfOverF (using new consistent metadata_key approach)
+        expected_df_over_f = {
+            "name": "DfOverF",
+            metadata_key: {
+                "dff": {"name": "RoiResponseSeries", "description": "Array of df/F traces.", "unit": "n.a."}
+            },
+        }
+
+        # Verify Fluorescence structure matches expected
+        actual_fluorescence = metadata["Ophys"]["Fluorescence"]
+        assert actual_fluorescence == expected_fluorescence
+
+        # Verify DfOverF structure matches expected
+        actual_df_over_f = metadata["Ophys"]["DfOverF"]
+        assert actual_df_over_f == expected_df_over_f
+
+    def test_multiple_mixing_imaging_and_segmentation_in_converter(self):
         """Test combining one imaging and one segmentation interface with ConverterPipe."""
         imaging_metadata_key = "visual_cortex"
         segmentation_metadata_key = "visual_cortex_suite2p"
@@ -179,7 +209,37 @@ class TestOphysInterfacesGetMetadata:
         actual_image_segmentation = remove_nan_for_comparison(metadata["Ophys"]["ImageSegmentation"])
         assert actual_image_segmentation == expected_image_segmentation
 
-    def test_two_imaging_interfaces_metadata_structure(self):
+        # Expected structure for Fluorescence (using new consistent metadata_key approach)
+        expected_fluorescence = {
+            "name": "Fluorescence",
+            segmentation_metadata_key: {
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Array of raw fluorescence traces.",
+                    "unit": "n.a.",
+                },
+                "neuropil": {"name": "Neuropil", "description": "description of neuropil traces"},
+                "deconvolved": {"name": "Deconvolved", "description": "description of deconvolved traces"},
+            },
+        }
+
+        # Expected structure for DfOverF (using new consistent metadata_key approach)
+        expected_df_over_f = {
+            "name": "DfOverF",
+            segmentation_metadata_key: {
+                "dff": {"name": "RoiResponseSeries", "description": "Array of df/F traces.", "unit": "n.a."}
+            },
+        }
+
+        # Verify Fluorescence structure matches expected
+        actual_fluorescence = metadata["Ophys"]["Fluorescence"]
+        assert actual_fluorescence == expected_fluorescence
+
+        # Verify DfOverF structure matches expected
+        actual_df_over_f = metadata["Ophys"]["DfOverF"]
+        assert actual_df_over_f == expected_df_over_f
+
+    def test_two_imaging_interfaces_in_converter(self):
         """Test that two imaging interfaces create proper combined dictionary metadata."""
         imaging1_metadata_key = "visual_cortex"
         imaging2_metadata_key = "hippocampus"
@@ -275,6 +335,48 @@ class TestOphysInterfacesGetMetadata:
 
         actual_image_segmentation = remove_nan_for_comparison(metadata["Ophys"]["ImageSegmentation"])
         assert actual_image_segmentation == expected_image_segmentation
+
+        # Expected structure for Fluorescence (using new consistent metadata_key approach)
+        expected_fluorescence = {
+            "name": "Fluorescence",
+            segmentation1_metadata_key: {
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Array of raw fluorescence traces.",
+                    "unit": "n.a.",
+                },
+                "neuropil": {"name": "Neuropil", "description": "description of neuropil traces"},
+                "deconvolved": {"name": "Deconvolved", "description": "description of deconvolved traces"},
+            },
+            segmentation2_metadata_key: {
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Array of raw fluorescence traces.",
+                    "unit": "n.a.",
+                },
+                "neuropil": {"name": "Neuropil", "description": "description of neuropil traces"},
+                "deconvolved": {"name": "Deconvolved", "description": "description of deconvolved traces"},
+            },
+        }
+
+        # Expected structure for DfOverF (using new consistent metadata_key approach)
+        expected_df_over_f = {
+            "name": "DfOverF",
+            segmentation1_metadata_key: {
+                "dff": {"name": "RoiResponseSeries", "description": "Array of df/F traces.", "unit": "n.a."}
+            },
+            segmentation2_metadata_key: {
+                "dff": {"name": "RoiResponseSeries", "description": "Array of df/F traces.", "unit": "n.a."}
+            },
+        }
+
+        # Verify Fluorescence structure matches expected
+        actual_fluorescence = metadata["Ophys"]["Fluorescence"]
+        assert actual_fluorescence == expected_fluorescence
+
+        # Verify DfOverF structure matches expected
+        actual_df_over_f = metadata["Ophys"]["DfOverF"]
+        assert actual_df_over_f == expected_df_over_f
 
 
 class TestOphysMetadataPropagation:
@@ -554,6 +656,23 @@ class TestOphysMetadataPropagation:
         plane_names = {ps.imaging_plane.name for ps in plane_segmentations}
         assert plane_names == {"ImagingPlane"}
 
+        # Verify Fluorescence containers are created properly
+        fluorescence = ophys_module["Fluorescence"]
+
+        # Should have RoiResponseSeries for different trace types
+        # Note: Multiple interfaces may overwrite each other's traces in the current implementation
+        found_fluorescence_names = set(fluorescence.roi_response_series.keys())
+        assert "RoiResponseSeries" in found_fluorescence_names  # raw traces
+        assert "Neuropil" in found_fluorescence_names
+        assert "Deconvolved" in found_fluorescence_names
+
+        # Verify DfOverF containers are created properly
+        df_over_f = ophys_module["DfOverF"]
+
+        # Should have RoiResponseSeries for dff traces
+        found_dff_names = set(df_over_f.roi_response_series.keys())
+        assert "RoiResponseSeries" in found_dff_names  # dff traces
+
     def test_multiple_segmentation_interfaces_linking_to_same_imaging_plane(self):
         """Test multiple segmentation interfaces explicitly linking to the same imaging plane."""
         analysis1_metadata_key = "analysis1"
@@ -613,6 +732,18 @@ class TestOphysMetadataPropagation:
         # Segmentations should have different names
         segmentation_names = {ps.name for ps in plane_segmentations}
         assert segmentation_names == {"PlaneSegmentationAnalysis1", "PlaneSegmentationAnalysis2"}
+
+        # Verify Fluorescence containers are created properly
+        fluorescence = ophys_module["Fluorescence"]
+        found_fluorescence_names = set(fluorescence.roi_response_series.keys())
+        assert "RoiResponseSeries" in found_fluorescence_names  # raw traces
+        assert "Neuropil" in found_fluorescence_names
+        assert "Deconvolved" in found_fluorescence_names
+
+        # Verify DfOverF containers are created properly
+        df_over_f = ophys_module["DfOverF"]
+        found_dff_names = set(df_over_f.roi_response_series.keys())
+        assert "RoiResponseSeries" in found_dff_names  # dff traces
 
     def test_multiple_segmentation_interfaces_linking_to_different_imaging_planes(self):
         """Test multiple segmentation interfaces linking to different planes with different devices."""
@@ -771,3 +902,15 @@ class TestOphysMetadataPropagation:
         # Verify devices are properly associated with their imaging planes
         assert visual_cortex_segmentation.imaging_plane.device.name == expected_visual_cortex_device_name
         assert hippocampus_segmentation.imaging_plane.device.name == expected_hippocampus_device_name
+
+        # Verify Fluorescence containers are created properly
+        fluorescence = ophys_module["Fluorescence"]
+        found_fluorescence_names = set(fluorescence.roi_response_series.keys())
+        assert "RoiResponseSeries" in found_fluorescence_names  # raw traces
+        assert "Neuropil" in found_fluorescence_names
+        assert "Deconvolved" in found_fluorescence_names
+
+        # Verify DfOverF containers are created properly
+        df_over_f = ophys_module["DfOverF"]
+        found_dff_names = set(df_over_f.roi_response_series.keys())
+        assert "RoiResponseSeries" in found_dff_names  # dff traces
