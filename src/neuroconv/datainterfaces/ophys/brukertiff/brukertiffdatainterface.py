@@ -203,7 +203,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             imaging_plane_metadata.update(name=imaging_plane_name)
             two_photon_series_metadata.update(
                 name=f"TwoPhotonSeries{self._stream_name}",
-                imaging_plane=imaging_plane_name,
+                imaging_plane_metadata_key=default_imaging_plane_metadata_key,
             )
 
         microns_per_pixel = xml_metadata["micronsPerPixel"]
@@ -410,7 +410,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             imaging_plane_metadata.update(name=imaging_plane_name)
             two_photon_series_metadata.update(
                 name=f"TwoPhotonSeries{self._stream_name}",
-                imaging_plane=imaging_plane_name,
+                imaging_plane_metadata_key=default_imaging_plane_metadata_key,
             )
 
         microns_per_pixel = xml_metadata["micronsPerPixel"]
