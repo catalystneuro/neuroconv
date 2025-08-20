@@ -135,7 +135,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             name=imaging_plane_name,
             optical_channel=optical_channels,
             description="2P Imaging Plane",
-            device=self.metadata_key,
+            device_metadata_key=self.metadata_key,
             excitation_lambda=np.nan,  # Placeholder
             indicator="unknown",
             location="unknown",
@@ -148,7 +148,6 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][self.metadata_key]
         two_photon_series_metadata.update(
             name=two_photon_series_name,
-            imaging_plane=self.metadata_key,
             field_of_view=[width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
             unit="n.a.",
         )
