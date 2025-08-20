@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import DirectoryPath
+from pydantic import FilePath
 
 from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -23,7 +23,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        file_path: DirectoryPath,
+        file_path: FilePath,
         session_name: Optional[str] = None,
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
@@ -34,7 +34,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : DirectoryPath
+        file_path : FilePath
             Path to the .mesc file.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0", "MSession_1").
@@ -199,7 +199,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return metadata
 
     @classmethod
-    def get_available_sessions(cls, file_path: DirectoryPath) -> list[str]:
+    def get_available_sessions(cls, file_path: FilePath) -> list[str]:
         """
         Get list of available session keys in the file.
 
@@ -217,7 +217,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_sessions(file_path=file_path)
 
     @classmethod
-    def get_available_munits(cls, file_path: DirectoryPath, session_name: str = None) -> list[str]:
+    def get_available_munits(cls, file_path: FilePath, session_name: str = None) -> list[str]:
         """
         Get list of available unit keys in the specified session.
 
@@ -251,9 +251,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         return Extractor.get_available_munits(file_path=file_path, session_name=session_name)
 
     @classmethod
-    def get_available_channels(
-        cls, file_path: DirectoryPath, session_name: str = None, munit_name: str = None
-    ) -> list[str]:
+    def get_available_channels(cls, file_path: FilePath, session_name: str = None, munit_name: str = None) -> list[str]:
         """
         Get available channels in the specified session/unit combination.
 
