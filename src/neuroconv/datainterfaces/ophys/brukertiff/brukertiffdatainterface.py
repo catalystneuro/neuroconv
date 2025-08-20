@@ -182,9 +182,16 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             "description": description,
         }
 
-        # Update imaging plane metadata - use default_imaging_plane_metadata_key for the shared default plane
-        default_imaging_plane_metadata_key = "default_imaging_plane_metadata_key"
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_metadata_key]
+        # Update imaging plane metadata - create unique imaging plane for this stream
+        imaging_plane_metadata_key = f"imaging_plane_{self.metadata_key}"
+        if imaging_plane_metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
+            # Create new imaging plane entry based on the default one
+            from copy import deepcopy
+
+            default_imaging_plane = metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
+            metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key] = deepcopy(default_imaging_plane)
+
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
         imaging_plane_metadata.update(
             device_metadata_key=device_key,  # Reference to device key, not device name
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
@@ -203,7 +210,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             imaging_plane_metadata.update(name=imaging_plane_name)
             two_photon_series_metadata.update(
                 name=f"TwoPhotonSeries{self._stream_name}",
-                imaging_plane_metadata_key=default_imaging_plane_metadata_key,
+                imaging_plane_metadata_key=imaging_plane_metadata_key,
             )
 
         microns_per_pixel = xml_metadata["micronsPerPixel"]
@@ -389,9 +396,16 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             "description": description,
         }
 
-        # Update imaging plane metadata - use default_imaging_plane_metadata_key for the shared default plane
-        default_imaging_plane_metadata_key = "default_imaging_plane_metadata_key"
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_metadata_key]
+        # Update imaging plane metadata - create unique imaging plane for this stream
+        imaging_plane_metadata_key = f"imaging_plane_{self.metadata_key}"
+        if imaging_plane_metadata_key not in metadata["Ophys"]["ImagingPlanes"]:
+            # Create new imaging plane entry based on the default one
+            from copy import deepcopy
+
+            default_imaging_plane = metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
+            metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key] = deepcopy(default_imaging_plane)
+
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
         imaging_plane_metadata.update(
             device_metadata_key=device_key,  # Reference to device key, not device name
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
@@ -410,7 +424,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             imaging_plane_metadata.update(name=imaging_plane_name)
             two_photon_series_metadata.update(
                 name=f"TwoPhotonSeries{self._stream_name}",
-                imaging_plane_metadata_key=default_imaging_plane_metadata_key,
+                imaging_plane_metadata_key=imaging_plane_metadata_key,
             )
 
         microns_per_pixel = xml_metadata["micronsPerPixel"]

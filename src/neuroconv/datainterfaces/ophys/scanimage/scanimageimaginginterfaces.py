@@ -178,9 +178,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # Update device information
             device_name = "Microscope"
-            # Update device in the global Devices dictionary using metadata_key
-            if "Devices" in metadata and self.metadata_key in metadata["Devices"]:
-                metadata["Devices"][self.metadata_key].update(
+            # For ScanImage, we'll use the default device key since all interfaces can share the same microscope device
+            default_device_key = "default_device_metadata_key"
+            if "Devices" in metadata and default_device_key in metadata["Devices"]:
+                metadata["Devices"][default_device_key].update(
                     name=device_name, description="Microscope controlled by ScanImage"
                 )
             channel_name_string = self.channel_name.replace(" ", "").capitalize()
@@ -194,8 +195,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # Update imaging plane metadata
             # Handle dictionary structure for ImagingPlanes
+            default_imaging_plane_key = "default_imaging_plane_metadata_key"
             if "ImagingPlanes" in metadata["Ophys"]:
-                imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+                # Use the default imaging plane created by the base class
+                imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
             else:
                 # Old list structure (backward compatibility)
                 imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
@@ -203,7 +206,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             imaging_plane_name = f"ImagingPlane{channel_name_string}{plane_index_string}"
             imaging_plane_metadata.update(
                 name=imaging_plane_name,
-                device=device_name,
+                device_metadata_key=default_device_key,
                 imaging_rate=self.imaging_extractor.get_sampling_frequency(),
                 description="Imaging plane from ScanImage acquisition",
                 optical_channel=[optical_channel_metadata],
@@ -219,7 +222,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 photon_series_metadata = metadata["Ophys"][photon_series_key][0]
 
             photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
-            photon_series_metadata["imaging_plane"] = imaging_plane_name
+            photon_series_metadata["imaging_plane_metadata_key"] = default_imaging_plane_key
             photon_series_metadata["name"] = photon_series_name
             photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
 
@@ -238,8 +241,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 if "SI.VERSION_MAJOR" in frame_data:
                     version = f"{frame_data.get('SI.VERSION_MAJOR', '')}.{frame_data.get('SI.VERSION_MINOR', '')}.{frame_data.get('SI.VERSION_UPDATE', '')}"
                     # Update device description with version info
-                    if "Devices" in metadata and self.metadata_key in metadata["Devices"]:
-                        metadata["Devices"][self.metadata_key][
+                    if "Devices" in metadata and default_device_key in metadata["Devices"]:
+                        metadata["Devices"][default_device_key][
                             "description"
                         ] = f"Microscope and acquisition data with ScanImage (version {version})"
 

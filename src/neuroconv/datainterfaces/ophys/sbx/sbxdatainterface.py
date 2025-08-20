@@ -72,6 +72,14 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             metadata["Devices"] = {}
         if self.metadata_key not in metadata["Devices"]:
             metadata["Devices"][self.metadata_key] = {}
-        metadata["Devices"][self.metadata_key]["description"] = "Scanbox imaging"
+        metadata["Devices"][self.metadata_key].update(name="ScanboxMicroscope", description="Scanbox imaging")
+
+        # Update imaging plane to reference the device
+        default_imaging_plane_metadata_key = "default_imaging_plane_metadata_key"
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_metadata_key]
+        imaging_plane_metadata.update(
+            device_metadata_key=self.metadata_key,  # Reference to device key
+            imaging_rate=self.imaging_extractor.get_sampling_frequency(),
+        )
 
         return metadata

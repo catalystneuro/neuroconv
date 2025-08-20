@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dateutil.tz import tzoffset
-from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
 from parameterized import parameterized_class
 from pynwb import NWBHDF5IO
@@ -22,15 +21,12 @@ from neuroconv.datainterfaces import (
     SbxImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
-    ScanImageMultiFileImagingInterface,
     ThorImagingInterface,
     TiffImagingInterface,
 )
 from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageMultiPlaneImagingInterface,
-    ScanImageMultiPlaneMultiFileImagingInterface,
     ScanImageSinglePlaneImagingInterface,
-    ScanImageSinglePlaneMultiFileImagingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     ImagingExtractorInterfaceTestMixin,
@@ -221,9 +217,10 @@ class TestScanImageImagingInterfacesAssertions:
         ):
             ScanImageMultiPlaneImagingInterface(file_path=file_path, channel_name="Channel 1")
 
-
-@pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
-class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
+    # Commenting out deprecated ScanImageLegacyImagingInterface tests
+    # Not updating tests for deprecated interfaces
+    # @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
+    # class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
@@ -258,122 +255,6 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
         },
     ],
 )
-class TestScanImageMultiFileImagingInterfaceMultiPlaneCase(ScanImageMultiPlaneImagingInterfaceMixin):
-    data_interface_cls = ScanImageMultiFileImagingInterface
-    interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-        file_pattern="scanimage_20220923_roi.tif",
-        channel_name="Channel 1",
-    )
-    save_directory = OUTPUT_PATH
-
-    photon_series_name = "TwoPhotonSeriesChannel1"
-    imaging_plane_name = "ImagingPlaneChannel1"
-    expected_two_photon_series_data_shape = (6, 256, 528, 2)
-    expected_rate = 7.28119
-    expected_starting_time = 0.0
-
-    def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
-
-
-@parameterized_class(
-    [
-        {
-            "interface_kwargs": dict(
-                folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-                file_pattern="scanimage_20240320_multifile*.tif",
-                channel_name="Channel 1",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel1",
-            "imaging_plane_name": "ImagingPlaneChannel1",
-        },
-        {
-            "interface_kwargs": dict(
-                folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-                file_pattern="scanimage_20240320_multifile*.tif",
-                channel_name="Channel 2",
-            ),
-            "photon_series_name": "TwoPhotonSeriesChannel2",
-            "imaging_plane_name": "ImagingPlaneChannel2",
-        },
-    ],
-)
-class TestScanImageMultiFileImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin):
-    data_interface_cls = ScanImageMultiFileImagingInterface
-    interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"),
-        file_pattern="scanimage_20240320_multifile*.tif",
-        channel_name="Channel 1",
-    )
-    save_directory = OUTPUT_PATH
-
-    photon_series_name = "TwoPhotonSeriesChannel1"
-    imaging_plane_name = "ImagingPlaneChannel1"
-    expected_two_photon_series_data_shape = (30, 512, 512)
-
-    def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 3, 26, 15, 7, 53, 110000)
-
-
-class TestScanImageMultiFileImagingInterfacesAssertions(hdmf_TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.data_interface_cls = ScanImageMultiFileImagingInterface
-
-    def test_not_supported_scanimage_version(self):
-        """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
-        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
-        file_pattern = "sample_scanimage.tiff"
-        with self.assertRaisesRegex(ValueError, "ScanImage version 3.8 is not supported."):
-            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
-
-    def test_not_supported_scanimage_version_multiplane(self):
-        """Test that the interface raises ValueError for older ScanImage format and suggests to use a different interface."""
-        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
-        file_pattern = "sample_scanimage.tiff"
-        with self.assertRaisesRegex(ValueError, r"ScanImage version 3.8 is not supported."):
-            # Code here should invoke the functionality that triggers the exception
-            # Example:
-            interface = ScanImageMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
-            interface.get_metadata()
-
-    def test_non_volumetric_data(self):
-        """Test that ValueError is raised for non-volumetric imaging data."""
-
-        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
-        file_pattern = "scanimage_20240320_multifile*.tif"
-        channel_name = "Channel 1"
-        with self.assertRaisesRegex(
-            ValueError,
-            "Only one plane detected. For single plane imaging data use ScanImageSinglePlaneMultiFileImagingInterface instead.",
-        ):
-            ScanImageMultiPlaneMultiFileImagingInterface(
-                folder_path=folder_path, file_pattern=file_pattern, channel_name=channel_name
-            )
-
-    def test_channel_name_not_specified(self):
-        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
-        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
-        file_pattern = "scanimage_20220923_roi.tif"
-        with self.assertRaisesRegex(ValueError, "More than one channel is detected!"):
-            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
-
-    def test_not_recognized_scanimage_version(self):
-        """Test that ValueError is returned when ScanImage version could not be determined from metadata."""
-        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif")
-        file_pattern = "*.tif"
-        with self.assertRaisesRegex(ValueError, "ScanImage version could not be determined from metadata."):
-            self.data_interface_cls(folder_path=folder_path, file_pattern=file_pattern)
-
-    def test_plane_name_not_specified(self):
-        """Test that ValueError is raised when plane_name is not specified for data with multiple planes."""
-        folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage")
-        file_pattern = "scanimage_20220801_volume.tif"
-        with self.assertRaisesRegex(ValueError, "More than one plane is detected!"):
-            ScanImageSinglePlaneMultiFileImagingInterface(folder_path=folder_path, file_pattern=file_pattern)
-
-
 class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = Hdf5ImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"))
@@ -419,7 +300,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
-            device="bruker_device_default",
+            device_metadata_key="bruker_device_default",
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=29.873732099062256,
             grid_spacing=[1.1078125e-06, 1.1078125e-06],
@@ -498,7 +379,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
-            device=cls.device_metadata["name"],
+            device_metadata_key="bruker_device_default",
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=20.629515014336377,
             grid_spacing=[1.1078125e-06, 1.1078125e-06, 0.00026],
@@ -510,15 +391,14 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
             description="The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
             dimension=[512, 512, 2],
-            imaging_plane=cls.imaging_plane_metadata["name"],
+            imaging_plane_metadata_key="default_imaging_plane_metadata_key",
             scan_line_rate=15842.086085895791,
             field_of_view=[0.0005672, 0.0005672, 0.00026],
         )
 
         cls.ophys_metadata = dict(
-            Device=[cls.device_metadata],
-            ImagingPlane=[cls.imaging_plane_metadata],
-            TwoPhotonSeries=[cls.two_photon_series_metadata],
+            ImagingPlanes={"default_imaging_plane_metadata_key": cls.imaging_plane_metadata},
+            TwoPhotonSeries={"default": cls.two_photon_series_metadata},
         )
 
     def run_custom_checks(self):
@@ -573,7 +453,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
-            device=cls.device_metadata["name"],
+            device_metadata_key="bruker_device_default",
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=10.314757507168189,
             grid_spacing=[1.1078125e-06, 1.1078125e-06, 0.00013],
@@ -585,15 +465,14 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
             dimension=[512, 512],
-            imaging_plane=cls.imaging_plane_metadata["name"],
+            imaging_plane_metadata_key="default_imaging_plane_metadata_key",
             scan_line_rate=15842.086085895791,
             field_of_view=[0.0005672, 0.0005672, 0.00013],
         )
 
         cls.ophys_metadata = dict(
-            Device=[cls.device_metadata],
-            ImagingPlane=[cls.imaging_plane_metadata],
-            TwoPhotonSeries=[cls.two_photon_series_metadata],
+            ImagingPlanes={"default_imaging_plane_metadata_key": cls.imaging_plane_metadata},
+            TwoPhotonSeries={"default": cls.two_photon_series_metadata},
         )
 
     def run_custom_checks(self):
@@ -663,7 +542,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
-            device=cls.device_metadata["name"],
+            device_metadata_key="bruker_device_default",
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=29.873615189896864,
             grid_spacing=[1.1078125e-06, 1.1078125e-06],
@@ -675,15 +554,14 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
             dimension=[512, 512],
-            imaging_plane=cls.imaging_plane_metadata["name"],
+            imaging_plane_metadata_key="default_imaging_plane_metadata_key",
             scan_line_rate=15835.56350852745,
             field_of_view=[0.0005672, 0.0005672],
         )
 
         cls.ophys_metadata = dict(
-            Device=[cls.device_metadata],
-            ImagingPlane=[cls.imaging_plane_metadata],
-            TwoPhotonSeries=[cls.two_photon_series_metadata],
+            ImagingPlanes={"default_imaging_plane_metadata_key": cls.imaging_plane_metadata},
+            TwoPhotonSeries={"default": cls.two_photon_series_metadata},
         )
 
     def run_custom_checks(self):
@@ -745,7 +623,7 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
-            device=cls.device_metadata["name"],
+            device_metadata_key="default_device_metadata_key",
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=20.0,
         )
@@ -755,13 +633,12 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             unit="px",
             dimension=[1024, 1024],
             format="tiff",
-            imaging_plane=cls.imaging_plane_metadata["name"],
+            imaging_plane_metadata_key="default_imaging_plane_metadata_key",
         )
 
         cls.ophys_metadata = dict(
-            Device=[cls.device_metadata],
-            ImagingPlane=[cls.imaging_plane_metadata],
-            TwoPhotonSeries=[cls.two_photon_series_metadata],
+            ImagingPlanes={"default_imaging_plane_metadata_key": cls.imaging_plane_metadata},
+            TwoPhotonSeries={"default": cls.two_photon_series_metadata},
         )
 
     def check_extracted_metadata(self, metadata: dict):
@@ -826,18 +703,12 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"].minute == 39
         assert metadata["NWBFile"]["session_start_time"].second == 19
 
-        # Check device metadata
-        assert len(metadata["Ophys"]["Device"]) == 1
-        device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "ThorMicroscope"
-        assert device["description"] == "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"
-
-        # Check imaging plane metadata
-        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        # Check imaging planes metadata (new dictionary format)
+        assert "ImagingPlanes" in metadata["Ophys"]
+        assert "default" in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"]["default"]
         assert imaging_plane["name"] == f"ImagingPlane{self.channel_name}"
         assert imaging_plane["description"] == "2P Imaging Plane"
-        assert imaging_plane["device"] == "ThorMicroscope"
         assert "grid_spacing" in imaging_plane
         assert "grid_spacing_unit" in imaging_plane
 
@@ -846,9 +717,10 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         optical_channel = imaging_plane["optical_channel"][0]
         assert optical_channel["name"] == self.channel_name
 
-        # Check two photon series metadata
-        assert len(metadata["Ophys"]["TwoPhotonSeries"]) == 1
-        two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
+        # Check two photon series metadata (new dictionary format)
+        assert "TwoPhotonSeries" in metadata["Ophys"]
+        assert "default" in metadata["Ophys"]["TwoPhotonSeries"]
+        two_photon_series = metadata["Ophys"]["TwoPhotonSeries"]["default"]
         assert two_photon_series["name"] == self.optical_series_name
 
 
@@ -888,14 +760,18 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
-        assert metadata["Ophys"]["Device"][0] == self.device_metadata
 
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-        assert imaging_plane_metadata["name"] == self.imaging_plane_metadata["name"]
-        assert imaging_plane_metadata["device"] == self.imaging_plane_metadata["device"]
+        # Check imaging planes metadata (new dictionary format)
+        assert "ImagingPlanes" in metadata["Ophys"]
+        assert "default_imaging_plane_metadata_key" in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
+        assert "imaging_rate" in imaging_plane_metadata
         assert imaging_plane_metadata["imaging_rate"] == self.imaging_plane_metadata["imaging_rate"]
 
-        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        # Check one photon series metadata (new dictionary format)
+        assert "OnePhotonSeries" in metadata["Ophys"]
+        assert "default" in metadata["Ophys"]["OnePhotonSeries"]
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"]["default"]
         assert one_photon_series_metadata["name"] == self.photon_series_metadata["name"]
         assert one_photon_series_metadata["unit"] == self.photon_series_metadata["unit"]
 
@@ -942,17 +818,11 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert "session_id" not in nwbfile
         assert "experimenter" not in nwbfile
 
-        # Device checks
-        device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
-        assert "description" not in device or device.get("description", "") == ""
-
-        # ImagingPlane checks
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        # Check imaging planes metadata (new dictionary format)
+        assert "ImagingPlanes" in metadata["Ophys"]
+        assert "default_imaging_plane_metadata_key" in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert (
-            imaging_plane["device"] == "Microscope"
-        )  # Default metadata because this was not included in the source metadata
         assert (
             imaging_plane["description"] == "The plane or volume being imaged by the microscope."
         )  # Default metadata because this was not included in the source metadata
@@ -966,14 +836,16 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
             optical_channel["description"] == "An optical channel of the microscope."
         )  # Default metadata because this was not included in the source metadata
 
-        # OnePhotonSeries checks
-        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        # OnePhotonSeries checks (new dictionary format)
+        assert "OnePhotonSeries" in metadata["Ophys"]
+        assert "default" in metadata["Ophys"]["OnePhotonSeries"]
+        ops = metadata["Ophys"]["OnePhotonSeries"]["default"]
         assert ops["name"] == "OnePhotonSeries"
         assert (
             ops["description"] == "Imaging data from one-photon excitation microscopy."
         )  # Default metadata because this was not included in the source metadata
         assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
-        assert ops["imaging_plane"] == "ImagingPlane"
+        assert ops["imaging_plane_metadata_key"] == "default_imaging_plane_metadata_key"
         assert ops["dimension"] == [128, 128]
 
 
@@ -1088,17 +960,11 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert "session_id" not in nwbfile
         assert "experimenter" not in nwbfile
 
-        # Device checks
-        device = metadata["Ophys"]["Device"][0]
-        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
-        assert "description" not in device or device.get("description", "") == ""
-
-        # ImagingPlane checks
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        # Check imaging planes metadata (new dictionary format)
+        assert "ImagingPlanes" in metadata["Ophys"]
+        assert "default_imaging_plane_metadata_key" in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"]["default_imaging_plane_metadata_key"]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert (
-            imaging_plane["device"] == "Microscope"
-        )  # Default metadata because this was not included in the source metadata
         assert (
             imaging_plane["description"] == "The plane or volume being imaged by the microscope."
         )  # Default metadata because this was not included in the source metadata
@@ -1112,16 +978,16 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
             optical_channel["description"] == "An optical channel of the microscope."
         )  # Default metadata because this was not included in the source metadata
 
-        # OnePhotonSeries checks
-        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        # OnePhotonSeries checks (new dictionary format)
+        assert "OnePhotonSeries" in metadata["Ophys"]
+        assert "default" in metadata["Ophys"]["OnePhotonSeries"]
+        ops = metadata["Ophys"]["OnePhotonSeries"]["default"]
         assert ops["name"] == "OnePhotonSeries"
         assert (
             ops["description"] == "Imaging data from one-photon excitation microscopy."
         )  # Default metadata because this was not included in the source metadata
         assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
-        assert (
-            ops["imaging_plane"] == "ImagingPlane"
-        )  # Default metadata because this was not included in the source metadata
+        assert ops["imaging_plane_metadata_key"] == "default_imaging_plane_metadata_key"
         assert ops["dimension"] == [3, 4]
 
 

@@ -57,7 +57,9 @@ class TestMiniscopeConverter(TestCase):
     def test_converter_metadata(self):
         metadata = self.converter.get_metadata()
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
-        assert metadata["Ophys"]["Device"][0] == self.device_metadata
+        # Check device metadata in new structure
+        assert metadata["Devices"]["default"] == self.device_metadata
+        # Behavior device should still be in old format until that interface is updated
         assert metadata["Behavior"]["Device"][0] == self.behavcam_metadata
 
     def test_run_conversion(self):
@@ -81,11 +83,14 @@ class TestMiniscopeConverter(TestCase):
 
     def test_run_conversion_updated_metadata(self):
         metadata = self.converter.get_metadata()
-        # Update device names and their links
+        # Update device names and their links in new metadata structure
         test_device_name = "TestMiniscope"
         test_behavcam_name = "TestBehavCam"
-        metadata["Ophys"]["Device"][0].update(name=test_device_name)
-        metadata["Ophys"]["ImagingPlane"][0].update(device=test_device_name)
+        # Update Miniscope device name in new structure
+        metadata["Devices"]["default"].update(name=test_device_name)
+        # Note: The imaging plane device reference is handled automatically via device_metadata_key
+
+        # Update behavior device name (still in old structure)
         metadata["Behavior"]["Device"][0].update(name=test_behavcam_name)
         metadata["Behavior"]["ImageSeries"][0].update(device=test_behavcam_name)
 
