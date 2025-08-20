@@ -188,8 +188,8 @@ When you create segmentation interfaces with specific ``metadata_key`` values, t
         }
     }
 
-Customizing Imaging Plane Links
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Customizing Imaging Planes and Devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, all interfaces link to ``"default_imaging_plane_metadata_key"``. To create separate imaging planes for different regions:
 
@@ -250,115 +250,66 @@ By default, all interfaces link to ``"default_imaging_plane_metadata_key"``. To 
     metadata["Ophys"]["ImageSegmentation"]["suite2p_analysis"]["imaging_plane_metadata_key"] = visual_cortex_plane_key
     metadata["Ophys"]["ImageSegmentation"]["caiman_analysis"]["imaging_plane_metadata_key"] = hippocampus_plane_key
 
-Single metadata_key per Interface
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. important::
 
-Each data interface uses a single ``metadata_key`` parameter that propagates to all components it creates:
+    **Component Linking Requirement**
 
-.. code-block:: python
+    The ophys metadata structure uses a hierarchical reference system where components must explicitly reference their dependencies.
 
-    # Imaging interface
-    imaging_interface = ScanImageImagingInterface(
-        file_path="data.tif",
-        metadata_key="visual_cortex"  # Single key for all components
-    )
+    This ensures that all metadata components are properly included in the final NWB file and correctly linked together.
 
-    # This creates:
-    # - ImagingPlanes["visual_cortex"]
-    # - TwoPhotonSeries["visual_cortex"]
-    # - Device references use "visual_cortex"
+    When you modify metadata through ``get_metadata()`` calls, simply adding components to their respective sections is not sufficient.
 
-    # Segmentation interface
-    segmentation_interface = Suite2pSegmentationInterface(
-        folder_path="suite2p_output/",
-        metadata_key="visual_cortex_suite2p"  # Different key for this analysis
-    )
+    Components must be properly linked through reference keys to be included in the final NWB file.
 
-    # This creates:
-    # - ImageSegmentation["visual_cortex_suite2p"]
-    # - References ImagePlane by the key from the imaging interface
+    **Reference chain:**
 
-Multi-Region Example
-^^^^^^^^^^^^^^^^^^^^
+    - **PhotonSeries → ImagingPlane**: PhotonSeries must reference imaging planes via ``imaging_plane_metadata_key``
+    - **ImagingPlane → Device**: ImagingPlanes must reference devices via ``device_metadata_key``
 
-Here's how to organize metadata for a multi-region experiment:
+    **Incorrect approach (components will be ignored):**
 
-.. code-block:: python
+    .. code-block:: python
 
-    # Visual cortex 2-photon imaging
-    visual_imaging = ScanImageImagingInterface(
-        file_path="visual_cortex.tif",
-        metadata_key="visual_cortex"
-    )
+        metadata = interface.get_metadata()
 
-    # Hippocampus 1-photon imaging
-    hippocampus_imaging = MiniscopeImagingInterface(
-        folder_path="miniscope_data/",
-        metadata_key="hippocampus"
-    )
+        # Adding components without proper linking - WILL BE IGNORED
+        metadata["Devices"]["my_device"] = {"name": "MyMicroscope", "description": "Custom setup"}
+        metadata["Ophys"]["ImagingPlanes"]["my_plane"] = {"name": "MyPlane", "description": "Custom plane"}
+        metadata["Ophys"]["TwoPhotonSeries"]["my_series"] = {"name": "MySeries"}
 
-    # Suite2p analysis of visual cortex
-    visual_segmentation = Suite2pSegmentationInterface(
-        folder_path="suite2p_visual/",
-        metadata_key="visual_cortex_suite2p"
-    )
+    **Correct approach (all components properly linked):**
 
-    # CaImAn analysis of hippocampus
-    hippocampus_segmentation = CaimanSegmentationInterface(
-        file_path="caiman_results.hdf5",
-        metadata_key="hippocampus_caiman"
-    )
+    .. code-block:: python
 
-This creates a well-organized metadata structure:
+        metadata = interface.get_metadata()
 
-.. code-block:: python
-
-    metadata = {
-        "Ophys": {
-            "ImagingPlanes": {
-                "visual_cortex": {...},
-                "hippocampus": {...}
-            },
-            "TwoPhotonSeries": {
-                "visual_cortex": {...}
-            },
-            "OnePhotonSeries": {
-                "hippocampus": {...}
-            },
-            "ImageSegmentation": {
-                "name": "ImageSegmentation",
-                "visual_cortex_suite2p": {...},
-                "hippocampus_caiman": {...}
-            }
+        # Step 1: Add device
+        metadata["Devices"]["my_device"] = {
+            "name": "MyMicroscope",
+            "description": "Custom microscope setup"
         }
-    }
 
-
-Schema Validation
-^^^^^^^^^^^^^^^^^
-
-The JSON schemas validate the dictionary structure:
-
-.. code-block:: python
-
-    # ImageSegmentation schema supports both top-level name and keyed entries
-    image_segmentation_schema = {
-        "type": "object",
-        "properties": {
-            "name": {"type": "string"}  # Container name
-        },
-        "patternProperties": {
-            "^(?!name$)[a-zA-Z0-9_]+$": {  # Excludes "name" key
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "description": {"type": "string"},
-                    "imaging_plane_key": {"type": "string"}  # References by key
-                },
-                "required": ["name", "imaging_plane_key"]
-            }
+        # Step 2: Add imaging plane and link to device
+        metadata["Ophys"]["ImagingPlanes"]["my_plane"] = {
+            "name": "MyPlane",
+            "description": "Custom imaging plane",
+            "device_metadata_key": "my_device",  # Links to device
+            "indicator": "GCaMP6f",
+            "location": "visual cortex",
+            "excitation_lambda": 920.0,
+            "optical_channel": [{"name": "green", "emission_lambda": 520.0}]
         }
-    }
+
+        # Step 3: Add photon series and link to imaging plane
+        metadata["Ophys"]["TwoPhotonSeries"]["my_series"] = {
+            "name": "MySeries",
+            "description": "Custom imaging data",
+            "imaging_plane_metadata_key": "my_plane",  # Links to imaging plane
+            "unit": "n.a."
+        }
+
+    Without these reference keys (``device_metadata_key`` and ``imaging_plane_metadata_key``), the components will be ignored during NWB file creation, even though they exist in the metadata dictionary.
 
 Best Practices
 ^^^^^^^^^^^^^^
