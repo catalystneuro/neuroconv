@@ -152,6 +152,20 @@ class TestOphysInterfacesGetMetadata:
         actual_df_over_f = metadata["Ophys"]["DfOverF"]
         assert actual_df_over_f == expected_df_over_f
 
+        # Expected structure for SegmentationImages (using new consistent metadata_key approach)
+        expected_segmentation_images = {
+            "name": "SegmentationImages",
+            "description": "The summary images of the segmentation.",
+            metadata_key: {
+                "correlation": {"name": f"correlation_{metadata_key}", "description": "The correlation image."},
+                "mean": {"name": f"mean_{metadata_key}", "description": "The mean image."},
+            },
+        }
+
+        # Verify SegmentationImages structure matches expected
+        actual_segmentation_images = metadata["Ophys"]["SegmentationImages"]
+        assert actual_segmentation_images == expected_segmentation_images
+
     def test_multiple_mixing_imaging_and_segmentation_in_converter(self):
         """Test combining one imaging and one segmentation interface with ConverterPipe."""
         imaging_metadata_key = "visual_cortex"
@@ -238,6 +252,23 @@ class TestOphysInterfacesGetMetadata:
         # Verify DfOverF structure matches expected
         actual_df_over_f = metadata["Ophys"]["DfOverF"]
         assert actual_df_over_f == expected_df_over_f
+
+        # Expected structure for SegmentationImages (using new consistent metadata_key approach)
+        expected_segmentation_images = {
+            "name": "SegmentationImages",
+            "description": "The summary images of the segmentation.",
+            segmentation_metadata_key: {
+                "correlation": {
+                    "name": f"correlation_{segmentation_metadata_key}",
+                    "description": "The correlation image.",
+                },
+                "mean": {"name": f"mean_{segmentation_metadata_key}", "description": "The mean image."},
+            },
+        }
+
+        # Verify SegmentationImages structure matches expected
+        actual_segmentation_images = metadata["Ophys"]["SegmentationImages"]
+        assert actual_segmentation_images == expected_segmentation_images
 
     def test_two_imaging_interfaces_in_converter(self):
         """Test that two imaging interfaces create proper combined dictionary metadata."""
@@ -377,6 +408,30 @@ class TestOphysInterfacesGetMetadata:
         # Verify DfOverF structure matches expected
         actual_df_over_f = metadata["Ophys"]["DfOverF"]
         assert actual_df_over_f == expected_df_over_f
+
+        # Expected structure for SegmentationImages (using new consistent metadata_key approach)
+        expected_segmentation_images = {
+            "name": "SegmentationImages",
+            "description": "The summary images of the segmentation.",
+            segmentation1_metadata_key: {
+                "correlation": {
+                    "name": f"correlation_{segmentation1_metadata_key}",
+                    "description": "The correlation image.",
+                },
+                "mean": {"name": f"mean_{segmentation1_metadata_key}", "description": "The mean image."},
+            },
+            segmentation2_metadata_key: {
+                "correlation": {
+                    "name": f"correlation_{segmentation2_metadata_key}",
+                    "description": "The correlation image.",
+                },
+                "mean": {"name": f"mean_{segmentation2_metadata_key}", "description": "The mean image."},
+            },
+        }
+
+        # Verify SegmentationImages structure matches expected
+        actual_segmentation_images = metadata["Ophys"]["SegmentationImages"]
+        assert actual_segmentation_images == expected_segmentation_images
 
 
 class TestOphysMetadataPropagation:
@@ -673,6 +728,19 @@ class TestOphysMetadataPropagation:
         found_dff_names = set(df_over_f.roi_response_series.keys())
         assert "RoiResponseSeries" in found_dff_names  # dff traces
 
+        # Verify SegmentationImages containers are created properly
+        segmentation_images = ophys_module["SegmentationImages"]
+        found_image_names = set(segmentation_images.images.keys())
+
+        # Should have images for both analysis keys with proper naming
+        expected_image_names = {
+            f"correlation_{analysis1_metadata_key}",
+            f"mean_{analysis1_metadata_key}",
+            f"correlation_{analysis2_metadata_key}",
+            f"mean_{analysis2_metadata_key}",
+        }
+        assert found_image_names == expected_image_names
+
     def test_multiple_segmentation_interfaces_linking_to_same_imaging_plane(self):
         """Test multiple segmentation interfaces explicitly linking to the same imaging plane."""
         analysis1_metadata_key = "analysis1"
@@ -744,6 +812,28 @@ class TestOphysMetadataPropagation:
         df_over_f = ophys_module["DfOverF"]
         found_dff_names = set(df_over_f.roi_response_series.keys())
         assert "RoiResponseSeries" in found_dff_names  # dff traces
+
+        # Verify SegmentationImages containers are created properly
+        segmentation_images = ophys_module["SegmentationImages"]
+        found_image_names = set(segmentation_images.images.keys())
+
+        # Should have images for both analysis keys with proper naming
+        expected_image_names = {
+            f"correlation_{analysis1_metadata_key}",
+            f"mean_{analysis1_metadata_key}",
+            f"correlation_{analysis2_metadata_key}",
+            f"mean_{analysis2_metadata_key}",
+        }
+        assert found_image_names == expected_image_names
+
+        # Should have images for both analysis keys with proper naming
+        expected_image_names = {
+            f"correlation_{analysis1_metadata_key}",
+            f"mean_{analysis1_metadata_key}",
+            f"correlation_{analysis2_metadata_key}",
+            f"mean_{analysis2_metadata_key}",
+        }
+        assert found_image_names == expected_image_names
 
     def test_multiple_segmentation_interfaces_linking_to_different_imaging_planes(self):
         """Test multiple segmentation interfaces linking to different planes with different devices."""
@@ -914,3 +1004,16 @@ class TestOphysMetadataPropagation:
         df_over_f = ophys_module["DfOverF"]
         found_dff_names = set(df_over_f.roi_response_series.keys())
         assert "RoiResponseSeries" in found_dff_names  # dff traces
+
+        # Verify SegmentationImages containers are created properly
+        segmentation_images = ophys_module["SegmentationImages"]
+        found_image_names = set(segmentation_images.images.keys())
+
+        # Should have images for both analysis keys with proper naming
+        expected_image_names = {
+            f"correlation_{visual_cortex_metadata_key}",
+            f"mean_{visual_cortex_metadata_key}",
+            f"correlation_{hippocampus_metadata_key}",
+            f"mean_{hippocampus_metadata_key}",
+        }
+        assert found_image_names == expected_image_names
