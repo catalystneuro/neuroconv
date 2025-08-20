@@ -113,17 +113,21 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
         # Device information
-        if device_info:
-            # Update device metadata in the new structure
-            if "Devices" not in metadata:
-                metadata["Devices"] = {}
-            if self.metadata_key not in metadata["Devices"]:
-                metadata["Devices"][self.metadata_key] = {}
-            device_metadata = metadata["Devices"][self.metadata_key]
+        # Always ensure device metadata exists with required name field
+        if "Devices" not in metadata:
+            metadata["Devices"] = {}
+        if self.metadata_key not in metadata["Devices"]:
+            metadata["Devices"][self.metadata_key] = {}
+        device_metadata = metadata["Devices"][self.metadata_key]
 
-            # Update the actual device name
-            if device_info.get("device_name"):
-                device_metadata["name"] = device_info["device_name"]
+        # Set device name (from extractor or default)
+        if device_info and device_info.get("device_name"):
+            device_metadata["name"] = device_info["device_name"]
+        else:
+            device_metadata["name"] = "InscopixMicroscope"  # Default name
+
+        # Add additional device information if available
+        if device_info:
 
             # Build device description
             microscope_info = []
@@ -135,11 +139,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             if microscope_info:
                 device_metadata["description"] = f"Inscopix Microscope ({', '.join(microscope_info)})"
 
-            # Update imaging plane metadata with acquisition details
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+            # Update imaging plane metadata with acquisition details - use default plane from base class
+            default_imaging_plane_key = "default_imaging_plane_metadata_key"
+            imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
 
-            # Update imaging plane device reference to use metadata_key
-            imaging_plane_metadata["device"] = self.metadata_key
+            # Update imaging plane device reference to use metadata_key (new field name)
+            imaging_plane_metadata["device_metadata_key"] = self.metadata_key
 
             acquisition_details = []
             if device_info.get("exposure_time_ms"):
