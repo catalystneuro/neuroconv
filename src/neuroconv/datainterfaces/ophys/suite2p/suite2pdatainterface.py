@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -9,54 +7,6 @@ from ....tools.ophys_metadata_conversion import (
     update_old_ophys_metadata_format_to_new,
 )
 from ....utils import DeepDict
-
-
-def _update_metadata_links_for_plane_segmentation_name(
-    metadata: dict, plane_segmentation_name: str, metadata_key: str
-) -> DeepDict:
-    """Private utility function to update the metadata with a new plane segmentation name."""
-    metadata_copy = deepcopy(metadata)
-
-    # Handle backward compatibility
-    if is_old_ophys_metadata_format(metadata_copy):
-        metadata_copy = update_old_ophys_metadata_format_to_new(metadata_copy)
-
-    # Get plane segmentation metadata using the metadata_key
-    if "ImageSegmentation" in metadata_copy["Ophys"] and metadata_key in metadata_copy["Ophys"]["ImageSegmentation"]:
-        plane_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"][metadata_key]
-    else:
-        # Fallback for edge cases
-        return metadata_copy
-
-    default_plane_segmentation_name = plane_segmentation_metadata["name"]
-    default_plane_suffix = default_plane_segmentation_name.replace("PlaneSegmentation", "")
-    new_plane_name_suffix = plane_segmentation_name.replace("PlaneSegmentation", "")
-    imaging_plane_name = "ImagingPlane" + new_plane_name_suffix
-    plane_segmentation_metadata.update(
-        name=plane_segmentation_name,
-        imaging_plane=metadata_key,  # Keep the same metadata_key reference
-    )
-
-    # Update imaging plane name if it exists
-    if "ImagingPlanes" in metadata_copy["Ophys"] and metadata_key in metadata_copy["Ophys"]["ImagingPlanes"]:
-        metadata_copy["Ophys"]["ImagingPlanes"][metadata_key].update(name=imaging_plane_name)
-
-    fluorescence_metadata_per_plane = metadata_copy["Ophys"]["Fluorescence"].pop(default_plane_segmentation_name)
-    # override the default name of the plane segmentation
-    metadata_copy["Ophys"]["Fluorescence"][plane_segmentation_name] = fluorescence_metadata_per_plane
-    trace_names = [property_name for property_name in fluorescence_metadata_per_plane.keys() if property_name != "name"]
-    for trace_name in trace_names:
-        default_raw_traces_name = fluorescence_metadata_per_plane[trace_name]["name"].replace(default_plane_suffix, "")
-        fluorescence_metadata_per_plane[trace_name].update(name=default_raw_traces_name + new_plane_name_suffix)
-
-    segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"].pop(default_plane_segmentation_name)
-    metadata_copy["Ophys"]["SegmentationImages"][plane_segmentation_name] = segmentation_images_metadata
-    metadata_copy["Ophys"]["SegmentationImages"][plane_segmentation_name].update(
-        correlation=dict(name=f"CorrelationImage{new_plane_name_suffix}"),
-        mean=dict(name=f"MeanImage{new_plane_name_suffix}"),
-    )
-
-    return metadata_copy
 
 
 class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
@@ -188,22 +138,42 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         if is_old_ophys_metadata_format(metadata):
             metadata = update_old_ophys_metadata_format_to_new(metadata)
 
-        # Get the plane segmentation metadata using metadata_key
-        if "ImageSegmentation" in metadata["Ophys"] and self.metadata_key in metadata["Ophys"]["ImageSegmentation"]:
-            default_plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"][self.metadata_key]["name"]
-        else:
-            # If metadata_key doesn't exist, return as is
-            return metadata
+        # Update component names to match the plane segmentation name pattern
+        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"][self.metadata_key]
+        default_plane_segmentation_name = plane_segmentation_metadata["name"]
 
-        # No need to update the metadata links for the default plane segmentation name
-        if self.plane_segmentation_name == default_plane_segmentation_name:
-            return metadata
+        # If plane segmentation name is custom, update all related component names
+        if self.plane_segmentation_name != default_plane_segmentation_name:
+            # Extract suffix from plane segmentation name
+            plane_suffix = self.plane_segmentation_name.replace("PlaneSegmentation", "")
 
-        metadata = _update_metadata_links_for_plane_segmentation_name(
-            metadata=metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
-            metadata_key=self.metadata_key,
-        )
+            # Update PlaneSegmentation name
+            plane_segmentation_metadata["name"] = self.plane_segmentation_name
+
+            # Update ImagingPlane name
+            imaging_plane_key = plane_segmentation_metadata["imaging_plane_metadata_key"]
+            metadata["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"] = f"ImagingPlane{plane_suffix}"
+
+            # Update SegmentationImages names
+            segmentation_images = metadata["Ophys"]["SegmentationImages"][self.metadata_key]
+            segmentation_images["correlation"]["name"] = f"CorrelationImage{plane_suffix}"
+            segmentation_images["mean"]["name"] = f"MeanImage{plane_suffix}"
+
+            # Update Fluorescence trace names
+            fluorescence_metadata = metadata["Ophys"]["Fluorescence"][self.metadata_key]
+            for trace_name in fluorescence_metadata:
+                if trace_name != "name" and isinstance(fluorescence_metadata[trace_name], dict):
+                    if "name" in fluorescence_metadata[trace_name]:
+                        # Apply new suffix to trace name
+                        if trace_name == "raw":
+                            base_name = "RoiResponseSeries"
+                        elif trace_name == "neuropil":
+                            base_name = "Neuropil"
+                        elif trace_name == "deconvolved":
+                            base_name = "Deconvolved"
+                        else:
+                            base_name = trace_name.capitalize()
+                        fluorescence_metadata[trace_name]["name"] = f"{base_name}{plane_suffix}"
 
         return metadata
 

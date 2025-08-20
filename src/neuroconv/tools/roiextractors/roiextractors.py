@@ -1130,6 +1130,7 @@ def add_background_plane_segmentation_to_nwbfile(
     background_plane_segmentation_name: str | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Add background plane segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1148,6 +1149,8 @@ def add_background_plane_segmentation_to_nwbfile(
         Type of mask to use for segmentation; options are "image", "pixel", or "voxel", by default "image".
     iterator_options : dict, optional
         Options for iterating over the segmentation data, by default None.
+    metadata_key : str, optional
+        The metadata key for identifying the segmentation data, by default None.
     Returns
     -------
     NWBFile
@@ -1171,6 +1174,7 @@ def add_background_plane_segmentation_to_nwbfile(
         plane_segmentation_name=background_plane_segmentation_name,
         mask_type=mask_type,
         iterator_options=iterator_options,
+        metadata_key=metadata_key,
     )
     return nwbfile
 
@@ -1309,6 +1313,11 @@ def _add_fluorescence_traces_to_nwbfile(
         trace_metadata = data_interface_metadata[fluorescence_key][trace_name]
         if trace_metadata is None:
             raise ValueError(f"Metadata for '{trace_name}' trace not found in {data_interface_metadata}.")
+
+        # Check if trace_metadata is properly populated (not an empty DeepDict)
+        if not trace_metadata or "name" not in trace_metadata or not trace_metadata["name"]:
+            # Skip traces that don't have proper metadata
+            continue
 
         if trace_metadata["name"] in data_interface.roi_response_series:
             continue
@@ -1642,6 +1651,7 @@ def add_segmentation_to_nwbfile(
             background_plane_segmentation_name=background_plane_segmentation_name,
             mask_type=mask_type,
             iterator_options=iterator_options,
+            metadata_key=metadata_key,
         )
 
     # Add fluorescence traces:
