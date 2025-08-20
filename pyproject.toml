@@ -285,9 +285,7 @@ extract = [
     "neuroconv[ophys_minimal]",
 ]
 femtonics = [
-    # TODO: Remove git dependency once roiextractors releases the refactor_femtonics_parameters branch changes
-    # This should be reverted to "neuroconv[ophys_minimal]" in the next roiextractors release
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@refactor_femtonics_parameters",
+    "neuroconv[ophys_minimal]",
 ]
 # Here for backwards compatibility with older versions of the gallery
 # Remove at the start of 2026
