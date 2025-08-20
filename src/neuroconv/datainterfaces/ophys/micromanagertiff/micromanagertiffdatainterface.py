@@ -75,8 +75,9 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         session_start_time = parse(micromanager_metadata["Summary"]["StartTime"])
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
-        # Update imaging plane metadata
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+        # Update imaging plane metadata - use the default imaging plane created by base class
+        default_imaging_plane_key = "default_imaging_plane_metadata_key"
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
         imaging_plane_metadata.update(
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
@@ -85,6 +86,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         metadata["Ophys"]["TwoPhotonSeries"][self.metadata_key].update(
             unit="px",
             format="tiff",
+            imaging_plane_metadata_key=default_imaging_plane_key,
         )
 
         return metadata
