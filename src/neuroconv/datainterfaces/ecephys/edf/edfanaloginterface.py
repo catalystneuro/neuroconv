@@ -23,6 +23,9 @@ class EDFAnalogInterface(BaseDataInterface):
     associated_suffixes = (".edf",)
     info = "Interface for converting EDF non-electrical analog data."
 
+    # Class variable to track instances for unique naming
+    _instance_counter = 0
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__)
@@ -31,6 +34,7 @@ class EDFAnalogInterface(BaseDataInterface):
 
     def __init__(
         self,
+        *,
         file_path: FilePath,
         channels_to_include: list[str] | None = None,
         verbose: bool = False,
@@ -44,8 +48,7 @@ class EDFAnalogInterface(BaseDataInterface):
         file_path : FilePath
             Path to the EDF file
         channels_to_include : list of str, optional
-            Specific channel IDs to include. If None, will include all non-electrical channels
-            (channels that don't have 'uV' as their physical unit).
+            Specific channel IDs to include. If None, will include all non-electrical channels.
         verbose : bool, default: False
             Verbose output
         metadata_key : str, default: "TimeSeriesAnalogEDF"
@@ -83,9 +86,12 @@ class EDFAnalogInterface(BaseDataInterface):
         # Extract only the analog channels
         self.recording_extractor = full_recording.select_channels(channel_ids=self._channels_to_include)
 
-        # Generate unique time series name based on channels
-        channel_names_str = "_".join(self._channels_to_include)
-        self._time_series_name = f"EDFAnalogTimeSeries_{channel_names_str}"
+        # Generate unique default TimeSeries name - users can override via metadata
+        EDFAnalogInterface._instance_counter += 1
+        if EDFAnalogInterface._instance_counter == 1:
+            self._time_series_name = "TimeSeriesEDF"
+        else:
+            self._time_series_name = f"TimeSeriesEDF{EDFAnalogInterface._instance_counter}"
 
         super().__init__(
             file_path=self._file_path,
@@ -93,11 +99,16 @@ class EDFAnalogInterface(BaseDataInterface):
             verbose=verbose,
         )
 
+    @property
+    def channel_ids(self):
+        """Gets the channel ids of the data."""
+        return self.recording_extractor.get_channel_ids()
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         # Add TimeSeries metadata
-        channel_names = self.get_channel_names()
+        channel_names = self.channel_ids
         channel_units = self.recording_extractor.get_property("physical_unit")
 
         description = (
@@ -113,35 +124,6 @@ class EDFAnalogInterface(BaseDataInterface):
         }
 
         return metadata
-
-    def get_channel_names(self) -> list[str]:
-        """
-        Get a list of channel names from the recording extractor.
-
-        Returns
-        -------
-        list of str
-            The names of all channels in the analog recording.
-        """
-        # Try channel_names first (plural), then fallback to channel IDs
-        if "channel_names" in self.recording_extractor.get_property_keys():
-            return list(self.recording_extractor.get_property("channel_names"))
-        elif "channel_name" in self.recording_extractor.get_property_keys():
-            return list(self.recording_extractor.get_property("channel_name"))
-        else:
-            # Fallback to channel IDs if no name properties available
-            return list(self.recording_extractor.get_channel_ids())
-
-    def get_channel_units(self) -> list[str]:
-        """
-        Get a list of channel units from the recording extractor.
-
-        Returns
-        -------
-        list of str
-            The physical units of all channels in the analog recording.
-        """
-        return list(self.recording_extractor.get_property("physical_unit"))
 
     def add_to_nwbfile(
         self,
@@ -182,21 +164,8 @@ class EDFAnalogInterface(BaseDataInterface):
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        # Update metadata with description
-        channel_names = self.get_channel_names()
-        channel_units = self.get_channel_units()
-        description = (
-            f"Non-electrical analog signals from EDF file. "
-            f"Channels: {', '.join([f'{name} ({unit})' for name, unit in zip(channel_names, channel_units)])}"
-        )
-
-        if "TimeSeries" not in metadata:
-            metadata["TimeSeries"] = {}
-
-        metadata["TimeSeries"][self._time_series_name] = dict(
-            name=self._time_series_name,
-            description=description,
-        )
+        # Get the name from metadata if available, otherwise use default
+        time_series_name = metadata.get("TimeSeries", {}).get(self.metadata_key, {}).get("name", self._time_series_name)
 
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
@@ -205,5 +174,5 @@ class EDFAnalogInterface(BaseDataInterface):
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=self._time_series_name,
+            time_series_name=time_series_name,
         )

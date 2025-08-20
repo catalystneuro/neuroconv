@@ -22,7 +22,7 @@ The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordi
     file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
 
     # Load the interface to inspect available channels
-    interface = EDFRecordingInterface(file_path=file_path, verbose=False)
+    interface = EDFRecordingInterface(file_path=file_path)
 
     # Get all channel IDs to identify which ones to skip
     all_channels = interface.channel_ids
@@ -35,14 +35,13 @@ The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordi
     # Recreate interface with channels to skip
     interface = EDFRecordingInterface(
         file_path=file_path,
-        channels_to_skip=channels_to_skip,
-        verbose=False
+        channels_to_skip=channels_to_skip
     )
 
     # Extract what metadata we can from the source files
     metadata = interface.get_metadata()
     # For data provenance we add the time zone information to the conversion
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
 
     # Choose a path for saving the nwb file and run the conversion
@@ -65,42 +64,23 @@ Non-electrical channels (such as physiological monitoring signals, triggers, or 
 
     file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
 
-    # Example 1: Channels with percentage units
-    percent_channels = ["OSAT"]  # Oxygen saturation in %
-
-    interface_percent = EDFAnalogInterface(
-        file_path=file_path,
-        channels_to_include=percent_channels,
-        verbose=False
-    )
-
-    # Example 2: Channels with beats per minute units
-    bpm_channels = ["PR"]  # Pulse rate in bpm
-
-    interface_bpm = EDFAnalogInterface(
-        file_path=file_path,
-        channels_to_include=bpm_channels,
-        verbose=False
-    )
-
-    # Example 3: Trigger channels (no unit)
+    # Example: Trigger channels (no unit)
     trigger_channels = ["TRIG"]  # Trigger signals
 
-    interface_trigger = EDFAnalogInterface(
+    interface = EDFAnalogInterface(
         file_path=file_path,
-        channels_to_include=trigger_channels,
-        verbose=False
+        channels_to_include=trigger_channels
     )
 
-    # Extract metadata and run conversions for each interface
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    # Extract metadata and add timezone information
+    metadata = interface.get_metadata()
+    # For data provenance we add the time zone information to the conversion
+    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    metadata["NWBFile"].update(session_start_time=session_start_time)
 
-    for interface, suffix in [(interface_percent, "_percent"), (interface_bpm, "_bpm"), (interface_trigger, "_trigger")]:
-        metadata = interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=session_start_time)
-
-        nwbfile_path = f"{path_to_save_nwbfile}{suffix}.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+    # Choose a path for saving the nwb file and run the conversion
+    nwbfile_path = f"{path_to_save_nwbfile}"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 Combining Electrode and Non-Electrical Channels
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,6 +94,7 @@ To convert both electrode and non-electrical channels into a single NWB file, us
     from pathlib import Path
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import EDFRecordingInterface, EDFAnalogInterface
+    from neuroconv.utils import dict_deep_update
 
     file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
 
@@ -124,44 +105,50 @@ To convert both electrode and non-electrical channels into a single NWB file, us
     recording_interface = EDFRecordingInterface(
         file_path=file_path,
         channels_to_skip=all_non_electrical_channels,
-        verbose=False
+
     )
 
     # Create separate analog interfaces for each unit type
     trigger_interface = EDFAnalogInterface(
         file_path=file_path,
         channels_to_include=["TRIG"],  # No unit
-        verbose=False
+        metadata_key="time_series_trigger"
     )
 
     percent_interface = EDFAnalogInterface(
         file_path=file_path,
         channels_to_include=["OSAT"],  # Percentage units
-        verbose=False
-    )
-
-    bpm_interface = EDFAnalogInterface(
-        file_path=file_path,
-        channels_to_include=["PR"],  # Beats per minute units
-        verbose=False
-    )
-
-    pleth_interface = EDFAnalogInterface(
-        file_path=file_path,
-        channels_to_include=["Pleth"],  # Plethysmography in uV
-        verbose=False
+        metadata_key="time_series_oxygen"
     )
 
     # Combine all interfaces
     converter = ConverterPipe(
-        data_interfaces=[recording_interface, trigger_interface, percent_interface, bpm_interface, pleth_interface],
-        verbose=False
+        data_interfaces=[recording_interface, trigger_interface, percent_interface],
+
     )
 
-    # Extract metadata and set session start time
+    # Extract metadata and add timezone information
     metadata = converter.get_metadata()
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    # For data provenance we add the time zone information to the conversion
+    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
+
+    # REQUIRED: Customize TimeSeries names when using multiple analog interfaces
+    timeseries_metadata = {
+        "TimeSeries": {
+            "time_series_trigger": {
+                "name": "TimeSeriesTrigger",
+                "description": "Trigger signals from EDF file"
+            },
+            "time_series_oxygen": {
+                "name": "TimeSeriesOxygen",
+                "description": "Oxygen saturation monitoring data"
+            }
+        }
+    }
+
+    # The metadata_key parameter ensures each interface creates entries with the correct names
+    metadata = dict_deep_update(metadata, timeseries_metadata)
 
     # Convert all channel types to a single NWB file
     nwbfile_path = f"{path_to_save_nwbfile}"
