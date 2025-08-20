@@ -32,6 +32,7 @@
 * Expanded test coverage for `CaimanSegmentationInterface` to include all stub files and added quality metrics properties (r_values, SNR_comp, cnn_preds) to the PlaneSegmentation table as segmentation_extractor_properties [PR #1436](https://github.com/catalystneuro/neuroconv/pull/1436)
 * Added comprehensive documentation on linking sorted data to electrodes, including motivation, practical examples, and guidance for both single and multi-probe recording scenarios [PR #1449](https://github.com/catalystneuro/neuroconv/pull/1449)
 * Added comprehensive how-to guide "Adding Multiple Sorting Interfaces" documenting approaches for handling multiple spike sorting outputs, including unit renaming strategies, separate processing tables, and adding custom properties for provenance tracking [PR #1451](https://github.com/catalystneuro/neuroconv/pull/1451)
+* The copy button no longer copies the prompt (>>>) in the conversion gallery [PR 1467](https://github.com/catalystneuro/neuroconv/pull/1467)
 
 # v0.7.5 (June 11, 2025)
 
