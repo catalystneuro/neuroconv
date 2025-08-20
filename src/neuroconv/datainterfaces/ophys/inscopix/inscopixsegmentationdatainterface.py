@@ -88,16 +88,9 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Device information
         if device_info:
-            # Update device in the global Devices dictionary using metadata_key
+            # Create a new device entry using metadata_key (don't modify the default)
             if "Devices" not in metadata:
                 metadata["Devices"] = {}
-            if self.metadata_key not in metadata["Devices"]:
-                metadata["Devices"][self.metadata_key] = {"name": "Device", "description": ""}
-            device_metadata = metadata["Devices"][self.metadata_key]
-
-            # Update the actual device name
-            if device_info.get("device_name"):
-                device_metadata["name"] = device_info["device_name"]
 
             # Build device description
             device_desc_parts = []
@@ -122,16 +115,27 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     if value is not None:
                         device_desc_parts.append(f"{field}: {value}")
 
-            if device_desc_parts:
-                device_metadata["description"] = "; ".join(device_desc_parts)
+            # Create new device entry with metadata_key
+            device_name = device_info.get("device_name", "InscopixMicroscope")
+            metadata["Devices"][self.metadata_key] = {
+                "name": device_name,
+                "description": (
+                    "; ".join(device_desc_parts) if device_desc_parts else "Inscopix microscope for calcium imaging"
+                ),
+            }
 
-            # Update imaging plane metadata
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+            # Create a new ImagingPlane entry that references the new device
+            # Get the default imaging plane as template
+            default_imaging_plane_key = "default_imaging_plane_metadata_key"
+            if default_imaging_plane_key in metadata["Ophys"]["ImagingPlanes"]:
+                # Copy the default imaging plane as template
+                from copy import deepcopy
 
-            # Update imaging plane device reference
-            if device_info.get("device_name"):
-                # In new structure, device reference is the metadata_key
-                imaging_plane_metadata["device"] = self.metadata_key
+                imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key])
+
+                # Update with Inscopix-specific information
+                imaging_plane_metadata["name"] = "ImagingPlane"
+                imaging_plane_metadata["device_metadata_key"] = self.metadata_key  # Reference to our new device
 
             # Build imaging plane description
             plane_desc = "Inscopix imaging plane"
@@ -170,6 +174,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 optical_channel["description"] += f" (LED power: {led_power} mW/mm²)"
 
             imaging_plane_metadata["optical_channel"] = [optical_channel]
+
+            # Add the new ImagingPlane to the metadata
+            metadata["Ophys"]["ImagingPlanes"][self.metadata_key] = imaging_plane_metadata
+
+            # Update the PlaneSegmentation to reference the new ImagingPlane
+            metadata["Ophys"]["ImageSegmentation"][self.metadata_key]["imaging_plane_metadata_key"] = self.metadata_key
 
         # Image segmentation (specific to segmentation interface)
         segmentation_desc = "Inscopix cell segmentation"
