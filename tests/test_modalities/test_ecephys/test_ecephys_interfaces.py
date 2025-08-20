@@ -375,6 +375,66 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_electrode_groups = ["0", "0", "1", "1", "2", "2"]
         np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
 
+    def test_set_probe_group_by_shank(self):
+        """Test setting a ProbeGroup with multiple probes using by_shank group mode."""
+        # Create interface with 6 channels to accommodate two probes with 3 channels each
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100])
+
+        # Create first probe with 2 shanks (3 channels total)
+        probe1 = Probe(ndim=2, si_units="um")
+        positions1 = np.array([[0, 0], [0, 20], [50, 0]])  # 2 channels on shank 0, 1 channel on shank 1
+        probe1.set_contacts(positions=positions1, shapes="circle", shape_params={"radius": 5})
+        probe1.set_device_channel_indices([0, 1, 2])
+        probe1.set_shank_ids([0, 0, 1])  # First 2 channels on shank 0, last channel on shank 1
+
+        # Create second probe with 2 shanks (3 channels total)
+        probe2 = Probe(ndim=2, si_units="um")
+        positions2 = np.array([[100, 0], [150, 0], [150, 20]])  # 1 channel on shank 0, 2 channels on shank 1
+        probe2.set_contacts(positions=positions2, shapes="circle", shape_params={"radius": 5})
+        probe2.set_device_channel_indices([3, 4, 5])
+        probe2.set_shank_ids([0, 1, 1])  # First channel on shank 0, last 2 channels on shank 1
+        # Note that in probe interface, shanks are local to the project and those will still be defined
+        # as separate groups when added to the interface.
+
+        # Create ProbeGroup
+        probe_group = ProbeGroup()
+        probe_group.add_probe(probe1)
+        probe_group.add_probe(probe2)
+
+        # Set the ProbeGroup using by_shank mode
+        interface.set_probe(probe_group, group_mode="by_shank")
+
+        # Check that probe is now set
+        assert interface.has_probe()
+
+        # With by_shank mode, each shank from each probe should be a separate group
+        # Expected groups: probe1_shank0=0, probe1_shank1=1, probe2_shank0=2, probe2_shank1=3
+        recording = interface.recording_extractor
+        groups = recording.get_property("group")
+        expected_groups = np.array(
+            [0, 0, 1, 2, 3, 3]
+        )  # [probe1_shank0, probe1_shank0, probe1_shank1, probe2_shank0, probe2_shank1, probe2_shank1]
+        np.testing.assert_array_equal(groups, expected_groups)
+
+        # Check that group_name property was set
+        group_names = recording.get_property("group_name")
+        expected_group_names = np.array(["0", "0", "1", "2", "3", "3"])
+        np.testing.assert_array_equal(group_names, expected_group_names)
+
+        # Check NWB file structure
+        nwbfile = interface.create_nwbfile()
+
+        # Should have 4 electrode groups (2 shanks from each probe)
+        assert len(nwbfile.electrode_groups) == 4
+        for group_id in ["0", "1", "2", "3"]:
+            assert group_id in nwbfile.electrode_groups
+
+        # Check electrodes table
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        electrode_group_names = electrodes_df["group_name"].values
+        expected_electrode_groups = ["0", "0", "1", "2", "3", "3"]
+        np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
+
 
 class TestAssertions(TestCase):
     @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
