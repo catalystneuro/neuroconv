@@ -101,16 +101,17 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             metadata["Devices"][self.metadata_key] = {}
         metadata["Devices"][self.metadata_key].update(name=device_name, **miniscope_config)
 
-        # Update imaging plane metadata
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+        # Update imaging plane metadata - use the default imaging plane created by base class
+        default_imaging_plane_key = "default_imaging_plane_metadata_key"
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
         imaging_plane_metadata.update(
-            device=self.metadata_key,
+            device_metadata_key=self.metadata_key,
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
 
         # Update one photon series metadata
         one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][self.metadata_key]
-        one_photon_series_metadata.update(unit="px")
+        one_photon_series_metadata.update(unit="px", imaging_plane_metadata_key=default_imaging_plane_key)
 
         return metadata
 
@@ -125,7 +126,11 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             for the Miniscope imaging interface.
         """
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
+        # Update device schema to allow additional properties for Miniscope-specific device metadata
+        if "Devices" in metadata_schema["properties"]:
+            device_pattern_properties = metadata_schema["properties"]["Devices"].get("patternProperties", {})
+            for pattern, device_schema in device_pattern_properties.items():
+                device_schema["additionalProperties"] = True
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
