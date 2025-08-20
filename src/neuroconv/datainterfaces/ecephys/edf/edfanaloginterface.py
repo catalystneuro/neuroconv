@@ -23,9 +23,6 @@ class EDFAnalogInterface(BaseDataInterface):
     associated_suffixes = (".edf",)
     info = "Interface for converting EDF non-electrical analog data."
 
-    # Class variable to track instances for unique naming
-    _instance_counter = 0
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__)
@@ -86,12 +83,8 @@ class EDFAnalogInterface(BaseDataInterface):
         # Extract only the analog channels
         self.recording_extractor = full_recording.select_channels(channel_ids=self._channels_to_include)
 
-        # Generate unique default TimeSeries name - users can override via metadata
-        EDFAnalogInterface._instance_counter += 1
-        if EDFAnalogInterface._instance_counter == 1:
-            self._time_series_name = "TimeSeriesEDF"
-        else:
-            self._time_series_name = f"TimeSeriesEDF{EDFAnalogInterface._instance_counter}"
+        # Default TimeSeries name - users can override via metadata
+        self._time_series_name = "TimeSeriesEDF"
 
         super().__init__(
             file_path=self._file_path,
