@@ -122,7 +122,7 @@ class TestOphysInterfacesGetMetadata:
         actual_imaging_planes = remove_nan_for_comparison(metadata["Ophys"]["ImagingPlanes"])
         assert actual_imaging_planes == expected_imaging_planes
 
-    def test_multiple_interfaces_with_converter(self):
+    def test_multiple_segmentation_interfaces_with_converter(self):
         """Test combining one imaging and one segmentation interface with ConverterPipe."""
         imaging_metadata_key = "visual_cortex"
         segmentation_metadata_key = "visual_cortex_suite2p"
