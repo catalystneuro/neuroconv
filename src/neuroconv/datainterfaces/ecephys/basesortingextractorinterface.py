@@ -16,7 +16,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "spike sorting")
 
-    ExtractorModuleName = "spikeinterface.extractors"
+    ExtractorModuleName = "spikeinterface.extractors.extractor_classes"
 
     def __init__(self, verbose: bool = False, **source_data):
 
@@ -375,3 +375,48 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             units_description=units_description,
             unit_electrode_indices=unit_electrode_indices,
         )
+
+    def rename_unit_ids(self, unit_ids_map: dict):
+        """
+        Rename unit IDs using a mapping dictionary.
+
+        Parameters
+        ----------
+        unit_ids_map : dict
+            A dictionary mapping current unit IDs to new unit IDs.
+            Format: {old_unit_id: new_unit_id, ...}
+
+        Raises
+        ------
+        ValueError
+            If any of the old unit IDs in the mapping do not exist in the sorting extractor.
+        TypeError
+            If unit_ids_map is not a dictionary.
+
+        Examples
+        --------
+        >>> sorting_interface = MockSortingInterface()
+        >>> print(sorting_interface.units_ids)  # ['0', '1', '2', '3']
+        >>> sorting_interface.rename_unit_ids({'0': 'unit_a', '1': 'unit_b'})
+        >>> print(sorting_interface.units_ids)  # ['unit_a', 'unit_b', '2', '3']
+        """
+        if not isinstance(unit_ids_map, dict):
+            raise TypeError("unit_ids_map must be a dictionary")
+
+        if not unit_ids_map:
+            return
+
+        current_unit_ids = list(self.sorting_extractor.get_unit_ids())
+
+        # Validate that all old unit IDs exist
+        missing_ids = [old_id for old_id in unit_ids_map.keys() if old_id not in current_unit_ids]
+        if missing_ids:
+            raise ValueError(
+                f"Unit IDs {missing_ids} not found in sorting extractor. " f"Available unit IDs: {current_unit_ids}"
+            )
+
+        # Create the new unit IDs list, keeping non-mapped IDs unchanged
+        new_unit_ids = [unit_ids_map.get(unit_id, unit_id) for unit_id in current_unit_ids]
+
+        # Rename the units in the sorting extractor
+        self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=new_unit_ids)

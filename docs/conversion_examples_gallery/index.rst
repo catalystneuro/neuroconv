@@ -16,6 +16,7 @@ Recording
     :maxdepth: 1
 
     AlphaOmega <recording/alphaomega>
+    Axon <recording/axon>
     Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
@@ -67,9 +68,11 @@ Imaging
     :maxdepth: 1
 
     Bruker <imaging/brukertiff>
+    Femtonics <imaging/femtonics>
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
+    Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
     ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
@@ -85,6 +88,7 @@ Segmentation
     Caiman <segmentation/caiman>
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
+    Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
 Fiber Photometry

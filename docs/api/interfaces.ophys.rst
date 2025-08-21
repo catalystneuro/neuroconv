@@ -13,9 +13,17 @@ Bruker Tiff Imaging
 -------------------
 .. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffconverter
 
+Femtonics Imaging
+-----------------
+.. automodule:: neuroconv.datainterfaces.ophys.femtonics.femtonicsdatainterface
+
 HDF5 Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface
+
+Inscopix Imaging
+----------------
+.. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopiximagingdatainterface
 
 MicroManager Tiff Imaging
 -------------------------
@@ -57,6 +65,10 @@ Cnmfe Segmentation
 Extract Segmentation
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.extract.extractdatainterface
+
+Inscopix Segmentation
+---------------------
+.. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopixsegmentationdatainterface
 
 Sima Segmentation
 -----------------

@@ -1,4 +1,5 @@
-"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
+import warnings
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -122,11 +123,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.source_data)
-        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_samples()))
 
     def get_timestamps(self) -> np.ndarray:
         return self.segmentation_extractor.frame_to_time(
-            frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
+            frames=np.arange(stop=self.segmentation_extractor.get_num_samples())
         )
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
@@ -137,15 +138,17 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
+        mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
+        stub_samples: int = 100,
     ):
         """
+        Add segmentation data to the NWB file.
 
         Parameters
         ----------
@@ -154,7 +157,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata : dict, optional
             The metadata for the interface
         stub_test : bool, default: False
-        stub_frames : int, default: 100
+        stub_frames : int, optional
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
         include_background_segmentation : bool, default: False
             Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
             neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
@@ -164,7 +169,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             you may wish to disable this for faster write speeds.
         include_roi_acceptance : bool, default: True
             Whether to include if the detected ROI was 'accepted' or 'rejected'.
-            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
+            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         mask_type : str, default: 'image'
             There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
@@ -176,12 +181,13 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
               of voxels in each ROI.
 
-            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
-            If None, the mask information is not written to the NWB file.
+            Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
 
         Returns
         -------
@@ -189,9 +195,26 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         """
         from ...tools.roiextractors import add_segmentation_to_nwbfile
 
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         if stub_test:
-            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
-            segmentation_extractor = self.segmentation_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+            effective_stub_samples = min([effective_stub_samples, self.segmentation_extractor.get_num_samples()])
+            segmentation_extractor = self.segmentation_extractor.slice_samples(
+                start_sample=0, end_sample=effective_stub_samples
+            )
         else:
             segmentation_extractor = self.segmentation_extractor
 

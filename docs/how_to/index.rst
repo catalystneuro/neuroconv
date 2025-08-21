@@ -11,3 +11,5 @@ This section contains practical guides for using NeuroConv effectively.
 
    set_probe_on_recording_interfaces
    annotate_ecephys_data
+   convert_video_formats_with_ffmpeg
+   adding_multiple_sorting_interfaces
