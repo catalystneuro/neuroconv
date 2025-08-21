@@ -1,42 +1,48 @@
 /**
  * NeuroConv Assistant Chatbot
- * Dynamically injects the NWB Assistant chatbot into every documentation page
+ * Opens the NWB Assistant chatbot in a persistent popup window
+ * that maintains conversation state across documentation page navigation
  */
 
-// document is the whole html, we adda an event listener that fires
-// when the HTML is fully loaded and parsed (i.e. DOMContentLoaded)
 document.addEventListener('DOMContentLoaded', function() {
-
-    const container = document.createElement('div');
-    // we give it a name to style it in css
-    container.className = 'assistant-container';
-
-    // Create the iframe for the chatbot
-    const iframe = document.createElement('iframe');
-    iframe.className = 'assistant-iframe';
-    container.appendChild(iframe);
-
-    // Create the toggle button
+    // Create the toggle button only (no container or iframe needed for popup)
     const toggle = document.createElement('button');
     toggle.className = 'assistant-toggle';
-    toggle.textContent = 'Open Chat Assistant';
+    toggle.textContent = 'Open Assistant';
 
-    // Append elements to the body
-    document.body.appendChild(container);
+    // Append button to the body
     document.body.appendChild(toggle);
 
-    // Track whether iframe has been loaded
-    let iframeLoaded = false;
+    // Track the popup window reference
+    let chatbotWindow = null;
 
     // Add click event handler for the toggle button
     toggle.addEventListener('click', function() {
-        const isShowing = container.classList.toggle('show');
+        // Check if window exists and is still open
+        if (!chatbotWindow || chatbotWindow.closed) {
+            // Open new popup window
+            chatbotWindow = window.open(
+                'https://magland.github.io/nwb-assistant/chat',
+                'nwb-assistant', // Window name (ensures only one window)
+                'width=500,height=700,scrollbars=yes,resizable=yes,location=no,menubar=no,toolbar=no,status=no'
+            );
 
-        // Load iframe content only when first opened for performance
-        if (isShowing && !iframeLoaded) {
-            // I think the loading happens here
-            iframe.src = 'https://magland.github.io/nwb-assistant/chat';
-            iframeLoaded = true;
+            // Update button text when window is opened
+            if (chatbotWindow) {
+                toggle.textContent = 'Focus Assistant';
+
+                // Check if window gets closed and update button text
+                const checkClosed = setInterval(function() {
+                    if (chatbotWindow.closed) {
+                        toggle.textContent = 'Open Assistant';
+                        chatbotWindow = null;
+                        clearInterval(checkClosed);
+                    }
+                }, 1000);
+            }
+        } else {
+            // Window exists, just bring it to front
+            chatbotWindow.focus();
         }
     });
 });
