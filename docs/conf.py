@@ -56,8 +56,8 @@ html_theme_options = {
         },
     ],
     "switcher": {
-        "json_url": "https://neuroconv.readthedocs.io/en/stable/_static/switcher.json",
-        "version_match": "stable",  # Set stable as the default version
+        "json_url": "https://neuroconv.readthedocs.io/en/latest/_static/switcher.json",
+        "version_match": "latest",  # This will be set correctly when deployed to RTD
     }
 }
 
