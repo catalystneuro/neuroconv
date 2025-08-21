@@ -3,9 +3,12 @@
  * Dynamically injects the NWB Assistant chatbot into every documentation page
  */
 
+// document is the whole html, we adda an event listener that fires
+// when the HTML is fully loaded and parsed (i.e. DOMContentLoaded)
 document.addEventListener('DOMContentLoaded', function() {
-    // Create the assistant container
+
     const container = document.createElement('div');
+    // we give it a name to style it in css
     container.className = 'assistant-container';
 
     // Create the iframe for the chatbot
@@ -16,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create the toggle button
     const toggle = document.createElement('button');
     toggle.className = 'assistant-toggle';
-    toggle.textContent = 'Open Assistant';
+    toggle.textContent = 'Open Chat Assistant';
 
     // Append elements to the body
     document.body.appendChild(container);
@@ -31,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Load iframe content only when first opened for performance
         if (isShowing && !iframeLoaded) {
+            // I think the loading happens here
             iframe.src = 'https://magland.github.io/nwb-assistant/chat';
             iframeLoaded = true;
         }
