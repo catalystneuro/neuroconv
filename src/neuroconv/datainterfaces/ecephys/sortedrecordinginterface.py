@@ -11,16 +11,30 @@ class SortedRecordingConverter(ConverterPipe):
     """
     A converter for linking spike sorting results with their corresponding recording electrodes.
 
-    This converter ensures proper linkage between sorted units and recording channels by requiring
-    an explicit mapping between unit IDs and channel IDs. This is essential for maintaining the
-    spatial and technical context of sorted units in the resulting NWB file, enabling downstream
-    analyses that rely on electrode information such as spatial clustering, quality control, and
-    current source density analysis.
+    Problem Statement:
+    When creating NWB files from spike sorting data, units in the UnitsTable need to be properly
+    linked to electrodes in the ElectrodesTable. However, this linkage cannot be established when
+    the interface is initially defined because:
+    1. The ElectrodesTable is created by the recording interface during add_to_nwbfile()
+    2. The UnitsTable is created by the sorting interface during add_to_nwbfile()
+    3. The electrode indices needed for linkage are only available after the ElectrodesTable exists
 
-    The converter validates that:
-    - All unit IDs from the sorting interface have corresponding channel mappings
-    - All referenced channel IDs exist in the recording interface
-    - Proper electrode references are maintained in the NWB Units table
+    Solution:
+    To circumvent this timing problem, this converter creates an explicit mapping from channels to
+    electrodes using the unit_ids_to_channel_ids parameter. This mapping ensures that regardless
+    of how the electrode and units tables are created, we can establish the proper linkage when
+    the tables are actually created during add_to_nwbfile().
+
+    The process works as follows:
+    1. User provides unit_ids_to_channel_ids mapping at converter initialization
+    2. Recording interface creates ElectrodesTable during add_to_nwbfile()
+    3. Converter maps channel IDs to electrode table indices using the created ElectrodesTable
+    4. Using the unit_ids_to_channel_ids, the Converter provides electrode indices to the sorting interface
+    5. Sorting interface creates UnitsTable with correct electrode references
+
+    This ensures proper linkage between sorted units and recording electrodes, maintaining the
+    spatial and technical context essential for downstream analyses such as spatial clustering,
+    quality control, and current source density analysis.
     """
 
     keywords = (
@@ -78,7 +92,7 @@ class SortedRecordingConverter(ConverterPipe):
         if unmapped_units:
             raise ValueError(f"Units {unmapped_units} from sorting interface have no channel mapping")
 
-        data_interfaces = [recording_interface, sorting_interface]
+        data_interfaces = {"recording": recording_interface, "sorting": sorting_interface}
         super().__init__(data_interfaces=data_interfaces)
 
     def add_to_nwbfile(self, nwbfile, metadata, conversion_options: dict | None = None):
