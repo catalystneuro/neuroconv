@@ -19,6 +19,31 @@ Features:
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
+.. raw:: html
+
+   <div class="assistant-container">
+     <iframe class="assistant-iframe"></iframe>
+   </div>
+   <button class="assistant-toggle">Open Assistant</button>
+   <script>
+     document.addEventListener('DOMContentLoaded', function() {
+       const toggle = document.querySelector('.assistant-toggle');
+       const container = document.querySelector('.assistant-container');
+       const iframe = document.querySelector('.assistant-iframe');
+       let iframeLoaded = false;
+
+       toggle.addEventListener('click', function() {
+         const isShowing = container.classList.toggle('show');
+
+         // Load iframe content only when first opened
+         if (isShowing && !iframeLoaded) {
+           iframe.src = 'https://magland.github.io/nwb-assistant/chat';
+           iframeLoaded = true;
+         }
+       });
+     });
+   </script>
+
 Installation
 ------------
 
