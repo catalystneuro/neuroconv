@@ -40,7 +40,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         stream_name: str, optional
