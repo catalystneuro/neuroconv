@@ -19,7 +19,7 @@ approaches:
 1. **Rename units** to create unique identifiers before merging into the
     canonical Units table
 2. **Keep separate tables for each sorter** in the processing module to maintain original
-   sorter IDs
+    sorter IDs
 
 Setting Up the Example
 -----------------------
@@ -68,8 +68,7 @@ Expected output:
 .. code-block:: text
 
     Units after adding first sorting:
-        unit_name
-    id
+    id  unit_name
     0           0
     1           1
     2           2
@@ -117,8 +116,7 @@ Expected output:
 .. code-block:: text
 
     Units after adding both sortings:
-        unit_name
-    id
+    id      unit_name
     0           0
     1           1
     2           2
@@ -288,8 +286,7 @@ Expected output:
 .. code-block:: text
 
     Units table with probe information:
-       unit_name    probe
-    id
+    id  unit_name    probe
     0          a  probe_A
     1          b  probe_A
     2          c  probe_A
@@ -361,10 +358,9 @@ Expected output:
 .. code-block:: text
 
     Units table with algorithm and quality information:
-        unit_name      algorithm  quality_score
-    id
-    0           a       kilosort           0.95
-    1           b       kilosort           0.87
-    2           c       kilosort           0.92
-    3           d   mountainsort           0.89
-    4           e   mountainsort           0.76
+    id  unit_name      algorithm  quality_score
+    0       a       kilosort           0.95
+    1       b       kilosort           0.87
+    2       c       kilosort           0.92
+    3       d   mountainsort           0.89
+    4       e   mountainsort           0.76
