@@ -32,7 +32,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : str or Path
             Path to the MEArec .h5 file.
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
         """
