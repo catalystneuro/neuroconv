@@ -1,51 +1,46 @@
 /* NeuroConv Assistant Chatbot Styles */
 /* Popup window approach - only button styling needed */
 
-/* Assistant toggle button - fixed position on right side */
+/* Assistant toggle button - bottom-right position (industry standard) */
 .assistant-toggle {
     position: fixed;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    right: 24px;
+    bottom: 24px;
     z-index: 1001;
-    padding: 12px 8px;
+    padding: 12px 16px;
     background-color: #2980b9;
     color: white;
     border: none;
-    border-radius: 8px 0 0 8px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
     font-weight: bold;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    box-shadow: -2px 0 5px rgba(0,0,0,0.2);
-    transition: background-color 0.3s ease-in-out, transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    min-height: 80px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: all 0.3s ease-in-out;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 120px;
+    white-space: nowrap;
 }
 
 .assistant-toggle:hover {
     background-color: #3498db;
-    transform: translateY(-50%) translateX(-2px);
-    box-shadow: -4px 0 8px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
 }
 
-/* Mobile devices - horizontal button layout */
+/* Mobile devices - smaller button */
 @media (max-width: 767px) {
     .assistant-toggle {
-        right: 10px;
-        top: 20px;
-        transform: none;
-        writing-mode: horizontal-tb;
-        text-orientation: unset;
-        border-radius: 4px;
-        padding: 8px 12px;
-        min-height: auto;
+        right: 16px;
+        bottom: 16px;
+        padding: 10px 14px;
+        font-size: 13px;
+        min-width: 100px;
     }
 
     .assistant-toggle:hover {
-        transform: translateX(-2px);
+        transform: translateY(-1px);
     }
 }
