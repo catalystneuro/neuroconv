@@ -51,6 +51,7 @@ html_context = {
 
 html_theme_options = {
     "use_edit_page_button": True,
+    "navbar_end": ["version-switcher", "navbar-icon-links"],  # Version switcher in navbar like NumPy/SciPy
     "icon_links": [
         {
             "name": "GitHub",
@@ -59,6 +60,10 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "switcher": {
+        "json_url": "_static/switcher.json",
+        "version_match": "latest",  # This will be set correctly when deployed to RTD
+    }
 }
 
 # Prevent Sphinx from prefixing class and function names with their module paths
