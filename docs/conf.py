@@ -34,6 +34,11 @@ html_favicon = "_static/favicon.ico"
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
 html_css_files = [
     "css/custom.css",
+    "css/neuroconv_assistant.css",
+]
+
+html_js_files = [
+    "js/neuroconv_assistant.js",
 ]
 
 html_context = {
