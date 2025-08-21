@@ -159,7 +159,7 @@ class ImageInterface(BaseDataInterface):
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
         images_location: Literal["acquisition", "stimulus"] = "acquisition",
-        images_container_metadata_key: str = "Images",
+        metadata_key: str = "Images",
         verbose: bool = True,
     ):
         """
@@ -173,8 +173,8 @@ class ImageInterface(BaseDataInterface):
             Path to folder containing images to be converted. Used if file_paths not provided.
         images_location : Literal["acquisition", "stimulus"], default: "acquisition"
             Location to store images in the NWB file
-        images_container_metadata_key : str, default: "Images"
-            Key to use in metadata["Images"][images_container_metadata_key] for storing container metadata
+        metadata_key : str, default: "Images"
+            Key to use in metadata["Images"][metadata_key] for storing container metadata
         verbose : bool, default: True
             Whether to print status messages
         """
@@ -187,14 +187,14 @@ class ImageInterface(BaseDataInterface):
         self.file_paths = file_paths
         self.folder_path = folder_path
         self.images_location = images_location
-        self.images_container_metadata_key = images_container_metadata_key
+        self.metadata_key = metadata_key
 
         super().__init__(
             verbose=verbose,
             file_paths=file_paths,
             folder_path=folder_path,
             images_location=images_location,
-            images_container_metadata_key=images_container_metadata_key,
+            metadata_key=metadata_key,
         )
 
         # Process paths
@@ -227,9 +227,9 @@ class ImageInterface(BaseDataInterface):
             Metadata dictionary with the following structure:
             {
                 "Images": {
-                    "<images_container_metadata_key>": {
+                    "<metadata_key>": {
                         "name": str,
-                            Name of the Images container (defaults to images_container_metadata_key)
+                            Name of the Images container (defaults to metadata_key)
                         "description": str,
                             Description of the Images container
                         "images": {
@@ -290,8 +290,8 @@ class ImageInterface(BaseDataInterface):
                 # Users can add "resolution" and "description" keys as needed
             }
 
-        metadata["Images"][self.images_container_metadata_key] = dict(
-            name=self.images_container_metadata_key,
+        metadata["Images"][self.metadata_key] = dict(
+            name=self.metadata_key,
             description="Images loaded through ImageInterface",
             images=images_metadata_dict,
         )
@@ -315,14 +315,14 @@ class ImageInterface(BaseDataInterface):
             Metadata for the images
         container_name : str, optional, deprecated
             Name of the Images container. This parameter is deprecated and will be removed
-            on or after February 2026. Use images_container_metadata_key in __init__ instead.
+            on or after February 2026. Use metadata_key in __init__ instead.
             If provided, it overrides the name from metadata.
         """
 
         if container_name is not None:
             warnings.warn(
                 "The 'container_name' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'images_container_metadata_key' in the __init__ method instead.",
+                "Use 'metadata_key' in the __init__ method instead.",
                 FutureWarning,
                 stacklevel=2,
             )
@@ -332,13 +332,13 @@ class ImageInterface(BaseDataInterface):
 
         # Get metadata for this specific container
         images_metadata = metadata.get("Images", {})
-        container_metadata = images_metadata.get(self.images_container_metadata_key, {})
+        container_metadata = images_metadata.get(self.metadata_key, {})
 
         # Use container_name only if explicitly provided (deprecated), otherwise use metadata
         if container_name is not None:
             name = container_name
         else:
-            name = container_metadata.get("name", self.images_container_metadata_key)
+            name = container_metadata.get("name", self.metadata_key)
 
         description = container_metadata.get("description", "Images loaded through ImageInterface")
 
