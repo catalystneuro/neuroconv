@@ -33,7 +33,7 @@
 * Refactored Femtonics Imaging Interface session, munit and channel selection logic. [PR #1433](https://github.com/catalystneuro/roiextractors/pull/1433)
 * Implemented PEP 735 dependency groups for test, docs, and dev dependencies [PR #1434](https://github.com/catalystneuro/neuroconv/pull/1434)
 * Expanded test coverage for `CaimanSegmentationInterface` to include all stub files and added quality metrics properties (r_values, SNR_comp, cnn_preds) to the PlaneSegmentation table as segmentation_extractor_properties [PR #1436](https://github.com/catalystneuro/neuroconv/pull/1436)
-* Added comprehensive how-to guide "Adding Multiple Sorting Interfaces" documenting approaches for handling multiple spike sorting outputs, including unit renaming strategies, separate processing tables, and adding custom properties for provenance tracking [PR #1451](https://github.com/catalystneuro/neuroconv/pull/1451)
+* Added comprehensive how-to guide "Adding Multiple Sorting Interfaces" documenting approaches for handling multiple spike sorting outputs, including unit renaming strategies, separate processing tables, and adding custom properties for provenance tracking [PR #1451](https://github.com/catalystneuro/neuroconv/pull/1451) [PR #1473](https://github.com/catalystneuro/neuroconv/pull/1473)
 * The copy button no longer copies the prompt (>>>) in the conversion gallery [PR 1467](https://github.com/catalystneuro/neuroconv/pull/1467)
 
 # v0.7.5 (June 11, 2025)
