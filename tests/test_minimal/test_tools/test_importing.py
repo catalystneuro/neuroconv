@@ -1,6 +1,9 @@
 """Tests for neuroconv.tools.importing module."""
 
+import pytest
+
 from neuroconv import get_format_summaries
+from neuroconv.tools.importing import get_package
 
 
 def test_guide_attributes():
@@ -29,3 +32,15 @@ def test_guide_attributes():
                 ), f"{name} incorrectly specified GUIDE-related attribute 'associated_suffixes' (must be tuple)."
             if isinstance(value, tuple):
                 assert len(value) > 0, f"{name} is missing entries in GUIDE related attribute {key}."
+
+
+def test_get_package_missing():
+    package_name = "nonexistent_package_abc123"
+    with pytest.raises(ModuleNotFoundError) as excinfo:
+        get_package(package_name)
+    assert package_name in str(excinfo.value)
+
+
+def test_get_package_existing():
+    module = get_package("json")
+    assert module.__name__ == "json"
