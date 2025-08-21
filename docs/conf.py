@@ -37,6 +37,10 @@ html_css_files = [
     "css/neuroconv_assistant.css",
 ]
 
+html_js_files = [
+    "js/neuroconv_assistant.js",
+]
+
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
     "github_user": "catalystneuro",
