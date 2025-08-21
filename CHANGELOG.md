@@ -25,9 +25,12 @@
 * Added per-image metadata support to `ImageInterface` allowing users to specify individual `resolution` (pixels/cm), name and `description` for each image through metadata structure. [PR #1441](https://github.com/catalystneuro/neuroconv/pull/1441)
 * Added `SortedSpikeGLXConverter` for handling multiple SpikeGLX streams with their corresponding sorting data, enabling proper unit-to-electrode linkage across multiple probes [PR #1449](https://github.com/catalystneuro/neuroconv/pull/1449)
 * Added `rename_unit_ids()` method to `BaseSortingExtractorInterface` for dictionary-based unit ID renaming, enabling clean handling of multiple sorting interfaces with overlapping unit IDs [PR #1451](https://github.com/catalystneuro/neuroconv/pull/1451)
+* Added support for setting ProbeGroup objects in `BaseRecordingExtractorInterface.set_probe()` method[PR #1464](https://github.com/catalystneuro/neuroconv/pull/1464)
+* Added comprehensive tests for `set_probe` method in `BaseRecordingExtractorInterface` to verify probe and probe group functionality with proper electrode group organization in NWB files [PR #1464](https://github.com/catalystneuro/neuroconv/pull/1464)
 
 ## Improvements
 * Added comprehensive FFmpeg video conversion how-to guide for converting bespoke video formats to DANDI-compatible formats [PR #1426](https://github.com/catalystneuro/neuroconv/pull/1426)
+* Refactored Femtonics Imaging Interface session, munit and channel selection logic. [PR #1433](https://github.com/catalystneuro/roiextractors/pull/1433)
 * Implemented PEP 735 dependency groups for test, docs, and dev dependencies [PR #1434](https://github.com/catalystneuro/neuroconv/pull/1434)
 * Expanded test coverage for `CaimanSegmentationInterface` to include all stub files and added quality metrics properties (r_values, SNR_comp, cnn_preds) to the PlaneSegmentation table as segmentation_extractor_properties [PR #1436](https://github.com/catalystneuro/neuroconv/pull/1436)
 * Added comprehensive documentation on linking sorted data to electrodes, including motivation, practical examples, and guidance for both single and multi-probe recording scenarios [PR #1449](https://github.com/catalystneuro/neuroconv/pull/1449)

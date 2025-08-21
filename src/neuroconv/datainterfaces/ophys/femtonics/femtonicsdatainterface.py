@@ -34,7 +34,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : str or Path
+        file_path : FilePath
             Path to the .mesc file.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0", "MSession_1").
@@ -52,8 +52,6 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             each corresponding to a separate imaging run/experiment performed during the session.
             MUnits are named as "MUnit_0", "MUnit_1", etc. within each session.
 
-            Note: In future versions, roiextractors will default to the first available unit if not specified.
-
         channel_name : str, optional
             Name of the channel to extract (e.g., 'UG', 'UR').
             If multiple channels are available and no channel is specified, an error will be raised.
@@ -63,72 +61,21 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Whether to print verbose output. Default is False.
         """
 
-        Extractor = self.get_extractor()
-        session_keys = Extractor.get_available_sessions(file_path)
+        # Store parameters for later use
+        self._file_path = file_path
+        self._session_name = session_name
+        self._munit_name = munit_name
+        self._channel_name = channel_name
 
-        # Handle session_name selection
-        if session_name is None:
-            if not session_keys:
-                raise ValueError(f"No sessions found in Femtonics file: {file_path}")
-            if len(session_keys) == 1:
-                session_name = session_keys[0]
-            else:
-                raise ValueError(
-                    f"Multiple sessions found in Femtonics file: {file_path}. "
-                    f"Available sessions: {session_keys}. Please specify 'session_name'."
-                )
-        else:
-            # Validate that the specified session_name exists
-            if session_name not in session_keys:
-                raise ValueError(
-                    f"Specified session_name '{session_name}' not found in Femtonics file: {file_path}. "
-                    f"Available sessions: {session_keys}."
-                )
-
-        # Convert session_name to session_index for the extractor
-        session_index = session_keys.index(session_name)
-
-        # Get available units for the selected session
-        unit_keys = Extractor.get_available_units(file_path, session_index=session_index)
-        if not unit_keys:
-            raise ValueError(f"No units found in session {session_name} of Femtonics file: {file_path}")
-
-        # Handle munit_name selection
-        if munit_name is None:
-            if len(unit_keys) == 1:
-                munit_name = unit_keys[0]
-            else:
-                raise ValueError(
-                    f"Multiple units found in session {session_name} of Femtonics file: {file_path}. "
-                    f"Available units: {unit_keys}. Please specify 'munit_name'."
-                )
-        else:
-            # Validate that the specified munit_name exists
-            if munit_name not in unit_keys:
-                raise ValueError(
-                    f"Specified munit_name '{munit_name}' not found in session {session_name} "
-                    f"of Femtonics file: {file_path}. Available units: {unit_keys}."
-                )
-
-        # Convert munit_name to munit_index for the extractor
-        munit_index = unit_keys.index(munit_name)
-
-        # TODO: Remove this logic once roiextractors supports this behavior natively.
-
+        # Initialize the extractor directly with string parameters
+        # The extractor now handles validation and selection internally
         super().__init__(
             file_path=file_path,
-            session_index=session_index,
-            munit_index=munit_index,
+            session_name=session_name,
+            munit_name=munit_name,
             channel_name=channel_name,
             verbose=verbose,
         )
-
-        self._file_path = file_path
-        self._session_name = session_name
-        self._session_index = session_index
-        self._munit_name = munit_name
-        self._munit_index = munit_index
-        self._channel_name = channel_name
 
         # Hack till roiextractors removes the get_num_channels method in check_imaging_equal.
         # TODO: remove this once roiextractors 0.6.1
@@ -181,9 +128,13 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if session_uuid:
             metadata["NWBFile"]["session_id"] = session_uuid
 
-        # Session description - use session_name and munit_name instead of indices
-        hostname = femtonics_metadata.get("hostname")
-        session_descr = f"Session: {self._session_name}, MUnit: {self._munit_name}."
+        # Session description - use session_name and munit_name from the extractor's selected values
+        selected_session_name = femtonics_metadata.get("session_name")
+        selected_munit_name = femtonics_metadata.get("munit_name")
+        experimenter_info = femtonics_metadata.get("experimenter_info", {})
+        hostname = experimenter_info.get("hostname")
+
+        session_descr = f"Session: {selected_session_name}, MUnit: {selected_munit_name}."
         if hostname:
             session_descr += f" Session performed on workstation: {hostname}."
         metadata["NWBFile"]["session_description"] = session_descr
@@ -276,7 +227,8 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Path to the .mesc file.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0").
-            If None, uses the first available session.
+            If None and only one session exists, uses that session automatically.
+            If multiple sessions exist, raises an error.
 
         Returns
         -------
@@ -284,16 +236,19 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available unit keys.
         """
         Extractor = cls.get_extractor()
-        session_keys = cls.get_available_sessions(file_path=file_path)
+
+        # If no session_name provided, only auto-select if there's exactly one session
         if session_name is None:
-            if not session_keys:
+            available_sessions = cls.get_available_sessions(file_path=file_path)
+            if not available_sessions:
                 raise ValueError("No sessions found")
-            session_index = 0
-        else:
-            if session_name not in session_keys:
-                raise ValueError(f"Session '{session_name}' not found. Available sessions: {session_keys}")
-            session_index = session_keys.index(session_name)
-        return Extractor.get_available_units(file_path=file_path, session_index=session_index)
+            if len(available_sessions) > 1:
+                raise ValueError(
+                    f"Multiple sessions found: {available_sessions}. " "Please specify 'session_name' to select one."
+                )
+            session_name = available_sessions[0]
+
+        return Extractor.get_available_munits(file_path=file_path, session_name=session_name)
 
     @classmethod
     def get_available_channels(cls, file_path: FilePath, session_name: str = None, munit_name: str = None) -> list[str]:
@@ -306,10 +261,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Path to the .mesc file.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0").
-            If None, uses the first available session.
+            If None and only one session exists, uses that session automatically.
+            If multiple sessions exist, raises an error.
         munit_name : str, optional
             Name of the MUnit within the session (e.g., "MUnit_0").
-            If None, uses the first available unit.
+            If None and only one unit exists in the session, uses that unit automatically.
+            If multiple units exist, raises an error.
 
         Returns
         -------
@@ -317,24 +274,28 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             List of available channel names.
         """
         Extractor = cls.get_extractor()
-        session_keys = cls.get_available_sessions(file_path=file_path)
+
+        # If no session_name provided, only auto-select if there's exactly one session
         if session_name is None:
-            if not session_keys:
+            available_sessions = cls.get_available_sessions(file_path=file_path)
+            if not available_sessions:
                 raise ValueError("No sessions found")
-            session_index = 0
-        else:
-            if session_name not in session_keys:
-                raise ValueError(f"Session '{session_name}' not found. Available sessions: {session_keys}")
-            session_index = session_keys.index(session_name)
-        unit_keys = cls.get_available_munits(file_path=file_path, session_name=session_name)
+            if len(available_sessions) > 1:
+                raise ValueError(
+                    f"Multiple sessions found: {available_sessions}. " "Please specify 'session_name' to select one."
+                )
+            session_name = available_sessions[0]
+
+        # If no munit_name provided, only auto-select if there's exactly one unit in the session
         if munit_name is None:
-            if not unit_keys:
+            available_munits = cls.get_available_munits(file_path=file_path, session_name=session_name)
+            if not available_munits:
                 raise ValueError(f"No units found in session {session_name}")
-            munit_index = 0
-        else:
-            if munit_name not in unit_keys:
-                raise ValueError(f"Unit '{munit_name}' not found. Available units: {unit_keys}")
-            munit_index = unit_keys.index(munit_name)
-        return Extractor.get_available_channels(
-            file_path=file_path, session_index=session_index, munit_index=munit_index
-        )
+            if len(available_munits) > 1:
+                raise ValueError(
+                    f"Multiple units found in session {session_name}: {available_munits}. "
+                    "Please specify 'munit_name' to select one."
+                )
+            munit_name = available_munits[0]
+
+        return Extractor.get_available_channels(file_path=file_path, session_name=session_name, munit_name=munit_name)
