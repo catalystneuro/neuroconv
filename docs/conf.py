@@ -32,9 +32,9 @@ html_static_path = ["_static"]
 html_favicon = "_static/favicon.ico"
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
-# html_css_files = [
-#     "css/custom.css",
-# ]
+html_css_files = [
+    "css/custom.css",
+]
 
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
@@ -46,6 +46,7 @@ html_context = {
 
 html_theme_options = {
     "use_edit_page_button": True,
+    "navbar_end": ["version-switcher", "navbar-icon-links"],  # Version switcher in navbar like NumPy/SciPy
     "icon_links": [
         {
             "name": "GitHub",
@@ -54,6 +55,10 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "switcher": {
+        "json_url": "https://neuroconv.readthedocs.io/en/stable/_static/switcher.json",
+        "version_match": "stable",  # Set stable as the default version
+    }
 }
 
 # Prevent Sphinx from prefixing class and function names with their module paths
