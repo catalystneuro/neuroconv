@@ -16,17 +16,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Track the popup window reference
     let chatbotWindow = null;
 
-    // Function to get optimal popup size based on screen
+    // Function to get optimal popup size and position for multi-monitor setups
     const getOptimalPopupSize = () => {
-        const screenWidth = window.screen.width;
-        const screenHeight = window.screen.height;
+        // Get current window position to determine which screen we're on
+        const currentLeft = window.screenX || window.screenLeft || 0;
+        const currentTop = window.screenY || window.screenTop || 0;
+        const currentWidth = window.outerWidth;
 
+        // Determine popup size based on screen size
+        const screenWidth = window.screen.width;
         let width, height;
 
         if (screenWidth <= 768) {
             // Mobile: smaller popup
             width = Math.min(400, screenWidth - 40);
-            height = Math.min(600, screenHeight - 100);
+            height = Math.min(600, window.screen.height - 100);
         } else if (screenWidth <= 1024) {
             // Tablet: medium popup
             width = 450;
@@ -41,9 +45,22 @@ document.addEventListener('DOMContentLoaded', function() {
             height = 800;
         }
 
-        // Center the popup
-        const left = Math.round((screenWidth - width) / 2);
-        const top = Math.round((screenHeight - height) / 2);
+        // Position popup near current window (same monitor)
+        // Try to place it to the right of current window
+        let left = currentLeft + currentWidth + 20; // 20px gap from browser window
+        let top = currentTop + 50; // Small offset from top of browser
+
+        // If popup would extend beyond screen, center it instead
+        const maxLeft = currentLeft + screenWidth - width;
+        if (left > maxLeft) {
+            left = currentLeft + Math.round((screenWidth - width) / 2);
+        }
+
+        // Ensure popup doesn't go below screen
+        const maxTop = window.screen.height - height - 50;
+        if (top > maxTop) {
+            top = Math.max(50, Math.round((window.screen.height - height) / 2));
+        }
 
         return { width, height, left, top };
     };
