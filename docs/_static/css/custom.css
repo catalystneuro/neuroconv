@@ -14,13 +14,3 @@ dt em.sig-param:last-of-type::after {
 dl.class > dt:first-of-type {
     display: block !important;
 }
-
-/* Hide Read the Docs version switcher (bottom-right) to avoid duplication with navbar switcher */
-.rst-versions,
-div.rst-versions,
-.rst-versions.rst-badge,
-.injected .rst-versions {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-}
