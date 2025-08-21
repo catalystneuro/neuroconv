@@ -62,7 +62,7 @@ html_theme_options = {
     ],
     "switcher": {
         "json_url": "_static/switcher.json",
-        "version_match": "latest",  # This will be set correctly when deployed to RTD
+        "version_match": "stable",  # This will be set correctly when deployed to RTD
     }
 }
 
