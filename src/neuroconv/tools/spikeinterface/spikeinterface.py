@@ -1147,7 +1147,13 @@ def add_recording_as_time_series_to_nwbfile(
         This parameter is used to look up metadata in the metadata dictionary if provided.
 
     """
-
+    if time_series_name is not None:
+        warnings.warn(
+            "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
+            "Use 'metadata_key' to specify the metadata entry instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
         _add_time_series_segment_to_nwbfile(
@@ -1180,9 +1186,10 @@ def _add_time_series_segment_to_nwbfile(
 
     # For backwards compatibility
     metadata_key = time_series_name or metadata_key
+    metadata = DeepDict() if metadata is None else metadata
+
     time_series_name = time_series_name or metadata["TimeSeries"][metadata_key].get("name", "TimeSeries")
     tseries_kwargs = dict(name=time_series_name)
-    metadata = DeepDict() if metadata is None else metadata
     metadata = deepcopy(metadata)
 
     # Apply metadata if available
