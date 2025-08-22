@@ -3,6 +3,10 @@ from typing import Optional
 from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
+)
 from ....utils import DeepDict
 
 
@@ -39,6 +43,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
+        metadata_key: str = "default",
         **kwargs,
     ):
         """
@@ -48,6 +53,10 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Path to the .isxd Inscopix file.
         verbose : bool, optional
             If True, outputs additional information during processing.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and OnePhotonSeries.
+            Default is "default".
         **kwargs : dict, optional
             Additional keyword arguments passed to the parent class.
 
@@ -63,6 +72,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         super().__init__(
             file_path=file_path,
             verbose=verbose,
+            metadata_key=metadata_key,
             **kwargs,
         )
 
@@ -78,6 +88,10 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         """
         # Get metadata from parent (already configured for OnePhotonSeries)
         metadata = super().get_metadata()
+
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         extractor = self.imaging_extractor
         extractor_metadata = extractor._get_metadata()
@@ -99,12 +113,21 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
         # Device information
-        if device_info:
-            device_metadata = metadata["Ophys"]["Device"][0]
+        # Always ensure device metadata exists with required name field
+        if "Devices" not in metadata:
+            metadata["Devices"] = {}
+        if self.metadata_key not in metadata["Devices"]:
+            metadata["Devices"][self.metadata_key] = {}
+        device_metadata = metadata["Devices"][self.metadata_key]
 
-            # Update the actual device name
-            if device_info.get("device_name"):
-                device_metadata["name"] = device_info["device_name"]
+        # Set device name (from extractor or default)
+        if device_info and device_info.get("device_name"):
+            device_metadata["name"] = device_info["device_name"]
+        else:
+            device_metadata["name"] = "InscopixMicroscope"  # Default name
+
+        # Add additional device information if available
+        if device_info:
 
             # Build device description
             microscope_info = []
@@ -116,12 +139,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             if microscope_info:
                 device_metadata["description"] = f"Inscopix Microscope ({', '.join(microscope_info)})"
 
-            # Update imaging plane metadata with acquisition details
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            # Update imaging plane metadata with acquisition details - use default plane from base class
+            default_imaging_plane_key = "default_imaging_plane_metadata_key"
+            imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
 
-            # Update imaging plane device reference to match the actual device name
-            if device_info.get("device_name"):
-                imaging_plane_metadata["device"] = device_info["device_name"]
+            # Update imaging plane device reference to use metadata_key (new field name)
+            imaging_plane_metadata["device_metadata_key"] = self.metadata_key
 
             acquisition_details = []
             if device_info.get("exposure_time_ms"):

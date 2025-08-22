@@ -51,6 +51,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         plane_name: str | None = None,
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -142,6 +143,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             slice_sample=slice_sample,
             interleave_slice_samples=interleave_slice_samples,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
         # Make sure the timestamps are available, the extractor caches them
@@ -176,7 +178,12 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # Update device information
             device_name = "Microscope"
-            metadata["Ophys"]["Device"][0].update(name=device_name, description=f"Microscope controlled by ScanImage")
+            # For ScanImage, we'll use the default device key since all interfaces can share the same microscope device
+            default_device_key = "default_device_metadata_key"
+            if "Devices" in metadata and default_device_key in metadata["Devices"]:
+                metadata["Devices"][default_device_key].update(
+                    name=device_name, description="Microscope controlled by ScanImage"
+                )
             channel_name_string = self.channel_name.replace(" ", "").capitalize()
 
             optical_channel_name = f"OpticalChannel{channel_name_string}"
@@ -187,12 +194,19 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             }
 
             # Update imaging plane metadata
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            # Handle dictionary structure for ImagingPlanes
+            default_imaging_plane_key = "default_imaging_plane_metadata_key"
+            if "ImagingPlanes" in metadata["Ophys"]:
+                # Use the default imaging plane created by the base class
+                imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
+            else:
+                # Old list structure (backward compatibility)
+                imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
             plane_index_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
             imaging_plane_name = f"ImagingPlane{channel_name_string}{plane_index_string}"
             imaging_plane_metadata.update(
                 name=imaging_plane_name,
-                device=device_name,
+                device_metadata_key=default_device_key,
                 imaging_rate=self.imaging_extractor.get_sampling_frequency(),
                 description="Imaging plane from ScanImage acquisition",
                 optical_channel=[optical_channel_metadata],
@@ -200,10 +214,15 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # Update photon series metadata
             photon_series_key = self.photon_series_type  # "TwoPhotonSeries" or "OnePhotonSeries"
-            photon_series_metadata = metadata["Ophys"][photon_series_key][0]
+            # Handle dictionary structure
+            if photon_series_key in metadata["Ophys"] and isinstance(metadata["Ophys"][photon_series_key], dict):
+                photon_series_metadata = metadata["Ophys"][photon_series_key][self.metadata_key]
+            else:
+                # Old list structure (backward compatibility)
+                photon_series_metadata = metadata["Ophys"][photon_series_key][0]
 
             photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
-            photon_series_metadata["imaging_plane"] = imaging_plane_name
+            photon_series_metadata["imaging_plane_metadata_key"] = default_imaging_plane_key
             photon_series_metadata["name"] = photon_series_name
             photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
 
@@ -221,9 +240,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 # Add version information to device description if available
                 if "SI.VERSION_MAJOR" in frame_data:
                     version = f"{frame_data.get('SI.VERSION_MAJOR', '')}.{frame_data.get('SI.VERSION_MINOR', '')}.{frame_data.get('SI.VERSION_UPDATE', '')}"
-                    metadata["Ophys"]["Device"][0][
-                        "description"
-                    ] = f"Microscope and acquisition data with ScanImage (version {version})"
+                    # Update device description with version info
+                    if "Devices" in metadata and default_device_key in metadata["Devices"]:
+                        metadata["Devices"][default_device_key][
+                            "description"
+                        ] = f"Microscope and acquisition data with ScanImage (version {version})"
 
             # Extract ROI metadata if available
             if "RoiGroups" in scanimage_metadata:
@@ -409,6 +430,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         file_path: FilePath,
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         DataInterface for reading Tiff files that are generated by ScanImage v3.8. This interface extracts the metadata
@@ -421,6 +443,10 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         fallback_sampling_frequency: float, optional
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and PhotonSeries.
+            Default is "default".
         """
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
@@ -441,7 +467,12 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             sampling_frequency = fallback_sampling_frequency
 
         self.sampling_frequency = sampling_frequency
-        super().__init__(file_path=file_path, fallback_sampling_frequency=fallback_sampling_frequency, verbose=verbose)
+        super().__init__(
+            file_path=file_path,
+            fallback_sampling_frequency=fallback_sampling_frequency,
+            verbose=verbose,
+            metadata_key=metadata_key,
+        )
 
     def get_metadata(self) -> DeepDict:
         """
@@ -581,6 +612,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         image_metadata: dict | None = None,
         parsed_metadata: dict | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         warnings.warn(
             "ScanImageMultiPlaneImagingInterface is deprecated and will be removed in or after October 2025. "
@@ -638,6 +670,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             image_metadata=image_metadata,
             parsed_metadata=parsed_metadata,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
     def get_metadata(self) -> DeepDict:
@@ -658,7 +691,12 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
 
         ophys_metadata = metadata["Ophys"]
-        two_photon_series_metadata = ophys_metadata["TwoPhotonSeries"][0]
+        # Handle dictionary structure
+        if "TwoPhotonSeries" in ophys_metadata and isinstance(ophys_metadata["TwoPhotonSeries"], dict):
+            two_photon_series_metadata = ophys_metadata["TwoPhotonSeries"][self.metadata_key]
+        else:
+            # Old list structure (backward compatibility)
+            two_photon_series_metadata = ophys_metadata["TwoPhotonSeries"][0]
 
         if self.image_metadata is not None:
             extracted_description = json.dumps(self.image_metadata)
@@ -667,7 +705,12 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         if self.two_photon_series_name_suffix is None:
             return metadata
 
-        imaging_plane_metadata = ophys_metadata["ImagingPlane"][0]
+        # Handle dictionary structure for ImagingPlanes
+        if "ImagingPlanes" in ophys_metadata:
+            imaging_plane_metadata = ophys_metadata["ImagingPlanes"][self.metadata_key]
+        else:
+            # Old list structure (backward compatibility)
+            imaging_plane_metadata = ophys_metadata["ImagingPlane"][0]
         channel_name = self.source_data["channel_name"]
         optical_channel_metadata = [
             channel for channel in imaging_plane_metadata["optical_channel"] if channel["name"] == channel_name
@@ -704,6 +747,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
         image_metadata: dict | None = None,
         parsed_metadata: dict | None = None,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         warnings.warn(
             "ScanImageMultiPlaneMultiFileImagingInterface is deprecated and will be removed in or after October 2025. "
@@ -774,6 +818,7 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
             channel_name=channel_name,
             extract_all_metadata=extract_all_metadata,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
     def get_metadata(self) -> DeepDict:

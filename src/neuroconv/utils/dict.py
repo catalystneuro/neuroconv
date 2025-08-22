@@ -197,7 +197,12 @@ def dict_deep_update(
                 sub_dict_to_update, sub_dict_with_update_values, append_list=append_list, remove_repeats=remove_repeats
             )
         # Update with list calls the append_replace_dict_in_list function
-        elif append_list and isinstance(update_values, list):
+        # Only apply this logic to lists that contain dictionaries, not simple value lists
+        elif (
+            append_list
+            and isinstance(update_values, list)
+            and any(isinstance(item, collections.abc.Mapping) for item in update_values)
+        ):
             for value in update_values:
                 dict_or_list_of_dicts = dict_to_update.get(key_to_update, [])
                 dict_to_update[key_to_update] = append_replace_dict_in_list(

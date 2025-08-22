@@ -6,6 +6,10 @@ import numpy as np
 from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
+)
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
@@ -43,7 +47,9 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePath, channel_name: str | None = None, verbose: bool = False):
+    def __init__(
+        self, file_path: FilePath, channel_name: str | None = None, verbose: bool = False, metadata_key: str = "default"
+    ):
         """
         Initialize reading of a TIFF file.
 
@@ -55,9 +61,13 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Name of the channel to extract (must match name in Experiment.xml)
         verbose : bool, default: False
             If True, print verbose output
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and TwoPhotonSeries.
+            Default is "default".
         """
 
-        super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
+        super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose, metadata_key=metadata_key)
         self.channel_name = channel_name
 
     def get_metadata(self) -> DeepDict:
@@ -71,6 +81,10 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             and photon series configuration.
         """
         metadata = super().get_metadata()
+
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
 
         # Access the experiment XML dictionary from the extractor
         xml_dict = self.imaging_extractor._experiment_xml_dict
@@ -93,7 +107,15 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         self.session_start_time = datetime.fromtimestamp(float(unix_timestamps), tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = self.session_start_time
 
-        metadata.setdefault("Ophys", {})["Device"] = [{"name": "ThorMicroscope", "description": device_description}]
+        # Update device metadata in the new structure
+        if "Devices" not in metadata:
+            metadata["Devices"] = {}
+        if self.metadata_key not in metadata["Devices"]:
+            metadata["Devices"][self.metadata_key] = {}
+        metadata["Devices"][self.metadata_key].update(
+            name="ThorMicroscope",
+            description=device_description,
+        )
 
         # LSM metadata
         lsm = thor_experiment["LSM"]
@@ -106,29 +128,29 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         optical_channel_dict = {"name": ChannelName, "description": "", "emission_lambda": np.nan}
         optical_channels = [optical_channel_dict]
 
+        # Update imaging plane metadata
         imaging_plane_name = f"ImagingPlane{ChannelName}"
-        channel_imaging_plane_metadata = {
-            "name": imaging_plane_name,
-            "optical_channel": optical_channels,
-            "description": "2P Imaging Plane",
-            "device": "ThorMicroscope",
-            "excitation_lambda": np.nan,  # Placeholder
-            "indicator": "unknown",
-            "location": "unknown",
-            "grid_spacing": [pixel_size * 1e-6, pixel_size * 1e-6],  # Convert um to meters
-            "grid_spacing_unit": "meters",
-        }
-        metadata["Ophys"]["ImagingPlane"] = [channel_imaging_plane_metadata]
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][self.metadata_key]
+        imaging_plane_metadata.update(
+            name=imaging_plane_name,
+            optical_channel=optical_channels,
+            description="2P Imaging Plane",
+            device_metadata_key=self.metadata_key,
+            excitation_lambda=np.nan,  # Placeholder
+            indicator="unknown",
+            location="unknown",
+            grid_spacing=[pixel_size * 1e-6, pixel_size * 1e-6],  # Convert um to meters
+            grid_spacing_unit="meters",
+        )
 
         # TwoPhotonSeries metadata
         two_photon_series_name = f"TwoPhotonSeries{ChannelName}"
-        two_photon_series_metadata = {
-            "name": two_photon_series_name,
-            "imaging_plane": imaging_plane_name,
-            "field_of_view": [width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
-            "unit": "n.a.",
-        }
-        metadata["Ophys"]["TwoPhotonSeries"] = [two_photon_series_metadata]
+        two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][self.metadata_key]
+        two_photon_series_metadata.update(
+            name=two_photon_series_name,
+            field_of_view=[width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
+            unit="n.a.",
+        )
 
         return metadata
 
