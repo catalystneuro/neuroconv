@@ -1142,10 +1142,6 @@ def add_recording_as_time_series_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
-    time_series_name : str, optional
-        Name of the TimeSeries to create. If not provided, a default name will be generated based on the write_as parameter.
-        This parameter is used to look up metadata in the metadata dictionary if provided.
-
     """
     if time_series_name is not None:
         warnings.warn(
