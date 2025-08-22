@@ -126,7 +126,7 @@ def get_package(
     if package_name in sys.modules:
         return sys.modules[package_name]
 
-    if is_package_installed(package_name=package_name) is not None:
+    if is_package_installed(package_name=package_name):
         return import_module(name=package_name)
 
     raise ModuleNotFoundError(

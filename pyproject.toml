@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.6"
+version = "0.8.1"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -266,7 +266,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.6",
+    "roiextractors>=0.6.2",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
