@@ -32,9 +32,14 @@ html_static_path = ["_static"]
 html_favicon = "_static/favicon.ico"
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
-# html_css_files = [
-#     "css/custom.css",
-# ]
+html_css_files = [
+    "css/custom.css",
+    "css/neuroconv_assistant.css",
+]
+
+html_js_files = [
+    "js/neuroconv_assistant.js",
+]
 
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
@@ -46,6 +51,7 @@ html_context = {
 
 html_theme_options = {
     "use_edit_page_button": True,
+    "navbar_end": ["version-switcher", "navbar-icon-links"],  # Version switcher in navbar like NumPy/SciPy
     "icon_links": [
         {
             "name": "GitHub",
@@ -54,6 +60,10 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "switcher": {
+        "json_url": "_static/switcher.json",
+        "version_match": "stable",  # This will be set correctly when deployed to RTD
+    }
 }
 
 # Prevent Sphinx from prefixing class and function names with their module paths
@@ -104,6 +114,10 @@ def setup(app):  # This makes the data-interfaces signatures display on the docs
 # Toggleprompt
 toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>) for the conversion gallery
 toggleprompt_default_hidden = "true"
+
+# Copybutton
+copybutton_exclude = '.linenos, .gp'  # This avoids copying prompt (>>>) in the conversion gallery (issue #1465)
+
 
 # Intersphinx
 intersphinx_mapping = {

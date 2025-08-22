@@ -19,7 +19,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "voltage", "recording")
 
-    ExtractorModuleName = "spikeinterface.extractors"
+    ExtractorModuleName = "spikeinterface.extractors.extractor_classes"
 
     def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
@@ -234,27 +234,38 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
             self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
-    def set_probe(self, probe, group_mode: Literal["by_shank", "by_probe"]):
+    def set_probe(self, probe: "Probe | ProbeGroup", group_mode: Literal["by_shank", "by_probe"]):
         """
         Set the probe information via a ProbeInterface object.
 
         Parameters
         ----------
-        probe : probeinterface.Probe
-            The probe object.
+        probe : probeinterface.Probe or probeinterface.ProbeGroup
+            The probe object(s). Can be a single Probe or a ProbeGroup containing multiple probes.
         group_mode : {'by_shank', 'by_probe'}
-            How to group the channels. If 'by_shank', channels are grouped by the shank_id column.
-            If 'by_probe', channels are grouped by the probe_id column.
-            This is a required parameter to avoid the pitfall of using the wrong mode.
+            How to group the channels for electrode group assignment in the NWB file:
+
+            - 'by_probe': Each probe becomes a separate electrode group. For a ProbeGroup with
+            multiple probes, each probe gets its own group (group 0, 1, 2, etc.). For a single
+            probe, all channels are assigned to group 0.
+
+            - 'by_shank': Each unique combination of probe and shank becomes a separate electrode
+            group. Requires that shank_ids are defined for all probes. Groups are assigned
+            sequentially for each unique (probe_index, shank_id) pair.
+
+            The resulting groups determine how electrode groups and electrodes are organized
+            in the NWB file, with each group corresponding to one ElectrodeGroup.
         """
         # Set the probe to the recording extractor
-        self.recording_extractor.set_probe(
+        self.recording_extractor._set_probes(
             probe,
             in_place=True,
             group_mode=group_mode,
         )
+
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
+        # So we re-set this here to avoid a conflict
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
 
     def has_probe(self) -> bool:
