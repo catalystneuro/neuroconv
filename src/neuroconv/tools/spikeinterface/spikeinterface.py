@@ -2,7 +2,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import numpy as np
 import psutil
@@ -1099,7 +1099,8 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: str = "TimeSeries",
+    time_series_name: Optional[str] = None,
+    metadata_key: str = "TimeSeries",
 ):
     """
     Adds traces from recording object as TimeSeries to an NWBFile object.
@@ -1115,7 +1116,8 @@ def add_recording_as_time_series_to_nwbfile(
         Should be of the format::
 
             metadata['TimeSeries'] = {
-                'time_series_name': {
+                'metadata_key': {
+                    "name": "my_name",
                     'description': 'my_description',
                     'unit': 'my_unit',
                     "offset": offset_to_unit_value,
@@ -1124,7 +1126,9 @@ def add_recording_as_time_series_to_nwbfile(
                     ...
                 }
             }
-        Where the time_seires_name is used to look up metadata in the metadata dictionary.
+        Where the metadata_key is used to look up metadata in the metadata dictionary.
+    metadata_key: str
+        The entry in TimeSeries metadata to use.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1141,6 +1145,7 @@ def add_recording_as_time_series_to_nwbfile(
     time_series_name : str, optional
         Name of the TimeSeries to create. If not provided, a default name will be generated based on the write_as parameter.
         This parameter is used to look up metadata in the metadata dictionary if provided.
+
     """
 
     num_segments = recording.get_num_segments()
@@ -1154,6 +1159,7 @@ def add_recording_as_time_series_to_nwbfile(
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
             time_series_name=time_series_name,
+            metadata_key=metadata_key,
         )
 
 
@@ -1165,20 +1171,24 @@ def _add_time_series_segment_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: str = "TimeSeries",
+    time_series_name: Optional[str] = None,
+    metadata_key: str = "time_series_metadata_key",
 ):
     """
     See `add_recording_as_time_series_to_nwbfile` for details.
     """
 
+    # For backwards compatibility
+    metadata_key = time_series_name or metadata_key
+    time_series_name = time_series_name or metadata["TimeSeries"][metadata_key].get("name", "TimeSeries")
     tseries_kwargs = dict(name=time_series_name)
-    metadata = dict() if metadata is None else metadata
+    metadata = DeepDict() if metadata is None else metadata
     metadata = deepcopy(metadata)
 
     # Apply metadata if available
-    if "TimeSeries" in metadata and time_series_name in metadata["TimeSeries"]:
-        metadata_kwargs = metadata["TimeSeries"][time_series_name]
-        tseries_kwargs.update(metadata_kwargs)
+    if "TimeSeries" in metadata and metadata_key in metadata["TimeSeries"]:
+        time_series_metadata = metadata["TimeSeries"][metadata_key]
+        tseries_kwargs.update(time_series_metadata)
 
     # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
     # 0-pad these names based on the number of segments.
