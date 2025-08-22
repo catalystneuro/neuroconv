@@ -19,20 +19,17 @@ The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordi
     from pathlib import Path
     from neuroconv.datainterfaces import EDFRecordingInterface
 
-    file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
-
-    # Load the interface to inspect available channels
-    interface = EDFRecordingInterface(file_path=file_path)
+    file_path = f"{ECEPHY_DATA_PATH}/edf/electrode_and_analog_data/electrode_and_analog_data.edf"
 
     # Get all channel IDs to identify which ones to skip
-    all_channels = interface.channel_ids
+    all_channels = EDFRecordingInterface.get_available_channel_ids(file_path)
     print(f"Available channels: {all_channels}")
 
     # Identify non-electrical channels that should be skipped
-    # Users will recognize channels like TRIG, OSAT, PR, Pleth, etc.
+    # We don't have an automatic way to detect non-electrode channels, user passes this knowledge here
     channels_to_skip = ["TRIG", "OSAT", "PR", "Pleth"]  # Example: trigger and physiological monitoring
 
-    # Recreate interface with channels to skip
+    # Create interface with channels to skip
     interface = EDFRecordingInterface(
         file_path=file_path,
         channels_to_skip=channels_to_skip
@@ -62,7 +59,7 @@ Non-electrical channels (such as physiological monitoring signals, triggers, or 
     from pathlib import Path
     from neuroconv.datainterfaces import EDFAnalogInterface
 
-    file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
+    file_path = f"{ECEPHY_DATA_PATH}/edf/electrode_and_analog_data/electrode_and_analog_data.edf"
 
     # Example: Trigger channels (no unit)
     trigger_channels = ["TRIG"]  # Trigger signals
@@ -96,7 +93,7 @@ To convert both electrode and non-electrical channels into a single NWB file, us
     from neuroconv.datainterfaces import EDFRecordingInterface, EDFAnalogInterface
     from neuroconv.utils import dict_deep_update
 
-    file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
+    file_path = f"{ECEPHY_DATA_PATH}/edf/electrode_and_analog_data/electrode_and_analog_data.edf"
 
     # Define the channels to process
     all_non_electrical_channels = ["TRIG", "OSAT", "PR", "Pleth"]  # All non-electrical channels
