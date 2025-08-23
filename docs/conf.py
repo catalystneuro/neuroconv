@@ -1,4 +1,5 @@
 import inspect
+import os
 import sys
 from pathlib import Path
 
@@ -62,7 +63,7 @@ html_theme_options = {
     ],
     "switcher": {
         "json_url": "_static/switcher.json",
-        "version_match": "stable",  # This will be set correctly when deployed to RTD
+        "version_match": "latest" if os.environ.get("READTHEDOCS_VERSION_NAME") == "latest" else "stable",
     }
 }
 
