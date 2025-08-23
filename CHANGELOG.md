@@ -3,6 +3,7 @@
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
+* Fixed documentation version switcher not properly distinguishing between stable and development versions [PR #1483](https://github.com/catalystneuro/neuroconv/pull/1483)
 
 ## Features
 

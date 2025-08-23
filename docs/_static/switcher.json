@@ -1,12 +1,12 @@
 [
     {
-        "name": "stable (latest release)",
+        "name": "stable",
         "version": "stable",
         "url": "https://neuroconv.readthedocs.io/en/stable/"
     },
     {
-        "name": "latest (development)",
-        "version": "latest",
+        "name": "development",
+        "version": "main",
         "url": "https://neuroconv.readthedocs.io/en/main/"
     }
 ]
