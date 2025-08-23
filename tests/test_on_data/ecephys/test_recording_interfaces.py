@@ -13,6 +13,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
     AxonaRecordingInterface,
+    AxonRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
     CellExplorerRecordingInterface,
@@ -58,6 +59,35 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = AxonRecordingInterface
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # Check that session_start_time is extracted from ABF file
+        assert "session_start_time" in metadata["NWBFile"]
+
+        # Check device information for Axon Instruments
+        devices = metadata["Ecephys"]["Device"]
+        assert len(devices) >= 1
+        axon_device = devices[0]
+        assert axon_device["name"] == "Axon Instruments"
+        assert axon_device["description"] == "Axon Instruments data acquisition system (pCLAMP/AxoScope)"
+        assert axon_device["manufacturer"] == "Molecular Devices"
+
+        # Check electrode groups have device assigned
+        electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
+        for electrode_group in electrode_groups:
+            assert electrode_group["device"] == "Axon Instruments"
+
+        # Check ElectricalSeriesRaw metadata
+        assert "ElectricalSeriesRaw" in metadata["Ecephys"]
+        electrical_series_raw = metadata["Ecephys"]["ElectricalSeriesRaw"]
+        assert electrical_series_raw["name"] == "ElectricalSeriesRaw"
+        assert electrical_series_raw["description"] == "Raw acquisition traces from Axon Binary Format file."
+
+
+class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH

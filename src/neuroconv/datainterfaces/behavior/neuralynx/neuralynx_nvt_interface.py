@@ -29,7 +29,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .nvt file
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             controls verbosity.
         """
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.6"
+version = "0.8.1"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -131,10 +131,13 @@ behavior = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.102.3",
+    "spikeinterface>=0.103.0",
     "neo>=0.14.1"
 ]
 alphaomega = [
+    "neuroconv[ecephys_minimal]",
+]
+axon = [
     "neuroconv[ecephys_minimal]",
 ]
 axona = [
@@ -216,6 +219,7 @@ whitematter = [
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
+    "neuroconv[axon]",
     "neuroconv[axona]",
     "neuroconv[biocam]",
     "neuroconv[blackrock]",
@@ -262,7 +266,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.6",
+    "roiextractors>=0.6.2",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -437,7 +441,7 @@ known-first-party = ["neuroconv"]
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin'
+ignore-words-list = 'assertin,sortings'
 
 [dependency-groups]
 test = [
@@ -448,7 +452,7 @@ test = [
 ]
 
 docs = [
-    "Sphinx==8.2.3",  # Latest as of April 2025.
+    "Sphinx==8.2.3; python_version>='3.11'",  # Latest as of April 2025.
     "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
     "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
