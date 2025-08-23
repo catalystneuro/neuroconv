@@ -63,7 +63,7 @@ html_theme_options = {
     ],
     "switcher": {
         "json_url": "_static/switcher.json",
-        "version_match": "latest" if os.environ.get("READTHEDOCS_VERSION_NAME") == "latest" else "stable",
+        "version_match": os.environ.get("READTHEDOCS_VERSION_NAME", "stable"),
     }
 }
 
