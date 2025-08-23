@@ -42,6 +42,7 @@ html_js_files = [
     "js/neuroconv_assistant.js",
 ]
 
+
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
     "github_user": "catalystneuro",
@@ -49,6 +50,14 @@ html_context = {
     "github_version": "main",
     "doc_path": "docs",
 }
+
+
+# Configure version switcher for documentation
+# READTHEDOCS_VERSION_NAME is automatically set by ReadTheDocs during builds
+# Documentation: https://docs.readthedocs.com/platform/stable/reference/environment-variables.html
+# Possible values: "stable", "main", PR numbers like "1483", branch names like "feature/xyz"
+# For PR/branch builds, no match will be found so switcher shows unselected state
+version_match = os.environ.get("READTHEDOCS_VERSION_NAME", "stable")
 
 html_theme_options = {
     "use_edit_page_button": True,
@@ -63,7 +72,7 @@ html_theme_options = {
     ],
     "switcher": {
         "json_url": "_static/switcher.json",
-        "version_match": os.environ.get("READTHEDOCS_VERSION_NAME", "stable"),
+        "version_match": version_match,
     }
 }
 
