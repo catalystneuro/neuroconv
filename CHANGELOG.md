@@ -8,6 +8,10 @@
 
 ## Improvements
 
+* Added EMBER support via the new `instance` option for `neuroconv.tools.data_transfers.automatic_dandi_upload`. [PR #1486](https://github.com/catalystneuro/neuroconv/pull/1486)
+
+
+
 # v0.8.0 (August 21, 2025)
 
 ## Removals, Deprecations and Changes
