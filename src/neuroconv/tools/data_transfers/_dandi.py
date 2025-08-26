@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
+from typing import Literal
 from warnings import warn
 
 from pydantic import DirectoryPath
@@ -19,6 +20,7 @@ def automatic_dandi_upload(
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
+    instance: Literal["dandi", "ember"] | str = "dandi",
 ) -> list[Path]:
     """
     Fully automated upload of NWB files to a Dandiset.
@@ -53,15 +55,40 @@ def automatic_dandi_upload(
         The number of jobs to use in the DANDI upload process.
     number_of_threads : int, optional
         The number of threads to use in the DANDI upload process.
+    instance : str, default = "dandi"
+        The DANDI instance to use. Either "dandi" (default), "ember", or an explicit URL.
     """
     from dandi.download import download as dandi_download
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
 
-    assert os.getenv("DANDI_API_KEY"), (
-        "Unable to find environment variable 'DANDI_API_KEY'. "
-        "Please retrieve your token from DANDI and set this environment variable."
-    )
+    if instance == "dandi":
+        assert os.getenv("DANDI_API_KEY"), (
+            "Unable to find environment variable 'DANDI_API_KEY'. "
+            "Please retrieve your token from DANDI and set this environment variable."
+        )
+    elif instance == "ember" and os.getenv("EMBER_API_KEY", None) is None:
+        message = (
+            "Unable to find environment variable 'EMBER_API_KEY'. "
+            "Please retrieve your token from EMBER and set this environment variable."
+        )
+        raise KeyError(message)
+    if instance not in ["dandi", "ember"] and not instance.startswith("https://"):
+        message = "The 'instance' parameter must be either 'dandi', 'ember', or a full URL starting with 'https://'."
+        raise ValueError(message)
+
+    if instance == "dandi" and staging:
+        url_base = "https://gui-staging.dandiarchive.org"
+        dandi_instance = "dandi-staging"
+    elif instance == "dandi" and not staging:
+        url_base = "https://dandiarchive.org"
+        dandi_instance = "dandi"
+    elif instance == "ember":
+        url_base = "https://dandi.emberarchive.org"
+        dandi_instance = "ember"
+    else:
+        url_base = instance.removesuffix("/")
+        dandi_instance = instance
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
@@ -71,7 +98,6 @@ def automatic_dandi_upload(
     if number_of_threads is not None and number_of_threads > 1 and number_of_jobs is None:
         number_of_jobs = -1
 
-    url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
@@ -99,8 +125,6 @@ def automatic_dandi_upload(
     # The above block can be removed once they add the feature
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
-
-    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
 
     dandi_upload(
         paths=organized_nwbfiles,
