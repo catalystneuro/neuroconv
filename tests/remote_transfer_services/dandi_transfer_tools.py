@@ -34,7 +34,7 @@ def test_automatic_dandi_upload(tmp_path):
     with NWBHDF5IO(path=nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
         io.write(make_nwbfile_from_metadata(metadata=metadata))
 
-    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
+    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, sandbox=True)
 
 
 @pytest.mark.skipif(
@@ -53,7 +53,7 @@ def test_automatic_dandi_upload_non_parallel(tmp_path):
     with NWBHDF5IO(path=nwb_folder_path / "test_nwb_2.nwb", mode="w") as io:
         io.write(make_nwbfile_from_metadata(metadata=metadata))
 
-    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True, number_of_jobs=1)
+    automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, sandbox=True, number_of_jobs=1)
 
 
 @pytest.mark.skipif(
@@ -78,11 +78,50 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
     automatic_dandi_upload(
         dandiset_id="200560",
         nwb_folder_path=nwb_folder_path,
-        staging=True,
+        sandbox=True,
         number_of_jobs=1,
         number_of_threads=1,
     )
 
+
+def test_staging_sandbox_conflict(tmp_path):
+    """Test that providing both 'staging' and 'sandbox' parameters raises ValueError."""
+
+    nwb_folder_path = tmp_path / "test_nwb"
+    nwb_folder_path.mkdir()
+
+    with pytest.raises(ValueError, match="Cannot specify both 'staging' and 'sandbox' parameters"):
+        automatic_dandi_upload(dandiset_id="200000", nwb_folder_path=nwb_folder_path, sandbox=True, staging=True)
+
+
+@pytest.mark.skipif(
+    not HAVE_DANDI_KEY,
+    reason="You must set your DANDI_API_KEY to run this test!",
+)
+def test_staging_backward_compatibility(tmp_path):
+    """Test that staging=True works the same as sandbox=True with deprecation warning."""
+    import warnings
+
+    nwb_folder_path = tmp_path / "test_nwb"
+    nwb_folder_path.mkdir()
+    metadata = get_default_nwbfile_metadata()
+    metadata["NWBFile"].update(
+        session_start_time=datetime.now().astimezone(),
+        session_id=f"test-staging-compat-{sys.platform}-{get_python_version().replace('.', '-')}",
+    )
+    metadata.update(Subject=dict(subject_id="foo", species="Mus musculus", age="P1D", sex="U"))
+    with NWBHDF5IO(path=nwb_folder_path / "test_nwb_staging.nwb", mode="w") as io:
+        io.write(make_nwbfile_from_metadata(metadata=metadata))
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+
+        # This should work with deprecation warning
+        automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
+
+        # Check that deprecation warning was issued
+        deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
+        assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"
 
 @pytest.mark.skipif(
     not HAVE_EMBER_KEY,

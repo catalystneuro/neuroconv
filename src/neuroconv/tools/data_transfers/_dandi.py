@@ -16,7 +16,8 @@ def automatic_dandi_upload(
     nwb_folder_path: DirectoryPath,
     dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
-    staging: bool = False,
+    sandbox: bool | None = None,
+    staging: bool | None = None,
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
@@ -47,8 +48,13 @@ def automatic_dandi_upload(
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
-    staging : bool, default: False
-        Is the Dandiset hosted on the staging server? This is mostly for testing purposes.
+    sandbox : bool, optional
+        Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
+        Defaults to False.
+    staging : bool, optional
+        .. deprecated:: 0.6.0
+            The 'staging' parameter is deprecated and will be removed in February 2026.
+            Use 'sandbox' instead.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
@@ -89,6 +95,21 @@ def automatic_dandi_upload(
     else:
         url_base = instance.removesuffix("/")
         dandi_instance = instance
+
+    # Handle deprecated 'staging' parameter and set defaults
+    if staging is not None and sandbox is not None:
+        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
+
+    if staging is not None:
+        warn(
+            "The 'staging' parameter is deprecated and will be removed in February 2026. " "Use 'sandbox' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        sandbox = staging
+
+    if sandbox is None:
+        sandbox = False
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
