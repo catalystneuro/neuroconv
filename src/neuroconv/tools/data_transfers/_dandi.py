@@ -32,7 +32,7 @@ def automatic_dandi_upload(
     or in Windows
         set DANDI_API_KEY=...
 
-    DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
+    WARNING: DO NOT STORE THIS VALUE IN ANY PUBLICLY SHARED CODE.
 
     Parameters
     ----------
@@ -43,7 +43,7 @@ def automatic_dandi_upload(
     dandiset_folder_path : folder path, optional
         A separate folder location within which to download the dandiset.
         Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
-        Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
+        Default behavior downloads the Dandiset to a folder adjacent to the 'nwb_folder_path'.
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
