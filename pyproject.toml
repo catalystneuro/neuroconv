@@ -70,7 +70,7 @@ sorting_analyzer = [   # These dependencies are for testing the sorting analyzer
     "scipy",
 ]
 
-dandi = ["dandi>=0.69"]
+dandi = ["dandi>=0.70.0"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
