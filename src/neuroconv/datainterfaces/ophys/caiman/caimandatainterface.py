@@ -25,7 +25,7 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
         source_metadata["properties"]["file_path"]["description"] = "Path to .hdf5 file."
         return source_metadata
 
-    def __init__(self, file_path: FilePath, verbose: bool = False):
+    def __init__(self, file_path: FilePath, verbose: bool = False, metadata_key: str = "default"):
         """
         Parameters
         ----------
@@ -33,6 +33,10 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
             Path to .hdf5 file.
         verbose : bool, default False
             Whether to print progress
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for ImageSegmentation.
+            Default is "default".
         """
-        super().__init__(file_path=file_path)
+        super().__init__(file_path=file_path, metadata_key=metadata_key)
         self.verbose = verbose

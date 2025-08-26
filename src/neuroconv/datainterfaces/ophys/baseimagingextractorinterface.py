@@ -38,6 +38,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str = "default",
         **source_data,
     ):
 
@@ -48,6 +49,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.imaging_extractor: ImagingExtractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
+        self.metadata_key = metadata_key
 
     def get_metadata_schema(
         self,
@@ -64,21 +66,34 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         metadata_schema = super().get_metadata_schema()
 
-        metadata_schema["required"] = ["Ophys"]
+        metadata_schema["required"] = ["Ophys", "Devices"]
+
+        # Add top-level Devices schema for new metadata structure
+        device_schema = get_schema_from_hdmf_class(Device)
+        metadata_schema["properties"]["Devices"] = dict(
+            type="object",
+            patternProperties={"^[a-zA-Z0-9_]+$": device_schema},
+            additionalProperties=False,
+        )
 
         # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", self.photon_series_type]
+        metadata_schema["properties"]["Ophys"]["required"] = ["ImagingPlanes", self.photon_series_type]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
-            ImagingPlane=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}),
+            ImagingPlanes=dict(
+                type="object",
+                patternProperties={"^[a-zA-Z0-9_]+$": {"$ref": "#/properties/Ophys/definitions/ImagingPlane"}},
+                additionalProperties=False,
+            ),
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             {
                 self.photon_series_type: dict(
-                    type="array",
-                    minItems=1,
-                    items={"$ref": f"#/properties/Ophys/definitions/{self.photon_series_type}"},
+                    type="object",
+                    patternProperties={
+                        "^[a-zA-Z0-9_]+$": {"$ref": f"#/properties/Ophys/definitions/{self.photon_series_type}"}
+                    },
+                    additionalProperties=False,
                 ),
             }
         )
@@ -87,17 +102,52 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
         imaging_plane_schema["properties"]["optical_channel"].pop("maxItems")
+
+        # Replace 'device' with 'device_metadata_key' to match new metadata structure
+        if "device" in imaging_plane_schema["properties"]:
+            imaging_plane_schema["properties"].pop("device")
+            imaging_plane_schema["properties"]["device_metadata_key"] = {
+                "type": "string",
+                "description": "Reference key to the device in the Devices dictionary",
+            }
+            # Update required fields if device was required
+            if "required" in imaging_plane_schema and "device" in imaging_plane_schema["required"]:
+                imaging_plane_schema["required"] = [
+                    "device_metadata_key" if req == "device" else req for req in imaging_plane_schema["required"]
+                ]
+
+        # Note: We inline the Device schema instead of using references to avoid schema reference issues
+
         metadata_schema["properties"]["Ophys"]["definitions"] = dict(
-            Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=imaging_plane_schema,
         )
         photon_series = dict(
             OnePhotonSeries=OnePhotonSeries,
             TwoPhotonSeries=TwoPhotonSeries,
         )[self.photon_series_type]
+
+        # Get the base schema and modify it for our new structure
+        photon_series_schema = get_schema_from_hdmf_class(photon_series)
+
+        # Replace 'imaging_plane' with 'imaging_plane_key' to match new metadata structure
+        if "imaging_plane" in photon_series_schema["properties"]:
+            # Remove the old imaging_plane property
+            photon_series_schema["properties"].pop("imaging_plane")
+            # Add the new imaging_plane_metadata_key property as a string reference
+            photon_series_schema["properties"]["imaging_plane_metadata_key"] = {
+                "type": "string",
+                "description": "Reference key to the imaging plane in the ImagingPlanes dictionary",
+            }
+            # Update required fields if imaging_plane was required
+            if "required" in photon_series_schema and "imaging_plane" in photon_series_schema["required"]:
+                photon_series_schema["required"] = [
+                    "imaging_plane_metadata_key" if req == "imaging_plane" else req
+                    for req in photon_series_schema["required"]
+                ]
+
         metadata_schema["properties"]["Ophys"]["definitions"].update(
             {
-                self.photon_series_type: get_schema_from_hdmf_class(photon_series),
+                self.photon_series_type: photon_series_schema,
             }
         )
 
@@ -120,12 +170,16 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
+        default_metadata = get_nwb_imaging_metadata(
+            self.imaging_extractor, photon_series_type=self.photon_series_type, metadata_key=self.metadata_key
+        )
         metadata = dict_deep_update(default_metadata, metadata)
 
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:
-            for two_photon_series in metadata["Ophys"]["TwoPhotonSeries"]:
+            photon_series_data = metadata["Ophys"]["TwoPhotonSeries"]
+            # New dictionary format only
+            for two_photon_series in photon_series_data.values():
                 if "dimension" in two_photon_series:
                     two_photon_series["dimension"] = list(two_photon_series["dimension"])
                 if "rate" in two_photon_series:
@@ -147,7 +201,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-        photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int | None = None,
@@ -167,8 +220,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             Metadata for the NWBFile, by default None.
         photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
             The type of photon series to be added, by default "TwoPhotonSeries".
-        photon_series_index : int, optional
-            The index of the photon series in the provided imaging data, by default 0.
         parent_container : {"acquisition", "processing/ophys"}, optional
             Specifies the parent container to which the photon series should be added, either as part of "acquisition" or
             under the "processing/ophys" module, by default "acquisition".
@@ -217,7 +268,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
+            metadata_key=self.metadata_key,
             parent_container=parent_container,
             always_write_timestamps=always_write_timestamps,
             iterator_type=iterator_type,

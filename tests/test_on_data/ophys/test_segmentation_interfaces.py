@@ -372,20 +372,28 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
 
         metadata = self.interface.get_metadata()
 
-        assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_names
-        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        # New dictionary-based format - check using metadata_key
+        metadata_key = self.interface.metadata_key
+        # Get the imaging plane key from the plane segmentation reference
+        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"][metadata_key]
+        imaging_plane_key = plane_segmentation_metadata["imaging_plane_metadata_key"]
+        assert metadata["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"] == self.imaging_plane_names
         plane_segmentation_name = self.plane_segmentation_names
         assert plane_segmentation_metadata["name"] == plane_segmentation_name
-        summary_images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
+        summary_images_metadata = metadata["Ophys"]["SegmentationImages"][metadata_key]
         assert summary_images_metadata["correlation"]["name"] == self.correlation_image_names
         assert summary_images_metadata["mean"]["name"] == self.mean_image_names
 
-        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["raw"]
+        # Access fluorescence traces using metadata_key, but they might be moved to plane_segmentation_name by Suite2p
+        fluorescence_key = (
+            plane_segmentation_name if plane_segmentation_name in metadata["Ophys"]["Fluorescence"] else metadata_key
+        )
+        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][fluorescence_key]["raw"]
         assert raw_traces_metadata["name"] == self.raw_traces_names
-        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["neuropil"]
+        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"][fluorescence_key]["neuropil"]
         assert neuropil_traces_metadata["name"] == self.neuropil_traces_names
 
-        deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["deconvolved"]
+        deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][fluorescence_key]["deconvolved"]
         assert deconvolved_trace_metadata["name"] == self.deconvolved_trace_name
 
 
@@ -416,21 +424,29 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
 
         metadata = self.interface.get_metadata()
 
-        assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_names
-        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        # New dictionary-based format - check using metadata_key
+        metadata_key = self.interface.metadata_key
+        # Get the imaging plane key from the plane segmentation reference
+        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"][metadata_key]
+        imaging_plane_key = plane_segmentation_metadata["imaging_plane_metadata_key"]
+        assert metadata["Ophys"]["ImagingPlanes"][imaging_plane_key]["name"] == self.imaging_plane_names
         plane_segmentation_name = self.plane_segmentation_names
         assert plane_segmentation_metadata["name"] == plane_segmentation_name
-        summary_images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
+        summary_images_metadata = metadata["Ophys"]["SegmentationImages"][metadata_key]
         assert summary_images_metadata["correlation"]["name"] == self.correlation_image_names
         assert summary_images_metadata["mean"]["name"] == self.mean_image_names
 
-        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["raw"]
+        # Access fluorescence traces using metadata_key, but they might be moved to plane_segmentation_name by Suite2p
+        fluorescence_key = (
+            plane_segmentation_name if plane_segmentation_name in metadata["Ophys"]["Fluorescence"] else metadata_key
+        )
+        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][fluorescence_key]["raw"]
         assert raw_traces_metadata["name"] == self.raw_traces_names
-        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["neuropil"]
+        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"][fluorescence_key]["neuropil"]
         assert neuropil_traces_metadata["name"] == self.neuropil_traces_names
 
         if self.deconvolved_trace_name:
-            deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["deconvolved"]
+            deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][fluorescence_key]["deconvolved"]
             assert deconvolved_trace_metadata["name"] == self.deconvolved_trace_name
 
 
@@ -486,9 +502,11 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         experimenter = metadata["NWBFile"]["experimenter"]
         assert experimenter == ["Bei-Xuan"]
 
-        # Check device information extraction
-        device_list = metadata["Ophys"]["Device"]
-        device_metadata = device_list[0]
+        # Check device information extraction - new format with metadata_key
+        metadata_key = self.interface.metadata_key
+        assert "Devices" in metadata
+        assert metadata_key in metadata["Devices"]
+        device_metadata = metadata["Devices"][metadata_key]
         assert device_metadata["name"] == "NVista3"
         assert "description" in device_metadata
         expected_device_desc = "Inscopix NVista3; SerialNumber: 11132301; Software version 1.5.2"
@@ -503,14 +521,16 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert subject["strain"] == "CaMKIICre"
         assert subject["sex"] == "M"
 
-        # Check imaging plane metadata
-        assert "ImagingPlane" in metadata["Ophys"]
-        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        # Check imaging plane metadata - new format
+        assert "ImagingPlanes" in metadata["Ophys"]
+        assert metadata_key in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
         assert imaging_plane["name"] == "ImagingPlane"
         assert "optical_channel" in imaging_plane
-        assert "device" in imaging_plane
-        assert imaging_plane["device"] == "NVista3"
+        assert "device_metadata_key" in imaging_plane
+        assert imaging_plane["device_metadata_key"] == metadata_key
+        # The device_metadata_key should point to our device which has the name "NVista3"
+        assert metadata["Devices"][imaging_plane["device_metadata_key"]]["name"] == "NVista3"
 
         # Check imaging rate extraction
         assert "imaging_rate" in imaging_plane
@@ -530,21 +550,22 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         expected_optical_desc = "Inscopix green channel (LED power: 1.3 mW/mm²)"
         assert optical_channel["description"] == expected_optical_desc
 
-        # Check plane segmentation naming
-        assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
-        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        # Check plane segmentation naming - new format
+        assert "ImageSegmentation" in metadata["Ophys"]
+        assert metadata_key in metadata["Ophys"]["ImageSegmentation"]
+        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"][metadata_key]
         assert plane_segmentation_metadata["name"] == "PlaneSegmentation"
 
         # Check segmentation description exact match
-        segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
+        segmentation_desc = plane_segmentation_metadata["description"]
         expected_seg_desc = "Inscopix cell segmentation using cnmfe with traces in dF over noise"
         assert segmentation_desc == expected_seg_desc
 
-        # Check fluorescence metadata
+        # Check fluorescence metadata - new format
         assert "Fluorescence" in metadata["Ophys"]
-        assert "PlaneSegmentation" in metadata["Ophys"]["Fluorescence"]
-        assert "raw" in metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]
-        raw_traces_metadata = metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]
+        assert metadata_key in metadata["Ophys"]["Fluorescence"]
+        assert "raw" in metadata["Ophys"]["Fluorescence"][metadata_key]
+        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][metadata_key]["raw"]
         assert raw_traces_metadata["name"] == "RoiResponseSeries"
 
 
@@ -562,20 +583,25 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
     def check_extracted_metadata(self, metadata):
         """Check that the extracted metadata contains expected items."""
-        # Check device has proper default name
-        device_list = metadata["Ophys"]["Device"]
-        device_metadata = device_list[0]
-        assert device_metadata["name"] == "Microscope"
+        # Check device has proper default name - new format with metadata_key
+        metadata_key = self.interface.metadata_key
+        assert "Devices" in metadata
+        assert metadata_key in metadata["Devices"]
+        device_metadata = metadata["Devices"][metadata_key]
+        assert device_metadata["name"] == "InscopixMicroscope"
 
         # Check subject has defaults (should not be present if no subject data)
         assert "Subject" not in metadata
 
-        # Check imaging plane metadata
-        assert "ImagingPlane" in metadata["Ophys"]
-        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        # Check imaging plane metadata - new format
+        assert "ImagingPlanes" in metadata["Ophys"]
+        assert metadata_key in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
         assert imaging_plane["name"] == "ImagingPlane"
-        assert imaging_plane["device"] == "Microscope"
+        assert "device_metadata_key" in imaging_plane
+        assert imaging_plane["device_metadata_key"] == metadata_key
+        # The device_metadata_key should point to our device which has the name "InscopixMicroscope"
+        assert metadata["Devices"][imaging_plane["device_metadata_key"]]["name"] == "InscopixMicroscope"
 
         # Check field of view description exact match
         expected_plane_desc = "Inscopix imaging plane with field of view 21x21 pixels"
@@ -591,18 +617,19 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         assert optical_channel["name"] == "OpticalChannelDefault"
         assert optical_channel["description"] == "Inscopix optical channel"
 
-        # Check plane segmentation naming
-        assert "plane_segmentations" in metadata["Ophys"]["ImageSegmentation"]
-        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        # Check plane segmentation naming - new format
+        assert "ImageSegmentation" in metadata["Ophys"]
+        assert metadata_key in metadata["Ophys"]["ImageSegmentation"]
+        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"][metadata_key]
         assert plane_segmentation_metadata["name"] == "PlaneSegmentation"
 
         # Check segmentation description exact match (default case)
-        segmentation_desc = metadata["Ophys"]["ImageSegmentation"]["description"]
+        segmentation_desc = plane_segmentation_metadata["description"]
         assert segmentation_desc == "Inscopix cell segmentation using cnmfe with traces in dF over noise"
 
-        # Check fluorescence metadata
+        # Check fluorescence metadata - new format
         assert "Fluorescence" in metadata["Ophys"]
-        assert "PlaneSegmentation" in metadata["Ophys"]["Fluorescence"]
-        assert "raw" in metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]
-        raw_traces_metadata = metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]
+        assert metadata_key in metadata["Ophys"]["Fluorescence"]
+        assert "raw" in metadata["Ophys"]["Fluorescence"][metadata_key]
+        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][metadata_key]["raw"]
         assert raw_traces_metadata["name"] == "RoiResponseSeries"

@@ -18,7 +18,6 @@ from numpy.testing import assert_array_equal, assert_raises
 from numpy.typing import ArrayLike
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.device import Device
 from pynwb.ophys import OnePhotonSeries
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -28,7 +27,6 @@ from roiextractors.testing import (
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
-    add_devices_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
     add_image_segmentation_to_nwbfile,
     add_imaging_plane_to_nwbfile,
@@ -39,136 +37,6 @@ from neuroconv.tools.roiextractors import (
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
-from neuroconv.tools.roiextractors.roiextractors import (
-    _get_default_segmentation_metadata,
-)
-from neuroconv.utils import dict_deep_update
-
-
-class TestAddDevices(unittest.TestCase):
-    def setUp(self):
-        self.session_start_time = datetime.now().astimezone()
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
-
-        self.metadata = dict(Ophys=dict())
-
-    def test_add_device(self):
-        device_name = "new_device"
-        device_list = [dict(name=device_name)]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 1
-        assert device_name in devices
-
-    def test_add_device_with_further_metadata(self):
-        device_name = "new_device"
-        description = "device_description"
-        manufacturer = "manufacturer"
-
-        device_list = [dict(name=device_name, description=description, manufacturer=manufacturer)]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-        device = devices["new_device"]
-
-        assert len(devices) == 1
-        assert device.name == device_name
-        assert device.description == description
-        assert device.manufacturer == manufacturer
-
-    def test_add_two_devices(self):
-        device_name_list = ["device1", "device2"]
-        device_list = [dict(name=device_name) for device_name in device_name_list]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 2
-        assert all(device_name in devices for device_name in device_name_list)
-
-    def test_add_one_device_and_then_another(self):
-        device_name1 = "new_device"
-        device_list = [dict(name=device_name1)]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        device_name2 = "another_device"
-        device_list = [dict(name=device_name2)]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 2
-        assert device_name1 in devices
-        assert device_name2 in devices
-
-    def test_not_overwriting_devices(self):
-        device_name1 = "same_device"
-        device_list = [dict(name=device_name1)]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        device_name2 = "same_device"
-        device_list = [dict(name=device_name2)]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 1
-        assert device_name1 in devices
-
-    def test_add_device_defaults(self):
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 1
-        assert "Microscope" in devices
-
-    def test_add_empty_device_list_in_metadata(self):
-        device_list = []
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 0
-
-    def test_device_object(self):
-        device_name = "device_object"
-        device_object = Device(name=device_name)
-        device_list = [device_object]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 1
-        assert device_name in devices
-
-    def test_device_object_and_metadata_mix(self):
-        device_object = Device(name="device_object")
-        device_metadata = dict(name="device_metadata")
-        device_list = [device_object, device_metadata]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 2
-        assert "device_metadata" in devices
-        assert "device_object" in devices
 
 
 class TestAddImagingPlane(TestCase):
@@ -182,9 +50,11 @@ class TestAddImagingPlane(TestCase):
 
         self.metadata = dict(Ophys=dict())
 
+        # Use new metadata structure with top-level Devices
         self.device_name = "optical_device"
+        self.device_key = "optical_device_key"
         self.device_metadata = dict(name=self.device_name)
-        self.metadata["Ophys"].update(Device=[self.device_metadata])
+        self.metadata["Devices"] = {self.device_key: self.device_metadata}
 
         self.optical_channel_metadata = dict(
             name="optical_channel",
@@ -193,22 +63,24 @@ class TestAddImagingPlane(TestCase):
         )
 
         self.imaging_plane_name = "imaging_plane_name"
+        self.imaging_plane_key = "imaging_plane_key"
         self.imaging_plane_description = "imaging_plane_description"
         self.imaging_plane_metadata = dict(
             name=self.imaging_plane_name,
             optical_channel=[self.optical_channel_metadata],
             description=self.imaging_plane_description,
-            device=self.device_name,
+            device_metadata_key=self.device_key,  # Use device key reference
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
         )
 
-        self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
+        # Use new ImagingPlanes dictionary format
+        self.metadata["Ophys"]["ImagingPlanes"] = {self.imaging_plane_key: self.imaging_plane_metadata}
 
     def test_add_imaging_plane_to_nwbfile(self):
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
+            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_metadata_key=self.imaging_plane_key
         )
 
         imaging_planes = self.nwbfile.imaging_planes
@@ -220,12 +92,12 @@ class TestAddImagingPlane(TestCase):
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
+            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_metadata_key=self.imaging_plane_key
         )
 
         self.imaging_plane_metadata["description"] = "modified description"
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
+            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_metadata_key=self.imaging_plane_key
         )
 
         imaging_planes = self.nwbfile.imaging_planes
@@ -235,20 +107,42 @@ class TestAddImagingPlane(TestCase):
     def test_add_two_imaging_planes(self):
         # Add the first imaging plane
         first_imaging_plane_name = "first_imaging_plane_name"
+        first_imaging_plane_key = "first_imaging_plane_key"
         first_imaging_plane_description = "first_imaging_plane_description"
-        self.imaging_plane_metadata["name"] = first_imaging_plane_name
-        self.imaging_plane_metadata["description"] = first_imaging_plane_description
+
+        first_imaging_plane_metadata = dict(
+            name=first_imaging_plane_name,
+            optical_channel=[self.optical_channel_metadata],
+            description=first_imaging_plane_description,
+            device_metadata_key=self.device_key,
+            excitation_lambda=np.nan,
+            indicator="unknown",
+            location="unknown",
+        )
+        self.metadata["Ophys"]["ImagingPlanes"][first_imaging_plane_key] = first_imaging_plane_metadata
+
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=first_imaging_plane_name
+            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_metadata_key=first_imaging_plane_key
         )
 
         # Add the second imaging plane
         second_imaging_plane_name = "second_imaging_plane_name"
+        second_imaging_plane_key = "second_imaging_plane_key"
         second_imaging_plane_description = "second_imaging_plane_description"
-        self.imaging_plane_metadata["name"] = second_imaging_plane_name
-        self.imaging_plane_metadata["description"] = second_imaging_plane_description
+
+        second_imaging_plane_metadata = dict(
+            name=second_imaging_plane_name,
+            optical_channel=[self.optical_channel_metadata],
+            description=second_imaging_plane_description,
+            device_metadata_key=self.device_key,
+            excitation_lambda=np.nan,
+            indicator="unknown",
+            location="unknown",
+        )
+        self.metadata["Ophys"]["ImagingPlanes"][second_imaging_plane_key] = second_imaging_plane_metadata
+
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=second_imaging_plane_name
+            nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_metadata_key=second_imaging_plane_key
         )
 
         # Test expected values
@@ -263,31 +157,34 @@ class TestAddImagingPlane(TestCase):
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
 
-    def test_add_imaging_plane_to_nwbfile_raises_when_name_not_found_in_metadata(self):
-        """Test adding an imaging plane raises an error when the name is not found in the metadata."""
-        imaging_plane_name = "imaging_plane_non_existing_in_the_metadata"
+    def test_add_imaging_plane_to_nwbfile_raises_when_key_not_found_in_metadata(self):
+        """Test adding an imaging plane raises an error when the key is not found in the metadata."""
+        imaging_plane_key = "imaging_plane_non_existing_key"
         with self.assertRaisesWith(
             exc_type=ValueError,
-            exc_msg=f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane'].",
+            exc_msg=f"Imaging plane with key '{imaging_plane_key}' not found in metadata",
         ):
             add_imaging_plane_to_nwbfile(
-                nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name
+                nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_metadata_key=imaging_plane_key
             )
 
     def test_add_two_imaging_planes_from_metadata(self):
         """Test adding two imaging planes when there are multiple imaging plane metadata."""
 
         second_imaging_plane_name = "second_imaging_plane_name"
+        second_imaging_plane_key = "second_imaging_plane_key"
         metadata = deepcopy(self.metadata)
-        imaging_planes_metadata = metadata["Ophys"]["ImagingPlane"]
-        second_imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlane"][0])
-        second_imaging_plane_metadata.update(name="second_imaging_plane_name")
-        imaging_planes_metadata.append(second_imaging_plane_metadata)
+
+        # Add second imaging plane to metadata dictionary
+        second_imaging_plane_metadata = deepcopy(self.imaging_plane_metadata)
+        second_imaging_plane_metadata.update(name=second_imaging_plane_name)
+        metadata["Ophys"]["ImagingPlanes"][second_imaging_plane_key] = second_imaging_plane_metadata
+
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name=self.imaging_plane_name
+            nwbfile=self.nwbfile, metadata=metadata, imaging_plane_metadata_key=self.imaging_plane_key
         )
         add_imaging_plane_to_nwbfile(
-            nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name="second_imaging_plane_name"
+            nwbfile=self.nwbfile, metadata=metadata, imaging_plane_metadata_key=second_imaging_plane_key
         )
 
         # Test expected values
@@ -385,15 +282,16 @@ class TestAddPlaneSegmentation(TestCase):
         self.metadata = dict(Ophys=dict())
 
         self.plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
+            name=self.plane_segmentation_name,
+            description="Segmented ROIs",
+            imaging_plane_metadata_key="default_imaging_plane_metadata_key",  # Use metadata key reference
         )
 
+        # Use new ImageSegmentation dictionary format
         image_segmentation_metadata = dict(
             ImageSegmentation=dict(
                 name=self.image_segmentation_name,
-                plane_segmentations=[
-                    self.plane_segmentation_metadata,
-                ],
+                default=self.plane_segmentation_metadata,  # Use dictionary format with "default" key
             )
         )
 
@@ -406,7 +304,7 @@ class TestAddPlaneSegmentation(TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -438,7 +336,7 @@ class TestAddPlaneSegmentation(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.metadata,
             include_roi_centroids=False,
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -454,7 +352,7 @@ class TestAddPlaneSegmentation(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.metadata,
             include_roi_acceptance=False,
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -521,7 +419,7 @@ class TestAddPlaneSegmentation(TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -557,7 +455,7 @@ class TestAddPlaneSegmentation(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.metadata,
             mask_type="pixel",
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -589,7 +487,7 @@ class TestAddPlaneSegmentation(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.metadata,
             mask_type="voxel",
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -617,7 +515,7 @@ class TestAddPlaneSegmentation(TestCase):
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
                 mask_type="invalid",
-                plane_segmentation_name=self.plane_segmentation_name,
+                metadata_key="default",
             )
 
     def test_pixel_masks_auto_switch(self):
@@ -647,7 +545,7 @@ class TestAddPlaneSegmentation(TestCase):
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
                 mask_type="voxel",
-                plane_segmentation_name=self.plane_segmentation_name,
+                metadata_key="default",
             )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -685,7 +583,7 @@ class TestAddPlaneSegmentation(TestCase):
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
                 mask_type="pixel",
-                plane_segmentation_name=self.plane_segmentation_name,
+                metadata_key="default",
             )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -705,6 +603,7 @@ class TestAddPlaneSegmentation(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.metadata,
             plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         self.plane_segmentation_metadata["description"] = "modified description"
@@ -714,6 +613,7 @@ class TestAddPlaneSegmentation(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.metadata,
             plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -737,7 +637,7 @@ class TestAddPlaneSegmentation(TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=first_plane_segmentation_name,
+            metadata_key="default",
         )
 
         # Add second plane segmentation
@@ -749,7 +649,7 @@ class TestAddPlaneSegmentation(TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=second_plane_segmentation_name,
+            metadata_key="default",
         )
 
         image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
@@ -769,16 +669,16 @@ class TestAddPlaneSegmentation(TestCase):
 
     def test_add_plane_segmentation_to_nwbfile_raises_when_name_not_found_in_metadata(self):
         """Test adding a plane segmentation raises an error when the name is not found in the metadata."""
-        plane_segmentation_name = "plane_segmentation_non_existing_in_the_metadata"
+        plane_segmentation_key = "plane_segmentation_non_existing_in_the_metadata"
         with self.assertRaisesWith(
             exc_type=ValueError,
-            exc_msg=f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations'].",
+            exc_msg="metadata_key must be provided",
         ):
             add_plane_segmentation_to_nwbfile(
                 segmentation_extractor=self.segmentation_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
-                plane_segmentation_name=plane_segmentation_name,
+                # Missing metadata_key parameter should raise error
             )
 
     def test_add_plane_segmentation_with_custom_properties(self):
@@ -803,13 +703,33 @@ class TestAddPlaneSegmentation(TestCase):
         segmentation_extractor.set_property("custom_label", custom_label, ids=roi_ids)
 
         # Ensure metadata contains the correct plane segmentation name
+        # Add proper device and imaging plane metadata first
+        device_key = "default_device_key"
+        imaging_plane_key = "default_imaging_plane_key"
+
+        device_metadata = dict(name="test_device")
+        self.metadata["Devices"] = {device_key: device_metadata}
+
+        imaging_plane_metadata = dict(
+            name="test_imaging_plane",
+            device_metadata_key=device_key,
+            description="test imaging plane",
+            excitation_lambda=488.0,
+            indicator="GCaMP",
+            location="cortex",
+            optical_channel=[{"name": "channel_1", "description": "test channel", "emission_lambda": 520.0}],
+        )
+        self.metadata["Ophys"]["ImagingPlanes"] = {imaging_plane_key: imaging_plane_metadata}
+
         plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
+            name=self.plane_segmentation_name,
+            description="Segmented ROIs",
+            imaging_plane_metadata_key=imaging_plane_key,
         )
         image_segmentation_metadata = dict(
             ImageSegmentation=dict(
                 name=self.image_segmentation_name,
-                plane_segmentations=[plane_segmentation_metadata],
+                default=plane_segmentation_metadata,
             )
         )
         self.metadata["Ophys"].update(image_segmentation_metadata)
@@ -819,7 +739,7 @@ class TestAddPlaneSegmentation(TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
+            metadata_key="default",
         )
 
         # Retrieve plane segmentation
@@ -885,23 +805,55 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         self.metadata = dict(Ophys=dict())
 
+        # Add proper device and imaging plane metadata first
+        device_key = "default_device_key"
+        imaging_plane_key = "default_imaging_plane_key"
+
+        device_metadata = dict(name="test_device")
+        self.metadata["Devices"] = {device_key: device_metadata}
+
+        imaging_plane_metadata = dict(
+            name="test_imaging_plane",
+            device_metadata_key=device_key,
+            description="test imaging plane",
+            excitation_lambda=488.0,
+            indicator="GCaMP",
+            location="cortex",
+            optical_channel=[{"name": "channel_1", "description": "test channel", "emission_lambda": 520.0}],
+        )
+        self.metadata["Ophys"]["ImagingPlanes"] = {imaging_plane_key: imaging_plane_metadata}
+
+        # Add plane segmentation metadata
+        plane_segmentation_metadata = dict(
+            name="PlaneSegmentation", description="Segmented ROIs", imaging_plane_metadata_key=imaging_plane_key
+        )
+
+        # Add image segmentation metadata
+        image_segmentation_metadata = dict(
+            ImageSegmentation=dict(
+                name="ImageSegmentation",
+                default=plane_segmentation_metadata,
+            )
+        )
+        self.metadata["Ophys"].update(image_segmentation_metadata)
+
         fluorescence_metadata = dict(
             Fluorescence=dict(
+                name=self.fluorescence_name,
                 PlaneSegmentation=dict(
-                    name=self.fluorescence_name,
                     raw=self.raw_roi_response_series_metadata,
                     deconvolved=self.deconvolved_roi_response_series_metadata,
                     neuropil=self.neuropil_roi_response_series_metadata,
-                )
+                ),
             )
         )
 
         dff_metadata = dict(
             DfOverF=dict(
+                name=self.df_over_f_name,
                 PlaneSegmentation=dict(
-                    name=self.df_over_f_name,
                     dff=self.dff_roi_response_series_metadata,
-                )
+                ),
             )
         )
 
@@ -915,6 +867,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -986,6 +939,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1033,6 +987,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1051,6 +1006,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1069,6 +1025,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1097,6 +1054,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1111,6 +1069,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         self.deconvolved_roi_response_series_metadata["description"] = "second description"
@@ -1119,6 +1078,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1144,6 +1104,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1164,6 +1125,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1190,6 +1152,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1216,6 +1179,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1244,6 +1208,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1271,6 +1236,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
+            metadata_key="default",
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1279,30 +1245,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.assertEqual(roi_response_series[series_name].rate, None)
             self.assertEqual(roi_response_series[series_name].starting_time, None)
             assert_array_equal(roi_response_series[series_name].timestamps.data, times)
-
-    def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
-        plane_segmentation_name = "plane_segmentation_name"
-        metadata = _get_default_segmentation_metadata()
-        metadata = dict_deep_update(metadata, self.metadata)
-
-        metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
-        metadata["Ophys"]["Fluorescence"][plane_segmentation_name] = metadata["Ophys"]["Fluorescence"].pop(
-            "PlaneSegmentation"
-        )
-        metadata["Ophys"]["DfOverF"][plane_segmentation_name] = metadata["Ophys"]["DfOverF"].pop("PlaneSegmentation")
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=metadata,
-            plane_segmentation_name=plane_segmentation_name,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        image_segmentation = ophys.get("ImageSegmentation")
-
-        assert len(image_segmentation.plane_segmentations) == 1
-        assert plane_segmentation_name in image_segmentation.plane_segmentations
 
 
 class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
@@ -1316,12 +1258,12 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         cls.session_start_time = datetime.now().astimezone()
 
-        cls.metadata = _get_default_segmentation_metadata()
+        # Use new metadata structure with metadata keys
+        cls.first_plane_metadata_key = "first_plane"
+        cls.second_plane_metadata_key = "second_plane"
 
         cls.plane_segmentation_first_plane_name = "PlaneSegmentationFirstPlane"
-        cls.metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
-            name=cls.plane_segmentation_first_plane_name
-        )
+        cls.plane_segmentation_second_plane_name = "PlaneSegmentationSecondPlane"
 
         cls.fluorescence_name = "Fluorescence"
         cls.df_over_f_name = "DfOverF"
@@ -1347,24 +1289,57 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
             unit="test_unit",
         )
 
-        cls.metadata["Ophys"]["Fluorescence"].update(
-            {
-                cls.plane_segmentation_first_plane_name: dict(
-                    name=cls.fluorescence_name,
-                    raw=cls.raw_roi_response_series_metadata,
-                    deconvolved=cls.deconvolved_roi_response_series_metadata,
-                    neuropil=cls.neuropil_roi_response_series_metadata,
+        # Create metadata using new dictionary structure
+        cls.metadata = dict(Ophys=dict())
+
+        # Add proper device and imaging plane metadata first
+        device_key = "default_device_key"
+        imaging_plane_key = "default_imaging_plane_key"
+        device_metadata = dict(name="test_device")
+        cls.metadata["Devices"] = {device_key: device_metadata}
+        imaging_plane_metadata = dict(
+            name="test_imaging_plane",
+            device_metadata_key=device_key,
+            description="test imaging plane",
+            excitation_lambda=488.0,
+            indicator="test_indicator",
+            location="test_location",
+            optical_channel=[
+                dict(
+                    name="test_optical_channel",
+                    description="test optical channel description",
+                    emission_lambda=520.0,
                 )
-            }
+            ],
         )
-        cls.metadata["Ophys"]["DfOverF"].update(
-            {
-                cls.plane_segmentation_first_plane_name: dict(
-                    name=cls.df_over_f_name,
-                    dff=cls.dff_roi_response_series_metadata,
-                )
+        cls.metadata["Ophys"]["ImagingPlanes"] = {imaging_plane_key: imaging_plane_metadata}
+
+        # Set up ImageSegmentation metadata using dictionary structure
+        cls.metadata["Ophys"]["ImageSegmentation"] = {
+            cls.first_plane_metadata_key: {
+                "name": cls.plane_segmentation_first_plane_name,
+                "description": "first plane segmentation description",
+                "imaging_plane_metadata_key": imaging_plane_key,
             }
-        )
+        }
+
+        # Set up Fluorescence metadata structure using metadata_key
+        cls.metadata["Ophys"]["Fluorescence"] = {
+            "name": cls.fluorescence_name,
+            cls.first_plane_metadata_key: {
+                "raw": cls.raw_roi_response_series_metadata,
+                "deconvolved": cls.deconvolved_roi_response_series_metadata,
+                "neuropil": cls.neuropil_roi_response_series_metadata,
+            },
+        }
+
+        # Set up DfOverF metadata structure using metadata_key
+        cls.metadata["Ophys"]["DfOverF"] = {
+            "name": cls.df_over_f_name,
+            cls.first_plane_metadata_key: {
+                "dff": cls.dff_roi_response_series_metadata,
+            },
+        }
 
     def setUp(self):
         self.segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(
@@ -1386,46 +1361,64 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         )
 
     def test_add_fluorescence_traces_to_nwbfile_for_two_plane_segmentations(self):
+        # Add first plane segmentation using new API
         add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor_first_plane,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_first_plane_name,
+            metadata_key=self.first_plane_metadata_key,
         )
 
-        # Add second plane segmentation metadata
+        # Set up metadata for second plane segmentation using new structure
         metadata = deepcopy(self.metadata)
-        second_imaging_plane_name = "ImagingPlaneSecondPlane"
-        metadata["Ophys"]["ImagingPlane"][0].update(name=second_imaging_plane_name)
 
-        second_plane_segmentation_name = "PlaneSegmentationSecondPlane"
-        metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
-            name=second_plane_segmentation_name,
-            description="second plane segmentation description",
-            imaging_plane=second_imaging_plane_name,
-        )
+        # Add second imaging plane metadata
+        second_imaging_plane_metadata_key = "second_imaging_plane"
+        metadata["Ophys"]["ImagingPlanes"][second_imaging_plane_metadata_key] = {
+            "name": "ImagingPlaneSecondPlane",
+            "description": "Second imaging plane",
+            "indicator": "GCaMP6f",
+            "location": "visual cortex",
+            "excitation_lambda": 488.0,
+            "device_metadata_key": "default_device_key",
+            "optical_channel": [
+                {
+                    "name": "channel_num_0",
+                    "description": "An optical channel of the microscope.",
+                    "emission_lambda": 520.0,
+                }
+            ],
+        }
 
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name] = deepcopy(
-            metadata["Ophys"]["Fluorescence"][self.plane_segmentation_first_plane_name]
-        )
-        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name] = deepcopy(
-            metadata["Ophys"]["DfOverF"][self.plane_segmentation_first_plane_name]
-        )
+        # Add second plane segmentation to ImageSegmentation
+        metadata["Ophys"]["ImageSegmentation"][self.second_plane_metadata_key] = {
+            "name": self.plane_segmentation_second_plane_name,
+            "description": "second plane segmentation description",
+            "imaging_plane_metadata_key": second_imaging_plane_metadata_key,
+        }
 
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["raw"].update(
-            name="RoiResponseSeriesSecondPlane"
-        )
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["deconvolved"].update(
-            name="DeconvolvedSecondPlane"
-        )
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["neuropil"].update(name="NeuropilSecondPlane")
-        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name]["dff"].update(name="RoiResponseSeriesSecondPlane")
+        # Add second plane to Fluorescence metadata
+        metadata["Ophys"]["Fluorescence"][self.second_plane_metadata_key] = {
+            "raw": {"name": "RoiResponseSeriesSecondPlane", "description": "raw fluorescence signal"},
+            "deconvolved": {"name": "DeconvolvedSecondPlane", "description": "deconvolved fluorescence signal"},
+            "neuropil": {
+                "name": "NeuropilSecondPlane",
+                "description": "neuropil fluorescence signal",
+                "unit": "test_unit",
+            },
+        }
 
+        # Add second plane to DfOverF metadata
+        metadata["Ophys"]["DfOverF"][self.second_plane_metadata_key] = {
+            "dff": {"name": "RoiResponseSeriesSecondPlane", "description": "relative (df/f) fluorescence signal"},
+        }
+
+        # Add second plane segmentation using new API
         add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor_second_plane,
             nwbfile=self.nwbfile,
             metadata=metadata,
-            plane_segmentation_name=second_plane_segmentation_name,
+            metadata_key=self.second_plane_metadata_key,
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1433,9 +1426,9 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         self.assertEqual(len(image_segmentation.plane_segmentations), 2)
         self.assertIn(self.plane_segmentation_first_plane_name, image_segmentation.plane_segmentations)
-        self.assertIn(second_plane_segmentation_name, image_segmentation.plane_segmentations)
-        second_plane_segmentation = image_segmentation.plane_segmentations[second_plane_segmentation_name]
-        self.assertEqual(second_plane_segmentation.name, second_plane_segmentation_name)
+        self.assertIn(self.plane_segmentation_second_plane_name, image_segmentation.plane_segmentations)
+        second_plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_second_plane_name]
+        self.assertEqual(second_plane_segmentation.name, self.plane_segmentation_second_plane_name)
         self.assertEqual(second_plane_segmentation.description, "second plane segmentation description")
 
         fluorescence = ophys.get(self.fluorescence_name)
@@ -1467,7 +1460,11 @@ class TestAddPhotonSeries(TestCase):
         metadata = dict(Ophys=dict())
 
         cls.device_name = "optical_device"
+        cls.device_key = "optical_device_key"
         device_metadata = dict(name=cls.device_name)
+
+        # Use new top-level Devices structure
+        metadata["Devices"] = {cls.device_key: device_metadata}
 
         optical_channel_metadata = dict(
             name="optical_channel",
@@ -1476,34 +1473,35 @@ class TestAddPhotonSeries(TestCase):
         )
 
         cls.imaging_plane_name = "imaging_plane_name"
+        cls.imaging_plane_key = "imaging_plane_key"
         imaging_plane_metadata = dict(
             name=cls.imaging_plane_name,
             optical_channel=[optical_channel_metadata],
             description="image_plane_description",
-            device=cls.device_name,
+            device_metadata_key=cls.device_key,
             excitation_lambda=np.nan,
             indicator="unknown",
             location="unknown",
         )
 
-        metadata["Ophys"].update(
-            Device=[device_metadata],
-            ImagingPlane=[imaging_plane_metadata],
-        )
+        # Use new dictionary-based ImagingPlanes structure
+        metadata["Ophys"]["ImagingPlanes"] = {cls.imaging_plane_key: imaging_plane_metadata}
 
-        photon_series_metadata = dict(imaging_plane=cls.imaging_plane_name, unit="n.a.")
+        photon_series_metadata = dict(imaging_plane_metadata_key=cls.imaging_plane_key, unit="n.a.")
 
         cls.two_photon_series_metadata = deepcopy(metadata)
         cls.two_photon_series_name = "two_photon_series_name"
-        cls.two_photon_series_metadata["Ophys"].update(
-            dict(TwoPhotonSeries=[dict(name=cls.two_photon_series_name, **photon_series_metadata)])
-        )
+        cls.two_photon_series_key = "two_photon_series_key"
+        cls.two_photon_series_metadata["Ophys"]["TwoPhotonSeries"] = {
+            cls.two_photon_series_key: dict(name=cls.two_photon_series_name, **photon_series_metadata)
+        }
 
         cls.one_photon_series_metadata = deepcopy(metadata)
         cls.one_photon_series_name = "one_photon_series_name"
-        cls.one_photon_series_metadata["Ophys"].update(
-            dict(OnePhotonSeries=[dict(name=cls.one_photon_series_name, **photon_series_metadata)])
-        )
+        cls.one_photon_series_key = "one_photon_series_key"
+        cls.one_photon_series_metadata["Ophys"]["OnePhotonSeries"] = {
+            cls.one_photon_series_key: dict(name=cls.one_photon_series_name, **photon_series_metadata)
+        }
 
     def setUp(self):
         self.nwbfile = NWBFile(
@@ -1519,7 +1517,10 @@ class TestAddPhotonSeries(TestCase):
     def test_default_values(self):
         """Test adding two photon series with default values."""
         add_photon_series_to_nwbfile(
-            imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+            metadata_key=self.two_photon_series_key,
         )
 
         # Check data
@@ -1556,6 +1557,7 @@ class TestAddPhotonSeries(TestCase):
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
                 iterator_type="invalid",
+                metadata_key=self.two_photon_series_key,
             )
 
     def test_non_iterative_write_assertion(self):
@@ -1589,6 +1591,7 @@ class TestAddPhotonSeries(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
             iterator_type=None,
+            metadata_key=self.two_photon_series_key,
         )
 
         # Check data
@@ -1609,6 +1612,7 @@ class TestAddPhotonSeries(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
             iterator_type="v1",
+            metadata_key=self.two_photon_series_key,
         )
 
         # Check data
@@ -1635,6 +1639,7 @@ class TestAddPhotonSeries(TestCase):
             metadata=self.two_photon_series_metadata,
             iterator_type="v2",
             iterator_options=dict(buffer_shape=buffer_shape, chunk_shape=chunk_shape),
+            metadata_key=self.two_photon_series_key,
         )
 
         acquisition_modules = self.nwbfile.acquisition
@@ -1652,6 +1657,7 @@ class TestAddPhotonSeries(TestCase):
             metadata=self.two_photon_series_metadata,
             iterator_type="v2",
             iterator_options=dict(chunk_mb=chunk_mb),
+            metadata_key=self.two_photon_series_key,
         )
 
         acquisition_modules = self.nwbfile.acquisition
@@ -1669,6 +1675,7 @@ class TestAddPhotonSeries(TestCase):
             metadata=self.two_photon_series_metadata,
             iterator_type="v2",
             iterator_options=dict(chunk_mb=chunk_mb),
+            metadata_key=self.two_photon_series_key,
         )
         acquisition_modules = self.nwbfile.acquisition
         assert self.two_photon_series_name in acquisition_modules
@@ -1685,6 +1692,7 @@ class TestAddPhotonSeries(TestCase):
             metadata=self.two_photon_series_metadata,
             iterator_type="v2",
             iterator_options=dict(chunk_mb=chunk_mb),
+            metadata_key=self.two_photon_series_key,
         )
         acquisition_modules = self.nwbfile.acquisition
         assert self.two_photon_series_name in acquisition_modules
@@ -1694,7 +1702,10 @@ class TestAddPhotonSeries(TestCase):
 
     def test_add_two_photon_series_roundtrip(self):
         add_photon_series_to_nwbfile(
-            imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+            metadata_key=self.two_photon_series_key,
         )
 
         # Write the data to disk
@@ -1752,13 +1763,14 @@ class TestAddPhotonSeries(TestCase):
                 nwbfile=self.nwbfile,
                 metadata=photon_series_metadata,
                 photon_series_type="TwoPhotonSeries",
+                metadata_key=self.two_photon_series_key,
             )
 
     def test_add_one_photon_series(self):
         """Test adding one photon series with metadata."""
 
         metadata = deepcopy(self.one_photon_series_metadata)
-        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][self.one_photon_series_key]
         one_photon_series_metadata.update(
             pmt_gain=60.0,
             binning=2,
@@ -1769,6 +1781,7 @@ class TestAddPhotonSeries(TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             photon_series_type="OnePhotonSeries",
+            metadata_key=self.one_photon_series_key,
         )
         self.assertIn(self.one_photon_series_name, self.nwbfile.acquisition)
         one_photon_series = self.nwbfile.acquisition[self.one_photon_series_name]
@@ -1784,6 +1797,7 @@ class TestAddPhotonSeries(TestCase):
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
+            metadata_key=self.one_photon_series_key,
         )
 
         # Write the data to disk
@@ -1818,15 +1832,15 @@ class TestAddPhotonSeries(TestCase):
 
     def test_add_one_photon_series_to_processing(self):
         """Test adding one photon series to ophys processing module."""
-        metadata = self.one_photon_series_metadata
-        metadata["Ophys"]["OnePhotonSeries"][0].update(name="OnePhotonSeriesProcessed")
+        metadata = deepcopy(self.one_photon_series_metadata)
+        metadata["Ophys"]["OnePhotonSeries"][self.one_photon_series_key].update(name="OnePhotonSeriesProcessed")
 
         add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.one_photon_series_metadata,
+            metadata=metadata,
             photon_series_type="OnePhotonSeries",
-            photon_series_index=0,
+            metadata_key=self.one_photon_series_key,
             parent_container="processing/ophys",
         )
         ophys = self.nwbfile.processing["ophys"]
@@ -1842,11 +1856,13 @@ class TestAddPhotonSeries(TestCase):
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
+                metadata_key=self.two_photon_series_key,
             )
             add_photon_series_to_nwbfile(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
+                metadata_key=self.two_photon_series_key,
             )
         self.assertEqual(len(self.nwbfile.acquisition), 1)
 
@@ -1862,12 +1878,14 @@ class TestAddPhotonSeries(TestCase):
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
                 parent_container="processing/ophys",
+                metadata_key=self.two_photon_series_key,
             )
             add_photon_series_to_nwbfile(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
                 parent_container="processing/ophys",
+                metadata_key=self.two_photon_series_key,
             )
         self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
 
@@ -1877,6 +1895,7 @@ class TestAddPhotonSeries(TestCase):
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
+            metadata_key=self.two_photon_series_key,
         )
         self.assertNotIn("ophys", self.nwbfile.processing)
         self.assertEqual(len(self.nwbfile.processing), 0)
@@ -1886,22 +1905,31 @@ class TestAddPhotonSeries(TestCase):
         shared_photon_series_metadata = deepcopy(self.one_photon_series_metadata)
         shared_imaging_plane_name = "same_imaging_plane_for_two_series"
 
-        shared_photon_series_metadata["Ophys"]["ImagingPlane"][0]["name"] = shared_imaging_plane_name
-        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["imaging_plane"] = shared_imaging_plane_name
+        # Update imaging plane name
+        shared_photon_series_metadata["Ophys"]["ImagingPlanes"][self.imaging_plane_key][
+            "name"
+        ] = shared_imaging_plane_name
 
         add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
+            metadata_key=self.one_photon_series_key,
         )
 
-        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
+        # Create second photon series with different key
+        second_series_key = "second_photon_series_key"
+        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][second_series_key] = deepcopy(
+            shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][self.one_photon_series_key]
+        )
+        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][second_series_key]["name"] = "second_photon_series"
         add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
+            metadata_key=second_series_key,
         )
 
         self.assertIn("second_photon_series", self.nwbfile.acquisition)
@@ -1916,13 +1944,45 @@ class TestAddSummaryImages(TestCase):
 
         cls.metadata = dict(Ophys=dict())
 
+        # Add proper device and imaging plane metadata first
+        device_key = "default_device_key"
+        imaging_plane_key = "default_imaging_plane_key"
+
+        device_metadata = dict(name="test_device")
+        cls.metadata["Devices"] = {device_key: device_metadata}
+
+        imaging_plane_metadata = dict(
+            name="test_imaging_plane",
+            device_metadata_key=device_key,
+            description="test imaging plane",
+            excitation_lambda=488.0,
+            indicator="GCaMP",
+            location="cortex",
+            optical_channel=[{"name": "channel_1", "description": "test channel", "emission_lambda": 520.0}],
+        )
+        cls.metadata["Ophys"]["ImagingPlanes"] = {imaging_plane_key: imaging_plane_metadata}
+
+        # Add plane segmentation metadata
+        plane_segmentation_metadata = dict(
+            name="PlaneSegmentation", description="Segmented ROIs", imaging_plane_metadata_key=imaging_plane_key
+        )
+
+        # Add image segmentation metadata
+        image_segmentation_metadata = dict(
+            ImageSegmentation=dict(
+                name="ImageSegmentation",
+                default=plane_segmentation_metadata,
+            )
+        )
+        cls.metadata["Ophys"].update(image_segmentation_metadata)
+
         cls.segmentation_images_name = "segmentation_images"
         cls.mean_image_name = "mean_image"
         cls.correlation_image_name = "correlation_image"
         segmentation_images_metadata = dict(
             name=cls.segmentation_images_name,
             description="description",
-            PlaneSegmentation=dict(
+            default=dict(
                 correlation=dict(name=cls.correlation_image_name, description="test description for correlation image"),
                 mean=dict(name=cls.mean_image_name, description="test description for mean image"),
             ),
@@ -1944,6 +2004,7 @@ class TestAddSummaryImages(TestCase):
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
@@ -1959,7 +2020,7 @@ class TestAddSummaryImages(TestCase):
         extracted_images_dict = {img_name: img.data.T for img_name, img in extracted_images_dict.items()}
         expected_images_dict = segmentation_extractor.get_images_dict()
 
-        images_metadata = self.metadata["Ophys"]["SegmentationImages"]["PlaneSegmentation"]
+        images_metadata = self.metadata["Ophys"]["SegmentationImages"]["default"]
         for image_name, image_data in expected_images_dict.items():
             image_name_from_metadata = images_metadata[image_name]["name"]
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
@@ -1972,6 +2033,7 @@ class TestAddSummaryImages(TestCase):
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
@@ -1994,6 +2056,7 @@ class TestAddSummaryImages(TestCase):
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor,
             metadata=self.metadata,
+            metadata_key="default",
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
@@ -2005,22 +2068,13 @@ class TestAddSummaryImages(TestCase):
         )
 
         add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, metadata=self.metadata
+            nwbfile=self.nwbfile,
+            segmentation_extractor=segmentation_extractor,
+            metadata=self.metadata,
+            metadata_key="default",
         )
 
         assert len(self.nwbfile.processing) == 0
-
-    def test_add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
-        ):
-            add_summary_images_to_nwbfile(
-                nwbfile=self.nwbfile,
-                segmentation_extractor=generate_dummy_segmentation_extractor(num_rows=10, num_columns=15),
-                metadata=self.metadata,
-                plane_segmentation_name="invalid_plane_segmentation_name",
-            )
 
     def test_add_summary_images_to_nwbfile_from_two_planes(self):
         segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
@@ -2029,18 +2083,20 @@ class TestAddSummaryImages(TestCase):
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor_first_plane,
             metadata=self.metadata,
-            plane_segmentation_name="PlaneSegmentation",
+            metadata_key="default",
         )
 
         metadata = deepcopy(self.metadata)
         segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"]
-        images_metadata = segmentation_images_metadata["PlaneSegmentation"]
-        images_metadata["mean"].update(name="test_mean_image_name")
-        images_metadata["correlation"].update(name="test_correlation_image_name")
-        plane_segmentation_name = "test_plane_segmentation_name"
-        segmentation_images_metadata.update(
-            {plane_segmentation_name: segmentation_images_metadata["PlaneSegmentation"]}
-        )
+
+        # Create second plane metadata with different image names
+        second_plane_key = "second_plane"
+        second_plane_images_metadata = deepcopy(segmentation_images_metadata["default"])
+        second_plane_images_metadata["mean"].update(name="test_mean_image_name")
+        second_plane_images_metadata["correlation"].update(name="test_correlation_image_name")
+
+        # Add second plane metadata
+        segmentation_images_metadata[second_plane_key] = second_plane_images_metadata
 
         segmentation_extractor_second_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
@@ -2048,7 +2104,7 @@ class TestAddSummaryImages(TestCase):
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor_second_plane,
             metadata=metadata,
-            plane_segmentation_name=plane_segmentation_name,
+            metadata_key=second_plane_key,
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
@@ -2059,7 +2115,7 @@ class TestAddSummaryImages(TestCase):
         extracted_images_dict = {img_name: img.data.T for img_name, img in images_collection.images.items()}
         expected_images_second_plane = segmentation_extractor_second_plane.get_images_dict()
 
-        images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
+        images_metadata = metadata["Ophys"]["SegmentationImages"][second_plane_key]
         for image_name, image_data in expected_images_second_plane.items():
             image_name_from_metadata = images_metadata[image_name]["name"]
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])

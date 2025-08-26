@@ -80,17 +80,21 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         for channel_stream_name in channel_streams:
             plane_streams = streams["plane_streams"][channel_stream_name]
             for plane_stream in plane_streams:
+                # Create unique metadata_key based on stream name, keeping the original format
+                stream_metadata_key = plane_stream
                 if len(plane_streams) > 1:
                     interface_name += plane_stream.replace("_", "")
                 if plane_separation_type == "contiguous":
                     self.data_interface_objects[interface_name] = BrukerTiffMultiPlaneImagingInterface(
                         folder_path=folder_path,
                         stream_name=plane_stream,
+                        metadata_key=stream_metadata_key,
                     )
                 elif plane_separation_type == "disjoint":
                     self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
                         folder_path=folder_path,
                         stream_name=plane_stream,
+                        metadata_key=stream_metadata_key,
                     )
 
     def add_to_nwbfile(
@@ -137,7 +141,6 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
-                photon_series_index=photon_series_index,
                 stub_test=stub_test,
                 stub_samples=effective_stub_samples,
             )
@@ -262,11 +265,14 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         channel_streams = streams["channel_streams"]
         interface_name = "BrukerImaging"
         for channel_stream_name in channel_streams:
+            # Create unique metadata_key based on stream name, keeping the original format
+            stream_metadata_key = channel_stream_name
             if len(channel_streams) > 1:
                 interface_name += channel_stream_name.replace("_", "")
             self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
                 folder_path=folder_path,
                 stream_name=channel_stream_name,
+                metadata_key=stream_metadata_key,
             )
 
     def add_to_nwbfile(
@@ -314,7 +320,6 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
-                photon_series_index=photon_series_index,
                 stub_test=stub_test,
                 stub_samples=effective_stub_samples,
             )

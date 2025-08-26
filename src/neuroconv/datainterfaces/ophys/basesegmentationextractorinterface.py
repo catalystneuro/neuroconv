@@ -22,10 +22,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName = "roiextractors"
 
-    def __init__(self, verbose: bool = False, **source_data):
+    def __init__(self, verbose: bool = False, metadata_key: str = "default", **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
+        self.metadata_key = metadata_key
 
     def get_metadata_schema(self) -> dict:
         """
@@ -50,22 +51,58 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         - Applies temporary fixes, such as setting additional properties for `ImageSegmentation` to True.
         """
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["required"] = ["Ophys"]
-        metadata_schema["properties"]["Ophys"] = get_base_schema()
-        metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items=get_schema_from_hdmf_class(Device)),
+        metadata_schema["required"] = ["Ophys", "Devices"]
+
+        # Add top-level Devices schema for new metadata structure
+        device_schema = get_schema_from_hdmf_class(Device)
+        metadata_schema["properties"]["Devices"] = dict(
+            type="object",
+            patternProperties={"^[a-zA-Z0-9_]+$": device_schema},
+            additionalProperties=False,
         )
+
+        metadata_schema["properties"]["Ophys"] = get_base_schema()
+        metadata_schema["properties"]["Ophys"]["properties"] = dict()
         metadata_schema["properties"]["Ophys"]["properties"].update(
             Fluorescence=get_schema_from_hdmf_class(Fluorescence),
             ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
+        metadata_schema["properties"]["Ophys"]["required"] = ["ImageSegmentation"]
 
-        # Temporary fixes until centralized definition of metadata schemas
-        metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
-        metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
+        # Note: We inline the Device schema instead of using references to avoid schema reference issues
+
+        # Update ImagingPlane schema to use device_metadata_key
+        imaging_plane_schema = metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"]
+        if "device" in imaging_plane_schema["properties"]:
+            imaging_plane_schema["properties"].pop("device")
+            imaging_plane_schema["properties"]["device_metadata_key"] = {
+                "type": "string",
+                "description": "Reference key to the device in the Devices dictionary",
+            }
+            # Update required fields if device was required
+            if "required" in imaging_plane_schema and "device" in imaging_plane_schema["required"]:
+                imaging_plane_schema["required"] = [
+                    "device_metadata_key" if req == "device" else req for req in imaging_plane_schema["required"]
+                ]
+
+        # Update schema for new dictionary structure
+        metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlanes"] = dict(
+            type="object",
+            patternProperties={"^[a-zA-Z0-9_]+$": imaging_plane_schema},
+            additionalProperties=False,
+        )
+        if "ImagingPlane" in metadata_schema["properties"]["Ophys"]["properties"]:
+            del metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"]
+
+        metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"] = dict(
+            type="object",
+            patternProperties={
+                "^[a-zA-Z0-9_]+$": metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"]
+            },
+            additionalProperties=False,
+        )
 
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
@@ -85,7 +122,23 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
         )
 
-        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
+        image_segmentation_schema = metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]
+        image_segmentation_schema["type"] = "object"
+        image_segmentation_schema["properties"] = {
+            "name": {"type": "string"}  # Top-level name for the ImageSegmentation container
+        }
+        image_segmentation_schema["patternProperties"] = {
+            "^(?!name$)[a-zA-Z0-9_]+$": {  # Pattern excludes "name" key
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "imaging_plane_metadata_key": {"type": "string"},  # Reference by key
+                },
+                "required": ["name", "imaging_plane_metadata_key"],
+            }
+        }
+        image_segmentation_schema["additionalProperties"] = False
 
         metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
             "properties"
@@ -118,7 +171,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
-        metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
+        metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor, metadata_key=self.metadata_key))
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
@@ -230,4 +283,5 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
         )

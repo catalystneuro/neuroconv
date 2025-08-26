@@ -7,7 +7,11 @@ from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, dict_deep_update
+from ....tools.ophys_metadata_conversion import (
+    is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
+)
+from ....utils import DeepDict
 
 
 class MiniscopeImagingInterface(BaseImagingExtractorInterface):
@@ -36,7 +40,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
+    def __init__(self, folder_path: DirectoryPath, verbose: bool = False, metadata_key: str = "default"):
         """
         Initialize reading the Miniscope imaging data.
 
@@ -47,13 +51,19 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             The microscope movie files are expected to be in sub folders within the main folder.
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and OnePhotonSeries.
+            Default is "default".
         """
         from ndx_miniscope.utils import get_recording_start_times, read_miniscope_config
 
         miniscope_folder_paths = list(Path(folder_path).rglob("Miniscope"))
         assert miniscope_folder_paths, "The main folder should contain at least one subfolder named 'Miniscope'."
 
-        super().__init__(folder_path=folder_path, verbose=verbose)
+        super().__init__(
+            folder_path=folder_path, verbose=verbose, metadata_key=metadata_key, photon_series_type="OnePhotonSeries"
+        )
 
         self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_folder_paths[0]))
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
@@ -69,27 +79,39 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             and one-photon series configuration.
         """
-        from ....tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
-        metadata = dict_deep_update(metadata, default_metadata)
+
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
+
+        # Remove TwoPhotonSeries if it exists (Miniscope uses OnePhotonSeries)
         metadata["Ophys"].pop("TwoPhotonSeries", None)
 
         metadata["NWBFile"].update(session_start_time=self._recording_start_times[0])
 
-        device_metadata = metadata["Ophys"]["Device"][0]
+        # Update device metadata in the new structure
         miniscope_config = deepcopy(self._miniscope_config)
         device_name = miniscope_config.pop("name")
-        device_metadata.update(name=device_name, **miniscope_config)
-        # Add link to Device for ImagingPlane
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+
+        if "Devices" not in metadata:
+            metadata["Devices"] = {}
+        if self.metadata_key not in metadata["Devices"]:
+            metadata["Devices"][self.metadata_key] = {}
+        metadata["Devices"][self.metadata_key].update(name=device_name, **miniscope_config)
+
+        # Update imaging plane metadata - use the default imaging plane created by base class
+        default_imaging_plane_key = "default_imaging_plane_metadata_key"
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key]
         imaging_plane_metadata.update(
-            device=device_name,
+            device_metadata_key=self.metadata_key,
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
-        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
-        one_photon_series_metadata.update(unit="px")
+
+        # Update one photon series metadata
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][self.metadata_key]
+        one_photon_series_metadata.update(unit="px", imaging_plane_metadata_key=default_imaging_plane_key)
 
         return metadata
 
@@ -104,7 +126,11 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             for the Miniscope imaging interface.
         """
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
+        # Update device schema to allow additional properties for Miniscope-specific device metadata
+        if "Devices" in metadata_schema["properties"]:
+            device_pattern_properties = metadata_schema["properties"]["Devices"].get("patternProperties", {})
+            for pattern, device_schema in device_pattern_properties.items():
+                device_schema["additionalProperties"] = True
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
@@ -152,7 +178,13 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         imaging_extractor.set_times(times=miniscope_timestamps)
 
-        device_metadata = metadata["Ophys"]["Device"][0]
+        # Get device metadata from the new structure
+        if "Devices" in metadata and self.metadata_key in metadata["Devices"]:
+            device_metadata = metadata["Devices"][self.metadata_key]
+        else:
+            # Fallback for backward compatibility
+            device_metadata = metadata["Ophys"]["Device"][0]
+
         add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
 
         add_photon_series_to_nwbfile(

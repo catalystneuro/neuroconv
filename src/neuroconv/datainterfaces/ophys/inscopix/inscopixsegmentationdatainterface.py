@@ -1,6 +1,10 @@
 from pydantic import FilePath, validate_call
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ....tools.ophys_metadata_conversion import (
+    is_old_ophys_metadata_format,
+    update_old_ophys_metadata_format_to_new,
+)
 from ....utils import DeepDict
 
 
@@ -16,6 +20,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -24,8 +29,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             Path to the .isxd Inscopix file.
         verbose : bool, optional
             If True, outputs additional information during processing.
+        metadata_key : str, optional
+            The key to use for organizing metadata in the new dictionary structure.
+            This single key will be used for Device, ImagingPlane, and ImageSegmentation.
+            Default is "default".
         """
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose, metadata_key=metadata_key)
 
     def get_metadata(self) -> DeepDict:
         """
@@ -44,6 +53,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         """
         metadata = super().get_metadata()
+
+        # Handle backward compatibility
+        if is_old_ophys_metadata_format(metadata):
+            metadata = update_old_ophys_metadata_format_to_new(metadata)
+
         extractor = self.segmentation_extractor
 
         # Get all metadata from extractor using the consolidated method
@@ -74,11 +88,9 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         # Device information
         if device_info:
-            device_metadata = metadata["Ophys"]["Device"][0]
-
-            # Update the actual device name
-            if device_info.get("device_name"):
-                device_metadata["name"] = device_info["device_name"]
+            # Create a new device entry using metadata_key (don't modify the default)
+            if "Devices" not in metadata:
+                metadata["Devices"] = {}
 
             # Build device description
             device_desc_parts = []
@@ -103,15 +115,27 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     if value is not None:
                         device_desc_parts.append(f"{field}: {value}")
 
-            if device_desc_parts:
-                device_metadata["description"] = "; ".join(device_desc_parts)
+            # Create new device entry with metadata_key
+            device_name = device_info.get("device_name", "InscopixMicroscope")
+            metadata["Devices"][self.metadata_key] = {
+                "name": device_name,
+                "description": (
+                    "; ".join(device_desc_parts) if device_desc_parts else "Inscopix microscope for calcium imaging"
+                ),
+            }
 
-            # Update imaging plane metadata
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+            # Create a new ImagingPlane entry that references the new device
+            # Get the default imaging plane as template
+            default_imaging_plane_key = "default_imaging_plane_metadata_key"
+            if default_imaging_plane_key in metadata["Ophys"]["ImagingPlanes"]:
+                # Copy the default imaging plane as template
+                from copy import deepcopy
 
-            # Update imaging plane device reference to match the actual device name
-            if device_info.get("device_name"):
-                imaging_plane_metadata["device"] = device_info["device_name"]
+                imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlanes"][default_imaging_plane_key])
+
+                # Update with Inscopix-specific information
+                imaging_plane_metadata["name"] = "ImagingPlane"
+                imaging_plane_metadata["device_metadata_key"] = self.metadata_key  # Reference to our new device
 
             # Build imaging plane description
             plane_desc = "Inscopix imaging plane"
@@ -151,6 +175,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
             imaging_plane_metadata["optical_channel"] = [optical_channel]
 
+            # Add the new ImagingPlane to the metadata
+            metadata["Ophys"]["ImagingPlanes"][self.metadata_key] = imaging_plane_metadata
+
+            # Update the PlaneSegmentation to reference the new ImagingPlane
+            metadata["Ophys"]["ImageSegmentation"][self.metadata_key]["imaging_plane_metadata_key"] = self.metadata_key
+
         # Image segmentation (specific to segmentation interface)
         segmentation_desc = "Inscopix cell segmentation"
         if analysis_info and analysis_info.get("cell_identification_method"):
@@ -158,7 +188,14 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         if analysis_info and analysis_info.get("trace_units"):
             segmentation_desc += f" with traces in {analysis_info['trace_units']}"
 
-        metadata["Ophys"]["ImageSegmentation"]["description"] = segmentation_desc
+        # Update ImageSegmentation metadata with new dictionary structure
+        if "ImageSegmentation" in metadata["Ophys"]:
+            if self.metadata_key in metadata["Ophys"]["ImageSegmentation"]:
+                # New dictionary structure
+                metadata["Ophys"]["ImageSegmentation"][self.metadata_key]["description"] = segmentation_desc
+            else:
+                # If we have ImageSegmentation but not our key yet, add it
+                metadata["Ophys"]["ImageSegmentation"][self.metadata_key] = {"description": segmentation_desc}
 
         # Subject metadata
         subject_metadata = {}
