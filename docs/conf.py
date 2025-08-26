@@ -34,6 +34,11 @@ html_favicon = "_static/favicon.ico"
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
 html_css_files = [
     "css/custom.css",
+    "css/neuroconv_assistant.css",
+]
+
+html_js_files = [
+    "js/neuroconv_assistant.js",
 ]
 
 html_context = {
@@ -57,7 +62,7 @@ html_theme_options = {
     ],
     "switcher": {
         "json_url": "_static/switcher.json",
-        "version_match": "latest",  # This will be set correctly when deployed to RTD
+        "version_match": "stable",  # This will be set correctly when deployed to RTD
     }
 }
 
