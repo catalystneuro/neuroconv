@@ -18,7 +18,7 @@ def _test_sonpy_installation() -> None:
 class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting Spike2 data from CED (Cambridge Electronic
-    Design) using :py:class:`~spikeinterface.extractors.read_ced`."""
+    Design) using the spikeinterface `read_ced` function."""
 
     display_name = "Spike2 Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("CED",)

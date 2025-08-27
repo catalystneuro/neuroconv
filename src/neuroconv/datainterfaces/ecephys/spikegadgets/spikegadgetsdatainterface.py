@@ -7,7 +7,7 @@ from ....utils import ArrayType, get_json_schema_from_method_signature
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting data in the SpikeGadgets format.
-    Uses :py:class:`~spikeinterface.extractors.read_spikegadgets`.
+    Uses :py:func:`~spikeinterface.extractors.read_spikegadgets`.
     """
 
     display_name = "SpikeGadgets Recording"

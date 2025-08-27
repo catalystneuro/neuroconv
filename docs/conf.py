@@ -126,3 +126,11 @@ intersphinx_mapping = {
     "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
 }
+
+# Clear intersphinx cache to force refresh
+intersphinx_cache_limit = 0
+intersphinx_timeout = 10
+
+# NOTE: SpikeInterface intersphinx inventory has malformed URLs (api.html#$ instead of proper anchors)
+# This is a known issue with certain Sphinx versions affecting inventory generation
+# The references below are correct but may not render as clickable links until upstream fixes the inventory

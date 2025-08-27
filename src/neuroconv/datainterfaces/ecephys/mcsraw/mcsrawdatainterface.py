@@ -7,7 +7,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting MCSRaw data.
 
-    Using the :py:class:`~spikeinterface.extractors.read_mcsraw`.
+    Using the spikeinterface `read_mcsraw` function.
     """
 
     display_name = "MCSRaw Recording"

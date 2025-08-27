@@ -11,7 +11,7 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Blackrock data using
-    :py:class:`~spikeinterface.extractors.read_blackrock`."""
+    the spikeinterface `read_blackrock` function."""
 
     display_name = "Blackrock Recording"
     associated_suffixes = (".ns0", ".ns1", ".ns2", ".ns3", ".ns4", ".ns5")
