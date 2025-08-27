@@ -157,8 +157,9 @@ def update_version_switcher_in_read_the_docs(app, config):
     if local_build:
         return
 
-    # Get the ReadTheDocs version (e.g., "1234" for PR #1234, "stable", "main")
+    # Get the ReadTheDocs version and canonical URL
     rtd_version = os.environ.get("READTHEDOCS_VERSION")
+    rtd_canonical_url = os.environ.get("READTHEDOCS_CANONICAL_URL")
 
     # Only update for PR/branch builds (not stable or main)
     if not rtd_version or rtd_version in ["stable", "main", "latest"]:
@@ -171,13 +172,13 @@ def update_version_switcher_in_read_the_docs(app, config):
         switcher_data = json.load(f)
 
     # Create entry for current PR/branch
-    # PR builds use format: https://neuroconv--1483.org.readthedocs.build/en/1483/
+    # READTHEDOCS_CANONICAL_URL automatically provides the correct URL format
     # For PR builds, rtd_version is just the number (e.g., "1483")
     display_name = f"PR {rtd_version}" if rtd_version.isdigit() else rtd_version
     current_entry = {
-        "name": f"{display_name} (current)",
+        "name": f"{display_name} build",
         "version": rtd_version,
-        "url": f"https://neuroconv--{rtd_version}.org.readthedocs.build/en/{rtd_version}/"
+        "url": rtd_canonical_url
     }
 
     # Check if this version already exists (to avoid duplicates on rebuild)
@@ -201,17 +202,12 @@ def update_version_switcher_in_read_the_docs(app, config):
 def update_version_switcher_for_local_builds(app, config):
     """Temporarily update switcher.json for local testing.
 
-    Only runs locally when TEST_VERSION environment variable is set.
+    Only runs on local builds (when READTHEDOCS env var is not set).
     Creates a backup and automatically restores after build.
     """
 
     # Only run locally (not on ReadTheDocs)
     if not local_build:
-        return
-
-    # Check if TEST_VERSION is set for local testing
-    test_version = os.environ.get("TEST_VERSION")
-    if not test_version:
         return
 
     switcher_path = Path(app.srcdir) / "_static" / "switcher.json"
@@ -231,20 +227,20 @@ def update_version_switcher_for_local_builds(app, config):
     with open(switcher_path, "r") as f:
         switcher_data = json.load(f)
 
-    # Create entry for test version (local build has no URL)
+    # Create entry for local build (no URL)
     current_entry = {
-        "name": "local build (current)",
-        "version": test_version,
+        "name": "local build",
+        "version": "local",
         "url": ""
     }
 
-    # Check if this version already exists
+    # Check if local version already exists
     existing_versions = [entry["version"] for entry in switcher_data]
-    if test_version not in existing_versions:
+    if "local" not in existing_versions:
         switcher_data.insert(0, current_entry)
     else:
         for i, entry in enumerate(switcher_data):
-            if entry["version"] == test_version:
+            if entry["version"] == "local":
                 switcher_data[i] = current_entry
                 break
 
