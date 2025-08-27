@@ -1,15 +1,10 @@
 import inspect
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-# Determine if this is a local build
-# Note: As of August 2025, we assume that if READTHEDOCS is not set, this is a local build
-local_build = not os.environ.get("READTHEDOCS")
 
 project = "NeuroConv"
 copyright = "2022, CatalystNeuro"
@@ -62,7 +57,6 @@ html_context = {
 # READTHEDOCS_VERSION_NAME is automatically set by ReadTheDocs during builds
 # Documentation: https://docs.readthedocs.com/platform/stable/reference/environment-variables.html
 # Possible values: "stable", "main", PR numbers like "1483", branch names like "feature/xyz"
-# For PR/branch builds, no match will be found so switcher shows unselected state
 version_match = os.environ.get("READTHEDOCS_VERSION_NAME", "stable")
 
 html_theme_options = {
@@ -154,100 +148,45 @@ def update_version_switcher_in_read_the_docs(app, config):
     """
 
     # Only run on ReadTheDocs
-    if local_build:
+    is_read_the_docs_build = bool(os.environ.get("READTHEDOCS"))
+    if not is_read_the_docs_build:
         return
 
     # Get the ReadTheDocs version and canonical URL
     rtd_version = os.environ.get("READTHEDOCS_VERSION")
-    rtd_canonical_url = os.environ.get("READTHEDOCS_CANONICAL_URL")
 
     # Only update for PR/branch builds (not stable or main)
-    if not rtd_version or rtd_version in ["stable", "main", "latest"]:
+    if rtd_version in ["stable", "main"]:
         return
 
     switcher_path = Path(app.srcdir) / "_static" / "switcher.json"
 
-    # Read existing switcher.json
-    with open(switcher_path, "r") as f:
-        switcher_data = json.load(f)
 
     # Create entry for current PR/branch
-    # READTHEDOCS_CANONICAL_URL automatically provides the correct URL format
     # For PR builds, rtd_version is just the number (e.g., "1483")
-    display_name = f"PR {rtd_version}" if rtd_version.isdigit() else rtd_version
-    current_entry = {
-        "name": f"{display_name} build",
+    display_name = f"PR {rtd_version} build"
+    entry_to_add = {
+        "name": display_name,
         "version": rtd_version,
-        "url": rtd_canonical_url
+        "url":  os.environ.get("READTHEDOCS_CANONICAL_URL")
     }
 
-    # Check if this version already exists (to avoid duplicates on rebuild)
-    existing_versions = [entry["version"] for entry in switcher_data]
-    if rtd_version not in existing_versions:
-        # Insert as first entry so it appears at the top
-        switcher_data.insert(0, current_entry)
-    else:
-        # Update existing entry
-        for i, entry in enumerate(switcher_data):
-            if entry["version"] == rtd_version:
-                switcher_data[i] = current_entry
-                break
-
-    # Write updated switcher.json
-    with open(switcher_path, "w") as f:
-        json.dump(switcher_data, f, indent=4)
-        f.write("\n")  # Add trailing newline
-
-
-def update_version_switcher_for_local_builds(app, config):
-    """Temporarily update switcher.json for local testing.
-
-    Only runs on local builds (when READTHEDOCS env var is not set).
-    Creates a backup and automatically restores after build.
-    """
-
-    # Only run locally (not on ReadTheDocs)
-    if not local_build:
-        return
-
-    switcher_path = Path(app.srcdir) / "_static" / "switcher.json"
-
-    # Backup the original
-    backup_path = switcher_path.with_suffix('.json.backup')
-    shutil.copy2(switcher_path, backup_path)
-
-    # Register cleanup handler to restore original after build
-    def restore_original(app, exception):
-        if backup_path.exists():
-            shutil.move(backup_path, switcher_path)
-
-    app.connect("build-finished", restore_original)
-
-    # Read existing switcher.json
+    # Update switcher.json with PR/branch entry
+    # switcher.json structure: [{"name": str, "version": str, "url": str}, ...]
     with open(switcher_path, "r") as f:
-        switcher_data = json.load(f)
+        switcher_entries = json.load(f)
 
-    # Create entry for local build (no URL)
-    current_entry = {
-        "name": "local build",
-        "version": "local",
-        "url": ""
-    }
+    # Avoid duplicated entries
+    version_exists = any(entry["version"] == rtd_version for entry in switcher_entries)
+    if version_exists:
+        return  # Entry already present, no update needed
 
-    # Check if local version already exists
-    existing_versions = [entry["version"] for entry in switcher_data]
-    if "local" not in existing_versions:
-        switcher_data.insert(0, current_entry)
-    else:
-        for i, entry in enumerate(switcher_data):
-            if entry["version"] == "local":
-                switcher_data[i] = current_entry
-                break
-
-    # Write updated switcher.json
+    # Add and save new entry
+    switcher_entries.append(entry_to_add)
     with open(switcher_path, "w") as f:
-        json.dump(switcher_data, f, indent=4)
-        f.write("\n")  # Add trailing newline
+        json.dump(switcher_entries, f, indent=4)
+
+
 
 
 def setup(app):
@@ -257,6 +196,3 @@ def setup(app):
 
     # Connect switcher.json updater for ReadTheDocs PR/branch builds
     app.connect("config-inited", update_version_switcher_in_read_the_docs)
-
-    # Connect switcher.json updater for local testing
-    app.connect("config-inited", update_version_switcher_for_local_builds)
