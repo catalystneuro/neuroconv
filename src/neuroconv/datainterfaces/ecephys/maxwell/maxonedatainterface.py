@@ -12,7 +12,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
     """
     Primary data interface class for converting MaxOne data.
 
-    Using the :py:class:`~spikeinterface.extractors.MaxwellRecordingExtractor`.
+    Using the :py:class:`~spikeinterface.extractors.read_maxwell`.
     """
 
     display_name = "MaxOne Recording"

@@ -7,7 +7,7 @@ from ....utils import DeepDict
 class PhySortingInterface(BaseSortingExtractorInterface):
     """
     Primary data interface class for converting Phy data. Uses
-    :py:class:`~spikeinterface.extractors.PhySortingExtractor`.
+    :py:class:`~spikeinterface.extractors.read_phy`.
     """
 
     display_name = "Phy Sorting"

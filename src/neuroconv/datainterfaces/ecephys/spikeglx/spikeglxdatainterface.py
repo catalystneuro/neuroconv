@@ -18,7 +18,7 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary SpikeGLX interface for converting raw SpikeGLX data using a :py:class:`~spikeinterface.extractors.SpikeGLXRecordingExtractor`.
+    Primary SpikeGLX interface for converting raw SpikeGLX data using :py:class:`~spikeinterface.extractors.read_spikeglx`.
     """
 
     display_name = "SpikeGLX Recording"
