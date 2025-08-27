@@ -172,8 +172,10 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Create entry for current PR/branch
     # PR builds use format: https://neuroconv--1483.org.readthedocs.build/en/1483/
+    # For PR builds, rtd_version is just the number (e.g., "1483")
+    display_name = f"PR {rtd_version}" if rtd_version.isdigit() else rtd_version
     current_entry = {
-        "name": f"{rtd_version} (current)",
+        "name": f"{display_name} (current)",
         "version": rtd_version,
         "url": f"https://neuroconv--{rtd_version}.org.readthedocs.build/en/{rtd_version}/"
     }
