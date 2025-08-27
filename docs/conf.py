@@ -7,6 +7,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Determine if this is a local build
+# Note: As of August 2025, we assume that if READTHEDOCS is not set, this is a local build
+local_build = not os.environ.get("READTHEDOCS")
+
 project = "NeuroConv"
 copyright = "2022, CatalystNeuro"
 author = "Cody Baker, Heberto Mayorquin, Szonja Weigl and Ben Dichter"
@@ -142,7 +146,7 @@ def _correct_signatures(app, what, name, obj, options, signature, return_annotat
     return (signature, return_annotation)
 
 
-def update_switcher_json_rtd(app, config):
+def update_version_switcher_in_read_the_docs(app, config):
     """Update switcher.json for ReadTheDocs PR/branch builds.
 
     Only runs on ReadTheDocs when building PR or branch versions.
@@ -150,17 +154,15 @@ def update_switcher_json_rtd(app, config):
     """
 
     # Only run on ReadTheDocs
-    if os.environ.get("READTHEDOCS") != "True":
+    if local_build:
         return
 
-    # Get the ReadTheDocs version name (PR number, branch name, etc.)
-    rtd_version = os.environ.get("READTHEDOCS_VERSION_NAME")
+    # Get the ReadTheDocs version (e.g., "1234" for PR #1234, "stable", "main")
+    rtd_version = os.environ.get("READTHEDOCS_VERSION")
 
     # Only update for PR/branch builds (not stable or main)
-    if not rtd_version or rtd_version in ["stable", "main"]:
+    if not rtd_version or rtd_version in ["stable", "main", "latest"]:
         return
-
-    print(f"ReadTheDocs PR/branch build detected. Updating switcher.json for: {rtd_version}")
 
     switcher_path = Path(app.srcdir) / "_static" / "switcher.json"
 
@@ -193,28 +195,22 @@ def update_switcher_json_rtd(app, config):
         json.dump(switcher_data, f, indent=4)
         f.write("\n")  # Add trailing newline
 
-    print(f"Successfully updated switcher.json with entry for {rtd_version}")
 
-
-def update_switcher_json_local(app, config):
+def update_version_switcher_for_local_builds(app, config):
     """Temporarily update switcher.json for local testing.
 
     Only runs locally when TEST_VERSION environment variable is set.
     Creates a backup and automatically restores after build.
-
-    Note: As of August 2025, we assume builds without READTHEDOCS env var are local.
     """
 
     # Only run locally (not on ReadTheDocs)
-    if os.environ.get("READTHEDOCS") == "True":
+    if not local_build:
         return
 
     # Check if TEST_VERSION is set for local testing
     test_version = os.environ.get("TEST_VERSION")
     if not test_version:
         return
-
-    print(f"Local build with TEST_VERSION detected. Temporarily updating switcher.json for: {test_version}")
 
     switcher_path = Path(app.srcdir) / "_static" / "switcher.json"
 
@@ -226,7 +222,6 @@ def update_switcher_json_local(app, config):
     def restore_original(app, exception):
         if backup_path.exists():
             shutil.move(backup_path, switcher_path)
-            print(f"Restored original switcher.json")
 
     app.connect("build-finished", restore_original)
 
@@ -256,8 +251,6 @@ def update_switcher_json_local(app, config):
         json.dump(switcher_data, f, indent=4)
         f.write("\n")  # Add trailing newline
 
-    print(f"Successfully updated switcher.json with test entry for {test_version}")
-
 
 def setup(app):
     """Register Sphinx event handlers."""
@@ -265,7 +258,7 @@ def setup(app):
     app.connect("autodoc-process-signature", _correct_signatures)
 
     # Connect switcher.json updater for ReadTheDocs PR/branch builds
-    app.connect("config-inited", update_switcher_json_rtd)
+    app.connect("config-inited", update_version_switcher_in_read_the_docs)
 
     # Connect switcher.json updater for local testing
-    app.connect("config-inited", update_switcher_json_local)
+    app.connect("config-inited", update_version_switcher_for_local_builds)
