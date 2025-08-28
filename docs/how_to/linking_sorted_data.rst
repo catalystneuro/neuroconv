@@ -147,3 +147,90 @@ Create the converter and run the conversion:
     nwbfile = converter.create_nwbfile()
     from neuroconv.tools import configure_and_write_nwbfile
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
+
+
+SpikeGLX Multi-Probe Data
+--------------------------------------------------------
+
+SpikeGLX recordings often contain data from multiple probes that have been sorted
+independently. The :py:class:`~neuroconv.converters.SortedSpikeGLXConverter`
+enhances the standard :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`
+with the ability to preserve sorting metadata and maintain proper unit-to-electrode
+linkage across all probes.
+
+**Interface Names in SpikeGLX:**
+For SpikeGLX data, interface names correspond to recording streams which combine
+probe and band information (e.g., "imec0.ap" = probe 0 + ap band,
+"imec1.lf" = probe 1 + lf band). Only AP interfaces can have sorting data associated
+with them.
+
+Multiple Probes with Independent Sorting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Example with multiple Neuropixels probes, each sorted independently:
+
+.. code-block:: python
+
+    from neuroconv.converters import SpikeGLXConverterPipe, SortedSpikeGLXConverter
+    from neuroconv.datainterfaces import KiloSortSortingInterface
+
+    # Initialize the SpikeGLX converter for all streams
+    spikeglx_converter = SpikeGLXConverterPipe(
+        folder_path="path/to/spikeglx_data"
+    )
+
+    # View available interfaces
+    print(spikeglx_converter.data_interface_objects.keys())
+    # Example output: dict_keys(['imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', 'nidq'])
+
+When working with multiple sorting interfaces, a common challenge arises when different sorters
+produce units with identical IDs (e.g., both probes generating units "0", "1", "2"). The
+:doc:`adding_multiple_sorting_interfaces` guide provides comprehensive strategies for handling
+such scenarios. However, the :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` automatically
+resolves these conflicts by generating unique unit names using the pattern ``{interface_name}_unit_{original_id}``
+(e.g., ``imec0_ap_unit_0``, ``imec1_ap_unit_0``) when conflicts are detected. If unit IDs are already
+unique across all sorters, the original unit names are preserved.
+
+Create sorting configuration for each sorted probe. Note the channel ID format specific to SpikeGLX:
+
+.. code-block:: python
+
+    sorting_configuration = [
+        {
+            "interface_name": "imec0.ap",
+            "sorting_interface": KiloSortSortingInterface(
+                folder_path="path/to/imec0_kilosort_output"
+            ),
+            "unit_ids_to_channel_ids": {
+                "0": ["imec0.ap#AP0", "imec0.ap#AP1", "imec0.ap#AP2"],
+                "1": ["imec0.ap#AP3", "imec0.ap#AP4"],
+                "2": ["imec0.ap#AP5", "imec0.ap#AP6"]
+            }
+        },
+        {
+            "interface_name": "imec1.ap",
+            "sorting_interface": KiloSortSortingInterface(
+                folder_path="path/to/imec1_kilosort_output"
+            ),
+            "unit_ids_to_channel_ids": {
+                "0": ["imec1.ap#AP0", "imec1.ap#AP1"],
+                "1": ["imec1.ap#AP2", "imec1.ap#AP3", "imec1.ap#AP4"],
+                "2": ["imec1.ap#AP10", "imec1.ap#AP11"]
+            }
+        }
+    ]
+
+Create the converter and run the conversion:
+
+.. code-block:: python
+
+    # Create the sorted converter
+    converter = SortedSpikeGLXConverter(
+        spikeglx_converter=spikeglx_converter,
+        sorting_configuration=sorting_configuration
+    )
+
+    # Create NWB file and write to disk
+    nwbfile = converter.create_nwbfile()
+    from neuroconv.tools import configure_and_write_nwbfile
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
