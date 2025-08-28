@@ -354,7 +354,6 @@ ophys = [
     "neuroconv[extract]",
     "neuroconv[femtonics]",
     "neuroconv[inscopix]",
-    "neuroconv[ophys_minimal]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
