@@ -24,6 +24,34 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
 
+    @staticmethod
+    def get_available_channel_ids(file_path: FilePath) -> list:
+        """
+        Get all available channel names from an EDF file.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the EDF file
+
+        Returns
+        -------
+        list
+            List of all channel names in the EDF file
+        """
+        from spikeinterface.extractors import read_edf
+
+        # Load the recording to inspect channels
+        recording = read_edf(file_path=file_path, all_annotations=True, use_names_as_ids=True)
+
+        # Get all channel IDs
+        channel_ids = recording.get_channel_ids()
+
+        # Clean up to avoid dangling references
+        del recording
+
+        return channel_ids.tolist()
+
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
 
         extractor_kwargs = source_data.copy()
