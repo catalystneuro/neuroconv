@@ -33,7 +33,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         list of str
             The names of the available recording streams.
         """
-        from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysLegacyRecordingExtractor,
+        )
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
