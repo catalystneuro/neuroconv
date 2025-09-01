@@ -70,7 +70,7 @@ sorting_analyzer = [   # These dependencies are for testing the sorting analyzer
     "scipy",
 ]
 
-dandi = ["dandi>=0.69"]
+dandi = ["dandi>=0.70.0"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
@@ -395,6 +395,7 @@ doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
+    "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",
 ]
 
 [tool.black]

@@ -2,7 +2,7 @@ import datetime
 
 import probeinterface as pi
 from numpy.testing import assert_array_equal
-from spikeinterface.extractors import SpikeGLXRecordingExtractor
+from spikeinterface.extractors.extractor_classes import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import (
