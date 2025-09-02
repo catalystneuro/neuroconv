@@ -8,7 +8,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting AlphaOmega recording data.
 
-    Uses the :py:func:`~spikeinterface.extractors.read_alphaomega`.
+    Uses the :py:class:`~spikeinterface.extractors.read_alphaomega`.
     """
 
     display_name = "AlphaOmega Recording"

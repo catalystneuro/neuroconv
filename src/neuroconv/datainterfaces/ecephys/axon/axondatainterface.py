@@ -13,7 +13,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting extracellular data recorded in Axon Binary Format (ABF) data using
 
-    :py:func:`~spikeinterface.extractors.read_axon`.
+    :py:class:`~spikeinterface.extractors.read_axon`.
     """
 
     display_name = "Axon Recording"

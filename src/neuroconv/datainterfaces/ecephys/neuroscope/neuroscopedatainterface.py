@@ -95,7 +95,7 @@ def add_recording_extractor_properties(recording_extractor, gain: float | None =
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
-    :py:func:`~spikeinterface.extractors.read_neuroscope_recording`."""
+    :py:class:`~spikeinterface.extractors.read_neuroscope_recording`."""
 
     display_name = "NeuroScope Recording"
     associated_suffixes = (".dat", ".xml")

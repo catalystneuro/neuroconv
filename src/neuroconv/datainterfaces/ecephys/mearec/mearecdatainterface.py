@@ -11,7 +11,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting MEArec recording data.
 
-    Uses the :py:func:`~spikeinterface.extractors.read_mearec`.
+    Uses the :py:class:`~spikeinterface.extractors.read_mearec`.
     """
 
     display_name = "MEArec Recording"
