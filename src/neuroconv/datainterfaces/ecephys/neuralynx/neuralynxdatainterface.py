@@ -18,7 +18,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
-        from spikeinterface.extractors import NeuralynxRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxRecordingExtractor,
+        )
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
