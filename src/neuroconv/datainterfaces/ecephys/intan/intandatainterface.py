@@ -15,7 +15,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     which are the primary neural recording channels.
 
     If you have other data streams from your Intan system (e.g., analog inputs, auxiliary inputs, DC amplifiers),
-    you should use the :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
+    you should use the :py:func:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
     """
 
     display_name = "Intan Amplifier"

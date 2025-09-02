@@ -12,7 +12,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Plexon data.
 
-    Uses :py:class:`~spikeinterface.extractors.read_plexon`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon`.
     """
 
     display_name = "Plexon Recording"
@@ -70,7 +70,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     """
     Primary data interface class for converting Plexon LFP data.
 
-    Uses :py:class:`~spikeinterface.extractors.read_plexon`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon`.
     """
 
     display_name = "Plexon LFP Recording"
@@ -133,7 +133,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Plexon2 data.
 
-    Uses :py:class:`~spikeinterface.extractors.read_plexon2`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon2`.
     """
 
     display_name = "Plexon2 Recording"
@@ -198,7 +198,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
     """
     Primary data interface class for converting Plexon spiking data.
 
-    Uses :py:class:`~spikeinterface.extractors.read_plexon_sorting`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon_sorting`.
     """
 
     display_name = "Plexon Sorting"

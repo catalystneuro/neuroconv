@@ -15,7 +15,7 @@ class IntanAnalogInterface(BaseDataInterface):
     including auxiliary inputs, ADC inputs, and DC amplifier signals.
 
     If your data consists of the main amplifier channels (neural data), you should use the
-    :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandatainterface.IntanRecordingInterface`.
+    :py:func:`~neuroconv.datainterfaces.ecephys.intan.intandatainterface.IntanRecordingInterface`.
     """
 
     display_name = "Intan Analog"
