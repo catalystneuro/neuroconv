@@ -7,10 +7,11 @@ Install NeuroConv with the additional dependencies necessary for reading EDF dat
 
     pip install "neuroconv[edf]"
 
-Converting Electrode Channels
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Converting EDF Electrode Channels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface` is designed specifically for electrode recording channels that will be stored as an ElectricalSeries in the NWB file. Non-electrical channels should be excluded using the ``channels_to_skip`` parameter.
+The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface` is designed specifically for electrode recording channels that will be stored as an ElectricalSeries in the NWB file.
+Other auxiliary signal channels should be excluded using the ``channels_to_skip`` parameter.
 
 .. code-block:: python
 
@@ -25,7 +26,7 @@ The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordi
     all_channels = EDFRecordingInterface.get_available_channel_ids(file_path)
     print(f"Available channels: {all_channels}")
 
-    # Identify non-electrical channels that should be skipped
+    # Identify non-electrode channels that should be skipped
     # We don't have an automatic way to detect non-electrode channels, user passes this knowledge here
     channels_to_skip = ["TRIG", "OSAT", "PR", "Pleth"]  # Example: trigger and physiological monitoring
 
@@ -45,12 +46,16 @@ The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordi
     nwbfile_path = f"{path_to_save_nwbfile}"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-Converting Non-Electrical Channels as TimeSeries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Converting Auxiliary EDF Channels as TimeSeries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Non-electrical channels (such as physiological monitoring signals, triggers, or auxiliary data) should be stored as generic TimeSeries objects rather than ElectricalSeries. Use the dedicated :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfanaloginterface.EDFAnalogInterface` to handle these channels.
+Auxiliary signals such as physiological monitoring signals, triggers, or auxiliary data should be stored as generic TimeSeries objects
+rather than ElectricalSeries. Use the dedicated :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfanaloginterface.EDFAnalogInterface`
+to handle these channels.
 
-**Important**: TimeSeries objects in PyNWB require all channels to have the same physical unit. If your non-electrical channels have different units (e.g., triggers with no unit, OSAT in %, PR in bpm), you'll need to create separate EDFAnalogInterface instances for each unit type:
+**Important**: TimeSeries objects in PyNWB require all channels to have the same physical unit.
+If your auxiliary channels have different units (e.g., triggers with no unit, OSAT in %, PR in bpm),
+you'll need to create separate EDFAnalogInterface instances for each unit type:
 
 .. code-block:: python
 
@@ -79,10 +84,11 @@ Non-electrical channels (such as physiological monitoring signals, triggers, or 
     nwbfile_path = f"{path_to_save_nwbfile}"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-Combining Electrode and Non-Electrical Channels
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Combining Electrode and Auxiliary Channels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To convert both electrode and non-electrical channels into a single NWB file, use the ConverterPipe with multiple interfaces. Remember to group non-electrical channels by their unit types:
+To convert both electrode and auxiliary channels into a single NWB file, use the ConverterPipe with multiple interfaces.
+Remember to group auxiliary channels by their unit types:
 
 .. code-block:: python
 
@@ -106,16 +112,18 @@ To convert both electrode and non-electrical channels into a single NWB file, us
     )
 
     # Create separate analog interfaces for each unit type
+    trigger_channels_metadata_key = "time_series_trigger"  # No unit
     trigger_interface = EDFAnalogInterface(
         file_path=file_path,
         channels_to_include=["TRIG"],  # No unit
-        metadata_key="time_series_trigger"
+        metadata_key=trigger_channels_metadata_key
     )
 
+    percent_channels_metadata_key = "time_series_oxygen"  # Percentage unit
     percent_interface = EDFAnalogInterface(
         file_path=file_path,
         channels_to_include=["OSAT"],  # Percentage units
-        metadata_key="time_series_oxygen"
+        metadata_key=percent_channels_metadata_key,
     )
 
     # Combine all interfaces
@@ -131,13 +139,13 @@ To convert both electrode and non-electrical channels into a single NWB file, us
     metadata["NWBFile"].update(session_start_time=session_start_time)
 
     # REQUIRED: Customize TimeSeries names when using multiple analog interfaces
-    timeseries_metadata = {
+    user_edited_metadata = {
         "TimeSeries": {
-            "time_series_trigger": {
+            trigger_channels_metadata_key: {
                 "name": "TimeSeriesTrigger",
                 "description": "Trigger signals from EDF file"
             },
-            "time_series_oxygen": {
+            percent_channels_metadata_key: {
                 "name": "TimeSeriesOxygen",
                 "description": "Oxygen saturation monitoring data"
             }
@@ -145,7 +153,7 @@ To convert both electrode and non-electrical channels into a single NWB file, us
     }
 
     # The metadata_key parameter ensures each interface creates entries with the correct names
-    metadata = dict_deep_update(metadata, timeseries_metadata)
+    metadata = dict_deep_update(metadata, user_edited_metadata)
 
     # Convert all channel types to a single NWB file
     nwbfile_path = f"{path_to_save_nwbfile}"

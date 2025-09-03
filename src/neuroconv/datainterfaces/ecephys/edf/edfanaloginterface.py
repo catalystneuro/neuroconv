@@ -9,12 +9,13 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class EDFAnalogInterface(BaseDataInterface):
     """
-    Primary data interface for converting non-electrical analog data streams from EDF files.
+    Primary data interface for converting auxiliary data streams from EDF files.
 
-    This interface handles non-electrical signals that should not be stored as ElectricalSeries,
-    including physiological monitoring signals, triggers, and auxiliary data.
+    This interface is designed to handle all the signals that should NOT be stored as ElectricalSeries,
+    including physiological monitoring signals, triggers and any other auxiliary data which does not
+    come from electrode channels.
 
-    If your data consists of electrical recording channels (neural data), you should use the
+    If your data consists of electrical recording channels you should use the
     :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface`.
     """
 
@@ -70,7 +71,7 @@ class EDFAnalogInterface(BaseDataInterface):
         file_path : FilePath
             Path to the EDF file
         channels_to_include : list of str, optional
-            Specific channel IDs to include. If None, will include all non-electrical channels.
+            Specific channel IDs to include.
         verbose : bool, default: False
             Verbose output
         metadata_key : str, default: "analog_edf_metadata_key"
@@ -114,7 +115,7 @@ class EDFAnalogInterface(BaseDataInterface):
         # Add TimeSeries metadata
         channel_names = self.channel_ids
         channels_string = ", ".join(channel_names)
-        description = f"Non-electrode analog signals from EDF file. Channels: {channels_string}"
+        description = f"Auxiliary signals from the EDF format. Channels: {channels_string}"
 
         metadata["TimeSeries"] = {
             self.metadata_key: dict(
