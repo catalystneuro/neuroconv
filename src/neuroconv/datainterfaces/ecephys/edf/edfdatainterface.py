@@ -7,10 +7,11 @@ from ....utils import DeepDict
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Data interface class for converting European Data Format (EDF) data using the
-    spikeinterface `read_edf` function.
+    Data interface class for converting European Data Format (EDF) data.
 
-    Not supported for Python 3.8 and 3.9 on M1 macs.
+    Uses the :py:func:`~spikeinterface.extractors.read_edf` reader from SpikeInterface.
+
+    Not supported on M1 macs.
     """
 
     display_name = "EDF Recording"

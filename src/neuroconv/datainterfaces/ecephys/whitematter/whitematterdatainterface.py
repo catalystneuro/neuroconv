@@ -9,7 +9,7 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface for converting binary WhiteMatter data (.bin files).
 
-    Uses :py:func:`~spikeinterface.extractors.read_whitematter`.
+    Uses the :py:func:`~spikeinterface.extractors.read_whitematter` reader from SpikeInterface.
     """
 
     display_name = "WhiteMatter Recording"

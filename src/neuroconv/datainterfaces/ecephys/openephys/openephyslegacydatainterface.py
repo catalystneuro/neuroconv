@@ -71,7 +71,6 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
 
-        See the spikeinterface `read_openephys` function for options.
 
         Parameters
         ----------
