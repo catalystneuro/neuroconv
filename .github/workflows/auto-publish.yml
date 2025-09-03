@@ -1,5 +1,5 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+# Simple: publish to PyPI when a GitHub Release is published AND the tag starts with 'v'.
+# Assumes: releases are cut from main; no prereleases; PyPI Trusted Publishing + attestations.
 
 name: Upload Package to PyPI
 
@@ -7,25 +7,36 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+  id-token: write   # required for PyPI Trusted Publishing (no API token)
+
 jobs:
   deploy:
+    # Only run if the release tag starts with 'v' (e.g., v1.2.3)
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the tagged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install Building Dependencies
+
+      - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade build
-      - name: Build package
-        run: |
-          python -m build
-      - name: pypi-publish
-        uses: pypa/gh-action-pypi-publish@v1.4.2
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Publish to PyPI (OIDC + attestations)
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          verbose: true
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: true
