@@ -17,7 +17,9 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     """
-    DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
+    DataInterface for converting raw Axona data.
+
+    Uses the :py:func:`~spikeinterface.extractors.read_axona` reader from SpikeInterface.
     """
 
     display_name = "Axona Recording"
