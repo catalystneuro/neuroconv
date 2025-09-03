@@ -5,6 +5,7 @@
 
 ## Bug Fixes
 * Fixed documentation version switcher not properly distinguishing between stable and development versions [PR #1483](https://github.com/catalystneuro/neuroconv/pull/1483)
+* Fixed sleap-io import not being recognized correctly [PR #1492](https://github.com/catalystneuro/neuroconv/pull/1492)
 
 ## Features
 
