@@ -11,7 +11,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface for converting legacy Open Ephys data (.continuous files).
 
-    Uses the spikeinterface `read_openephys` function.
+    Uses :py:func:`~spikeinterface.extractors.read_openephys`.
     """
 
     display_name = "OpenEphys Legacy Recording"
