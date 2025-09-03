@@ -98,7 +98,7 @@ audio = [
 ]
 sleap = [
     "av>=10.0.0",
-    "sleap-io>=0.3.0",
+    "sleap-io>=0.5.2",
     "ndx-pose>=0.2.2",
 ]
 deeplabcut = [
@@ -390,7 +390,7 @@ doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
-    "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",
+    "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",  # TODO: remove when spikeinterface>=0.105.0
 ]
 
 [tool.black]

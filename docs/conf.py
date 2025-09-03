@@ -128,7 +128,6 @@ intersphinx_mapping = {
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
 }
 
-
 # --------------------------------------------------
 # Custom Sphinx event handlers and setup
 # --------------------------------------------------
