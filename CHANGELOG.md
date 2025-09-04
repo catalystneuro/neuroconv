@@ -9,6 +9,7 @@
 * Fixed sleap-io compatibility by updating to version 0.5.2 and adjusting import path for `append_nwb_data` function [PR #1496](https://github.com/catalystneuro/neuroconv/pull/1496)
 
 ## Features
+* Added `SortedSpikeGLXConverter` for handling multiple SpikeGLX streams with their corresponding sorting data, enabling proper unit-to-electrode linkage across multiple probes [PR #1449](https://github.com/catalystneuro/neuroconv/pull/1449)
 
 ## Improvements
 * Enhanced `SortedRecordingConverter` documentation with detailed explanation of the timing problem it solves when linking units to electrodes, and moved electrode linking guide from user guide to how-to section [PR #1479](https://github.com/catalystneuro/neuroconv/pull/1479)

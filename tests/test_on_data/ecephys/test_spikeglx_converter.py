@@ -7,12 +7,14 @@ from tempfile import mkdtemp
 from unittest import TestCase
 
 import numpy as np
+import pytest
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe, NWBConverter
-from neuroconv.converters import SpikeGLXConverterPipe
+from neuroconv.converters import SortedSpikeGLXConverter, SpikeGLXConverterPipe
+from neuroconv.tools.testing.mock_interfaces import MockSortingInterface
 from neuroconv.utils import load_dict_from_file
 
 from ..setup_paths import ECEPHY_DATA_PATH
@@ -233,3 +235,242 @@ def test_electrode_table_writing(tmp_path):
 
     channel_ids = recording_extractor_lf.get_channel_ids()
     np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
+
+
+class TestSortedSpikeGLXConverter:
+    """Test suite for SortedSpikeGLXConverter functionality"""
+
+    def test_multi_probe_multi_stream_example(self, tmp_path):
+        """dataset with two probes and both ap and lf streams"""
+        # Initialize base SpikeGLX converter (notebook example 1)
+        spikeglx_converter = SpikeGLXConverterPipe(
+            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
+        )
+
+        # Create sorting configuration with unique unit IDs for each sorter (hard-coded, no conflicts)
+
+        # Create mock sorting for imec0.ap stream with unique unit IDs
+        num_units_imec0 = 3
+        sorting_interface_imec0 = MockSortingInterface(num_units=num_units_imec0)
+        sorting_extractor_imec0 = sorting_interface_imec0.sorting_extractor
+        sorting_extractor_imec0 = sorting_extractor_imec0.rename_units(new_unit_ids=["unit_a", "unit_b", "unit_c"])
+        sorting_interface_imec0.sorting_extractor = sorting_extractor_imec0
+
+        # Create mock sorting for imec1.ap stream with unique unit IDs
+        num_units_imec1 = 3
+        sorting_interface_imec1 = MockSortingInterface(num_units=num_units_imec1)
+        sorting_extractor_imec1 = sorting_interface_imec1.sorting_extractor
+        sorting_extractor_imec1 = sorting_extractor_imec1.rename_units(new_unit_ids=["unit_x", "unit_y", "unit_z"])
+        sorting_interface_imec1.sorting_extractor = sorting_extractor_imec1
+
+        # Create explicit sorting configuration with unique unit IDs per stream
+        sorting_configuration = [
+            {
+                "interface_name": "imec0.ap",
+                "sorting_interface": sorting_interface_imec0,
+                "unit_ids_to_channel_ids": {
+                    "unit_a": ["imec0.ap#AP0", "imec0.ap#AP1"],  # First 2 channels
+                    "unit_b": ["imec0.ap#AP2"],  # 3rd channel
+                    "unit_c": ["imec0.ap#AP3", "imec0.ap#AP4", "imec0.ap#AP5"],  # Channels 3-5
+                },
+            },
+            {
+                "interface_name": "imec1.ap",
+                "sorting_interface": sorting_interface_imec1,
+                "unit_ids_to_channel_ids": {
+                    "unit_x": ["imec1.ap#AP0", "imec1.ap#AP1"],  # First 2 channels
+                    "unit_y": ["imec1.ap#AP2"],  # 3rd channel
+                    "unit_z": ["imec1.ap#AP3", "imec1.ap#AP4", "imec1.ap#AP5"],  # Channels 3-5
+                },
+            },
+        ]
+
+        # Create sorted converter
+        sorted_converter = SortedSpikeGLXConverter(
+            spikeglx_converter=spikeglx_converter, sorting_configuration=sorting_configuration
+        )
+
+        # Run conversion with stub_test for faster execution (only for recording interfaces)
+        nwbfile_path = tmp_path / "test_multi_trigger_multi_gate.nwb"
+        conversion_options = {}
+        for interface_name, interface in sorted_converter.data_interface_objects.items():
+            if hasattr(interface, "recording_extractor"):  # Recording interfaces
+                conversion_options[interface_name] = dict(stub_test=True)
+        sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+
+        # Verify electrode mappings are correct
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            # Verify units table exists
+            assert nwbfile.units is not None
+            assert len(nwbfile.units) == 6  # 3 units per stream, 2 streams
+
+            # Verify electrode mappings match expectations
+            units_df = nwbfile.units.to_dataframe()
+
+            # Define expected channel patterns and group names for each unit (no stream prefix in electrode table)
+            unit_channel_patterns = {
+                "unit_a": ["AP0", "AP1"],
+                "unit_b": ["AP2"],
+                "unit_c": ["AP3", "AP4", "AP5"],  # imec0.ap units
+                "unit_x": ["AP0", "AP1"],
+                "unit_y": ["AP2"],
+                "unit_z": ["AP3", "AP4", "AP5"],  # imec1.ap units
+            }
+
+            unit_group_patterns = {
+                "unit_a": ["NeuropixelsImec0", "NeuropixelsImec0"],
+                "unit_b": ["NeuropixelsImec0"],
+                "unit_c": ["NeuropixelsImec0", "NeuropixelsImec0", "NeuropixelsImec0"],  # imec0 units
+                "unit_x": ["NeuropixelsImec1", "NeuropixelsImec1"],
+                "unit_y": ["NeuropixelsImec1"],
+                "unit_z": ["NeuropixelsImec1", "NeuropixelsImec1", "NeuropixelsImec1"],  # imec1 units
+            }
+
+            for _, unit_row in units_df.iterrows():
+                unit_name = unit_row["unit_name"]  # NeuroConv stores unit_ids as unit_names
+                unit_electrode_table_region = unit_row.electrodes
+
+                # Get the electrode indices from the region
+                electrode_indices = list(unit_electrode_table_region.index)
+
+                # Get the actual channel names for these electrode indices
+                unit_electrodes = nwbfile.electrodes[electrode_indices]
+                actual_channel_names = list(unit_electrodes["channel_name"])
+
+                # Verify that the electrode table indices correspond to the correct channels
+                assert len(actual_channel_names) > 0, f"Unit {unit_name} has no channel mappings"
+
+                # This test has no conflicts (unique unit IDs across streams), so expect original unit names
+                expected_channel_names = unit_channel_patterns[unit_name]
+
+                # Verify the channel names match the expected pattern
+                assert (
+                    actual_channel_names == expected_channel_names
+                ), f"Unit {unit_name} has channel names {actual_channel_names}, expected {expected_channel_names}"
+
+                # Verify the group names (device mapping) match what we expect
+                actual_group_names = list(unit_electrodes["group_name"])
+                expected_group_names = unit_group_patterns[unit_name]
+
+                assert (
+                    actual_group_names == expected_group_names
+                ), f"Unit {unit_name} has group names {actual_group_names}, expected {expected_group_names}"
+
+    def test_single_probe_with_full_streams(self, tmp_path):
+        """Single probe with ap, lf and nidq streams"""
+        # Initialize converter
+        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+
+        # Create mock sorting with specific mappings and rename units for clarity
+        num_units = 4
+        sorting_interface = MockSortingInterface(num_units=num_units)
+        sorting_extractor = sorting_interface.sorting_extractor
+        sorting_extractor = sorting_extractor.rename_units(new_unit_ids=["unit_a", "unit_b", "unit_c", "unit_d"])
+        sorting_interface.sorting_extractor = sorting_extractor
+
+        # Create specific unit-to-channel mappings using hardcoded channel names
+        unit_ids_to_channel_ids = {
+            "unit_a": ["imec0.ap#AP0", "imec0.ap#AP1", "imec0.ap#AP2"],  # First 3 channels
+            "unit_b": ["imec0.ap#AP10", "imec0.ap#AP11"],  # Channels 10-11
+            "unit_c": ["imec0.ap#AP20"],  # Channel 20
+            "unit_d": ["imec0.ap#AP30", "imec0.ap#AP31"],  # Channels 30-31
+        }
+
+        sorting_configuration = [
+            {
+                "interface_name": "imec0.ap",
+                "sorting_interface": sorting_interface,
+                "unit_ids_to_channel_ids": unit_ids_to_channel_ids,
+            }
+        ]
+
+        # Create sorted converter
+        sorted_converter = SortedSpikeGLXConverter(
+            spikeglx_converter=spikeglx_converter, sorting_configuration=sorting_configuration
+        )
+
+        # Run conversion with stub_test for faster execution (only for recording interfaces)
+        nwbfile_path = tmp_path / "test_noise4sam_single_probe.nwb"
+        conversion_options = {}
+        for interface_name, interface in sorted_converter.data_interface_objects.items():
+            if hasattr(interface, "recording_extractor"):  # Recording interfaces
+                conversion_options[interface_name] = dict(stub_test=True)
+        sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+
+        # Verify electrode mappings are correct
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.units is not None
+            assert len(nwbfile.units) == num_units
+
+            # Verify that device column is present and properly set
+            units_df = nwbfile.units.to_dataframe()
+            assert "device" in units_df.columns, "Device column should be present in units table"
+            expected_device_name = "NeuropixelsImec0"
+            for device_value in units_df["device"]:
+                assert (
+                    device_value == expected_device_name
+                ), f"Expected device {expected_device_name}, got {device_value}"
+
+            # Define expected channel names and group names for each unit (single probe)
+            expected_unit_channel_names = {
+                "unit_a": ["AP0", "AP1", "AP2"],  # First 3 channels
+                "unit_b": ["AP10", "AP11"],  # Channels 10-11
+                "unit_c": ["AP20"],  # Channel 20
+                "unit_d": ["AP30", "AP31"],  # Channels 30-31
+            }
+
+            expected_unit_group_names = {
+                "unit_a": ["NeuropixelsImec0", "NeuropixelsImec0", "NeuropixelsImec0"],
+                "unit_b": ["NeuropixelsImec0", "NeuropixelsImec0"],
+                "unit_c": ["NeuropixelsImec0"],
+                "unit_d": ["NeuropixelsImec0", "NeuropixelsImec0"],
+            }
+
+            # Test that the units have the correct channel mappings
+            unit_table = nwbfile.units
+            for unit_row in unit_table.to_dataframe().itertuples(index=False):
+                # NeuroConv writes unit_ids as unit_names
+                unit_id = unit_row.unit_name
+
+                unit_electrode_table_region = unit_row.electrodes
+                electrode_indices = list(unit_electrode_table_region.index)
+
+                # Verify the channel names match what we specified
+                unit_electrodes = nwbfile.electrodes[electrode_indices]
+                actual_channel_names = list(unit_electrodes["channel_name"])
+                expected_channel_names = expected_unit_channel_names[unit_id]
+
+                assert (
+                    actual_channel_names == expected_channel_names
+                ), f"Unit {unit_id} has channel names {actual_channel_names}, expected {expected_channel_names}"
+
+                # Verify the group names (device mapping) match what we expect
+                actual_group_names = list(unit_electrodes["group_name"])
+                expected_group_names = expected_unit_group_names[unit_id]
+
+                assert (
+                    actual_group_names == expected_group_names
+                ), f"Unit {unit_id} has group names {actual_group_names}, expected {expected_group_names}"
+
+    def test_non_ap_interface_error(self):
+        """Test that non-AP interfaces cannot have sorting data."""
+        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+        sorting_interface = MockSortingInterface(num_units=2)
+
+        # Test with LF interface (should fail)
+        lf_config = [
+            {
+                "interface_name": "imec0.lf",
+                "sorting_interface": sorting_interface,
+                "unit_ids_to_channel_ids": {"0": ["imec0.lf#LF0"], "1": ["imec0.lf#LF1"]},
+            }
+        ]
+
+        with pytest.raises(
+            ValueError, match="Interface 'imec0.lf' is not an AP stream. Only AP streams can have sorting data"
+        ):
+            SortedSpikeGLXConverter(spikeglx_converter=spikeglx_converter, sorting_configuration=lf_config)
