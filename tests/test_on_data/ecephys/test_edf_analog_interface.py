@@ -75,7 +75,7 @@ class TestEDFAnalogInterface:
         ts_metadata = metadata["TimeSeries"][interface.metadata_key]
         assert "name" in ts_metadata
         assert "description" in ts_metadata
-        assert "Non-electrode analog signals from EDF file" in ts_metadata["description"]
+        assert "Auxiliary signals from the EDF format" in ts_metadata["description"]
 
     def test_conversion_to_nwb(self, tmp_path):
         """Test conversion to NWB format."""
@@ -103,7 +103,7 @@ class TestEDFAnalogInterface:
             assert time_series.name == time_series_name
             # Note: The current implementation shows "no description" in the NWB file
             # This is expected behavior as the description metadata is not being passed through
-            assert "Non-electrode analog signals from EDF file" in time_series.description
+            assert "Auxiliary signals from the EDF format" in time_series.description
 
             # Check data dimensions
             assert len(time_series.data.shape) == 2  # [time, channels]
