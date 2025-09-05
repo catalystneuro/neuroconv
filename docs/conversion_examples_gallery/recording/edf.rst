@@ -102,12 +102,12 @@ Remember to group auxiliary channels by their unit types:
     file_path = f"{ECEPHY_DATA_PATH}/edf/electrode_and_analog_data/electrode_and_analog_data.edf"
 
     # Define the channels to process
-    all_non_electrical_channels = ["TRIG", "OSAT", "PR", "Pleth"]  # All non-electrical channels
+    all_non_electrical_channels = ["TRIG", "OSAT", "PR", "Pleth"]  # All auxiliary channels
 
-    # Create electrode interface (skip all non-electrical channels)
+    # Create electrode interface (skip all auxiliary channels)
     recording_interface = EDFRecordingInterface(
         file_path=file_path,
-        channels_to_skip=all_non_electrical_channels,
+        channels_to_skip=all_auxiliary_channels,
 
     )
 

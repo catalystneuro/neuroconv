@@ -22,7 +22,7 @@ class EDFAnalogInterface(BaseDataInterface):
     display_name = "EDF Analog"
     keywords = ("edf", "analog", "physiological", "trigger", "auxiliary")
     associated_suffixes = (".edf",)
-    info = "Interface for converting EDF non-electrical analog data."
+    info = "Interface for converting EDF analog data (from auxiliary channels)."
 
     @classmethod
     def get_source_schema(cls) -> dict:
