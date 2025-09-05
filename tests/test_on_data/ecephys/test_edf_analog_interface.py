@@ -16,29 +16,29 @@ class TestEDFAnalogInterface:
 
     def test_interface_initialization_with_specific_channels(self):
         """
-        Test initialization of EDFAnalogInterface with specific non-electrode channels.
+        Test initialization of EDFAnalogInterface with specific auxiliary channels.
         """
         file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
 
         # Get all available channels using static method
         available_channels = EDFAnalogInterface.get_available_channel_ids(file_path)
 
-        # Define expected non-electrode channels
-        expected_non_electrode_channels = ["TRIG", "OSAT", "PR", "Pleth"]
+        # Define expected auxiliary channels
+        expected_auxiliary_channels = ["TRIG", "OSAT", "PR", "Pleth"]
 
         # Test that expected channels are in available channels
         available_channels_set = set(available_channels)
-        for channel in expected_non_electrode_channels:
+        for channel in expected_auxiliary_channels:
             assert channel in available_channels_set, f"Expected channel {channel} not found in available channels"
 
         # Test that we can pass them and get them back
-        interface = EDFAnalogInterface(file_path=file_path, channels_to_include=expected_non_electrode_channels)
+        interface = EDFAnalogInterface(file_path=file_path, channels_to_include=expected_auxiliary_channels)
 
         interface_channel_ids = interface.channel_ids
-        assert len(interface_channel_ids) == len(expected_non_electrode_channels)
+        assert len(interface_channel_ids) == len(expected_auxiliary_channels)
 
         # Convert to sets for comparison since order might differ
-        expected_set = set(expected_non_electrode_channels)
+        expected_set = set(expected_auxiliary_channels)
         actual_set = set(str(ch_id) for ch_id in interface_channel_ids)
         assert actual_set == expected_set
 
