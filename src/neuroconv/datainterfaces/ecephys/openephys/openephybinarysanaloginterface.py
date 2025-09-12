@@ -59,17 +59,19 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]
-        availble_adc_streams = [id for id in available_streams if "ADC" in id]
-        if len(availble_adc_streams) > 1 and stream_name is None:
+        non_neural_streams_indicators = ["ADC", "NI-DAQ"]
+        is_non_neural = lambda stream_id: any(indicator in stream_id for indicator in non_neural_streams_indicators)
+        available_non_neural_streams = [stream_id for stream_id in available_streams if is_non_neural(stream_id)]
+        if len(available_non_neural_streams) > 1 and stream_name is None:
             raise ValueError(
                 "More than one stream is detected! "
                 "Please specify which stream you wish to load with the `stream_name` argument. "
                 "To see what streams are available, call "
                 " `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
             )
-        if stream_name is not None and stream_name not in availble_adc_streams:
+        if stream_name is not None and stream_name not in available_non_neural_streams:
             raise ValueError(
-                f"The selected stream '{stream_name}' is not in the available adc streams are '{availble_adc_streams}'!"
+                f"The selected stream '{stream_name}' is not in the available adc streams are '{available_non_neural_streams}'!"
             )
 
         self.stream_name = stream_name or available_streams[0]
@@ -84,7 +86,9 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
 
         # Filter for only analog channels (ADC)
         channel_ids = self.recording_extractor.get_channel_ids()
-        self.analog_channel_ids = [id for id in channel_ids if "ADC" in id]
+        analog_prefixes = ["ADC", "AI", "AUX"]
+        is_analog = lambda ch: any(prefix in str(ch) for prefix in analog_prefixes)
+        self.analog_channel_ids = [ch for ch in channel_ids if is_analog(ch)]
 
         if not self.analog_channel_ids:
             raise ValueError(f"No analog channels (ADC) found in the selected stream '{self.stream_name}'!")
