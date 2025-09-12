@@ -9,8 +9,11 @@ from ....utils import DeepDict, dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface for converting Neuralynx data. Uses
-    :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
+    """
+    Primary data interface for converting Neuralynx data.
+
+    Uses :py:func:`~spikeinterface.extractors.read_neuralynx` from SpikeInterface.
+    """
 
     display_name = "Neuralynx Recording"
     associated_suffixes = (".ncs", ".nse", ".ntt", ".nse", ".nev")
@@ -106,7 +109,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     """
     Primary data interface for converting Neuralynx sorting data. Uses
-    :py:class:`~spikeinterface.extractors.NeuralynxSortingExtractor`.
+    :py:func:`~spikeinterface.extractors.read_neuralynx_sorting`.
     """
 
     display_name = "Neuralynx Sorting"
