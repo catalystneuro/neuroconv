@@ -165,7 +165,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         description = (
             f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."
         )
-        metadata["TimeSeries"][self.time_series_name] = dict(description=description)
+        metadata["TimeSeries"][self.time_series_name] = dict(name=self.time_series_name, description=description)
 
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
@@ -174,5 +174,5 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=self.time_series_name,
+            metadata_key=self.time_series_name,
         )
