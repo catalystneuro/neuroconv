@@ -62,7 +62,7 @@ Defining a 'stream' as a single band on a single NeuroPixels probe, we can conve
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
@@ -91,5 +91,5 @@ can be used to convert these streams to NWB.
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_session.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
