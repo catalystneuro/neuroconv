@@ -50,7 +50,9 @@ class SpikeGLXConverterPipe(ConverterPipe):
         list of str
             The IDs of all available streams in the folder.
         """
-        from spikeinterface.extractors import SpikeGLXRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGLXRecordingExtractor,
+        )
 
         # The first entry is the stream ids the second is the stream names
         return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]

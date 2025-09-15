@@ -7,10 +7,11 @@ from ....utils import DeepDict
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Data interface class for converting European Data Format (EDF) data using the
-    :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`.
+    Data interface class for converting European Data Format (EDF) data.
 
-    Not supported for Python 3.8 and 3.9 on M1 macs.
+    Uses the :py:func:`~spikeinterface.extractors.read_edf` reader from SpikeInterface.
+
+    Not supported on M1 macs.
     """
 
     display_name = "EDF Recording"
@@ -23,6 +24,34 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
+
+    @staticmethod
+    def get_available_channel_ids(file_path: FilePath) -> list:
+        """
+        Get all available channel names from an EDF file.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the EDF file
+
+        Returns
+        -------
+        list
+            List of all channel names in the EDF file
+        """
+        from spikeinterface.extractors import read_edf
+
+        # Load the recording to inspect channels
+        recording = read_edf(file_path=file_path, all_annotations=True, use_names_as_ids=True)
+
+        # Get all channel IDs
+        channel_ids = recording.get_channel_ids()
+
+        # Clean up to avoid dangling references
+        del recording
+
+        return channel_ids.tolist()
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
 

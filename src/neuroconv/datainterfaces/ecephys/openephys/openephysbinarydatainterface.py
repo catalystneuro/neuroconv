@@ -8,7 +8,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface for converting binary OpenEphys data (.dat files).
 
-    Uses :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_openephys` from SpikeInterface.
     """
 
     display_name = "OpenEphys Binary Recording"
@@ -32,7 +32,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         list of str
             The names of the available recording streams.
         """
-        from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names

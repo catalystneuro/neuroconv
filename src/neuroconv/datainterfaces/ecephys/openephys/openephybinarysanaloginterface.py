@@ -50,7 +50,9 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             The name of the TimeSeries object in the NWBFile and also
             the key of the associated metadata
         """
-        from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
 
         self.folder_path = folder_path
         self._xml_root = _read_settings_xml(folder_path)
