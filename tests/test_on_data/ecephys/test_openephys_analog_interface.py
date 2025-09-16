@@ -40,10 +40,11 @@ def test_openephys_analog_interface(tmp_path):
         assert time_series.data.shape[1] == len(interface.analog_channel_ids)
 
 
-def test_openephys_analog_interface_neuropixels_with_sync(tmp_path):
-    """Test the OpenEphysBinaryAnalogInterface with v0.6.x_neuropixels_with_sync data containing NI-DAQmx analog channels."""
+def test_openephys_analog_interface_nidq(tmp_path):
+    """Test the OpenEphysBinaryAnalogInterface with data obtained using the NI-DAQmx plugin."""
     folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync"
     stream_name = "Record Node 104#NI-DAQmx-103.PXIe-6341"
+    assert folder_path.exists(), f"Test data folder does not exist: {folder_path}"
 
     interface = OpenEphysBinaryAnalogInterface(folder_path=folder_path, stream_name=stream_name)
 
