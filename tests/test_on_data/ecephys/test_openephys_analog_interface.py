@@ -43,8 +43,11 @@ def test_openephys_analog_interface(tmp_path):
 def test_openephys_analog_interface_nidq(tmp_path):
     """Test the OpenEphysBinaryAnalogInterface with data obtained using the NI-DAQmx plugin."""
     folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync"
+    open_ephys_binary = ECEPHY_DATA_PATH / "openephysbinary"
     stream_name = "Record Node 104#NI-DAQmx-103.PXIe-6341"
-    assert folder_path.exists(), f"Test data folder does not exist: {folder_path}"
+    assert (
+        folder_path.exists()
+    ), f"Test data folder does not exist: {folder_path}, available, available folders are: {list(open_ephys_binary.iterdir())}"
 
     interface = OpenEphysBinaryAnalogInterface(folder_path=folder_path, stream_name=stream_name)
 
