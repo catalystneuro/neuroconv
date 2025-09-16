@@ -4,6 +4,7 @@
 * Changed `automatic_dandi_upload()` function parameter from `staging: bool = False` to `sandbox: bool = False` to align with DANDI Archive's server name change from "staging" to "sandbox". The old `staging` parameter is deprecated and will be removed in February 2026. [PR #1437](https://github.com/catalystneuro/neuroconv/pull/1437)
 
 ## Bug Fixes
+* Fixed `write/add_sorting_analyzer_to_nwbfile` docstring for requirements of the recording object [PR #1506](https://github.com/catalystneuro/neuroconv/pull/1506)
 * Fixed deprecated SpikeInterface extractor imports to use `spikeinterface.extractors.extractor_classes` and updated docstring references to wrapper functions for compatibility with SpikeInterface changes [PR #1490](https://github.com/catalystneuro/neuroconv/pull/1490)
 * Fixed documentation version switcher not properly distinguishing between stable and development versions [PR #1483](https://github.com/catalystneuro/neuroconv/pull/1483)
 * Fixed sleap-io compatibility by updating to version 0.5.2 and adjusting import path for `append_nwb_data` function [PR #1496](https://github.com/catalystneuro/neuroconv/pull/1496)
@@ -13,6 +14,7 @@
 * Added `EDFAnalogInterface` for converting non-electrode/analog channels from EDF files to NWB TimeSeries and a conversion gallery example showing how to combine `EDFRecordingInterface` and `EDFAnalogInterface` to handle mixed EDF files. [PR #1487](https://github.com/catalystneuro/neuroconv/pull/1487)
 
 ## Improvements
+* Added test to mimic bad channel removal in `write_sorting_analyzer_to_nwbfile` [PR #1506](https://github.com/catalystneuro/neuroconv/pull/1506)
 * Enhanced `SortedRecordingConverter` documentation with detailed explanation of the timing problem it solves when linking units to electrodes, and moved electrode linking guide from user guide to how-to section [PR #1479](https://github.com/catalystneuro/neuroconv/pull/1479)
 * Use attestation instead of token for publish action [PR #1497](https://github.com/catalystneuro/neuroconv/pull/1497)
 

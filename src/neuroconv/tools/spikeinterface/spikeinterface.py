@@ -1531,8 +1531,6 @@ def _add_units_table_to_nwbfile(
     waveform_sds : np.ndarray, optional
         Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
     unit_electrode_indices : list of lists of int, optional
-        For each unit, a list of electrode indices corresponding to waveform data.
-    unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
     """
@@ -1874,8 +1872,7 @@ def add_sorting_analyzer_to_nwbfile(
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         The "Ecephys" section of metadata is also used to create electrodes and electrical series fields.
     recording : BaseRecording, optional
-        If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
-        Otherwise, electrodes info is not added to the nwb file.
+        If the sorting_analyzer is 'recordingless', this argument is required to save electrode info.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
         units are written.
@@ -1927,6 +1924,14 @@ def add_sorting_analyzer_to_nwbfile(
         for prop in tm.columns:
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, tm[prop])
+
+    # if recording is given, it takes precedence over the recording in the sorting analyzer
+    if recording is None:
+        assert sorting_analyzer.has_recording(), (
+            "recording not found. To add the electrode table, the sorting_analyzer "
+            "needs to have a recording attached or the 'recording' argument needs to be used."
+        )
+        recording = sorting_analyzer.recording
 
     add_recording_metadata_to_nwbfile(recording, nwbfile=nwbfile, metadata=metadata)
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
@@ -1994,8 +1999,7 @@ def write_sorting_analyzer_to_nwbfile(
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     recording : BaseRecording, optional
-        If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
-        Otherwise, electrodes info is not added to the nwb file.
+        If the sorting_analyzer is 'recordingless', this argument is required to be passed to save electrode info.
     verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     unit_ids : list, optional
@@ -2021,7 +2025,8 @@ def write_sorting_analyzer_to_nwbfile(
     """
     metadata = metadata if metadata is not None else dict()
 
-    if sorting_analyzer.has_recording():
+    # if recording is given, it takes precedence over the recording in the sorting analyzer
+    if recording is None and sorting_analyzer.has_recording():
         recording = sorting_analyzer.recording
     assert recording is not None, (
         "recording not found. To add the electrode table, the sorting_analyzer "
