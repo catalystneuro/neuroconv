@@ -31,7 +31,7 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
+    >>> nwbfile_path = output_folder / "my_spikeglx_converter_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
