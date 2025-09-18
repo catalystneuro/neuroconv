@@ -37,9 +37,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         folder_path: DirectoryPath | None = None,
     ):
         """
-        Read channel data from the NIDQ board for the SpikeGLX recording.
+        Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
 
-        Useful for synchronizing multiple data streams into the common time basis of the SpikeGLX system.
+        The NIDQ stream records both analog and digital (usually non-neural) signals.
+        XD channels are converted to events directly.
+        XA, MA and MD channels are all written together to a single TimeSeries at the moment.
+        Note that the multiplexed channels MA and MD are written multiplexed at the moment.
 
         Parameters
         ----------
