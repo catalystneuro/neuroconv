@@ -5,7 +5,7 @@
 ## Bug Fixes
 
 ## Features
-* Support NIDQ analog streams in `OpenEphysBinaryAnalogInterface` [PR #1502](https://github.com/catalystneuro/neuroconv/pull/1502)
+* Support NIDQ analog streams in `OpenEphysBinaryAnalogInterface` [PR #1503](https://github.com/catalystneuro/neuroconv/pull/1503)
 
 ## Improvements
 * Added SpikeGLXNIDQ interface to conversion gallery with documentation on how different channel types (XA, MA, MD, XD) are converted to NWB [PR #1505](https://github.com/catalystneuro/neuroconv/pull/1505)
