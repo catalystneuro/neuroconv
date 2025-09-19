@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Improved ophys metadata generation pipeline by removing redundant  default metadata generation and dict_deep_update operations, replacing them with a single source of truth dictionary (OPHYS_DEFAULT_METADATA) [PR #1510](https://github.com/catalystneuro/neuroconv/pull/1510)
 
 
 # v0.8.1 (September 16, 2025)
