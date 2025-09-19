@@ -1801,6 +1801,12 @@ class TestWriteSortingAnalyzer(TestCase):
         cls.analyzer_recless._recording = None
         cls.analyzer_recless_recording = single_segment_rec
 
+        # slice recording before analyzer (to mimic bad channel removal)
+        single_segment_rec_sliced = single_segment_rec.select_channels(["0", "2", "3"])
+        cls.analyzer_channel_sliced = create_sorting_analyzer(single_segment_sort, single_segment_rec_sliced)
+        cls.analyzer_channel_sliced.compute(extension_list)
+        cls.analyzer_rec_sliced = single_segment_rec_sliced
+
         cls.nwbfile_path = cls.tmpdir / "test.nwb"
         if cls.nwbfile_path.exists():
             cls.nwbfile_path.unlink()
@@ -1821,7 +1827,7 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertIn("waveform_sd", nwbfile.units.colnames)
         if test_properties:
             self.assertIn("peak_to_valley", nwbfile.units.colnames)
-            self.assertIn("amplitude_cutoff", nwbfile.units.colnames)
+            self.assertIn("isi_violations_ratio", nwbfile.units.colnames)
 
         # test that electrode table has been saved
         assert nwbfile.electrodes is not None
@@ -1893,26 +1899,9 @@ class TestWriteSortingAnalyzer(TestCase):
             write_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.analyzer_recless,
                 nwbfile=self.nwbfile,
-                recording=self.analyzer_recless_recording,
+                recording=None,
                 write_electrical_series=True,
             )
-
-    # def test_write_sorting_analyzer_to_file_to_write_sorting_analyzer_to_nwbfile(self):
-    #     """This tests that the analyzer is written to file"""
-    #     metadata = get_default_nwbfile_metadata()
-    #     metadata["NWBFile"]["session_start_time"] = datetime.now()
-
-    #     write_sorting_analyzer_to_nwbfile(
-    #         sorting_analyzer=self.single_segment_analyzer,
-    #         nwbfile_path=self.nwbfile_path,
-    #         write_electrical_series=True,
-    #         metadata=metadata,
-    #     )
-
-    #     with NWBHDF5IO(self.nwbfile_path, "r") as io:
-    #         nwbfile = io.read()
-    #         self._test_analyzer_write(self.single_segment_analyzer, nwbfile)
-    #         self.assertIn("ElectricalSeriesRaw", nwbfile.acquisition)
 
     def test_write_multiple_probes_without_electrical_series(self):
         """This test that the analyzer is written to different electrode groups"""
@@ -2031,6 +2020,24 @@ class TestWriteSortingAnalyzer(TestCase):
                 write_as="units",
                 units_name="units1",
             )
+
+    def test_analyzer_channel_sliced(self):
+        """This tests that the analyzer is written appropriately when the recording has been channel-sliced"""
+        write_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.analyzer_channel_sliced,
+            nwbfile=self.nwbfile,
+            recording=self.analyzer_rec_sliced,
+            write_electrical_series=True,
+        )
+        self._test_analyzer_write(self.analyzer_channel_sliced, self.nwbfile, test_properties=True)
+        # check unit electrodes are all in the sliced channels
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.analyzer_rec_sliced.channel_ids))
+        for unit_index, _ in enumerate(self.nwbfile.units.id):
+            electrode_indices = self.nwbfile.units[unit_index].electrodes.values[0]
+            electrode_channels = self.nwbfile.electrodes[electrode_indices]["channel_name"].tolist()
+            for ch_name in electrode_channels:
+                self.assertIn(ch_name, self.analyzer_rec_sliced.channel_ids)
+        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
 
 def test_stub_recording_with_t_start():

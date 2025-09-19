@@ -11,9 +11,9 @@ from ....utils import DeepDict, get_schema_from_hdmf_class
 
 class AxonRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Data interface class for converting extracellular data recorded in Axon Binary Format (ABF) data using the
+    Data interface class for converting extracellular data recorded in Axon Binary Format (ABF) data.
 
-    :py:class:`~spikeinterface.extractors.AxonRecordingExtractor`.
+    Uses the :py:func:`~spikeinterface.extractors.read_axon` reader from SpikeInterface.
     """
 
     display_name = "Axon Recording"
