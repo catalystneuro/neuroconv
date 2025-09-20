@@ -192,7 +192,7 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
     """
-    metadata = metadata or {}
+    metadata = metadata or dict()
 
     # Extract device metadata, with safety defaults from single source
     device_metadata_list = metadata.get("Ophys", {}).get("Device", _OPHYS_DEFAULT_METADATA["Device"])
@@ -904,7 +904,7 @@ def _add_plane_segmentation(
     segmentation_extractor_properties: dict | None = None,
 ) -> NWBFile:
     iterator_options = iterator_options or dict()
-    metadata = metadata or {}
+    metadata = metadata or dict()
 
     # Extract image segmentation metadata with safety defaults
     image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
@@ -1158,7 +1158,7 @@ def _add_fluorescence_traces_to_nwbfile(
     iterator_options: dict | None = None,
 ):
     iterator_options = iterator_options or dict()
-    metadata = metadata or {}
+    metadata = metadata or dict()
 
     # Determine plane segmentation name with safety defaults
     if plane_segmentation_name is None:
@@ -1418,7 +1418,7 @@ def add_summary_images_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the summary images added.
     """
-    metadata = metadata or {}
+    metadata = metadata or dict()
 
     # Extract segmentation images metadata with safety defaults
     segmentation_images_metadata = metadata.get("Ophys", {}).get("SegmentationImages", {})
