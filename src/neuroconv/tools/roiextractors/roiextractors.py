@@ -112,6 +112,24 @@ _OPHYS_DEFAULT_METADATA = {
 }
 
 
+def _get_default_ophys_metadata() -> DeepDict:
+    """Fill default metadata for Device and ImagingPlane using _OPHYS_DEFAULT_METADATA."""
+    from copy import deepcopy
+
+    from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
+
+    metadata = get_default_nwbfile_metadata()
+
+    metadata.update(
+        Ophys=dict(
+            Device=deepcopy(_OPHYS_DEFAULT_METADATA["Device"]),
+            ImagingPlane=deepcopy(_OPHYS_DEFAULT_METADATA["ImagingPlane"]),
+        ),
+    )
+
+    return metadata
+
+
 def _get_default_segmentation_metadata() -> DeepDict:
     """Fill default metadata for segmentation using _OPHYS_DEFAULT_METADATA."""
     from copy import deepcopy
@@ -192,25 +210,18 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
     """
-    metadata = metadata or {}
+    from copy import deepcopy
 
-    # Extract device metadata, with safety defaults from single source
-    device_metadata_list = metadata.get("Ophys", {}).get("Device", _OPHYS_DEFAULT_METADATA["Device"])
+    metadata_copy = {} if metadata is None else deepcopy(metadata)
+    default_metadata = _get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+    device_metadata = metadata_copy["Ophys"]["Device"]
 
-    for device_metadata in device_metadata_list:
-        device_name = device_metadata["name"] if isinstance(device_metadata, dict) else device_metadata.name
+    for device in device_metadata:
+        device_name = device["name"] if isinstance(device, dict) else device.name
         if device_name not in nwbfile.devices:
-            if isinstance(device_metadata, dict):
-                # Apply defaults for any missing required fields
-                default_device = _OPHYS_DEFAULT_METADATA["Device"][0]
-                device_dict = {
-                    "name": device_metadata.get("name", default_device["name"]),
-                    "description": device_metadata.get("description", default_device["description"]),
-                    "manufacturer": device_metadata.get("manufacturer", default_device["manufacturer"]),
-                }
-                device = Device(**device_dict)
-            else:
-                device = device_metadata
+            if isinstance(device, dict):
+                device = Device(**device)
             nwbfile.add_device(device)
 
     return nwbfile
@@ -340,11 +351,15 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     NWBFile
         The NWBFile passed as an input with the image segmentation added.
     """
-    # Extract image segmentation metadata with safety defaults
-    image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
-    image_segmentation_name = image_segmentation_metadata.get(
-        "name", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["name"]
-    )
+    from copy import deepcopy
+
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    image_segmentation_name = image_segmentation_metadata["name"]
 
     ophys = get_module(nwbfile, "ophys")
 
@@ -904,23 +919,19 @@ def _add_plane_segmentation(
     segmentation_extractor_properties: dict | None = None,
 ) -> NWBFile:
     iterator_options = iterator_options or dict()
-    metadata = metadata or {}
 
-    # Extract image segmentation metadata with safety defaults
-    image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-    # Determine plane segmentation name with safety defaults
-    if plane_segmentation_name is None:
-        plane_segmentations = image_segmentation_metadata.get("plane_segmentations", [])
-        if plane_segmentations and default_plane_segmentation_index < len(plane_segmentations):
-            plane_segmentation_name = plane_segmentations[default_plane_segmentation_index].get("name")
-
-        # Use default names based on index
-        if plane_segmentation_name is None:
-            if default_plane_segmentation_index == 0:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["name"]
-            else:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    plane_segmentation_name = (
+        plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
+            "name"
+        ]
+    )
 
     plane_segmentation_metadata = next(
         (
@@ -1158,35 +1169,32 @@ def _add_fluorescence_traces_to_nwbfile(
     iterator_options: dict | None = None,
 ):
     iterator_options = iterator_options or dict()
-    metadata = metadata or {}
 
-    # Determine plane segmentation name with safety defaults
-    if plane_segmentation_name is None:
-        image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
-        plane_segmentations = image_segmentation_metadata.get("plane_segmentations", [])
-        if plane_segmentations and default_plane_segmentation_index < len(plane_segmentations):
-            plane_segmentation_name = plane_segmentations[default_plane_segmentation_index].get("name")
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-        # Use default names based on index
-        if plane_segmentation_name is None:
-            if default_plane_segmentation_index == 0:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["name"]
-            else:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    plane_segmentation_name = (
+        plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
+            "name"
+        ]
+    )
+    # df/F metadata
+    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
+    df_over_f_name = df_over_f_metadata["name"]
 
-    # Extract metadata with safety defaults
-    df_over_f_metadata = metadata.get("Ophys", {}).get("DfOverF", {})
-    df_over_f_name = df_over_f_metadata.get("name", _OPHYS_DEFAULT_METADATA["DfOverF"]["name"])
-
-    fluorescence_metadata = metadata.get("Ophys", {}).get("Fluorescence", {})
-    fluorescence_name = fluorescence_metadata.get("name", _OPHYS_DEFAULT_METADATA["Fluorescence"]["name"])
+    # Fluorescence traces metadata
+    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
+    fluorescence_name = fluorescence_metadata["name"]
 
     # Create a reference for ROIs from the plane segmentation
     roi_table_region = _create_roi_table_region(
         segmentation_extractor=segmentation_extractor,
         background_or_roi_ids=background_or_roi_ids,
         nwbfile=nwbfile,
-        metadata=metadata,
+        metadata=metadata_copy,
         plane_segmentation_name=plane_segmentation_name,
     )
 
@@ -1418,13 +1426,15 @@ def add_summary_images_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the summary images added.
     """
-    metadata = metadata or {}
+    metadata = metadata or dict()
 
-    # Extract segmentation images metadata with safety defaults
-    segmentation_images_metadata = metadata.get("Ophys", {}).get("SegmentationImages", {})
-    images_container_name = segmentation_images_metadata.get(
-        "name", _OPHYS_DEFAULT_METADATA["SegmentationImages"]["name"]
-    )
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
+    images_container_name = segmentation_images_metadata["name"]
 
     images_dict = segmentation_extractor.get_images_dict()
     images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
@@ -1435,14 +1445,12 @@ def add_summary_images_to_nwbfile(
 
     image_collection_does_not_exist = images_container_name not in ophys.data_interfaces
     if image_collection_does_not_exist:
-        description = segmentation_images_metadata.get(
-            "description", _OPHYS_DEFAULT_METADATA["SegmentationImages"]["description"]
-        )
+        description = segmentation_images_metadata["description"]
         ophys.add(Images(name=images_container_name, description=description))
     image_collection = ophys.data_interfaces[images_container_name]
 
     plane_segmentation_name = (
-        plane_segmentation_name or _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["name"]
+        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     )
     assert (
         plane_segmentation_name in segmentation_images_metadata
