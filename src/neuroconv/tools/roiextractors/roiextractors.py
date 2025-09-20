@@ -197,20 +197,11 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     # Extract device metadata, with safety defaults from single source
     device_metadata_list = metadata.get("Ophys", {}).get("Device", _OPHYS_DEFAULT_METADATA["Device"])
 
-    for device_metadata in device_metadata_list:
-        device_name = device_metadata["name"] if isinstance(device_metadata, dict) else device_metadata.name
+    for device in device_metadata_list:
+        device_name = device["name"] if isinstance(device, dict) else device.name
         if device_name not in nwbfile.devices:
-            if isinstance(device_metadata, dict):
-                # Apply defaults for any missing required fields
-                default_device = _OPHYS_DEFAULT_METADATA["Device"][0]
-                device_dict = {
-                    "name": device_metadata.get("name", default_device["name"]),
-                    "description": device_metadata.get("description", default_device["description"]),
-                    "manufacturer": device_metadata.get("manufacturer", default_device["manufacturer"]),
-                }
-                device = Device(**device_dict)
-            else:
-                device = device_metadata
+            if isinstance(device, dict):
+                device = Device(**device)
             nwbfile.add_device(device)
 
     return nwbfile
@@ -341,10 +332,10 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
         The NWBFile passed as an input with the image segmentation added.
     """
     # Extract image segmentation metadata with safety defaults
-    image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
-    image_segmentation_name = image_segmentation_metadata.get(
-        "name", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["name"]
+    image_segmentation_metadata = metadata.get("Ophys", {}).get(
+        "ImageSegmentation", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]
     )
+    image_segmentation_name = image_segmentation_metadata["name"]
 
     ophys = get_module(nwbfile, "ophys")
 
@@ -1421,10 +1412,10 @@ def add_summary_images_to_nwbfile(
     metadata = metadata or dict()
 
     # Extract segmentation images metadata with safety defaults
-    segmentation_images_metadata = metadata.get("Ophys", {}).get("SegmentationImages", {})
-    images_container_name = segmentation_images_metadata.get(
-        "name", _OPHYS_DEFAULT_METADATA["SegmentationImages"]["name"]
+    segmentation_images_metadata = metadata.get("Ophys", {}).get(
+        "SegmentationImages", _OPHYS_DEFAULT_METADATA["SegmentationImages"]
     )
+    images_container_name = segmentation_images_metadata["name"]
 
     images_dict = segmentation_extractor.get_images_dict()
     images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
@@ -1435,9 +1426,7 @@ def add_summary_images_to_nwbfile(
 
     image_collection_does_not_exist = images_container_name not in ophys.data_interfaces
     if image_collection_does_not_exist:
-        description = segmentation_images_metadata.get(
-            "description", _OPHYS_DEFAULT_METADATA["SegmentationImages"]["description"]
-        )
+        description = segmentation_images_metadata["description"]
         ophys.add(Images(name=images_container_name, description=description))
     image_collection = ophys.data_interfaces[images_container_name]
 
