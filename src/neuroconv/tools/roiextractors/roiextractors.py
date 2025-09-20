@@ -1411,10 +1411,12 @@ def add_summary_images_to_nwbfile(
     """
     metadata = metadata or dict()
 
-    # Extract segmentation images metadata with safety defaults
-    segmentation_images_metadata = metadata.get("Ophys", {}).get(
-        "SegmentationImages", _OPHYS_DEFAULT_METADATA["SegmentationImages"]
-    )
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
     images_container_name = segmentation_images_metadata["name"]
 
     images_dict = segmentation_extractor.get_images_dict()
@@ -1426,12 +1428,11 @@ def add_summary_images_to_nwbfile(
 
     image_collection_does_not_exist = images_container_name not in ophys.data_interfaces
     if image_collection_does_not_exist:
-        description = segmentation_images_metadata["description"]
-        ophys.add(Images(name=images_container_name, description=description))
+        ophys.add(Images(name=images_container_name, description=segmentation_images_metadata["description"]))
     image_collection = ophys.data_interfaces[images_container_name]
 
     plane_segmentation_name = (
-        plane_segmentation_name or _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["name"]
+        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     )
     assert (
         plane_segmentation_name in segmentation_images_metadata
