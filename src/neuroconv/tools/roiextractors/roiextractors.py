@@ -1149,35 +1149,32 @@ def _add_fluorescence_traces_to_nwbfile(
     iterator_options: dict | None = None,
 ):
     iterator_options = iterator_options or dict()
-    metadata = metadata or dict()
 
-    # Determine plane segmentation name with safety defaults
-    if plane_segmentation_name is None:
-        image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
-        plane_segmentations = image_segmentation_metadata.get("plane_segmentations", [])
-        if plane_segmentations and default_plane_segmentation_index < len(plane_segmentations):
-            plane_segmentation_name = plane_segmentations[default_plane_segmentation_index].get("name")
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-        # Use default names based on index
-        if plane_segmentation_name is None:
-            if default_plane_segmentation_index == 0:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["name"]
-            else:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    plane_segmentation_name = (
+        plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
+            "name"
+        ]
+    )
+    # df/F metadata
+    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
+    df_over_f_name = df_over_f_metadata["name"]
 
-    # Extract metadata with safety defaults
-    df_over_f_metadata = metadata.get("Ophys", {}).get("DfOverF", {})
-    df_over_f_name = df_over_f_metadata.get("name", _OPHYS_DEFAULT_METADATA["DfOverF"]["name"])
-
-    fluorescence_metadata = metadata.get("Ophys", {}).get("Fluorescence", {})
-    fluorescence_name = fluorescence_metadata.get("name", _OPHYS_DEFAULT_METADATA["Fluorescence"]["name"])
+    # Fluorescence traces metadata
+    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
+    fluorescence_name = fluorescence_metadata["name"]
 
     # Create a reference for ROIs from the plane segmentation
     roi_table_region = _create_roi_table_region(
         segmentation_extractor=segmentation_extractor,
         background_or_roi_ids=background_or_roi_ids,
         nwbfile=nwbfile,
-        metadata=metadata,
+        metadata=metadata_copy,
         plane_segmentation_name=plane_segmentation_name,
     )
 
