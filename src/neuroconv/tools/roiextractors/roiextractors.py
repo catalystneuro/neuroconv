@@ -895,23 +895,19 @@ def _add_plane_segmentation(
     segmentation_extractor_properties: dict | None = None,
 ) -> NWBFile:
     iterator_options = iterator_options or dict()
-    metadata = metadata or dict()
 
-    # Extract image segmentation metadata with safety defaults
-    image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = _get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
-    # Determine plane segmentation name with safety defaults
-    if plane_segmentation_name is None:
-        plane_segmentations = image_segmentation_metadata.get("plane_segmentations", [])
-        if plane_segmentations and default_plane_segmentation_index < len(plane_segmentations):
-            plane_segmentation_name = plane_segmentations[default_plane_segmentation_index].get("name")
-
-        # Use default names based on index
-        if plane_segmentation_name is None:
-            if default_plane_segmentation_index == 0:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["name"]
-            else:
-                plane_segmentation_name = _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][1]["name"]
+    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    plane_segmentation_name = (
+        plane_segmentation_name
+        or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][default_plane_segmentation_index][
+            "name"
+        ]
+    )
 
     plane_segmentation_metadata = next(
         (
@@ -931,13 +927,11 @@ def _add_plane_segmentation(
     imaging_plane_name = plane_segmentation_metadata.get(
         "imaging_plane", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["imaging_plane"]
     )
-    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name)
-    add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+    add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
     ophys = get_module(nwbfile, "ophys")
-    image_segmentation_name = image_segmentation_metadata.get(
-        "name", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["name"]
-    )
+    image_segmentation_name = image_segmentation_metadata["name"]
     image_segmentation = ophys[image_segmentation_name]
 
     if plane_segmentation_name in image_segmentation.plane_segmentations:
