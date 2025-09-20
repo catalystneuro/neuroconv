@@ -912,9 +912,7 @@ def _add_plane_segmentation(
     plane_segmentation_metadata = next(
         (
             plane_segmentation_metadata
-            for plane_segmentation_metadata in image_segmentation_metadata.get(
-                "plane_segmentations", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"]
-            )
+            for plane_segmentation_metadata in image_segmentation_metadata["plane_segmentations"]
             if plane_segmentation_metadata["name"] == plane_segmentation_name
         ),
         None,
@@ -924,9 +922,7 @@ def _add_plane_segmentation(
             f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations']."
         )
 
-    imaging_plane_name = plane_segmentation_metadata.get(
-        "imaging_plane", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["plane_segmentations"][0]["imaging_plane"]
-    )
+    imaging_plane_name = plane_segmentation_metadata["imaging_plane"]
     add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
@@ -1254,10 +1250,7 @@ def _create_roi_table_region(
     plane_segmentation_name : str, optional
         The name of the plane segmentation that identifies which plane to add the ROI table region to.
     """
-    # Extract image segmentation metadata with safety defaults
-    image_segmentation_metadata = metadata.get("Ophys", {}).get(
-        "ImageSegmentation", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]
-    )
+    image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
 
     add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
@@ -1266,9 +1259,7 @@ def _create_roi_table_region(
         plane_segmentation_name=plane_segmentation_name,
     )
 
-    image_segmentation_name = image_segmentation_metadata.get(
-        "name", _OPHYS_DEFAULT_METADATA["ImageSegmentation"]["name"]
-    )
+    image_segmentation_name = image_segmentation_metadata["name"]
     ophys = get_module(nwbfile, "ophys")
     image_segmentation = ophys[image_segmentation_name]
 
