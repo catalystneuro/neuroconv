@@ -37,9 +37,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         folder_path: DirectoryPath | None = None,
     ):
         """
-        Read channel data from the NIDQ board for the SpikeGLX recording.
+        Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
 
-        Useful for synchronizing multiple data streams into the common time basis of the SpikeGLX system.
+        The NIDQ stream records both analog and digital (usually non-neural) signals.
+        XD channels are converted to events directly.
+        XA, MA and MD channels are all written together to a single TimeSeries at the moment.
+        Note that the multiplexed channels MA and MD are written multiplexed at the moment.
 
         Parameters
         ----------
@@ -71,7 +74,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         if folder_path is not None:
             self.folder_path = Path(folder_path)
 
-        from spikeinterface.extractors import SpikeGLXRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGLXRecordingExtractor,
+        )
 
         self.recording_extractor = SpikeGLXRecordingExtractor(
             folder_path=self.folder_path,
@@ -86,7 +91,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self.has_digital_channels = len(self.analog_channel_ids) < len(channel_ids)
         if self.has_digital_channels:
             import ndx_events  # noqa: F401
-            from spikeinterface.extractors import SpikeGLXEventExtractor
+            from spikeinterface.extractors.extractor_classes import (
+                SpikeGLXEventExtractor,
+            )
 
             self.event_extractor = SpikeGLXEventExtractor(folder_path=self.folder_path)
 

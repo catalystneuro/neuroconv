@@ -60,10 +60,10 @@ def run_conversion_from_yaml(
     ----------
     specification_file_path : FilePath
         File path leading to .yml specification file for NWB conversion.
-    data_folder_path : FolderPathType, optional
+    data_folder_path : DirectoryPath, optional
         Folder path leading to root location of the data files.
         The default is the parent directory of the specification_file_path.
-    output_folder_path : FolderPathType, optional
+    output_folder_path : DirectoryPath, optional
         Folder path leading to the desired output location of the .nwb files.
         The default is the parent directory of the specification_file_path.
     overwrite : bool, default: False
@@ -165,11 +165,11 @@ def run_conversion_from_yaml(
 
     if upload_to_dandiset:
         dandiset_id = specification["upload_to_dandiset"]
-        staging = int(dandiset_id) >= 200_000
+        sandbox = int(dandiset_id) >= 200_000
         automatic_dandi_upload(
             dandiset_id=dandiset_id,
             nwb_folder_path=output_folder_path,
-            staging=staging,
+            sandbox=sandbox,
         )
 
         return None  # We can early return since organization below will occur within the upload step

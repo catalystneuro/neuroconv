@@ -62,7 +62,7 @@ def filter_non_neural_channels(recording_extractor, xml_file_path: str):
         if len(neural_channel_ids) == len(channel_ids_in_recorder):
             return recording_extractor
 
-        sub_recording = recording_extractor.channel_slice(channel_ids=neural_channel_ids)
+        sub_recording = recording_extractor.select_channels(channel_ids=neural_channel_ids)
         return sub_recording
 
 
@@ -95,7 +95,7 @@ def add_recording_extractor_properties(recording_extractor, gain: float | None =
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
-    :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
+    :py:func:`~spikeinterface.extractors.read_neuroscope_recording`."""
 
     display_name = "NeuroScope Recording"
     associated_suffixes = (".dat", ".xml")

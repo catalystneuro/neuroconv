@@ -2,7 +2,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import numpy as np
 import psutil
@@ -1099,7 +1099,8 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: str = "TimeSeries",
+    time_series_name: Optional[str] = None,
+    metadata_key: str = "TimeSeries",
 ):
     """
     Adds traces from recording object as TimeSeries to an NWBFile object.
@@ -1115,7 +1116,8 @@ def add_recording_as_time_series_to_nwbfile(
         Should be of the format::
 
             metadata['TimeSeries'] = {
-                'time_series_name': {
+                'metadata_key': {
+                    "name": "my_name",
                     'description': 'my_description',
                     'unit': 'my_unit',
                     "offset": offset_to_unit_value,
@@ -1124,7 +1126,9 @@ def add_recording_as_time_series_to_nwbfile(
                     ...
                 }
             }
-        Where the time_seires_name is used to look up metadata in the metadata dictionary.
+        Where the metadata_key is used to look up metadata in the metadata dictionary.
+    metadata_key: str
+        The entry in TimeSeries metadata to use.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1138,11 +1142,14 @@ def add_recording_as_time_series_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
-    time_series_name : str, optional
-        Name of the TimeSeries to create. If not provided, a default name will be generated based on the write_as parameter.
-        This parameter is used to look up metadata in the metadata dictionary if provided.
     """
-
+    if time_series_name is not None:
+        warnings.warn(
+            "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
+            "Use 'metadata_key' to specify the metadata entry instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
         _add_time_series_segment_to_nwbfile(
@@ -1154,6 +1161,7 @@ def add_recording_as_time_series_to_nwbfile(
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
             time_series_name=time_series_name,
+            metadata_key=metadata_key,
         )
 
 
@@ -1165,20 +1173,25 @@ def _add_time_series_segment_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: str = "TimeSeries",
+    time_series_name: Optional[str] = None,
+    metadata_key: str = "time_series_metadata_key",
 ):
     """
     See `add_recording_as_time_series_to_nwbfile` for details.
     """
 
+    # For backwards compatibility
+    metadata_key = time_series_name or metadata_key
+    metadata = DeepDict() if metadata is None else metadata
+
+    time_series_name = time_series_name or metadata["TimeSeries"][metadata_key].get("name", "TimeSeries")
     tseries_kwargs = dict(name=time_series_name)
-    metadata = dict() if metadata is None else metadata
     metadata = deepcopy(metadata)
 
     # Apply metadata if available
-    if "TimeSeries" in metadata and time_series_name in metadata["TimeSeries"]:
-        metadata_kwargs = metadata["TimeSeries"][time_series_name]
-        tseries_kwargs.update(metadata_kwargs)
+    if "TimeSeries" in metadata and metadata_key in metadata["TimeSeries"]:
+        time_series_metadata = metadata["TimeSeries"][metadata_key]
+        tseries_kwargs.update(time_series_metadata)
 
     # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
     # 0-pad these names based on the number of segments.
@@ -1517,8 +1530,6 @@ def _add_units_table_to_nwbfile(
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
     waveform_sds : np.ndarray, optional
         Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
-    unit_electrode_indices : list of lists of int, optional
-        For each unit, a list of electrode indices corresponding to waveform data.
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
@@ -1861,8 +1872,7 @@ def add_sorting_analyzer_to_nwbfile(
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         The "Ecephys" section of metadata is also used to create electrodes and electrical series fields.
     recording : BaseRecording, optional
-        If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
-        Otherwise, electrodes info is not added to the nwb file.
+        If the sorting_analyzer is 'recordingless', this argument is required to save electrode info.
     unit_ids : list, optional
         Controls the unit_ids that will be written to the nwb file. If None (default), all
         units are written.
@@ -1914,6 +1924,14 @@ def add_sorting_analyzer_to_nwbfile(
         for prop in tm.columns:
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, tm[prop])
+
+    # if recording is given, it takes precedence over the recording in the sorting analyzer
+    if recording is None:
+        assert sorting_analyzer.has_recording(), (
+            "recording not found. To add the electrode table, the sorting_analyzer "
+            "needs to have a recording attached or the 'recording' argument needs to be used."
+        )
+        recording = sorting_analyzer.recording
 
     add_recording_metadata_to_nwbfile(recording, nwbfile=nwbfile, metadata=metadata)
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
@@ -1981,8 +1999,7 @@ def write_sorting_analyzer_to_nwbfile(
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     recording : BaseRecording, optional
-        If the sorting_analyzer is 'recordingless', this argument needs to be passed to save electrode info.
-        Otherwise, electrodes info is not added to the nwb file.
+        If the sorting_analyzer is 'recordingless', this argument is required to be passed to save electrode info.
     verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     unit_ids : list, optional
@@ -2008,7 +2025,8 @@ def write_sorting_analyzer_to_nwbfile(
     """
     metadata = metadata if metadata is not None else dict()
 
-    if sorting_analyzer.has_recording():
+    # if recording is given, it takes precedence over the recording in the sorting analyzer
+    if recording is None and sorting_analyzer.has_recording():
         recording = sorting_analyzer.recording
     assert recording is not None, (
         "recording not found. To add the electrode table, the sorting_analyzer "

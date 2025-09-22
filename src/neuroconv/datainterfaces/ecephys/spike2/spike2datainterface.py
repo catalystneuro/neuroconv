@@ -18,7 +18,10 @@ def _test_sonpy_installation() -> None:
 class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting Spike2 data from CED (Cambridge Electronic
-    Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
+    Design)
+
+    Uses  :py:func:`~spikeinterface.extractors.read_ced` from SpikeInterface.
+    """
 
     display_name = "Spike2 Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("CED",)
@@ -72,4 +75,4 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         # Subset raw channel properties
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]
         channel_ids_of_raw_data = [channel_info[1] for channel_info in signal_channels if channel_info[4] == "mV"]
-        self.recording_extractor = self.recording_extractor.channel_slice(channel_ids=channel_ids_of_raw_data)
+        self.recording_extractor = self.recording_extractor.select_channels(channel_ids=channel_ids_of_raw_data)

@@ -1,4 +1,5 @@
 import platform
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -484,7 +485,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls = request.cls
 
         cls.photon_series_name = "TwoPhotonSeries"
-        cls.num_frames = 5
+        cls.num_samples = 5
         cls.image_shape = (512, 512, 2)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
@@ -538,7 +539,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 20.629515014336377
 
@@ -559,7 +560,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         cls = request.cls
 
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
-        cls.num_frames = 5
+        cls.num_samples = 5
         cls.image_shape = (512, 512)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
@@ -629,7 +630,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 10.314757507168189
 
@@ -649,7 +650,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
 
         cls = request.cls
         cls.photon_series_name = "TwoPhotonSeriesCh2"
-        cls.num_frames = 10
+        cls.num_samples = 10
         cls.image_shape = (512, 512)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.8.64.200")
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
@@ -700,7 +701,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 29.873615189896864
 
@@ -1145,7 +1146,10 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0."
+        assert (
+            nwbfile_metadata["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
 
@@ -1211,7 +1215,10 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0."
+        assert (
+            nwbfile_metadata["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
 
@@ -1397,20 +1404,20 @@ class TestFemtonicsImagingInterfaceStaticMethods:
     def test_get_available_channels_p29(self):
         """Test getting available channels for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
+        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path, munit_name="MUnit_0")
         assert channels == ["UG", "UR"]
-
-    def test_get_available_sessions_p29(self):
-        """Test getting available sessions for p29.mesc."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert sessions == ["MSession_0"]
 
     def test_get_available_munits_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_name="MSession_0")
         assert units == ["MUnit_0", "MUnit_1"]
+
+    def test_get_available_sessions_p29(self):
+        """Test getting available sessions for p29.mesc."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
+        assert sessions == ["MSession_0"]
 
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
@@ -1437,46 +1444,6 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 channel_name="WRONG_CHANNEL",
             )
 
-    def test_munit_not_specified_with_multiple_units(self):
-        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple units found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\. Please specify 'munit_name'\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                # munit_name not specified
-                channel_name="UG",
-            )
-
-    def test_wrong_munit_name(self):
-        """Test that ValueError is raised when an invalid munit_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Specified munit_name 'WRONG_UNIT' not found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="WRONG_UNIT",
-                channel_name="UG",
-            )
-
-    def test_wrong_session_name(self):
-        """Test that ValueError is raised when an invalid session_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Specified session_name 'WRONG_SESSION' not found in Femtonics file: .+\. Available sessions: \['MSession_0'\]\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                session_name="WRONG_SESSION",
-                munit_name="MUnit_0",
-                channel_name="UG",
-            )
-
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
@@ -1487,4 +1454,38 @@ class TestFemtonicsImagingInterfaceStaticMethods:
             FemtonicsImagingInterface(
                 file_path=file_path,
                 munit_name="MUnit_0",
+            )
+
+    def test_munit_not_specified_with_multiple_units(self):
+        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        expected_error = f"Multiple MUnits found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']. Please specify 'munit_name' to select one."
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                # munit_name not specified
+                channel_name="UG",
+            )
+
+    def test_wrong_munit_name(self):
+        """Test that ValueError is raised when an invalid munit_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        expected_error = f"MUnit 'WRONG_UNIT' not found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="WRONG_UNIT",
+                channel_name="UG",
+            )
+
+    def test_wrong_session_name(self):
+        """Test that ValueError is raised when an invalid session_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        expected_error = f"Session 'WRONG_SESSION' not found in file: {file_path}. Available sessions: ['MSession_0']"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                session_name="WRONG_SESSION",
+                munit_name="MUnit_0",
+                channel_name="UG",
             )

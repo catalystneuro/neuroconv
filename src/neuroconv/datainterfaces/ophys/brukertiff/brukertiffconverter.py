@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 from pydantic import DirectoryPath, FilePath
@@ -97,7 +98,8 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         nwbfile: NWBFile,
         metadata,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        stub_samples: int = 100,
     ):
         """
         Add data from multiple data interfaces to the specified NWBFile.
@@ -109,17 +111,35 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         metadata : dict
             Metadata dictionary containing information to describe the data being added to the NWB file.
         stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_frames`) will be added for testing purposes. Default is False.
+            If True, only a subset of the data (up to `stub_samples`) will be added for testing purposes. Default is False.
         stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True. Default is 100.
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
                 stub_test=stub_test,
-                stub_frames=stub_frames,
+                stub_samples=effective_stub_samples,
             )
 
     def run_conversion(
@@ -129,7 +149,8 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        stub_samples: int = 100,
     ) -> None:
         """
         Run the conversion process for the instantiated data interfaces and add data to the NWB file.
@@ -145,10 +166,28 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         overwrite : bool, optional
             If True, overwrites the existing NWB file at `nwbfile_path`. If False, appends to the file (default is False).
         stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_frames`) will be added for testing purposes, by default False.
+            If True, only a subset of the data (up to `stub_samples`) will be added for testing purposes, by default False.
         stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True, by default 100.
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -163,7 +202,9 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_frames=stub_frames)
+            self.add_to_nwbfile(
+                nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_samples=effective_stub_samples
+            )
 
 
 class BrukerTiffSinglePlaneConverter(NWBConverter):
@@ -233,7 +274,8 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         nwbfile: NWBFile,
         metadata,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        stub_samples: int = 100,
     ):
         """
         Add data from all instantiated data interfaces to the provided NWBFile.
@@ -245,18 +287,36 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         metadata : dict
             Metadata dictionary containing information about the data to be added.
         stub_test : bool, optional
-            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
         stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True, by default 100.
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
                 stub_test=stub_test,
-                stub_frames=stub_frames,
+                stub_samples=effective_stub_samples,
             )
 
     def run_conversion(
@@ -266,7 +326,8 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        stub_samples: int = 100,
     ) -> None:
         """
         Run the NWB conversion process for all instantiated data interfaces.
@@ -282,10 +343,28 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         overwrite : bool, optional
             If True, the NWBFile at `nwbfile_path` is overwritten if it exists. If False (default), data is appended.
         stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_frames`) is used for testing purposes. By default False.
+            If True, only a subset of the data (up to `stub_samples`) is used for testing purposes. By default False.
         stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True. By default 100.
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -300,4 +379,6 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_frames=stub_frames)
+            self.add_to_nwbfile(
+                nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_samples=effective_stub_samples
+            )

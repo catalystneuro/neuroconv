@@ -15,6 +15,7 @@ from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaPositionDataInterface,
@@ -32,7 +33,9 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import (
     CellExplorerSortingInterface,
 )
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
+from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
+from .ecephys.intan.intananaloginterface import IntanAnalogInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
@@ -121,6 +124,7 @@ interface_list = [
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
+    IntanAnalogInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
     CellExplorerLFPInterface,
@@ -138,6 +142,7 @@ interface_list = [
     AxonaLFPDataInterface,
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
+    EDFAnalogInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
     PlexonLFPInterface,
@@ -145,6 +150,7 @@ interface_list = [
     PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    AxonRecordingInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
@@ -216,6 +222,7 @@ interfaces_by_category = dict(
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+        IntanAnalog=IntanAnalogInterface,
     ),
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
