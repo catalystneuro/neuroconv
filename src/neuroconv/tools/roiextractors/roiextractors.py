@@ -42,7 +42,7 @@ from ...utils import (
 from ...utils.str_utils import human_readable_size
 
 
-def _get_ophys_default_metadata():
+def _get_default_ophys_metadata():
     """
     Returns fresh ophys default metadata dictionary.
 
@@ -120,14 +120,14 @@ def _get_ophys_default_metadata():
 
 
 def _get_default_segmentation_metadata() -> DeepDict:
-    """Fill default metadata for segmentation using _get_ophys_default_metadata()."""
+    """Fill default metadata for segmentation using _get_default_ophys_metadata()."""
     from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
 
     # Start with base NWB metadata
     metadata = get_default_nwbfile_metadata()
 
     # Get fresh ophys defaults and add to metadata
-    ophys_defaults = _get_ophys_default_metadata()
+    ophys_defaults = _get_default_ophys_metadata()
     metadata["Ophys"] = {
         "Device": ophys_defaults["Device"],
         "ImagingPlane": ophys_defaults["ImagingPlane"],
@@ -160,7 +160,7 @@ def get_nwb_imaging_metadata(
         Dictionary containing metadata for devices, imaging planes, and photon series
         specific to the imaging data.
     """
-    # Build metadata structure directly from _get_ophys_default_metadata()
+    # Build metadata structure directly from _get_default_ophys_metadata()
     metadata = get_default_nwbfile_metadata()
 
     # TODO: get_num_channels is deprecated, remove
@@ -169,21 +169,21 @@ def get_nwb_imaging_metadata(
     # Create optical channels based on extractor data
     optical_channels = []
     for channel_name in channel_name_list:
-        optical_channel = _get_ophys_default_metadata()["ImagingPlane"][0]["optical_channel"][0].copy()
+        optical_channel = _get_default_ophys_metadata()["ImagingPlane"][0]["optical_channel"][0].copy()
         optical_channel["name"] = channel_name
         optical_channels.append(optical_channel)
 
     # Create imaging plane metadata
-    imaging_plane = _get_ophys_default_metadata()["ImagingPlane"][0].copy()
+    imaging_plane = _get_default_ophys_metadata()["ImagingPlane"][0].copy()
     imaging_plane["optical_channel"] = optical_channels
 
     # Create photon series metadata
-    photon_series_metadata = _get_ophys_default_metadata()[photon_series_type][0].copy()
+    photon_series_metadata = _get_default_ophys_metadata()[photon_series_type][0].copy()
     photon_series_metadata["dimension"] = list(imgextractor.get_sample_shape())
 
     # Assemble Ophys metadata
     metadata["Ophys"] = {
-        "Device": _get_ophys_default_metadata()["Device"].copy(),
+        "Device": _get_default_ophys_metadata()["Device"].copy(),
         "ImagingPlane": [imaging_plane],
         photon_series_type: [photon_series_metadata],
     }
@@ -201,7 +201,7 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     metadata = metadata or dict()
 
     # Extract device metadata, with safety defaults from single source
-    device_metadata_list = metadata.get("Ophys", {}).get("Device", _get_ophys_default_metadata()["Device"])
+    device_metadata_list = metadata.get("Ophys", {}).get("Device", _get_default_ophys_metadata()["Device"])
 
     for device in device_metadata_list:
         device_name = device["name"] if isinstance(device, dict) else device.name
@@ -282,8 +282,8 @@ def add_imaging_plane_to_nwbfile(
     # Build complete default metadata structure (equivalent to original _get_default_ophys_metadata())
     default_metadata = {
         "Ophys": {
-            "Device": _get_ophys_default_metadata()["Device"].copy(),
-            "ImagingPlane": _get_ophys_default_metadata()["ImagingPlane"].copy(),
+            "Device": _get_default_ophys_metadata()["Device"].copy(),
+            "ImagingPlane": _get_default_ophys_metadata()["ImagingPlane"].copy(),
         }
     }
     from neuroconv.utils import dict_deep_update
@@ -339,7 +339,7 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     """
     # Extract image segmentation metadata with safety defaults
     image_segmentation_metadata = metadata.get("Ophys", {}).get(
-        "ImageSegmentation", _get_ophys_default_metadata()["ImageSegmentation"]
+        "ImageSegmentation", _get_default_ophys_metadata()["ImageSegmentation"]
     )
     image_segmentation_name = image_segmentation_metadata["name"]
 
@@ -719,11 +719,11 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
         Dictionary containing metadata for devices, imaging planes, image segmentation,
         and fluorescence data specific to the segmentation.
     """
-    # Build metadata structure directly from _get_ophys_default_metadata()
+    # Build metadata structure directly from _get_default_ophys_metadata()
     metadata = get_default_nwbfile_metadata()
 
     # Create imaging plane metadata with optical channels (replicate original indexing behavior)
-    imaging_plane = _get_ophys_default_metadata()["ImagingPlane"][0].copy()
+    imaging_plane = _get_default_ophys_metadata()["ImagingPlane"][0].copy()
 
     # Replicate original optical channel logic exactly
     for i in range(sgmextractor.get_num_channels()):
@@ -742,7 +742,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
             )
 
     # Create fluorescence metadata with dynamic traces
-    fluorescence_metadata = _get_ophys_default_metadata()["Fluorescence"].copy()
+    fluorescence_metadata = _get_default_ophys_metadata()["Fluorescence"].copy()
 
     # Add custom traces from segmentation extractor
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
@@ -756,17 +756,17 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
             }
 
     # Create DfOverF metadata
-    df_over_f_metadata = _get_ophys_default_metadata()["DfOverF"].copy()
+    df_over_f_metadata = _get_default_ophys_metadata()["DfOverF"].copy()
 
     # Create image segmentation metadata
-    image_segmentation = _get_ophys_default_metadata()["ImageSegmentation"].copy()
+    image_segmentation = _get_default_ophys_metadata()["ImageSegmentation"].copy()
 
     # Create segmentation images metadata
-    segmentation_images = _get_ophys_default_metadata()["SegmentationImages"].copy()
+    segmentation_images = _get_default_ophys_metadata()["SegmentationImages"].copy()
 
     # Assemble complete Ophys metadata
     metadata["Ophys"] = {
-        "Device": _get_ophys_default_metadata()["Device"].copy(),
+        "Device": _get_default_ophys_metadata()["Device"].copy(),
         "ImagingPlane": [imaging_plane],
         "Fluorescence": fluorescence_metadata,
         "DfOverF": df_over_f_metadata,
