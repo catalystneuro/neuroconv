@@ -1,7 +1,7 @@
-from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
 import re
-from pynwb.testing.mock.file import mock_NWBFile
+
 import pytest
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 
