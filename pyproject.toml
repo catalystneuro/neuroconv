@@ -54,6 +54,7 @@ dependencies = [
     "packaging",  # Issue 903
     "referencing", # for the json schema references
     "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "ruamel.yaml.clib!=0.2.13; sys_platform == 'darwin'", # 0.2.13 fails to build on macos-intel
 ]
 
 
