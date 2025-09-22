@@ -89,9 +89,9 @@ from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_
 def test_add_ophys_device_model(device_type, device_metadata):
     nwbfile = mock_NWBFile()
     add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
-    assert len(nwbfile.devices) == 1
-    assert device_metadata["name"] in nwbfile.devices
-    device_model = nwbfile.devices[device_metadata["name"]]
+    assert len(nwbfile.device_models) == 1
+    assert device_metadata["name"] in nwbfile.device_models
+    device_model = nwbfile.device_models[device_metadata["name"]]
     assert device_model.name == device_metadata["name"]
     assert device_model.description == device_metadata["description"]
     assert device_model.manufacturer == device_metadata["manufacturer"]
@@ -251,14 +251,14 @@ def test_add_ophys_device(device_type, device_metadata):
     # Now add the device instance
     add_ophys_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
 
-    assert len(nwbfile.devices) == 2  # Model + device instance
+    assert len(nwbfile.devices) == 1
     assert device_metadata["name"] in nwbfile.devices
     device = nwbfile.devices[device_metadata["name"]]
     assert device.name == device_metadata["name"]
     assert device.description == device_metadata["description"]
 
     # Check that the device references the correct model
-    assert device.model is nwbfile.devices[device_metadata["model"]]
+    assert device.model is nwbfile.device_models[device_metadata["model"]]
 
     # Check device-specific attributes
     if device_type == "ExcitationSource":
@@ -320,9 +320,9 @@ def test_add_ophys_device_model_twice():
     }
     add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_metadata, device_type="OpticalFiberModel")
     add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_metadata, device_type="OpticalFiberModel")
-    assert len(nwbfile.devices) == 1
-    assert "optical_fiber_model" in nwbfile.devices
-    device_model = nwbfile.devices["optical_fiber_model"]
+    assert len(nwbfile.device_models) == 1
+    assert "optical_fiber_model" in nwbfile.device_models
+    device_model = nwbfile.device_models["optical_fiber_model"]
     assert device_model.name == "optical_fiber_model"
     assert device_model.description == "Fiber optic implant model specifications from Doric Lenses."
     assert device_model.manufacturer == "Doric Lenses"
@@ -359,12 +359,12 @@ def test_add_ophys_device_twice():
     add_ophys_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type="ExcitationSource")
     add_ophys_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type="ExcitationSource")
 
-    assert len(nwbfile.devices) == 2  # Model + device instance
+    assert len(nwbfile.devices) == 1
     assert "excitation_source" in nwbfile.devices
     device = nwbfile.devices["excitation_source"]
     assert device.name == "excitation_source"
     assert device.description == "465nm LED for calcium signal excitation."
-    assert device.model is nwbfile.devices["excitation_source_model"]
+    assert device.model is nwbfile.device_models["excitation_source_model"]
     assert device.power_in_W == 0.001
     assert device.intensity_in_W_per_m2 == 0.005
     assert device.exposure_time_in_s == 2.51e-13

@@ -32,7 +32,7 @@ def add_ophys_device_model(
     ndx_ophys_devices = get_package("ndx_ophys_devices")
 
     device_name = device_metadata["name"]
-    if device_name in nwbfile.devices:
+    if device_name in nwbfile.device_models:
         return
 
     ophys_device_model = dict(
@@ -44,7 +44,7 @@ def add_ophys_device_model(
         DichroicMirrorModel=ndx_ophys_devices.DichroicMirrorModel,
     )[device_type](**device_metadata)
 
-    nwbfile.add_device(ophys_device_model)
+    nwbfile.add_device_model(ophys_device_model)
 
 
 def add_ophys_device(
@@ -76,9 +76,9 @@ def add_ophys_device(
 
     if isinstance(device_metadata["model"], str):
         assert (
-            device_metadata["model"] in nwbfile.devices
+            device_metadata["model"] in nwbfile.device_models
         ), f"Device model {device_metadata['model']} not found in NWBFile devices for {device_name}."
-        device_model = nwbfile.devices[device_metadata["model"]]
+        device_model = nwbfile.device_models[device_metadata["model"]]
         device_metadata = deepcopy(device_metadata)
         device_metadata["model"] = device_model
 
