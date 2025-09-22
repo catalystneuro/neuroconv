@@ -38,6 +38,7 @@ dependencies = [
     "numpy>=1.22.0; python_version <= '3.11'",
     "numpy>=1.26.0; python_version >= '3.12'",
     "PyYAML>=5.4",
+    "ruamel.yaml~=0.18.15",  # https://sourceforge.net/p/ruamel-yaml-clib/tickets/47/
     "h5py>=3.9.0",
     "hdmf>=4.0.0",
     "hdmf_zarr>=0.11",
