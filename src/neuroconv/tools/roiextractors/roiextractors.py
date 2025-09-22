@@ -196,9 +196,14 @@ def get_nwb_imaging_metadata(
 def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
-    The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
-    This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
+    Notes
+    -----
+    The metadata concerning the optical physiology should be stored in ``metadata['Ophys']['Device']``.
+
+    Deprecation: Passing ``pynwb.device.Device`` objects directly inside
+    ``metadata['Ophys']['Device']`` is deprecated and will be removed on or after March 2026.
+    Please pass device definitions as dictionaries instead (e.g., ``{"name": "Microscope"}``).
     """
     metadata_copy = {} if metadata is None else deepcopy(metadata)
     default_metadata = _get_default_ophys_metadata()
@@ -206,6 +211,13 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     device_metadata = metadata_copy["Ophys"]["Device"]
 
     for device in device_metadata:
+        if not isinstance(device, dict):
+            warnings.warn(
+                "Passing pynwb.device.Device objects in metadata['Ophys']['Device'] is deprecated and will be "
+                "removed on or after March 2026. Please pass device definitions as dictionaries instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
         device_name = device["name"] if isinstance(device, dict) else device.name
         if device_name not in nwbfile.devices:
             device = Device(**device) if isinstance(device, dict) else device
