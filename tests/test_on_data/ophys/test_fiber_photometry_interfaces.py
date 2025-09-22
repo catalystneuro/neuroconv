@@ -23,16 +23,6 @@ import pytest
 from parameterized import parameterized
 
 
-# TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
-# ruff: noqa: I001
-from packaging import version
-import pynwb
-
-
-@pytest.mark.skipif(
-    version.parse(pynwb.__version__) >= version.parse("3.1.0"),
-    reason="TestTDTFiberPhotometryInterface doesn't work with pynwb>=3.1.0.",
-)
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(
@@ -350,8 +340,10 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             # Check device models
             for device_model_dict in expected_device_models:
                 expected_name = device_model_dict.pop("name")
-                assert expected_name in nwbfile.devices, f"Device model {expected_name} not found in NWBFile devices"
-                device_model = nwbfile.devices[expected_name]
+                assert (
+                    expected_name in nwbfile.device_models
+                ), f"Device model {expected_name} not found in NWBFile device models"
+                device_model = nwbfile.device_models[expected_name]
                 for key, expected_value in device_model_dict.items():
                     if isinstance(expected_value, list):
                         np.testing.assert_equal(
@@ -367,8 +359,10 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                 expected_name = device_dict.pop("name")
                 assert expected_name in nwbfile.devices
                 expected_model = device_dict.pop("model")
-                assert expected_model in nwbfile.devices, f"Device model {expected_model} not found in NWBFile devices"
-                expected_model = nwbfile.devices[expected_model]
+                assert (
+                    expected_model in nwbfile.device_models
+                ), f"Device model {expected_model} not found in NWBFile device models"
+                expected_model = nwbfile.device_models[expected_model]
                 device = nwbfile.devices[expected_name]
                 assert (
                     device.model is expected_model
@@ -466,10 +460,10 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                     if hasattr(device, "model") and device.model is not None:
                         model_name = device.model.name
                         assert (
-                            model_name in nwbfile.devices
-                        ), f"Device {device_name} references model {model_name} which is not found in devices"
+                            model_name in nwbfile.device_models
+                        ), f"Device {device_name} references model {model_name} which is not found in device_models"
                         assert hasattr(
-                            nwbfile.devices[model_name], "manufacturer"
+                            nwbfile.device_models[model_name], "manufacturer"
                         ), f"Device model {model_name} should have manufacturer attribute"
 
             for cvs_dict in expected_commanded_voltage_series:

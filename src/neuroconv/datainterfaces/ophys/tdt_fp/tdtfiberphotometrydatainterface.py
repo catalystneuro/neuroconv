@@ -380,9 +380,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             optical_fiber_metadata = deepcopy(optical_fiber_metadata)
             optical_fiber_metadata["fiber_insertion"] = fiber_insertion
             assert (
-                optical_fiber_metadata["model"] in nwbfile.devices
-            ), f"Device model {optical_fiber_metadata['model']} not found in NWBFile devices for {optical_fiber_metadata['name']}."
-            optical_fiber_metadata["model"] = nwbfile.devices[optical_fiber_metadata["model"]]
+                optical_fiber_metadata["model"] in nwbfile.device_models
+            ), f"Device model {optical_fiber_metadata['model']} not found in NWBFile device_models for {optical_fiber_metadata['name']}."
+            optical_fiber_metadata["model"] = nwbfile.device_models[optical_fiber_metadata["model"]]
             optical_fiber = OpticalFiber(**optical_fiber_metadata)
             nwbfile.add_device(optical_fiber)
 
