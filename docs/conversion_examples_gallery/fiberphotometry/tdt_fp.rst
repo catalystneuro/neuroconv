@@ -141,8 +141,8 @@ Convert TDT Fiber Photometry data to NWB using
 Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 
-The example above shows how to convert TDT Fiber Photometry data without specifying all the metadata, 
-in which case the metadata will be automatically generated with default values. 
+The example above shows how to convert TDT Fiber Photometry data without specifying all the metadata,
+in which case the metadata will be automatically generated with default values.
 To ensure that the NWB file is fully annotated, specify the metadata using the format described below.
 
 .. code-block:: python
