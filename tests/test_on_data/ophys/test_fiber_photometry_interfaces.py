@@ -438,14 +438,15 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
 
                 for indicator_dict in expected_fiber_photometry_indicators:
                     expected_name = indicator_dict.pop("name")
-                    expected_viral_vector_injection = indicator_dict.pop("viral_vector_injection")
                     assert (
                         expected_name in indicators
                     ), f"Indicator {expected_name} not found in FiberPhotometryIndicators"
                     indicator = indicators[expected_name]
-                    assert (
-                        indicator.viral_vector_injection.name == expected_viral_vector_injection
-                    ), f"Indicator {expected_name} viral vector injection is {indicator.viral_vector_injection.name} but expected {expected_viral_vector_injection}"
+                    if "viral_vector_injection" in indicator_dict:
+                        expected_viral_vector_injection = indicator_dict.pop("viral_vector_injection")
+                        assert (
+                            indicator.viral_vector_injection.name == expected_viral_vector_injection
+                        ), f"Indicator {expected_name} viral vector injection is {indicator.viral_vector_injection.name} but expected {expected_viral_vector_injection}"
                     for key, expected_value in indicator_dict.items():
                         assert (
                             getattr(indicator, key) == expected_value
@@ -544,6 +545,36 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         super().test_all_conversion_checks(metadata=metadata)
         self.conversion_options["stub_test"] = False
         self.conversion_options["t2"] = 1.0
+
+    def test_all_conversion_checks_no_viruses(self):
+        metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
+        editable_metadata = load_dict_from_file(metadata_file_path)
+        metadata = self.data_interface_cls(**self.interface_kwargs).get_metadata()
+        metadata = dict_deep_update(metadata, editable_metadata)
+
+        # Remove viruses and virus injections from the metadata
+        metadata["Ophys"]["FiberPhotometry"].pop("FiberPhotometryViruses")
+        metadata["Ophys"]["FiberPhotometry"].pop("FiberPhotometryVirusInjections")
+        for indicator in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryIndicators"]:
+            if "viral_vector_injection" in indicator:
+                indicator.pop("viral_vector_injection")
+
+        # Temporarily remove expected viruses and virus injections for this test
+        expected_fiber_photometry_viruses = deepcopy(self.expected_fiber_photometry_viruses)
+        expected_fiber_photometry_virus_injections = deepcopy(self.expected_fiber_photometry_virus_injections)
+        expected_fiber_photometry_indicators = deepcopy(self.expected_fiber_photometry_indicators)
+        self.expected_fiber_photometry_viruses = []
+        self.expected_fiber_photometry_virus_injections = []
+        for indicator in self.expected_fiber_photometry_indicators:
+            if "viral_vector_injection" in indicator:
+                indicator.pop("viral_vector_injection")
+
+        super().test_all_conversion_checks(metadata=metadata)
+
+        # Restore expected viruses and virus injections
+        self.expected_fiber_photometry_viruses = expected_fiber_photometry_viruses
+        self.expected_fiber_photometry_virus_injections = expected_fiber_photometry_virus_injections
+        self.expected_fiber_photometry_indicators = expected_fiber_photometry_indicators
 
     def test_all_conversion_checks_stub_test_invalid(self):
         metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
