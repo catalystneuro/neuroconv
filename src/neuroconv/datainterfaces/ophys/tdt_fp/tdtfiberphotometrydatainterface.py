@@ -395,7 +395,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if len(name_to_viral_vector) > 0:
             viruses = FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values()))
         else:
-            viruses = FiberPhotometryViruses(viral_vectors=[])
+            viruses = None
 
         viral_vector_injections_metadata = metadata["Ophys"]["FiberPhotometry"].get(
             "FiberPhotometryVirusInjections", []
@@ -412,7 +412,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 viral_vector_injections=list(name_to_viral_vector_injection.values())
             )
         else:
-            virus_injections = FiberPhotometryVirusInjections(viral_vector_injections=[])
+            virus_injections = None
 
         indicators_metadata = metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryIndicators", [])
         name_to_indicator = {}
