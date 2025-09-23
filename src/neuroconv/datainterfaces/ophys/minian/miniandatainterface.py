@@ -1,5 +1,6 @@
 from typing import Optional
 
+from numpy import ndarray
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -33,6 +34,12 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         super().__init__(folder_path=folder_path)
         self.verbose = verbose
+
+    def get_original_timestamps(self) -> ndarray:
+        return self.segmentation_extractor.get_native_timestamps()
+
+    def get_timestamps(self) -> ndarray:
+        return self.segmentation_extractor.get_timestamps()
 
     def add_to_nwbfile(
         self,
