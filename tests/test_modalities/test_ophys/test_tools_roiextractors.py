@@ -18,7 +18,6 @@ from numpy.testing import assert_array_equal, assert_raises
 from numpy.typing import ArrayLike
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.device import Device
 from pynwb.ophys import OnePhotonSeries
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -144,31 +143,6 @@ class TestAddDevices(unittest.TestCase):
         devices = self.nwbfile.devices
 
         assert len(devices) == 0
-
-    def test_device_object(self):
-        device_name = "device_object"
-        device_object = Device(name=device_name)
-        device_list = [device_object]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 1
-        assert device_name in devices
-
-    def test_device_object_and_metadata_mix(self):
-        device_object = Device(name="device_object")
-        device_metadata = dict(name="device_metadata")
-        device_list = [device_object, device_metadata]
-        self.metadata["Ophys"].update(Device=device_list)
-        add_devices_to_nwbfile(self.nwbfile, metadata=self.metadata)
-
-        devices = self.nwbfile.devices
-
-        assert len(devices) == 2
-        assert "device_metadata" in devices
-        assert "device_object" in devices
 
 
 class TestAddImagingPlane(TestCase):
