@@ -14,6 +14,11 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".raw",)
     info = "Interface for MCSRaw recording data."
 
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import MCSRawRecordingExtractor
+
+        return MCSRawRecordingExtractor(**source_data)
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()

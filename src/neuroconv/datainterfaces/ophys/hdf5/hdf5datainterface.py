@@ -48,3 +48,8 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import Hdf5ImagingExtractor
+
+        return Hdf5ImagingExtractor(**source_data)

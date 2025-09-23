@@ -101,6 +101,18 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".dat", ".xml")
     info = "Interface for converting NeuroScope recording data."
 
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeRecordingExtractor,
+        )
+
+        extractor_kwargs = source_data.copy()
+        # xml_file_path is handled in __init__, not passed to extractor
+        extractor_kwargs.pop("gain", None)
+        extractor_kwargs.pop("xml_file_path", None)
+
+        return NeuroScopeRecordingExtractor(**extractor_kwargs)
+
     @classmethod
     def get_source_schema(self) -> dict:
         source_schema = super().get_source_schema()
@@ -188,7 +200,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
-        new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
+        new_recording = self._initialize_extractor({"file_path": self.source_data["file_path"]})
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:
@@ -205,7 +217,17 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".lfp", ".eeg", ".xml")
     info = "Interface for converting NeuroScope LFP data."
 
-    ExtractorName = "NeuroScopeRecordingExtractor"
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeRecordingExtractor,
+        )
+
+        extractor_kwargs = source_data.copy()
+        # xml_file_path is handled in __init__, not passed to extractor
+        extractor_kwargs.pop("gain", None)
+        extractor_kwargs.pop("xml_file_path", None)
+
+        return NeuroScopeRecordingExtractor(**extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -280,6 +302,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             "description"
         ] = "Path to .xml file containing device and electrode configuration."
         return source_schema
+
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeSortingExtractor,
+        )
+
+        return NeuroScopeSortingExtractor(**source_data)
 
     def __init__(
         self,

@@ -28,11 +28,15 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            BlackrockRecordingExtractor,
+        )
+
         extractor_kwargs = source_data.copy()
         extractor_kwargs["stream_id"] = self.stream_id
 
-        return extractor_kwargs
+        return BlackrockRecordingExtractor(**extractor_kwargs)
 
     def __init__(
         self,
@@ -92,6 +96,13 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
+
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            BlackrockSortingExtractor,
+        )
+
+        return BlackrockSortingExtractor(**source_data)
 
     def __init__(
         self,

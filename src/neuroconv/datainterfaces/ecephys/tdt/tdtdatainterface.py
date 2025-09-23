@@ -10,12 +10,13 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
     info = "Interface for TDT recording data."
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import TdtRecordingExtractor
 
         extractor_kwargs = source_data.copy()
         extractor_kwargs.pop("gain")
 
-        return extractor_kwargs
+        return TdtRecordingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(

@@ -32,3 +32,8 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
             sampling_frequency=sampling_frequency,
             output_struct_name=output_struct_name,
         )
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ExtractSegmentationExtractor
+
+        return ExtractSegmentationExtractor(**source_data)

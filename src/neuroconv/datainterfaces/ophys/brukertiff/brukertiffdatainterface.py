@@ -89,6 +89,11 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._frame_shape = self.imaging_extractor.get_frame_shape()
 
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import BrukerTiffMultiPlaneImagingExtractor
+
+        return BrukerTiffMultiPlaneImagingExtractor(**source_data)
+
     def _determine_position_current(self) -> list[float]:
         """
         Returns y, x, and z position values. The unit of values is in the microscope reference frame.
@@ -275,6 +280,11 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self.folder_path = folder_path
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._frame_shape = self.imaging_extractor.get_frame_shape()
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import BrukerTiffSinglePlaneImagingExtractor
+
+        return BrukerTiffSinglePlaneImagingExtractor(**source_data)
 
     def _determine_position_current(self) -> list[float]:
         """

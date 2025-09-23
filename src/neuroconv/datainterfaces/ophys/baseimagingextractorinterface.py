@@ -32,8 +32,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         "calcium imaging",
     )
 
-    ExtractorModuleName = "roiextractors"
-
     def __init__(
         self,
         verbose: bool = False,
@@ -133,7 +131,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
+        reinitialized_extractor = self._initialize_extractor(self.extractor_kwargs)
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:

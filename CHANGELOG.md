@@ -2,6 +2,7 @@
 
 ## Removals, Deprecations and Changes
 * Ophys: Passing `pynwb.device.Device` objects in `metadata['Ophys']['Device']` to `add_devices_to_nwbfile` now issues a `FutureWarning` and is deprecated. This feature will be removed on or after March 2026. Pass device definitions as dictionaries instead (e.g., `{ "name": "Microscope" }`). . [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
+* Extractor interfaces: The `extractor` attribute and `get_extractor()` method are deprecated and will be removed on or after March 2026. These were confusingly named as they return extractor classes, not instances. Use the private `_extractor_class` attribute or access the instance directly via `_extractor_instance` [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 
 ## Bug Fixes
 
@@ -10,6 +11,7 @@
 
 ## Improvements
 * Added SpikeGLXNIDQ interface to conversion gallery with documentation on how different channel types (XA, MA, MD, XD) are converted to NWB [PR #1505](https://github.com/catalystneuro/neuroconv/pull/1505)
+* Refactored extractor interfaces to use explicit `_initialize_extractor` method instead of implicit string-based initialization, improving code clarity and maintainability across all recording, sorting, imaging, and segmentation interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 
 # v0.8.1 (September 16, 2025)
 

@@ -66,6 +66,11 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             **kwargs,
         )
 
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import InscopixImagingExtractor
+
+        return InscopixImagingExtractor(**source_data)
+
     def get_metadata(self) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.

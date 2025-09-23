@@ -32,11 +32,13 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import AxonaRecordingExtractor
+
         extractor_kwargs = source_data.copy()
         extractor_kwargs["all_annotations"] = True
 
-        return extractor_kwargs
+        return AxonaRecordingExtractor(**extractor_kwargs)
 
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
@@ -149,7 +151,15 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".bin", ".set")
     info = "Interface for Axona LFP data."
 
-    ExtractorName = "NumpyRecording"
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.core import NumpyRecording
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("file_path")
+        extractor_kwargs["traces_list"] = self.traces_list
+        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        return NumpyRecording(**extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -159,15 +169,6 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
             type="object",
             additionalProperties=False,
         )
-
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("file_path")
-        extractor_kwargs["traces_list"] = self.traces_list
-        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
-
-        return extractor_kwargs
 
     def __init__(self, file_path: FilePath):
         data = read_all_eeg_file_lfp_data(file_path).T

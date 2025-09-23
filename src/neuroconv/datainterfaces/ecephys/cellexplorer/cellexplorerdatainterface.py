@@ -418,11 +418,15 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            CellExplorerSortingExtractor,
+        )
+
         extractor_kwargs = source_data.copy()
         extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
-        return extractor_kwargs
+        return CellExplorerSortingExtractor(**extractor_kwargs)
 
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """
@@ -541,7 +545,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             sampling_frequency = int(extracellular_data["sr"])
 
             # Create a dummy recording extractor
-            from spikeinterface.core.numpyextractors import NumpyRecording
+            from spikeinterface.core import NumpyRecording
 
             traces_list = [np.empty(shape=(1, num_channels))]
             channel_ids = [str(1 + i) for i in range(num_channels)]

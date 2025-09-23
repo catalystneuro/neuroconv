@@ -146,6 +146,11 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
 
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import Suite2pSegmentationExtractor
+
+        return Suite2pSegmentationExtractor(**source_data)
+
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Suite2p segmentation data.

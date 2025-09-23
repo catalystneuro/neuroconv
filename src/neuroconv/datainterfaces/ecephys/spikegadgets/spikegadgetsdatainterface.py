@@ -15,6 +15,16 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".rec",)
     info = "Interface for SpikeGadgets recording data."
 
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGadgetsRecordingExtractor,
+        )
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("gains", None)  # Remove gains as it's handled in __init__
+
+        return SpikeGadgetsRecordingExtractor(**extractor_kwargs)
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(cls, exclude=["source_data"])

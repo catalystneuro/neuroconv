@@ -27,6 +27,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
 
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import InscopixSegmentationExtractor
+
+        return InscopixSegmentationExtractor(**source_data)
+
     def get_metadata(self) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix segmentation data.

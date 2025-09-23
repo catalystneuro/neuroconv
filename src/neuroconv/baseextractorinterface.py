@@ -1,9 +1,9 @@
 """Abstract class defining the structure of all Extractor-based Interfaces."""
 
+import warnings
 from abc import ABC
 
 from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from .tools import get_package
 
 
 class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
@@ -11,38 +11,72 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     Abstract class defining the structure of all Extractor-based Interfaces.
     """
 
-    # Manually override any of these attributes in a subclass if needed.
-    # Note that values set at the level of class definition are called upon import.
-    ExtractorModuleName: str | None = None
-    ExtractorName: str | None = None  # Defaults to __name__.replace("Interface", "Extractor").
-    Extractor = None  # Class loads dynamically on first call to .get_extractor()
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        self._extractor_instance = self._initialize_extractor(source_data)
+        self._extractor_class = self._extractor_instance.__class__
+        self.extractor_kwargs = source_data
 
-    @classmethod
-    def get_extractor(cls):
+    def _initialize_extractor(self, source_data: dict):
+        """
+        Initialize and return the extractor instance for this interface.
+
+        This method must be implemented by each concrete interface to specify
+        which extractor to use and how to configure it.
+
+        Parameters
+        ----------
+        source_data : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized extractor instance.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} must implement _initialize_extractor method")
+
+    @property
+    def extractor(self):
         """
         Get the extractor class for this interface.
+
+        .. deprecated:: 0.8.2
+            The `extractor` attribute is deprecated and will be removed on or after March 2026.
+            This attribute was confusingly named as it returns a class, not an instance.
+            Use `_extractor_class` (private) or access the instance directly via `_extractor_instance`.
 
         Returns
         -------
         type
-            The extractor class that will be used to read the data.
+            The extractor class.
         """
-        if cls.Extractor is not None:
-            return cls.Extractor
-        extractor_module = get_package(package_name=cls.ExtractorModuleName)
-        extractor = getattr(
-            extractor_module,
-            cls.ExtractorName or cls.__name__.replace("Interface", "Extractor"),
+        warnings.warn(
+            "The 'extractor' attribute is deprecated and will be removed on or after March 2026. "
+            "This attribute was confusingly named as it returns a class, not an instance.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        cls.Extractor = extractor
-        return extractor
+        return self._extractor_class
 
-    def __init__(self, **source_data):
-        super().__init__(**source_data)
-        self.extractor = self.get_extractor()
-        self.extractor_kwargs = self._source_data_to_extractor_kwargs(source_data)
-        self._extractor_instance = self.extractor(**self.extractor_kwargs)
+    def get_extractor(self):
+        """
+        Get the extractor class for this interface.
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        """This functions maps the source_data to kwargs required to initialize the Extractor."""
-        return source_data
+        .. deprecated:: 0.8.2
+            The `get_extractor()` method is deprecated and will be removed on or after March 2026.
+            This method was confusingly named as it returns a class, not an instance.
+            Use `_extractor_class` (private) or access the instance directly via `_extractor_instance`.
+
+        Returns
+        -------
+        type
+            The extractor class.
+        """
+        warnings.warn(
+            "The 'get_extractor()' method is deprecated and will be removed on or after March 2026. "
+            "This method was confusingly named as it returns a class, not an instance.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._extractor_class

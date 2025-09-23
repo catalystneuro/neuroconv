@@ -13,3 +13,8 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
     def __init__(self, file_path: FilePath, verbose: bool = False):
         super().__init__(file_path=file_path)
         self.verbose = verbose
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import CnmfeSegmentationExtractor
+
+        return CnmfeSegmentationExtractor(**source_data)

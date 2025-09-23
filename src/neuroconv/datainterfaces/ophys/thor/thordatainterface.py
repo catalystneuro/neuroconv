@@ -25,7 +25,6 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
     display_name = "ThorLabs TIFF Imaging"
     associated_suffixes = (".tif", ".tiff")
     info = "Interface for Thor TIFF files Exporter with ThorImageLS."
-    ExtractorName = "ThorTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -59,6 +58,11 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
 
         super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
         self.channel_name = channel_name
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ThorTiffImagingExtractor
+
+        return ThorTiffImagingExtractor(**source_data)
 
     def get_metadata(self) -> DeepDict:
         """

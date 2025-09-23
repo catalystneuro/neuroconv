@@ -51,3 +51,8 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import TiffImagingExtractor
+
+        return TiffImagingExtractor(**source_data)

@@ -16,7 +16,12 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".bin",)
     info = "Interface for converting binary WhiteMatter recording data."
 
-    ExtractorName = "WhiteMatterRecordingExtractor"
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            WhiteMatterRecordingExtractor,
+        )
+
+        return WhiteMatterRecordingExtractor(**source_data)
 
     def __init__(
         self,

@@ -28,21 +28,22 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
     info = "Interface for SpikeGLX recording data."
 
-    ExtractorName = "SpikeGLXRecordingExtractor"
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    def _initialize_extractor(self, source_data: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGLXRecordingExtractor,
+        )
 
         extractor_kwargs = source_data.copy()
         extractor_kwargs["folder_path"] = self.folder_path
         extractor_kwargs["all_annotations"] = True
         extractor_kwargs["stream_id"] = self.stream_id
-        return extractor_kwargs
+        return SpikeGLXRecordingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(
@@ -170,9 +171,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        new_recording = self.get_extractor()(
-            folder_path=self.folder_path,
-            stream_id=self.stream_id,
+        new_recording = self._initialize_extractor(
+            self.source_data
         )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
         if self._number_of_segments == 1:
             return new_recording.get_times()

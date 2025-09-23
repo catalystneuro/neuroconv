@@ -19,8 +19,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "voltage", "recording")
 
-    ExtractorModuleName = "spikeinterface.extractors.extractor_classes"
-
     def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
         Parameters
@@ -133,12 +131,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
-        new_recording = self.get_extractor()(
-            **{
-                keyword: value
-                for keyword, value in self.extractor_kwargs.items()
-                if keyword not in ["verbose", "es_key"]
-            }
+        new_recording = self._initialize_extractor(
+            {keyword: value for keyword, value in self.extractor_kwargs.items() if keyword not in ["verbose", "es_key"]}
         )
         if self._number_of_segments == 1:
             return new_recording.get_times()

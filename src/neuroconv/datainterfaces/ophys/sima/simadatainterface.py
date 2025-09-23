@@ -20,3 +20,8 @@ class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
         sima_segmentation_label : str, default: "auto_ROIs"
         """
         super().__init__(file_path=file_path, sima_segmentation_label=sima_segmentation_label)
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import SimaSegmentationExtractor
+
+        return SimaSegmentationExtractor(**source_data)

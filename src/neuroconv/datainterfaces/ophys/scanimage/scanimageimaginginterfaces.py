@@ -37,8 +37,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif", ".tiff")
     info = "Interface for ScanImage TIFF files."
 
-    ExtractorName = "ScanImageImagingExtractor"
-
     @validate_call
     def __init__(
         self,
@@ -147,6 +145,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         # Make sure the timestamps are available, the extractor caches them
         times = self.imaging_extractor.get_times()
         self.imaging_extractor.set_times(times=times)
+
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ScanImageImagingExtractor
+
+        return ScanImageImagingExtractor(**source_data)
 
     def get_metadata(self) -> DeepDict:
         """
@@ -388,20 +391,20 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage v3.8 TIFF files."
 
-    ExtractorName = "ScanImageLegacyImagingExtractor"
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ScanImageLegacyImagingExtractor
+
         extractor_kwargs = source_data.copy()
         extractor_kwargs.pop("fallback_sampling_frequency", None)
         extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
-        return extractor_kwargs
+        return ScanImageLegacyImagingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(
@@ -484,8 +487,6 @@ class ScanImageMultiFileImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage multi-file (buffered) TIFF files."
 
-    ExtractorName = "ScanImageTiffSinglePlaneMultiFileImagingExtractor"
-
     @classmethod
     def get_source_schema(cls) -> dict:
         """
@@ -564,14 +565,14 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage multi plane (volumetric) TIFF files."
 
-    ExtractorName = "ScanImageTiffMultiPlaneImagingExtractor"
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ScanImageTiffMultiPlaneImagingExtractor
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
         extractor_kwargs = source_data.copy()
         extractor_kwargs.pop("image_metadata")
         extractor_kwargs["metadata"] = self.image_metadata
 
-        return extractor_kwargs
+        return ScanImageTiffMultiPlaneImagingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(
@@ -692,7 +693,15 @@ class ScanImageMultiPlaneMultiFileImagingInterface(BaseImagingExtractorInterface
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage multi-file (buffered) volumetric TIFF files."
 
-    ExtractorName = "ScanImageTiffMultiPlaneMultiFileImagingExtractor"
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ScanImageTiffMultiPlaneMultiFileImagingExtractor
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("image_metadata", None)
+        extractor_kwargs.pop("parsed_metadata", None)
+        extractor_kwargs.pop("verbose", None)
+
+        return ScanImageTiffMultiPlaneMultiFileImagingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(
@@ -828,14 +837,14 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage TIFF files."
 
-    ExtractorName = "ScanImageTiffSinglePlaneImagingExtractor"
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ScanImageTiffSinglePlaneImagingExtractor
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
         extractor_kwargs = source_data.copy()
         extractor_kwargs.pop("image_metadata")
         extractor_kwargs["metadata"] = self.image_metadata
 
-        return extractor_kwargs
+        return ScanImageTiffSinglePlaneImagingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(
@@ -976,7 +985,15 @@ class ScanImageSinglePlaneMultiFileImagingInterface(BaseImagingExtractorInterfac
     associated_suffixes = (".tif",)
     info = "Interface for ScanImage multi-file (buffered) TIFF files."
 
-    ExtractorName = "ScanImageTiffSinglePlaneMultiFileImagingExtractor"
+    def _initialize_extractor(self, source_data: dict):
+        from roiextractors import ScanImageTiffSinglePlaneMultiFileImagingExtractor
+
+        extractor_kwargs = source_data.copy()
+        extractor_kwargs.pop("image_metadata", None)
+        extractor_kwargs.pop("parsed_metadata", None)
+        extractor_kwargs.pop("verbose", None)
+
+        return ScanImageTiffSinglePlaneMultiFileImagingExtractor(**extractor_kwargs)
 
     @validate_call
     def __init__(
