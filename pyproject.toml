@@ -266,7 +266,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@add_has_time_vector_to_sample_seg_ext",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
