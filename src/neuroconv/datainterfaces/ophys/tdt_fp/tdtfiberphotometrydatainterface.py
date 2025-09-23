@@ -426,7 +426,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if len(name_to_indicator) > 0:
             indicators = FiberPhotometryIndicators(indicators=list(name_to_indicator.values()))
         else:
-            indicators = None
+            raise ValueError("At least one indicator must be specified in the metadata.")
 
         # Commanded Voltage Series
         for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
