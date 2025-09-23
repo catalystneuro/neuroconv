@@ -35,11 +35,11 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         super().__init__(folder_path=folder_path)
         self.verbose = verbose
 
-    def get_original_timestamps(self) -> ndarray:
-        return self.segmentation_extractor.get_native_timestamps()
+    def get_original_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
+        return self.segmentation_extractor.get_native_timestamps(start_sample=start_sample, end_sample=end_sample)
 
-    def get_timestamps(self) -> ndarray:
-        return self.segmentation_extractor.get_timestamps()
+    def get_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
+        return self.segmentation_extractor.get_timestamps(start_sample=start_sample, end_sample=end_sample)
 
     def add_to_nwbfile(
         self,
