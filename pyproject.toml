@@ -259,7 +259,7 @@ image = [
 
 ## Fiber Photometry
 fiber_photometry = [
-    "ndx-fiber-photometry>=0.2.1",
+    "ndx-fiber-photometry>=0.2.2",
 ]
 
 
