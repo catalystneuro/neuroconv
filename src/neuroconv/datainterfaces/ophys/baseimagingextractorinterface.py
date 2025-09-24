@@ -135,7 +135,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_samples()))
+        return self.imaging_extractor.get_timestamps()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.imaging_extractor.set_times(times=aligned_timestamps)

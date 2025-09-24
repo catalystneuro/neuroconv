@@ -336,7 +336,7 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
     image_segmentation_name = image_segmentation_metadata["name"]
 
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
 
     # Check if the image segmentation already exists in the NWB file
     if image_segmentation_name not in ophys.data_interfaces:
@@ -422,7 +422,7 @@ def add_photon_series_to_nwbfile(
     if parent_container == "acquisition" and photon_series_name in nwbfile.acquisition:
         raise ValueError(f"{photon_series_name} already added to nwbfile.acquisition.")
     elif parent_container == "processing/ophys":
-        ophys = get_module(nwbfile, name="ophys")
+        ophys = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
         if photon_series_name in ophys.data_interfaces:
             raise ValueError(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
 
@@ -474,7 +474,7 @@ def add_photon_series_to_nwbfile(
     if parent_container == "acquisition":
         nwbfile.add_acquisition(photon_series)
     elif parent_container == "processing/ophys":
-        ophys = get_module(nwbfile, name="ophys")
+        ophys = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
         ophys.add(photon_series)
 
     return nwbfile
@@ -896,7 +896,7 @@ def _add_plane_segmentation(
     add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation_name = image_segmentation_metadata["name"]
     image_segmentation = ophys[image_segmentation_name]
 
@@ -1230,7 +1230,7 @@ def _create_roi_table_region(
     )
 
     image_segmentation_name = image_segmentation_metadata["name"]
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys[image_segmentation_name]
 
     # Get plane segmentation from the image segmentation
@@ -1253,7 +1253,7 @@ def _create_roi_table_region(
 def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str):
     """Private method to get the container for the segmentation data.
     If the container does not exist, it is created."""
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
 
     if data_interface_name in ophys.data_interfaces:
         return ophys.get(data_interface_name)
