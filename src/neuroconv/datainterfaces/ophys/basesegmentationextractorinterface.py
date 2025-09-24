@@ -123,12 +123,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self.get_extractor()(**self.source_data)
-        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_samples()))
+        return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.segmentation_extractor.frame_to_time(
-            frames=np.arange(stop=self.segmentation_extractor.get_num_samples())
-        )
+        return self.segmentation_extractor.get_timestamps()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.segmentation_extractor.set_times(times=aligned_timestamps)

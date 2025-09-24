@@ -347,11 +347,9 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         imaging = self.interface.imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name=self.optical_series_name)
 
-        exclude_channel_comparison = False
-        if imaging.get_channel_names() is None:
-            exclude_channel_comparison = True
-
-        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+        # Exclude channel comparison: imaging extractors now effectively have a single channel
+        # and NWB readers may assign a default channel name (e.g., "OpticalChannel").
+        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison=True)
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
