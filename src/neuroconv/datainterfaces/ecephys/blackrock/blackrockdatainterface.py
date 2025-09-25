@@ -77,7 +77,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = _parse_nsx_basic_header(self.interface_kwargs["file_path"])
+        basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
         if "Comment" in basic_header:
@@ -141,7 +141,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = _parse_nev_basic_header(self.interface_kwargs["file_path"])
+        basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
