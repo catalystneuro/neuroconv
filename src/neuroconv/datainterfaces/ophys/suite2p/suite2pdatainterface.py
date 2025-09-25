@@ -146,10 +146,13 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import Suite2pSegmentationExtractor
 
-        return Suite2pSegmentationExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("plane_segmentation_name", None)
+        return Suite2pSegmentationExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

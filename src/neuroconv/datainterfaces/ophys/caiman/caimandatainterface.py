@@ -37,7 +37,10 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
         super().__init__(file_path=file_path)
         self.verbose = verbose
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import CaimanSegmentationExtractor
 
-        return CaimanSegmentationExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+
+        return CaimanSegmentationExtractor(**self.extractor_kwargs)

@@ -49,7 +49,11 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             photon_series_type=photon_series_type,
         )
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import Hdf5ImagingExtractor
 
-        return Hdf5ImagingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return Hdf5ImagingExtractor(**self.extractor_kwargs)

@@ -32,13 +32,14 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import AxonaRecordingExtractor
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs["all_annotations"] = True
 
-        return AxonaRecordingExtractor(**extractor_kwargs)
+        return AxonaRecordingExtractor(**self.extractor_kwargs)
 
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
@@ -52,7 +53,6 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
-        self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
         # Set the channel groups
@@ -151,15 +151,15 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".bin", ".set")
     info = "Interface for Axona LFP data."
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.core import NumpyRecording
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("file_path")
-        extractor_kwargs["traces_list"] = self.traces_list
-        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("file_path")
+        self.extractor_kwargs["traces_list"] = self.traces_list
+        self.extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
-        return NumpyRecording(**extractor_kwargs)
+        return NumpyRecording(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -211,7 +211,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
         nwbfile : NWBFile
         metadata : dict
         """
-        file_path = self.source_data["file_path"]
+        file_path = self.interface_kwargs["file_path"]
 
         # Create or update processing module for behavioral data
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")

@@ -33,7 +33,10 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
             output_struct_name=output_struct_name,
         )
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import ExtractSegmentationExtractor
 
-        return ExtractSegmentationExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+
+        return ExtractSegmentationExtractor(**self.extractor_kwargs)

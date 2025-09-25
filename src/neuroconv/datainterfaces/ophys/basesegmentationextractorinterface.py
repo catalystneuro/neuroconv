@@ -120,7 +120,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self._initialize_extractor(**self.source_data)
+        reinitialized_extractor = self._initialize_extractor(self.source_data)
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:

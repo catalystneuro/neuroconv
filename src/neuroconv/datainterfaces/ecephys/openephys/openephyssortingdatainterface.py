@@ -31,12 +31,16 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             OpenEphysSortingExtractor,
         )
 
-        return OpenEphysSortingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return OpenEphysSortingExtractor(**self.extractor_kwargs)
 
     @validate_call
     def __init__(self, folder_path: DirectoryPath, experiment_id: int = 0, recording_id: int = 0):

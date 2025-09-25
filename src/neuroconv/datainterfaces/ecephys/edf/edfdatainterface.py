@@ -53,15 +53,15 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return channel_ids.tolist()
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import EDFRecordingExtractor
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("channels_to_skip")
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["use_names_as_ids"] = True
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("channels_to_skip")
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["use_names_as_ids"] = True
 
-        return EDFRecordingExtractor(**extractor_kwargs)
+        return EDFRecordingExtractor(**self.extractor_kwargs)
 
     def __init__(
         self,

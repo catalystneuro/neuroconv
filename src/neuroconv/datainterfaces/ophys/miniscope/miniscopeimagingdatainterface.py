@@ -59,10 +59,14 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
         self.photon_series_type = "OnePhotonSeries"
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import MiniscopeImagingExtractor
 
-        return MiniscopeImagingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("photon_series_type", None)  # For imaging interfaces
+
+        return MiniscopeImagingExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

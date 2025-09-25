@@ -28,15 +28,18 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             BlackrockRecordingExtractor,
         )
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["stream_id"] = self.stream_id
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("nsx_override", None)
+        self.extractor_kwargs["stream_id"] = self.stream_id
 
-        return BlackrockRecordingExtractor(**extractor_kwargs)
+        return BlackrockRecordingExtractor(**self.extractor_kwargs)
 
     def __init__(
         self,
@@ -74,7 +77,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
+        basic_header = _parse_nsx_basic_header(self.interface_kwargs["file_path"])
         if "TimeOrigin" in basic_header:
             metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
         if "Comment" in basic_header:
@@ -97,12 +100,14 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             BlackrockSortingExtractor,
         )
 
-        return BlackrockSortingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        return BlackrockSortingExtractor(**self.extractor_kwargs)
 
     def __init__(
         self,
@@ -136,7 +141,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
-        basic_header = _parse_nev_basic_header(self.source_data["file_path"])
+        basic_header = _parse_nev_basic_header(self.interface_kwargs["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())

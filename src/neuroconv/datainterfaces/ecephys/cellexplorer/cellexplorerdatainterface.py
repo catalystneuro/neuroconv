@@ -288,6 +288,24 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        # CellExplorerRecordingInterface uses custom BinaryRecordingExtractor initialization
+        # This method is not called due to custom __init__ implementation
+        from spikeinterface.core.binaryrecordingextractor import (
+            BinaryRecordingExtractor,
+        )
+
+        # This is just to satisfy the abstract method requirement
+        # The actual initialization happens in __init__
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        # Return a placeholder - this won't actually be used
+        return BinaryRecordingExtractor(
+            file_paths=["dummy_path"], sampling_frequency=30000, num_channels=1, dtype="int16"
+        )
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
@@ -418,15 +436,16 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             CellExplorerSortingExtractor,
         )
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
-        return CellExplorerSortingExtractor(**extractor_kwargs)
+        return CellExplorerSortingExtractor(**self.extractor_kwargs)
 
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """

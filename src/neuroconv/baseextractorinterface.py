@@ -1,7 +1,7 @@
 """Abstract class defining the structure of all Extractor-based Interfaces."""
 
 import warnings
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 
@@ -15,9 +15,9 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
         super().__init__(**source_data)
         self._extractor_instance = self._initialize_extractor(source_data)
         self._extractor_class = self._extractor_instance.__class__
-        self.extractor_kwargs = source_data
 
-    def _initialize_extractor(self, source_data: dict):
+    @abstractmethod
+    def _initialize_extractor(self, interface_kwargs: dict):
         """
         Initialize and return the extractor instance for this interface.
 
@@ -34,7 +34,7 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
         extractor_instance
             An initialized extractor instance.
         """
-        raise NotImplementedError(f"{self.__class__.__name__} must implement _initialize_extractor method")
+        pass
 
     @property
     def extractor(self):

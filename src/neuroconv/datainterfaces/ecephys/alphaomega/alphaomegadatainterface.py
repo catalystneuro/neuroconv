@@ -22,14 +22,14 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder of .mpx files."
         return source_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             AlphaOmegaRecordingExtractor,
         )
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["stream_id"] = self.stream_id
-        return AlphaOmegaRecordingExtractor(**extractor_kwargs)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs["stream_id"] = self.stream_id
+        return AlphaOmegaRecordingExtractor(**self.extractor_kwargs)
 
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """

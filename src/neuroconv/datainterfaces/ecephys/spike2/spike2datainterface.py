@@ -28,10 +28,14 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".smrx",)
     info = "Interface for Spike2 recording data from CED (Cambridge Electronic Design)."
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
 
-        return CedRecordingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+
+        return CedRecordingExtractor(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:

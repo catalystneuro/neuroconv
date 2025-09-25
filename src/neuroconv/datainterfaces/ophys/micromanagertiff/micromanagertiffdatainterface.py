@@ -46,10 +46,14 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         channel_name = self.imaging_extractor._channel_names[0]
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import MicroManagerTiffImagingExtractor
 
-        return MicroManagerTiffImagingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return MicroManagerTiffImagingExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

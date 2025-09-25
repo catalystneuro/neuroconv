@@ -18,12 +18,16 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".continuous", ".openephys", ".xml")
     info = "Interface for converting legacy OpenEphys recording data."
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             OpenEphysLegacyRecordingExtractor,
         )
 
-        return OpenEphysLegacyRecordingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return OpenEphysLegacyRecordingExtractor(**self.extractor_kwargs)
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:

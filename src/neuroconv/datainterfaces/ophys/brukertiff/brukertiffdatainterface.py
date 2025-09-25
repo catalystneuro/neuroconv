@@ -89,10 +89,14 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._frame_shape = self.imaging_extractor.get_frame_shape()
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
-        return BrukerTiffMultiPlaneImagingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return BrukerTiffMultiPlaneImagingExtractor(**self.extractor_kwargs)
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -281,10 +285,14 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._frame_shape = self.imaging_extractor.get_frame_shape()
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from roiextractors import BrukerTiffSinglePlaneImagingExtractor
 
-        return BrukerTiffSinglePlaneImagingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return BrukerTiffSinglePlaneImagingExtractor(**self.extractor_kwargs)
 
     def _determine_position_current(self) -> list[float]:
         """

@@ -14,10 +14,14 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".bwr",)
     info = "Interface for Biocam recording data."
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import BiocamRecordingExtractor
 
-        return BiocamRecordingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return BiocamRecordingExtractor(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:

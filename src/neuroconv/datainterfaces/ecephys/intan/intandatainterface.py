@@ -30,14 +30,17 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
         return source_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import IntanRecordingExtractor
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("ignore_integrity_checks", None)
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["stream_id"] = self.stream_id
 
-        return IntanRecordingExtractor(**extractor_kwargs)
+        return IntanRecordingExtractor(**self.extractor_kwargs)
 
     def __init__(
         self,

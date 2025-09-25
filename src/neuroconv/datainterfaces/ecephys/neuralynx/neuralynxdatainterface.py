@@ -36,15 +36,17 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             NeuralynxRecordingExtractor,
         )
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+        self.extractor_kwargs["all_annotations"] = True  # Add extractor-specific parameter
 
-        return NeuralynxRecordingExtractor(**extractor_kwargs)
+        return NeuralynxRecordingExtractor(**self.extractor_kwargs)
 
     def __init__(
         self,
@@ -120,12 +122,15 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             NeuralynxSortingExtractor,
         )
 
-        return NeuralynxSortingExtractor(**source_data)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+
+        return NeuralynxSortingExtractor(**self.extractor_kwargs)
 
     def __init__(
         self,

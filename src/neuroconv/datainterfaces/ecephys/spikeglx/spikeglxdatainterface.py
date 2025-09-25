@@ -34,16 +34,18 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
-    def _initialize_extractor(self, source_data: dict):
+    def _initialize_extractor(self, interface_kwargs: dict):
         from spikeinterface.extractors.extractor_classes import (
             SpikeGLXRecordingExtractor,
         )
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["folder_path"] = self.folder_path
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
-        return SpikeGLXRecordingExtractor(**extractor_kwargs)
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["folder_path"] = self.folder_path
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["stream_id"] = self.stream_id
+        return SpikeGLXRecordingExtractor(**self.extractor_kwargs)
 
     @validate_call
     def __init__(
