@@ -1,6 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
-from typing import Any, ClassVar, Literal, Type
+from typing import Any, ClassVar, Literal
 
 from hdmf.container import DataIO
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +17,7 @@ class BackendConfiguration(BaseModel):
 
     backend: ClassVar[Literal["hdf5", "zarr"]]
     pretty_backend_name: ClassVar[Literal["HDF5", "Zarr"]]
-    data_io_class: ClassVar[Type[DataIO]]
+    data_io_class: ClassVar[type[DataIO]]
 
     model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
