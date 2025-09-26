@@ -79,7 +79,7 @@ def add_recording_to_nwbfile(
     """
 
     if metadata is None:
-        metadata = _get_nwb_metadata(recording=recording)
+        metadata = _get_default_ecephys_metadata()
 
     add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
     # Early termination just adds the metadata
@@ -380,29 +380,6 @@ def _get_default_ecephys_metadata():
         ],
         "ElectricalSeries": {"name": "ElectricalSeries", "description": "Acquisition traces for the ElectricalSeries."},
     }
-
-    return metadata
-
-
-def _get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
-    """
-    Return default metadata for all recording fields.
-
-    Parameters
-    ----------
-    recording: spikeinterface.BaseRecording
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
-    """
-    # Get fresh ecephys defaults and customize for this recording
-    metadata = _get_default_ecephys_metadata()
-
-    # Customize electrode groups based on recording's channel groups
-    group_names = np.unique(recording.get_channel_groups())
-    metadata["Ecephys"]["ElectrodeGroup"] = [
-        {"name": str(group_name), "description": "no description", "location": "unknown", "device": "Device"}
-        for group_name in group_names
-    ]
 
     return metadata
 
