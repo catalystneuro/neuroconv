@@ -21,19 +21,24 @@ def automatic_dandi_upload(
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
-    instance: Literal["dandi", "ember"] | str = "dandi",
+    *,
+    instance: Literal["dandi", "ember", "sandbox"] | str = "dandi",
 ) -> list[Path]:
     """
     Fully automated upload of NWB files to a Dandiset.
 
-    Requires an API token set as an environment variable named ``DANDI_API_KEY``.
+    Requires an API token set as an environment variable:
+    - For DANDI and sandbox instances: ``DANDI_API_KEY``
+    - For EMBER instance: ``EMBER_API_KEY``
 
     To set this in your bash terminal in Linux or macOS, run
         export DANDI_API_KEY=...
+        export EMBER_API_KEY=...
     or in Windows
         set DANDI_API_KEY=...
+        set EMBER_API_KEY=...
 
-    WARNING: DO NOT STORE THIS VALUE IN ANY PUBLICLY SHARED CODE.
+    WARNING: DO NOT STORE THESE VALUES IN ANY PUBLICLY SHARED CODE.
 
     Parameters
     ----------
@@ -49,12 +54,13 @@ def automatic_dandi_upload(
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
     sandbox : bool, optional
-        Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
-        Defaults to False.
+        .. deprecated:: 0.8.0
+            The 'sandbox' parameter is deprecated and will be removed in March 2026.
+            Use instance='sandbox' instead.
     staging : bool, optional
         .. deprecated:: 0.6.0
-            The 'staging' parameter is deprecated and will be removed in February 2026.
-            Use 'sandbox' instead.
+            The 'staging' parameter is deprecated and will be removed in March 2026.
+            Use instance='sandbox' instead.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
@@ -62,54 +68,66 @@ def automatic_dandi_upload(
     number_of_threads : int, optional
         The number of threads to use in the DANDI upload process.
     instance : str, default = "dandi"
-        The DANDI instance to use. Either "dandi" (default), "ember", or an explicit URL.
+        The DANDI instance to use. Either "dandi" (default), "ember", "sandbox", or an explicit URL.
     """
     from dandi.download import download as dandi_download
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
 
-    if instance == "dandi":
-        assert os.getenv("DANDI_API_KEY"), (
-            "Unable to find environment variable 'DANDI_API_KEY'. "
-            "Please retrieve your token from DANDI and set this environment variable."
-        )
-    elif instance == "ember" and os.getenv("EMBER_API_KEY", None) is None:
-        message = (
-            "Unable to find environment variable 'EMBER_API_KEY'. "
-            "Please retrieve your token from EMBER and set this environment variable."
-        )
-        raise KeyError(message)
-    if instance not in ["dandi", "ember"] and not instance.startswith("https://"):
-        message = "The 'instance' parameter must be either 'dandi', 'ember', or a full URL starting with 'https://'."
+    # Handle deprecated parameters and validate parameters FIRST
+    # This allows parameter validation tests to run without requiring API keys
+    if staging is not None and sandbox is not None:
+        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use instance='sandbox' instead.")
+
+    if staging is not None or sandbox is not None:
+        if staging is not None:
+            warn(
+                "The 'staging' parameter is deprecated and will be removed in March 2026. Use instance='sandbox' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            instance = "sandbox"
+        elif sandbox is not None:
+            warn(
+                "The 'sandbox' parameter is deprecated and will be removed in March 2026. Use instance='sandbox' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            instance = "sandbox" if sandbox else "dandi"
+
+    # Validate instance parameter
+    if instance not in ["dandi", "ember", "sandbox"] and not instance.startswith("https://"):
+        message = "The 'instance' parameter must be either 'dandi', 'ember', 'sandbox', or a full URL starting with 'https://'."
         raise ValueError(message)
 
-    if instance == "dandi" and staging:
-        url_base = "https://gui-staging.dandiarchive.org"
-        dandi_instance = "dandi-staging"
-    elif instance == "dandi" and not staging:
+    # Set up URLs and dandi_instance based on the final instance value
+    if instance == "dandi":
         url_base = "https://dandiarchive.org"
         dandi_instance = "dandi"
     elif instance == "ember":
         url_base = "https://dandi.emberarchive.org"
         dandi_instance = "ember"
+    elif instance == "sandbox":
+        url_base = "https://sandbox.dandiarchive.org"
+        dandi_instance = "dandi-sandbox"
     else:
+        # Custom URL
         url_base = instance.removesuffix("/")
         dandi_instance = instance
 
-    # Handle deprecated 'staging' parameter and set defaults
-    if staging is not None and sandbox is not None:
-        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
-
-    if staging is not None:
-        warn(
-            "The 'staging' parameter is deprecated and will be removed in February 2026. " "Use 'sandbox' instead.",
-            DeprecationWarning,
-            stacklevel=2,
+    # Now validate API keys (after instance is determined)
+    if instance in ["dandi", "sandbox"]:
+        assert os.getenv("DANDI_API_KEY"), (
+            "Unable to find environment variable 'DANDI_API_KEY'. "
+            "Please retrieve your token from DANDI and set this environment variable."
         )
-        sandbox = staging
-
-    if sandbox is None:
-        sandbox = False
+    elif instance == "ember":
+        if os.getenv("EMBER_API_KEY", None) is None:
+            message = (
+                "Unable to find environment variable 'EMBER_API_KEY'. "
+                "Please retrieve your token from EMBER and set this environment variable."
+            )
+            raise KeyError(message)
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
