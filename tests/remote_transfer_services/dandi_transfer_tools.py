@@ -124,10 +124,6 @@ def test_staging_backward_compatibility(tmp_path):
         assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"
 
 
-@pytest.mark.skipif(
-    not HAVE_EMBER_KEY,
-    reason="You must set your DANDI_API_KEY to run this test!",
-)
 def test_automatic_ember_upload(tmp_path):
     nwb_folder_path = tmp_path / "test_nwb"
     nwb_folder_path.mkdir()
