@@ -835,10 +835,7 @@ def add_electrodes_to_nwbfile(
             index = data[0].ndim
 
         # Fill with provided custom descriptions
-        # Get default description from single source of truth
-        ecephys_defaults = _get_default_ecephys_metadata()
-        default_description = ecephys_defaults["Ecephys"]["ElectrodeGroup"][0]["description"]
-        description = property_descriptions.get(property, default_description)
+        description = property_descriptions.get(property, "no description")
         data_to_add[property] = dict(description=description, data=data, index=index)
 
     # Special cases properties
@@ -863,11 +860,7 @@ def add_electrodes_to_nwbfile(
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
     else:
-        # This is a required property and needs a default value
-        # Get default location from single source of truth
-        ecephys_defaults = _get_default_ecephys_metadata()
-        default_location = ecephys_defaults["Ecephys"]["ElectrodeGroup"][0]["location"]
-        data = np.full(recording.get_num_channels(), fill_value=default_location)
+        data = np.full(recording.get_num_channels(), fill_value="unknown")
         data_to_add["location"] = dict(description="location", data=data, index=False)
 
     # Add missing groups to the nwb file
