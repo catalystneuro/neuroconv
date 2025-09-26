@@ -83,14 +83,14 @@ def automatic_dandi_upload(
         if staging is not None:
             warn(
                 "The 'staging' parameter is deprecated and will be removed in March 2026. Use instance='sandbox' instead.",
-                DeprecationWarning,
+                FutureWarning,
                 stacklevel=2,
             )
             instance = "sandbox"
         elif sandbox is not None:
             warn(
                 "The 'sandbox' parameter is deprecated and will be removed in March 2026. Use instance='sandbox' instead.",
-                DeprecationWarning,
+                FutureWarning,
                 stacklevel=2,
             )
             instance = "sandbox" if sandbox else "dandi"
@@ -99,6 +99,38 @@ def automatic_dandi_upload(
     if instance not in ["dandi", "ember", "sandbox"] and not instance.startswith("https://"):
         message = "The 'instance' parameter must be either 'dandi', 'ember', 'sandbox', or a full URL starting with 'https://'."
         raise ValueError(message)
+
+    # Validate API keys early (before URL setup)
+    if instance in ["dandi", "sandbox"]:
+        if not os.getenv("DANDI_API_KEY"):
+            raise EnvironmentError(
+                "Missing required environment variable 'DANDI_API_KEY' for DANDI instance.\n\n"
+                "To set this environment variable:\n"
+                "  • Linux/macOS: export DANDI_API_KEY='your_token_here'\n"
+                "  • Windows: set DANDI_API_KEY=your_token_here\n"
+                "  • Python: os.environ['DANDI_API_KEY'] = 'your_token_here'\n\n"
+                "To obtain your DANDI API token:\n"
+                "  1. Visit https://dandiarchive.org/\n"
+                "  2. Sign in with your account\n"
+                "  3. Go to your profile settings\n"
+                "  4. Generate or copy your API token\n\n"
+                "WARNING: Never commit API tokens to version control!"
+            )
+    elif instance == "ember":
+        if not os.getenv("EMBER_API_KEY"):
+            raise EnvironmentError(
+                "Missing required environment variable 'EMBER_API_KEY' for EMBER instance.\n\n"
+                "To set this environment variable:\n"
+                "  • Linux/macOS: export EMBER_API_KEY='your_token_here'\n"
+                "  • Windows: set EMBER_API_KEY=your_token_here\n"
+                "  • Python: os.environ['EMBER_API_KEY'] = 'your_token_here'\n\n"
+                "To obtain your EMBER API token:\n"
+                "  1. Visit https://dandi.emberarchive.org/\n"
+                "  2. Sign in with your account\n"
+                "  3. Go to your profile settings\n"
+                "  4. Generate or copy your API token\n\n"
+                "WARNING: Never commit API tokens to version control!"
+            )
 
     # Set up URLs and dandi_instance based on the final instance value
     if instance == "dandi":
@@ -114,20 +146,6 @@ def automatic_dandi_upload(
         # Custom URL
         url_base = instance.removesuffix("/")
         dandi_instance = instance
-
-    # Now validate API keys (after instance is determined)
-    if instance in ["dandi", "sandbox"]:
-        assert os.getenv("DANDI_API_KEY"), (
-            "Unable to find environment variable 'DANDI_API_KEY'. "
-            "Please retrieve your token from DANDI and set this environment variable."
-        )
-    elif instance == "ember":
-        if os.getenv("EMBER_API_KEY", None) is None:
-            message = (
-                "Unable to find environment variable 'EMBER_API_KEY'. "
-                "Please retrieve your token from EMBER and set this environment variable."
-            )
-            raise KeyError(message)
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path

@@ -97,9 +97,9 @@ def test_staging_backward_compatibility(tmp_path):
         # This should work with deprecation warning
         automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
 
-        # Check that deprecation warning was issued
-        deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
-        assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"
+        # Check that future warning was issued
+        future_warnings = [warning for warning in w if issubclass(warning.category, FutureWarning)]
+        assert len(future_warnings) == 1, f"Expected 1 future warning, got {len(future_warnings)}"
 
 
 def test_automatic_ember_upload(tmp_path):
