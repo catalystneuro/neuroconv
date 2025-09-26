@@ -46,6 +46,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         # This module should be here so ndx_fiber_photometry is in the global namespace when an pynwb.io object is created
         import ndx_fiber_photometry  # noqa: F401
+        import ndx_ophys_devices  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
         """
