@@ -13,6 +13,7 @@
 * Replaced deprecated `frame_to_time()` method calls with `get_timestamps()` in optical physiology interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 * Added SpikeGLXNIDQ interface to conversion gallery with documentation on how different channel types (XA, MA, MD, XD) are converted to NWB [PR #1505](https://github.com/catalystneuro/neuroconv/pull/1505)
 * Refactored extractor interfaces to use explicit `_initialize_extractor` method instead of implicit string-based initialization, improving code clarity and maintainability across all recording, sorting, imaging, and segmentation interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
+* Updated `TDTFiberPhotometryInterface` to support the latest version of `ndx-fiber-photometry` (v0.2.1) [PR #1430](https://github.com/catalystneuro/neuroconv/pull/1430)
 
 # v0.8.1 (September 16, 2025)
 
