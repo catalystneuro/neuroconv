@@ -9,6 +9,7 @@
 * Support NIDQ analog streams in `OpenEphysBinaryAnalogInterface` [PR #1503](https://github.com/catalystneuro/neuroconv/pull/1503)
 
 ## Improvements
+* Refactored ophys metadata functions to use a single source of truth pattern, preventing accidental mutation of global state and improving maintainability [PR #1521](https://github.com/catalystneuro/neuroconv/pull/1521)
 * Replaced deprecated `frame_to_time()` method calls with `get_timestamps()` in optical physiology interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 * Added SpikeGLXNIDQ interface to conversion gallery with documentation on how different channel types (XA, MA, MD, XD) are converted to NWB [PR #1505](https://github.com/catalystneuro/neuroconv/pull/1505)
 * Updated `TDTFiberPhotometryInterface` to support the latest version of `ndx-fiber-photometry` (v0.2.1) [PR #1430](https://github.com/catalystneuro/neuroconv/pull/1430)
