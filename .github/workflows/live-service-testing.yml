@@ -21,6 +21,8 @@ on:
         required: true
       DANDI_API_KEY:
         required: true
+      EMBER_API_KEY:
+        required: true
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
