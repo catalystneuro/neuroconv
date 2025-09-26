@@ -161,7 +161,7 @@ the path of an NWB file, and launches the actual data conversion into NWB:
 .. code-block:: python
 
     spikeglx_interface.run_conversion(
-        save_path="path/to/destination.nwb",
+        nwbfile_path="path/to/destination.nwb",
         metadata=metadata
     )
 
