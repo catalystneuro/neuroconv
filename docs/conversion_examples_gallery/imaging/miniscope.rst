@@ -89,9 +89,16 @@ For the standard case, the interface expects a folder with the following structu
     >>> folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
     >>> interface = MiniscopeImagingInterface(folder_path=folder_path)
     >>>
+    >>> # Get metadata and add required session_start_time
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> metadata = interface.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>>
     >>> # Convert to NWB
     >>> nwbfile_path = "miniscope_single_recording.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 **Alternative Parameters for Non-Standard Structures:**
 
@@ -119,6 +126,13 @@ you can specify the file paths directly using these parameters:
     ...     timeStamps_file_path=timeStamps_file_path
     ... )
     >>>
+    >>> # Get metadata and add required session_start_time
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> metadata = interface.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>>
     >>> # Convert to NWB
     >>> nwbfile_path = "miniscope_custom_structure.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
