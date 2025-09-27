@@ -1,7 +1,7 @@
 from typing import Optional
 
 from numpy import ndarray
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -9,7 +9,27 @@ from ....utils import DeepDict
 
 
 class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
-    """Data interface for MinianSegmentationExtractor."""
+    """Data interface for MinianSegmentationExtractor.
+
+    Minian is a calcium imaging analysis pipeline that outputs segmented ROIs and their temporal dynamics
+    as .zarr files. The standard Minian output includes:
+
+    - Spatial footprints (A.zarr): ROI masks
+    - Temporal components (C.zarr): Denoised fluorescence traces
+    - Background components (b.zarr, f.zarr): Background masks and temporal dynamics
+    - Deconvolved traces (S.zarr): Spike inference results
+    - Baseline fluorescence (b0.zarr): Baseline estimates
+
+    **Sampling Frequency and Timestamps:**
+    Minian does not natively store sampling frequency information in its output. For NWB conversion,
+    either a sampling frequency or timestamps are required. This interface supports:
+
+    1. Providing sampling_frequency directly (recommended for regular sampling)
+    2. Using a timeStamps.csv file (often copied from Miniscope outputs)
+    3. If neither is provided, the interface will raise an informative error
+
+    The timeStamps.csv file should contain 'Frame Number' and 'Time Stamp (ms)' columns and is
+    typically placed in the same folder as the .zarr outputs."""
 
     display_name = "Minian Segmentation"
     associated_suffixes = (".zarr",)
@@ -19,20 +39,40 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
     def get_source_schema(cls) -> dict:
         source_metadata = super().get_source_schema()
         source_metadata["properties"]["folder_path"]["description"] = "Path to .zarr output."
+        source_metadata["properties"]["sampling_frequency"] = {
+            "type": "number",
+            "description": "The sampling frequency in Hz. If not provided, will attempt to derive from timeStamps.csv.",
+        }
+        source_metadata["properties"]["timestamps_path"] = {
+            "type": "string",
+            "description": "Path to the timeStamps.csv file. If not provided, assumes default location at folder_path/timeStamps.csv.",
+        }
         return source_metadata
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        sampling_frequency: Optional[float] = None,
+        timestamps_path: Optional[FilePath] = None,
+        verbose: bool = False,
+    ):
         """
 
         Parameters
         ----------
         folder_path : str or Path
             Path to .zarr path.
+        sampling_frequency : float, optional
+            The sampling frequency in Hz. If not provided, will attempt to derive from timeStamps.csv.
+        timestamps_path : str or Path, optional
+            Path to the timeStamps.csv file. If not provided, assumes default location at folder_path/timeStamps.csv.
         verbose : bool, default False
             Whether to print progress
         """
-        super().__init__(folder_path=folder_path)
+        super().__init__(
+            folder_path=folder_path, sampling_frequency=sampling_frequency, timestamps_path=timestamps_path
+        )
         self.verbose = verbose
 
     def get_original_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
