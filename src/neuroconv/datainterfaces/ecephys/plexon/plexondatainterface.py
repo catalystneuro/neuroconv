@@ -19,6 +19,15 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".plx",)
     info = "Interface for Plexon recording data."
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from spikeinterface.extractors.extractor_classes import PlexonRecordingExtractor
+
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+
+        return PlexonRecordingExtractor(**self.extractor_kwargs)
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
@@ -76,7 +85,15 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon low pass filtered data."
-    ExtractorName = "PlexonRecordingExtractor"
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from spikeinterface.extractors.extractor_classes import PlexonRecordingExtractor
+
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+
+        return PlexonRecordingExtractor(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -146,12 +163,18 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from spikeinterface.extractors.extractor_classes import (
+            Plexon2RecordingExtractor,
+        )
 
-        return extractor_kwargs
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+        self.extractor_kwargs["all_annotations"] = True  # Add extractor-specific parameter
+        self.extractor_kwargs["stream_id"] = self.stream_id
+
+        return Plexon2RecordingExtractor(**self.extractor_kwargs)
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
@@ -210,6 +233,14 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the plexon spiking data (.plx file)."
         return source_schema
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from spikeinterface.extractors.extractor_classes import PlexonSortingExtractor
+
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+
+        return PlexonSortingExtractor(**self.extractor_kwargs)
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False):

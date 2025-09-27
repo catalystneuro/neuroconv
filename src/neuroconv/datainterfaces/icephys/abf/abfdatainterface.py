@@ -44,7 +44,16 @@ class AbfInterface(BaseIcephysInterface):
     associated_suffixes = (".abf",)
     info = "Interface for ABF intracellular electrophysiology data."
 
-    ExtractorName = "AxonIO"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from neo import AxonIO
+
+        self.extractor_kwargs = {}
+        if "filename" in interface_kwargs:
+            self.extractor_kwargs["filename"] = interface_kwargs["filename"]
+        elif "file_paths" in interface_kwargs and interface_kwargs["file_paths"]:
+            self.extractor_kwargs["filename"] = interface_kwargs["file_paths"][0]
+
+        return AxonIO(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:

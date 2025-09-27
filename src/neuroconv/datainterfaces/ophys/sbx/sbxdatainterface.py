@@ -37,6 +37,15 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             photon_series_type=photon_series_type,
         )
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from roiextractors import SbxImagingExtractor
+
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        return SbxImagingExtractor(**self.extractor_kwargs)
+
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the Scanbox imaging data.

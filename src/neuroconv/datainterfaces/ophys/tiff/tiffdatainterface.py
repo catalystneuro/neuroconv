@@ -51,3 +51,12 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from roiextractors import TiffImagingExtractor
+
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("photon_series_type", None)  # For imaging interfaces
+
+        return TiffImagingExtractor(**self.extractor_kwargs)

@@ -28,7 +28,14 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".smrx",)
     info = "Interface for Spike2 recording data from CED (Cambridge Electronic Design)."
 
-    ExtractorName = "CedRecordingExtractor"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
+
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+
+        return CedRecordingExtractor(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -53,7 +60,9 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
             Dictionary containing information about all channels in the Spike2 file.
         """
         _test_sonpy_installation()
-        return cls.get_extractor().get_all_channels_info(file_path=file_path)
+        from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
+
+        return CedRecordingExtractor.get_all_channels_info(file_path=file_path)
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
