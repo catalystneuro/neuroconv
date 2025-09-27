@@ -4,7 +4,7 @@ import json
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Type
+from typing import Any, Callable
 
 import docstring_parser
 import hdmf.data_utils
@@ -253,7 +253,7 @@ def unroot_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in schema.items() if k in terms}
 
 
-def _is_member(types: Type | tuple[Type, ...], target_types: Type | tuple[Type, ...]) -> bool:
+def _is_member(types: type | tuple[type, ...], target_types: type | tuple[type, ...]) -> bool:
     if not isinstance(target_types, tuple):
         target_types = (target_types,)
     if not isinstance(types, tuple):
@@ -261,7 +261,7 @@ def _is_member(types: Type | tuple[Type, ...], target_types: Type | tuple[Type, 
     return any(t in target_types for t in types)
 
 
-def get_schema_from_hdmf_class(hdmf_class: Type) -> dict[str, Any]:
+def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
     """
     Get metadata schema from hdmf class.
 

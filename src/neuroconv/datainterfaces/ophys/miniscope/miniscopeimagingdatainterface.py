@@ -16,6 +16,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     display_name = "Miniscope Imaging"
     associated_suffixes = (".avi", ".csv", ".json")
     info = "Interface for Miniscope imaging data."
+    ExtractorName = "MiniscopeMultiRecordingImagingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
