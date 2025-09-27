@@ -96,7 +96,6 @@ from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInter
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
-    ScanImageMultiFileImagingInterface,
     ScanImageLegacyImagingInterface,
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
@@ -171,7 +170,6 @@ interface_list = [
     InscopixImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
-    ScanImageMultiFileImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
