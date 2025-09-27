@@ -27,6 +27,9 @@ from neuroconv.datainterfaces import (
     ThorImagingInterface,
     TiffImagingInterface,
 )
+from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface import (
+    _MiniscopeMultiRecordingInterface,
+)
 from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageMultiPlaneImagingInterface,
     ScanImageMultiPlaneMultiFileImagingInterface,
@@ -854,8 +857,8 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert two_photon_series["name"] == self.optical_series_name
 
 
-class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
-    data_interface_cls = MiniscopeImagingInterface
+class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
+    data_interface_cls = _MiniscopeMultiRecordingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
 
@@ -907,6 +910,101 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             AssertionError, match="The main folder should contain at least one subfolder named 'Miniscope'."
         ):
             self.data_interface_cls(folder_path=folder_path)
+
+
+class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
+    )
+    save_directory = OUTPUT_PATH
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+        cls = request.cls
+        cls.device_name = "Miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+        cls.optical_series_name = "OnePhotonSeries"
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Override check_read_nwb for single-recording interface expectations."""
+        import numpy as np
+        from ndx_miniscope import Miniscope
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert self.device_name in nwbfile.devices
+            device = nwbfile.devices[self.device_name]
+            assert isinstance(device, Miniscope)
+            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
+            assert imaging_plane.device.name == self.device_name
+
+            # Check OnePhotonSeries - updated for single recording (5 frames, not 15)
+            assert self.photon_series_name in nwbfile.acquisition
+            one_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert one_photon_series.unit == "px"
+            assert one_photon_series.data.shape == (5, 752, 480)  # Single recording has 5 frames
+            assert one_photon_series.data.dtype == np.uint8
+            assert one_photon_series.rate == 15.0  # Single recording has sampling rate
+            assert one_photon_series.starting_frame is None
+            assert one_photon_series.timestamps is None  # Uses rate instead of timestamps
+
+            # Verify that interface can still get original timestamps even if not used in NWB
+            interface_times = self.interface.get_original_timestamps()
+            assert interface_times is not None
+            assert len(interface_times) == 5
+
+    def test_file_paths_parameter(self):
+        """Test using file_paths parameter for non-standard structures."""
+        miniscope_folder = (
+            OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"
+        )
+
+        file_paths = [str(miniscope_folder / "0.avi")]
+        configuration_file_path = str(miniscope_folder / "metaData.json")
+        timestamps_path = str(miniscope_folder / "timeStamps.csv")
+
+        interface = self.data_interface_cls(
+            file_paths=file_paths,
+            configuration_file_path=configuration_file_path,
+            timeStamps_file_path=timestamps_path,
+        )
+
+        # Test that metadata extraction works
+        metadata = interface.get_metadata()
+        assert metadata["Ophys"]["Device"][0]["name"] == "Miniscope"
+
+        # Test that it has timestamps
+        timestamps = interface.get_original_timestamps()
+        assert timestamps is not None
+        assert len(timestamps) > 0
+
+    def test_parameter_validation(self):
+        """Test parameter validation for mutually exclusive parameters."""
+        miniscope_folder = (
+            OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"
+        )
+
+        # Test missing required parameters
+        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
+            self.data_interface_cls()
+
+        # Test missing configuration_file_path when using file_paths
+        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
+            self.data_interface_cls(file_paths=[str(miniscope_folder / "0.avi")])
+
+        # Test conflicting parameters
+        with pytest.raises(
+            ValueError,
+            match="When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified",
+        ):
+            self.data_interface_cls(
+                folder_path=str(miniscope_folder),
+                file_paths=[str(miniscope_folder / "0.avi")],
+            )
 
 
 skip_on_darwin_arm64 = pytest.mark.skipif(
