@@ -9,8 +9,10 @@
 * Support NIDQ analog streams in `OpenEphysBinaryAnalogInterface` [PR #1503](https://github.com/catalystneuro/neuroconv/pull/1503)
 
 ## Improvements
+* Add ruff-rule to detect non-pep585 annotation [PR #1520](https://github.com/catalystneuro/roiextractors/pull/1520)
 * Replaced deprecated `frame_to_time()` method calls with `get_timestamps()` in optical physiology interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 * Added SpikeGLXNIDQ interface to conversion gallery with documentation on how different channel types (XA, MA, MD, XD) are converted to NWB [PR #1505](https://github.com/catalystneuro/neuroconv/pull/1505)
+* Updated `TDTFiberPhotometryInterface` to support the latest version of `ndx-fiber-photometry` (v0.2.1) [PR #1430](https://github.com/catalystneuro/neuroconv/pull/1430)
 
 # v0.8.1 (September 16, 2025)
 
@@ -54,6 +56,7 @@
 
 ## Features
 * Segmentation interfaces now support roi ids that are strings [PR #1390](https://github.com/catalystneuro/neuroconv/pull/1390)
+* Added `MinianSegmentationInterface` for converting Minian segmentation stream data [PR #1107](https://github.com/catalystneuro/neuroconv/pull/1107)
 * Added `InscopixImagingInterface` for converting Inscopix imaging data. [PR #1361](https://github.com/catalystneuro/neuroconv/pull/1361)
 * Added `InscopixSegmentationInterface` for converting Inscopix segmentation data. [PR #1364](https://github.com/catalystneuro/neuroconv/pull/1364)
 * Added `AxonRecordingInterface` for converting extracellular electrophysiology data from Axon Binary Format (ABF) files with automatic session start time extraction [PR #1413](https://github.com/catalystneuro/neuroconv/pull/1413)
@@ -90,6 +93,7 @@
 ## Features
 * Added `apply_global_compression` method to `BackendConfiguration` classes to apply compression settings globally across all datasets in a backend configuration. This method allows users to easily configure compression options for all datasets at once rather than setting them individually. [PR #1379](https://github.com/catalystneuro/neuroconv/pull/1379)
 * Extra optional kwargs to `BlackrockRecordingInterface` and `BlackrockSortingInterface` for finer control of the neo reader [PR #1290](https://github.com/catalystneuro/neuroconv/pull/1290)
+
 
 
 ## Improvements
