@@ -4,7 +4,7 @@ import inspect
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Literal, Type
+from typing import Literal
 
 from jsonschema import validate
 from pydantic import FilePath, validate_call
@@ -45,7 +45,7 @@ class NWBConverter:
     associated_suffixes: tuple[str] = tuple()
     info: str | None = None
 
-    data_interface_classes: dict[str, Type[BaseDataInterface]] = {}
+    data_interface_classes: dict[str, type[BaseDataInterface]] = {}
 
     @classmethod
     def get_source_schema(cls) -> dict:
