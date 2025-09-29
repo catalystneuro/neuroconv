@@ -2058,3 +2058,9 @@ class TestDefaultOphysMetadataImmutability(unittest.TestCase):
         assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
         assert metadata2["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
         assert metadata2["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
+
+        # Get a third instance after modifications to ensure fresh defaults
+        metadata3 = _get_default_ophys_metadata()
+        assert metadata3["Ophys"]["Device"][0]["name"] == "Microscope"
+        assert metadata3["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
+        assert metadata3["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
