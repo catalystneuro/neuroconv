@@ -39,7 +39,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
 from neuroconv.tools.roiextractors.roiextractors import (
-    _get_default_segmentation_metadata,
+    _get_default_ophys_metadata,
 )
 from neuroconv.utils import dict_deep_update
 
@@ -1256,7 +1256,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
         plane_segmentation_name = "plane_segmentation_name"
-        metadata = _get_default_segmentation_metadata()
+        metadata = _get_default_ophys_metadata()
         metadata = dict_deep_update(metadata, self.metadata)
 
         metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
@@ -1290,7 +1290,7 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         cls.session_start_time = datetime.now().astimezone()
 
-        cls.metadata = _get_default_segmentation_metadata()
+        cls.metadata = _get_default_ophys_metadata()
 
         cls.plane_segmentation_first_plane_name = "PlaneSegmentationFirstPlane"
         cls.metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
@@ -2037,3 +2037,24 @@ class TestAddSummaryImages(TestCase):
         for image_name, image_data in expected_images_second_plane.items():
             image_name_from_metadata = images_metadata[image_name]["name"]
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
+
+
+class TestDefaultOphysMetadataImmutability(unittest.TestCase):
+    def test_get_default_ophys_metadata_returns_independent_instances(self):
+        """Test that _get_default_ophys_metadata() returns independent instances that don't share mutable state."""
+        metadata1 = _get_default_ophys_metadata()
+        metadata2 = _get_default_ophys_metadata()
+
+        # Verify they start with the same structure
+        assert metadata1["Ophys"]["Device"][0]["name"] == "Microscope"
+        assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
+
+        # Modify first instance
+        metadata1["Ophys"]["Device"][0]["name"] = "ModifiedMicroscope"
+        metadata1["Ophys"]["ImagingPlane"][0]["name"] = "ModifiedImagingPlane"
+        metadata1["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] = "ModifiedRoiResponseSeries"
+
+        # Verify second instance remains unchanged
+        assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
+        assert metadata2["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
+        assert metadata2["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"

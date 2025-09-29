@@ -47,7 +47,6 @@ def _get_default_ophys_metadata():
     Returns fresh ophys default metadata dictionary.
 
     Single source of truth for all ophys default metadata.
-    Structure matches the output of get_nwb_imaging_metadata() and get_nwb_segmentation_metadata().
     Each call returns a new instance to prevent accidental mutation of global state.
     """
     metadata = get_default_nwbfile_metadata()
