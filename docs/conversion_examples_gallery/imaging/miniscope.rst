@@ -207,12 +207,12 @@ is represented and named.
 
 If your acquisitions were **simultaneous** (e.g., recording from two brain regions at the same time), you would
 NOT need to use ``set_aligned_starting_time()`` - each interface would have its own ``OnePhotonSeries`` with
-naturally synchronized timestamps.
+timestamps that naturally start at the same relative time (both starting at 0.0 seconds).
 
 To summarize the workflow for aggregating multiple Miniscope acquisitions:
 
 1. Create a ``MiniscopeImagingInterface`` for each folder with data.
-2. For sequential acquisitions, use ``set_aligned_starting_time()`` to align timestamps
+2. For sequential acquisitions, use ``set_aligned_starting_time()`` to set the starting time for each acquisition to preserve the temporal relationship between them
 3. Combine interfaces with ``ConverterPipe`` using descriptive names
 4. Configure metadata with unique ``OnePhotonSeries`` names and use ``photon_series_index`` in conversion options
 5. (Optional) Add behavioral video using :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface`
