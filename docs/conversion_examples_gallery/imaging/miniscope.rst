@@ -9,12 +9,13 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
 
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
 
-MiniscopeConverter: Timestamp-organized multi-session format
-=============================================================
+MiniscopeConverter: Timestamp-organized multi-acquisition format
+=================================================================
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` is designed for
 data where multiple recordings are organized in timestamp subfolders. It combines both imaging
-and behavioral video data streams into a single conversion.
+and behavioral video data streams into a single conversion. Behavioral video is handled automatically
+when present in the expected folder structure (e.g., BehavCam_2 folders).
 
 **Important:** The converter concatenates all recordings into a single continuous data stream.
 Timestamps are preserved to maintain the actual time gaps between acquisitions. For example,
@@ -73,7 +74,7 @@ This interface handles a single Miniscope acquisition and provides two usage mod
 
 **Standard Usage with folder_path:**
 
-For the standard case, the interface expects a folder with the following structure:
+The interface expects a folder with the following structure:
 
 .. code-block::
 
@@ -87,7 +88,6 @@ For the standard case, the interface expects a folder with the following structu
 
 .. code-block:: python
 
-    >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.datainterfaces import MiniscopeImagingInterface
     >>>
@@ -98,7 +98,7 @@ For the standard case, the interface expects a folder with the following structu
     >>> # Get metadata (session_start_time is automatically extracted from parent folder's metaData.json)
     >>> metadata = interface.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> # Add timezone information for data provenance
+    >>> # For data provenance we can add the time zone information to the conversion
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>>
     >>> # Convert to NWB
