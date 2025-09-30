@@ -9,8 +9,8 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
 
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
 
-MiniscopeConverter
-------------------
+Miniscope Converter
+-------------------
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` is designed for
 data where multiple recordings are organized in timestamp subfolders. It combines both imaging
@@ -67,8 +67,8 @@ if you have three acquisitions at different times, they will appear as one conti
 ``OnePhotonSeries`` with timestamps showing large intervals (e.g., 180 seconds) between the last
 frame of one acquisition and the first frame of the next.
 
-MiniscopeImagingInterface
---------------------------
+Miniscope Imaging Interface
+---------------------------
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` provides a flexible interface
 for converting imaging data from a single Miniscope acquisition. It supports two usage modes to accommodate
@@ -119,8 +119,8 @@ configuration file or timestamps are in another directory), you can specify the 
 For more information see the
 :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
 
-ConverterPipe
--------------
+Combining Multiple Acquisitions
+--------------------------------
 
 The :py:class:`~neuroconv.nwbconverter.ConverterPipe` allows you to assemble multiple interfaces
 into a single converter for complex experimental sessions with multiple data streams and flexible folder structures.
