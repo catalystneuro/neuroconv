@@ -72,7 +72,7 @@ MiniscopeImagingInterface: Individual acquisition folder
 
 For alternative folder structures or when you only need to convert imaging data (without behavioral video),
 use the more flexible :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface`.
-This interface handles a single Miniscope recording session and provides two usage modes.
+This interface handles a single Miniscope acquisition and provides two usage modes.
 
 **Standard Usage with folder_path:**
 
@@ -90,18 +90,19 @@ For the standard case, the interface expects a folder with the following structu
 
 .. code-block:: python
 
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.datainterfaces import MiniscopeImagingInterface
     >>>
     >>> # Point directly to a Miniscope folder containing .avi files and metaData.json
     >>> folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
     >>> interface = MiniscopeImagingInterface(folder_path=folder_path)
     >>>
-    >>> # Get metadata and add required session_start_time
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
+    >>> # Get metadata (session_start_time is automatically extracted from parent folder's metaData.json)
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"]
+    >>> # Add timezone information for data provenance
+    >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>>
     >>> # Convert to NWB
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
@@ -158,14 +159,14 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>> from neuroconv import ConverterPipe
     >>> from zoneinfo import ZoneInfo
     >>>
-    >>> # Initialize imaging interfaces for consecutive sessions
-    >>> # Session 1 starts at time 0
+    >>> # Initialize imaging interfaces for sequential acquisitions
+    >>> # Acquisition 1 starts at time 0
     >>> session1_interface = MiniscopeImagingInterface(
     ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
     ... )
     >>> session1_interface.set_aligned_starting_time(0.0)
     >>>
-    >>> # Session 2 starts 180 seconds after session 1 (preserving the time gap)
+    >>> # Acquisition 2 starts 180 seconds after acquisition 1 (preserving the time gap)
     >>> session2_interface = MiniscopeImagingInterface(
     ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_06_28" / "Miniscope")
     ... )
@@ -178,7 +179,7 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     ...     "MiniscopeSession2": session2_interface
     ... })
     >>>
-    >>> # Configure metadata (session_start_time is automatically extracted from first session)
+    >>> # Configure metadata (session_start_time is automatically extracted from first acquisition)
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
