@@ -2056,28 +2056,28 @@ class TestAddSummaryImages(TestCase):
 class TestNoMetadataMutation:
     def test_get_default_ophys_metadata_returns_independent_instances(self):
         """Test that _get_default_ophys_metadata() returns independent instances that don't share mutable state."""
+        # Get two instances
         metadata1 = _get_default_ophys_metadata()
         metadata2 = _get_default_ophys_metadata()
 
-        # Verify they start with the same structure
-        assert metadata1["Ophys"]["Device"][0]["name"] == "Microscope"
-        assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
+        # Store a snapshot of metadata2's Ophys section before mutating metadata1
+        metadata2_ophys_before = deepcopy(metadata2["Ophys"])
 
-        # Modify first instance
+        # Modify first instance deeply (modify nested dicts and lists)
         metadata1["Ophys"]["Device"][0]["name"] = "ModifiedMicroscope"
         metadata1["Ophys"]["ImagingPlane"][0]["name"] = "ModifiedImagingPlane"
         metadata1["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] = "ModifiedRoiResponseSeries"
 
-        # Verify second instance remains unchanged
-        assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
-        assert metadata2["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
-        assert metadata2["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
+        # Verify second instance's Ophys section was not affected by mutations to first instance
+        assert (
+            metadata2["Ophys"] == metadata2_ophys_before
+        ), "Modifying metadata1 affected metadata2 - instances share mutable state"
 
         # Get a third instance after modifications to ensure fresh defaults
         metadata3 = _get_default_ophys_metadata()
-        assert metadata3["Ophys"]["Device"][0]["name"] == "Microscope"
-        assert metadata3["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
-        assert metadata3["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
+        assert (
+            metadata3["Ophys"] == metadata2_ophys_before
+        ), "New instance after mutations differs from original - not getting fresh defaults"
 
     def test_add_devices_to_nwbfile_does_not_mutate_metadata(self):
         """Test that add_devices_to_nwbfile does not mutate the input metadata."""
@@ -2090,22 +2090,16 @@ class TestNoMetadataMutation:
         # Create metadata with devices
         metadata = {"Ophys": {"Device": [{"name": "TestMicroscope", "description": "Test description"}]}}
 
-        # Store original values for comparison
-        original_device_name = metadata["Ophys"]["Device"][0]["name"]
-        original_device_description = metadata["Ophys"]["Device"][0]["description"]
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
 
         # Call function
         add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        # Verify metadata was not mutated
-        assert metadata["Ophys"]["Device"][0]["name"] == original_device_name
-        assert metadata["Ophys"]["Device"][0]["description"] == original_device_description
-        assert len(metadata["Ophys"]["Device"]) == 1
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
 
-        # Verify device was added to nwbfile
-        assert "TestMicroscope" in nwbfile.devices
-
-    def test_add_imaging_plane_to_nwbfile_does_not_mutate_metadata(self):
+    def test_add_imaging_plane_no_metadata_mutation(self):
         """Test that add_imaging_plane_to_nwbfile does not mutate the input metadata."""
         nwbfile = NWBFile(
             session_description="session_description",
@@ -2113,7 +2107,7 @@ class TestNoMetadataMutation:
             session_start_time=datetime.now().astimezone(),
         )
 
-        # Create metadata with imaging plane
+        # Create metadata with imaging plane (all fields provided)
         metadata = {
             "Ophys": {
                 "Device": [{"name": "TestMicroscope"}],
@@ -2137,23 +2131,49 @@ class TestNoMetadataMutation:
             }
         }
 
-        # Store original values for comparison
-        original_plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
-        original_plane_description = metadata["Ophys"]["ImagingPlane"][0]["description"]
-        original_excitation = metadata["Ophys"]["ImagingPlane"][0]["excitation_lambda"]
-        original_indicator = metadata["Ophys"]["ImagingPlane"][0]["indicator"]
-        original_channel_count = len(metadata["Ophys"]["ImagingPlane"][0]["optical_channel"])
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
 
         # Call function
         add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
 
-        # Verify metadata was not mutated
-        assert metadata["Ophys"]["ImagingPlane"][0]["name"] == original_plane_name
-        assert metadata["Ophys"]["ImagingPlane"][0]["description"] == original_plane_description
-        assert metadata["Ophys"]["ImagingPlane"][0]["excitation_lambda"] == original_excitation
-        assert metadata["Ophys"]["ImagingPlane"][0]["indicator"] == original_indicator
-        assert len(metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]) == original_channel_count
-        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
 
-        # Verify imaging plane was added to nwbfile
-        assert "TestImagingPlane" in nwbfile.imaging_planes
+    def test_add_imaging_plane_no_partial_metadata_mutation(self):
+        """Test that add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
+        nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=datetime.now().astimezone(),
+        )
+
+        # Create metadata with minimal imaging plane (missing some fields that will be filled from defaults)
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                        # Intentionally missing: description, excitation_lambda, indicator, location
+                    }
+                ],
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function (should fill in missing fields internally but not mutate the input)
+        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"

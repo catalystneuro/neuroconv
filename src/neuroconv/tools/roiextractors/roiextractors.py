@@ -253,58 +253,48 @@ def add_imaging_plane_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the imaging plane added.
     """
-    # Get defaults
     default_metadata = _get_default_ophys_metadata()
-    default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
+    default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
 
-    # Determine imaging plane name
-    imaging_plane_name = imaging_plane_name or default_imaging_plane_name
+    imaging_plane_name = imaging_plane_name or default_imaging_plane["name"]
 
-    # Check if imaging plane already exists
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile
 
-    # Add devices first
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-    # Get imaging plane metadata from user or use defaults
     metadata = metadata or {}
     imaging_planes_list = metadata.get("Ophys", {}).get("ImagingPlane", [])
 
-    if not imaging_planes_list:
-        # Use default imaging plane metadata
-        imaging_plane_metadata = default_metadata["Ophys"]["ImagingPlane"][0].copy()
-    else:
-        # Find imaging plane metadata by name
-        imaging_plane_metadata = next(
-            (plane_metadata for plane_metadata in imaging_planes_list if plane_metadata["name"] == imaging_plane_name),
-            None,
+    # Search for imaging plane by name in user metadata
+    user_plane_metadata = next(
+        (plane for plane in imaging_planes_list if plane["name"] == imaging_plane_name),
+        None,
+    )
+
+    # If user provided imaging planes but the requested name was not found, raise an error
+    user_metadata_found = user_plane_metadata is not None
+    imaging_planes_provided = bool(imaging_planes_list)
+    if not user_metadata_found and imaging_planes_provided:
+        raise ValueError(
+            f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
         )
 
-        if imaging_plane_metadata is None:
-            raise ValueError(
-                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
-            )
+    # Start with defaults and update with user-provided values if available
+    imaging_plane_kwargs = default_imaging_plane
+    if user_metadata_found:
+        imaging_plane_kwargs.update(user_plane_metadata)
 
-        # Fill in any missing fields from defaults
-        default_plane = default_metadata["Ophys"]["ImagingPlane"][0]
-        for key, value in default_plane.items():
-            if key not in imaging_plane_metadata:
-                imaging_plane_metadata[key] = value
-
-    # Create imaging plane from metadata
-    imaging_plane_kwargs = imaging_plane_metadata.copy()
-
-    # Get device from nwbfile
+    # Replace device name string with actual device object from nwbfile
     device_name = imaging_plane_kwargs["device"]
     imaging_plane_kwargs["device"] = nwbfile.devices[device_name]
 
-    # Create optical channels
+    # Convert optical channel metadata dicts to OpticalChannel objects
     imaging_plane_kwargs["optical_channel"] = [
         OpticalChannel(**channel_metadata) for channel_metadata in imaging_plane_kwargs["optical_channel"]
     ]
 
-    # Create and add imaging plane
+    # Create and add imaging plane to nwbfile
     imaging_plane = ImagingPlane(**imaging_plane_kwargs)
     nwbfile.add_imaging_plane(imaging_plane)
 
