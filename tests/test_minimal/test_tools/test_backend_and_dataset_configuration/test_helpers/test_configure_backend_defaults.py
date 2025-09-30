@@ -1,7 +1,7 @@
 """Unit tests for `get_default_dataset_configurations`."""
 
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Literal
 
 import numcodecs
 import numpy as np
@@ -24,7 +24,7 @@ from neuroconv.tools.nwb_helpers import (
 def integer_array(
     seed: int = 0,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (30_000 * 5, 384),
+    shape: tuple[int, int] = (30_000 * 5, 384),
 ):
     """
     Generate an array of integers.
