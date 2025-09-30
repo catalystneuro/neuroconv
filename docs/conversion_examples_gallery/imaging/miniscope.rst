@@ -9,19 +9,15 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
 
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
 
-MiniscopeConverter: Timestamp-organized multi-acquisition format
-=================================================================
+MiniscopeConverter
+------------------
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` is designed for
 data where multiple recordings are organized in timestamp subfolders. It combines both imaging
 and behavioral video data streams into a single conversion. Behavioral video is handled automatically
 when present in the expected folder structure (e.g., BehavCam_2 folders).
 
-**Important:** The converter concatenates all recordings into a single continuous data stream.
-Timestamps are preserved to maintain the actual time gaps between acquisitions. For example,
-if you have three acquisitions at different times, they will appear as one continuous
-``OnePhotonSeries`` with timestamps showing large intervals (e.g., 180 seconds) between the last
-frame of one acquisition and the first frame of the next.
+
 
 **Expected folder structure:**
 
@@ -65,12 +61,18 @@ frame of one acquisition and the first frame of the next.
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-MiniscopeImagingInterface: Individual acquisition folder
-=========================================================
+**Important:** The converter concatenates all recordings into a single continuous data stream.
+Timestamps are preserved to maintain the actual time gaps between acquisitions. For example,
+if you have three acquisitions at different times, they will appear as one continuous
+``OnePhotonSeries`` with timestamps showing large intervals (e.g., 180 seconds) between the last
+frame of one acquisition and the first frame of the next.
 
-For alternative folder structures or when you only need to convert imaging data (without behavioral video),
-use the more flexible :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface`.
-This interface handles a single Miniscope acquisition and provides two usage modes.
+MiniscopeImagingInterface
+--------------------------
+
+The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` provides a flexible interface
+for converting imaging data from a single Miniscope acquisition. It supports two usage modes to accommodate
+different folder structures and data organizations.
 
 **Standard Usage with folder_path:**
 
@@ -105,26 +107,25 @@ The interface expects a folder with the following structure:
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Alternative Parameters for Non-Standard Folder Structures:**
+**Alternative Parameters for Custom File Locations:**
 
-If your data is organized in a non-standard folder structure where files are not in the same directory,
-you can specify the file paths directly using these parameters:
+If your data is organized differently than the format above (e.g., you have changed the names, or the
+configuration file or timestamps are in another directory), you can specify the structure using the following parameters:
 
 - ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same acquisition
 - ``configuration_file_path``: Path to the metaData.json configuration file (required)
 - ``timeStamps_file_path``: Optional path to the timeStamps.csv file. If not provided, timestamps will be generated as regular intervals based on the sampling frequency
 
-For detailed usage examples with custom file paths, see the
+For more information see the
 :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
 
-ConverterPipe: Custom multi-acquisition workflows
-==================================================
+ConverterPipe
+-------------
 
-For complex experimental sessions with multiple data streams or non-standard folder structures,
-you can use :py:class:`~neuroconv.nwbconverter.ConverterPipe` to assemble multiple interfaces
-into a single converter. This approach gives you maximum flexibility to handle arbitrary folder structures.
+The :py:class:`~neuroconv.nwbconverter.ConverterPipe` allows you to assemble multiple interfaces
+into a single converter for complex experimental sessions with multiple data streams and flexible folder structures.
 
-To illustrate how ``ConverterPipe`` works, we'll use the same folder structure that ``MiniscopeConverter``
+To illustrate how a workflow with :py:class:`~neuroconv.nwbconverter.ConverterPipe` works, we'll use the same folder structure that :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter`
 expects. **Note:** This is purely for demonstration purposes. You should adapt the paths below to match
 your actual data organization, which may be completely different.
 
