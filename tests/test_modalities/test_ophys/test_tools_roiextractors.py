@@ -19,6 +19,7 @@ from numpy.typing import ArrayLike
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.ophys import OnePhotonSeries
+from pynwb.testing.mock.file import mock_NWBFile
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
     generate_dummy_segmentation_extractor,
@@ -2081,11 +2082,7 @@ class TestNoMetadataMutation:
 
     def test_add_devices_to_nwbfile_does_not_mutate_metadata(self):
         """Test that add_devices_to_nwbfile does not mutate the input metadata."""
-        nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=datetime.now().astimezone(),
-        )
+        nwbfile = mock_NWBFile()
 
         # Create metadata with devices
         metadata = {"Ophys": {"Device": [{"name": "TestMicroscope", "description": "Test description"}]}}
@@ -2101,11 +2098,7 @@ class TestNoMetadataMutation:
 
     def test_add_imaging_plane_no_metadata_mutation(self):
         """Test that add_imaging_plane_to_nwbfile does not mutate the input metadata."""
-        nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=datetime.now().astimezone(),
-        )
+        nwbfile = mock_NWBFile()
 
         # Create metadata with imaging plane (all fields provided)
         metadata = {
@@ -2142,11 +2135,7 @@ class TestNoMetadataMutation:
 
     def test_add_imaging_plane_no_partial_metadata_mutation(self):
         """Test that add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
-        nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=datetime.now().astimezone(),
-        )
+        nwbfile = mock_NWBFile()
 
         # Create metadata with minimal imaging plane (missing some fields that will be filled from defaults)
         metadata = {
@@ -2174,6 +2163,22 @@ class TestNoMetadataMutation:
 
         # Call function (should fill in missing fields internally but not mutate the input)
         add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_image_segmentation_no_metadata_mutation(self):
+        """Test that add_image_segmentation_to_nwbfile does not mutate the input metadata."""
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with image segmentation
+        metadata = {"Ophys": {"ImageSegmentation": {"name": "TestImageSegmentation"}}}
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"

@@ -301,7 +301,7 @@ def add_imaging_plane_to_nwbfile(
     return nwbfile
 
 
-def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
     """
     Adds the image segmentation specified by the metadata to the nwb file.
 
@@ -309,7 +309,7 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     ----------
     nwbfile : NWBFile
         The nwbfile to add the image segmentation to.
-    metadata: dict
+    metadata: dict, optional
         The metadata to create the image segmentation from.
 
     Returns
@@ -317,12 +317,21 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     NWBFile
         The NWBFile passed as an input with the image segmentation added.
     """
-    # Set the defaults and required infrastructure
-    metadata_copy = deepcopy(metadata)
+    # Get defaults
     default_metadata = _get_default_segmentation_metadata()
-    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+    default_image_segmentation = default_metadata["Ophys"]["ImageSegmentation"]
 
-    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    # Get user metadata or use defaults
+    metadata = metadata or {}
+    user_image_segmentation = metadata.get("Ophys", {}).get("ImageSegmentation")
+
+    if user_image_segmentation is None:
+        image_segmentation_metadata = default_image_segmentation
+    else:
+        # Start with defaults and update with user-provided values
+        image_segmentation_metadata = default_image_segmentation.copy()
+        image_segmentation_metadata.update(user_image_segmentation)
+
     image_segmentation_name = image_segmentation_metadata["name"]
 
     ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
