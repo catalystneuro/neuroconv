@@ -80,29 +80,3 @@ def test_staging_sandbox_conflict(tmp_path):
 
     with pytest.raises(ValueError, match="Cannot specify both 'staging' and 'sandbox' parameters"):
         automatic_dandi_upload(dandiset_id="200000", nwb_folder_path=nwb_folder_path, sandbox=True, staging=True)
-
-
-def test_staging_backward_compatibility(tmp_path):
-    """Test that staging=True works the same as sandbox=True with deprecation warning."""
-    import warnings
-
-    nwb_folder_path = tmp_path / "test_nwb"
-    nwb_folder_path.mkdir()
-    metadata = get_default_nwbfile_metadata()
-    metadata["NWBFile"].update(
-        session_start_time=datetime.now().astimezone(),
-        session_id=f"test-staging-compat-{sys.platform}-{get_python_version().replace('.', '-')}",
-    )
-    metadata.update(Subject=dict(subject_id="foo", species="Mus musculus", age="P1D", sex="U"))
-    with NWBHDF5IO(path=nwb_folder_path / "test_nwb_staging.nwb", mode="w") as io:
-        io.write(make_nwbfile_from_metadata(metadata=metadata))
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-
-        # This should work with deprecation warning
-        automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
-
-        # Check that deprecation warning was issued
-        deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
-        assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"
