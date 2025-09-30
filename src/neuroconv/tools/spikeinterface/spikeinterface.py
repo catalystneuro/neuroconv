@@ -860,7 +860,8 @@ def add_electrodes_to_nwbfile(
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
     else:
-        data = np.full(recording.get_num_channels(), fill_value="unknown")
+        default_location = _get_default_ecephys_metadata()["Ecephys"]["ElectrodeGroup"][0]["location"]
+        data = np.full(recording.get_num_channels(), fill_value=default_location)
         data_to_add["location"] = dict(description="location", data=data, index=False)
 
     # Add missing groups to the nwb file
