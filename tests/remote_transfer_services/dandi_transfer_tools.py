@@ -1,3 +1,4 @@
+import os
 import sys
 from datetime import datetime
 from platform import python_version as get_python_version
@@ -10,6 +11,11 @@ from neuroconv.tools.nwb_helpers import (
     get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
+
+DANDI_API_KEY = os.getenv("DANDI_API_KEY")
+EMBER_API_KEY = os.getenv("EMBER_API_KEY")
+HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
+HAVE_EMBER_KEY = EMBER_API_KEY is not None and EMBER_API_KEY != ""  # can be "" from external forks
 
 
 def test_automatic_dandi_upload(tmp_path):
@@ -66,6 +72,10 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
     )
 
 
+@pytest.mark.skipif(
+    not HAVE_DANDI_KEY,
+    reason="You must set your DANDI_API_KEY to run this test!",
+)
 def test_staging_sandbox_conflict(tmp_path):
     """Test that providing both 'staging' and 'sandbox' parameters raises ValueError."""
 
@@ -97,21 +107,6 @@ def test_staging_backward_compatibility(tmp_path):
         # This should work with deprecation warning
         automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=nwb_folder_path, staging=True)
 
-        # Check that future warning was issued
-        future_warnings = [warning for warning in w if issubclass(warning.category, FutureWarning)]
-        assert len(future_warnings) == 1, f"Expected 1 future warning, got {len(future_warnings)}"
-
-
-def test_automatic_ember_upload(tmp_path):
-    nwb_folder_path = tmp_path / "test_nwb"
-    nwb_folder_path.mkdir()
-    metadata = get_default_nwbfile_metadata()
-    metadata["NWBFile"].update(
-        session_start_time=datetime.now().astimezone(),
-        session_id=f"test-automatic-upload-{sys.platform}-{get_python_version().replace('.', '-')}",
-    )
-    metadata.update(Subject=dict(subject_id="foo", species="Mus musculus", age="P1D", sex="U"))
-    with NWBHDF5IO(path=nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
-        io.write(make_nwbfile_from_metadata(metadata=metadata))
-
-    automatic_dandi_upload(dandiset_id="000431", nwb_folder_path=nwb_folder_path, instance="ember")
+        # Check that deprecation warning was issued
+        deprecation_warnings = [warning for warning in w if issubclass(warning.category, DeprecationWarning)]
+        assert len(deprecation_warnings) == 1, f"Expected 1 deprecation warning, got {len(deprecation_warnings)}"

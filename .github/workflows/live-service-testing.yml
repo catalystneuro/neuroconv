@@ -64,6 +64,8 @@ jobs:
 
       - name: Run subset of tests that use DANDI live services
         run: pytest -rsx -n auto tests/remote_transfer_services/dandi_transfer_tools.py
+      - name: Run subset of tests that use EMBER live services
+        run: pytest -rsx -n auto tests/remote_transfer_services/ember_transfer_tools.py
       - name: Run subset of tests that use DANDI live services with YAML
         run: pytest -rsx -n auto tests/remote_transfer_services/yaml_dandi_transfer_tools.py
       - name: Run subset of tests that use Globus live services
