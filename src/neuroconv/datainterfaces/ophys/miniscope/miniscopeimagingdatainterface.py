@@ -168,23 +168,10 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for MiniscopeImagingExtractor.
 
     This interface handles single Miniscope recordings from a folder containing .avi files
-    and a metaData.json configuration file. It provides flexible options for different
-    folder structures.
+    and a metaData.json configuration file. It provides two usage modes:
 
-    Expected folder structure for folder_path:
-
-    .. code-block::
-
-        miniscope_folder/
-        ├── 0.avi                  # video file 1
-        ├── 1.avi                  # video file 2 (optional)
-        ├── 2.avi                  # video file 3 (optional)
-        ├── metaData.json          # required configuration file
-        └── timeStamps.csv         # optional timestamps file
-
-    Two usage modes:
-    1. folder_path: Point directly to a Miniscope folder containing .avi files and metaData.json
-    2. file_paths + configuration_file_path: Specify individual files for non-standard structures
+    1. folder_path: For standard folder structures where files follow the expected naming convention
+    2. file_paths + configuration_file_path: For non-standard folder structures with custom organization
     """
 
     display_name = "Miniscope Imaging"
@@ -218,26 +205,44 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         """
         Initialize reading the Miniscope imaging data.
 
+        Two usage modes are supported:
+        - Provide only folder_path for standard folder structures
+        - Provide file_paths and configuration_file_path for custom folder structures
+        These modes are mutually exclusive.
+
         Parameters
         ----------
         folder_path : DirectoryPath, optional
-            Path to the Miniscope folder containing .avi files and metaData.json.
+            Path to the Miniscope folder containing .avi files and metaData.json (required).
             Use this for standard single-recording folder structures.
+            Expected folder structure:
+
+            .. code-block::
+
+                folder_path/
+                ├── 0.avi                  # video file 1
+                ├── 1.avi                  # video file 2
+                ├── 2.avi                  # video file 3
+                ├── ...                    # additional video files
+                ├── metaData.json          # required configuration file
+                └── timeStamps.csv         # optional timestamps file
         file_paths : list, optional
             List of .avi file paths to be processed. These files should be from the same
-            recording session and will be concatenated in the order provided.
+            recording session and must follow the naming convention (0.avi, 1.avi, 2.avi, ...).
+            Files will be concatenated in numerical order.
             Use this for non-standard folder structures.
         configuration_file_path : str, optional
             Path to the metaData.json configuration file containing recording parameters.
             Required when using file_paths parameter.
         timeStamps_file_path : str, optional
             Path to the timeStamps.csv file containing timestamps relative to the recording start.
-            If not provided, the extractor will look for timeStamps.csv in the same directory
-            as the configuration file.
+            If not provided, the extractor will look for timeStamps.csv in the parent directory
+            of the configuration file. If the file is not found,
+            timestamps will be generated as regular intervals based on the sampling frequency
+            from the configuration file, starting at 0.
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
-        # Validate parameter combinations
         if folder_path is None and (file_paths is None or configuration_file_path is None):
             raise ValueError(
                 "Either 'folder_path' must be provided, or both 'file_paths' and 'configuration_file_path' must be provided."
@@ -262,6 +267,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     def get_metadata(self) -> dict:
         """Get metadata with device information from Miniscope configuration."""
+        from pathlib import Path
+
         metadata = super().get_metadata()
 
         # Extract device metadata from the extractor's config
@@ -269,7 +276,6 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         device_name = self.imaging_extractor._miniscope_config.get("deviceName", "Miniscope")
 
         # Only include valid Device schema fields
-        valid_device_fields = ["name", "description", "manufacturer", "model_number", "model_name", "serial_number"]
         device_updates = {"name": device_name}
 
         # Map deviceType to model_name if available
@@ -289,6 +295,23 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         if "OnePhotonSeries" in metadata["Ophys"]:
             one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
             one_photon_series_metadata.update(unit="px")
+
+        # Extract session_start_time from parent folder's metaData.json if available
+        # The parent folder of the Miniscope folder may contain the recording session metaData.json
+        miniscope_folder = Path(self.imaging_extractor._miniscope_folder_path)
+        parent_metadata_path = miniscope_folder.parent / "metaData.json"
+
+        if parent_metadata_path.exists():
+            from roiextractors.extractors.miniscopeimagingextractor.miniscope_utils import (
+                get_recording_start_time,
+            )
+
+            try:
+                session_start_time = get_recording_start_time(file_path=str(parent_metadata_path))
+                metadata["NWBFile"]["session_start_time"] = session_start_time
+            except KeyError:
+                # metaData.json exists but doesn't have required recording start time fields
+                pass
 
         return metadata
 

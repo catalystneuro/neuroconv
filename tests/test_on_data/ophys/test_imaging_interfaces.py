@@ -1006,6 +1006,28 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
                 file_paths=[str(miniscope_folder / "0.avi")],
             )
 
+    def test_session_start_time_extraction(self):
+        """Test that session_start_time is extracted from parent folder metaData.json."""
+        from datetime import datetime
+
+        miniscope_folder = (
+            OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"
+        )
+
+        interface = self.data_interface_cls(folder_path=str(miniscope_folder))
+        metadata = interface.get_metadata()
+
+        # Check that session_start_time was extracted
+        assert "session_start_time" in metadata["NWBFile"]
+        session_start_time = metadata["NWBFile"]["session_start_time"]
+
+        # Verify it's a datetime object
+        assert isinstance(session_start_time, datetime)
+
+        # Verify it matches the expected value from metaData.json
+        expected_start_time = datetime(2021, 10, 7, 15, 3, 28, 635000)
+        assert session_start_time == expected_start_time
+
 
 skip_on_darwin_arm64 = pytest.mark.skipif(
     platform.system() == "Darwin" and platform.machine() == "arm64",

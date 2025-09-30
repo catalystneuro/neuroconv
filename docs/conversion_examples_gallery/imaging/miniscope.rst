@@ -16,6 +16,12 @@ The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.Mini
 data where multiple recordings are organized in timestamp subfolders. It combines both imaging
 and behavioral video data streams into a single conversion.
 
+**Important:** The converter concatenates all recordings into a single continuous data stream.
+Timestamps are preserved to maintain the actual time gaps between recording sessions. For example,
+if you have three recording sessions at different times, they will appear as one continuous
+``OnePhotonSeries`` with timestamps showing large intervals (e.g., 180 seconds) between the last
+frame of one session and the first frame of the next.
+
 **Expected folder structure:**
 
 .. code-block::
@@ -39,7 +45,6 @@ and behavioral video data streams into a single conversion.
     └── 15_12_28/
         └── ...
 
-**Usage:**
 
 .. code-block:: python
 
@@ -60,13 +65,14 @@ and behavioral video data streams into a single conversion.
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 MiniscopeImagingInterface: Flexible single-recording format
 ===========================================================
 
 For alternative folder structures or when you only need to convert imaging data (without behavioral video),
 use the more flexible :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface`.
+This interface handles a single Miniscope recording session and provides two usage modes.
 
 **Standard Usage with folder_path:**
 
@@ -76,8 +82,9 @@ For the standard case, the interface expects a folder with the following structu
 
     miniscope_folder/
     ├── 0.avi                  # video file 1
-    ├── 1.avi                  # video file 2 (optional)
-    ├── 2.avi                  # video file 3 (optional)
+    ├── 1.avi                  # video file 2
+    ├── 2.avi                  # video file 3
+    ├── ...                    # additional video files
     ├── metaData.json          # required configuration file
     └── timeStamps.csv         # optional timestamps file
 
@@ -97,42 +104,117 @@ For the standard case, the interface expects a folder with the following structu
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Convert to NWB
-    >>> nwbfile_path = "miniscope_single_recording.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 **Alternative Parameters for Non-Standard Structures:**
 
-If you don't have the required configuration file in the expected location, or if the timestamps are stored elsewhere,
+If your data is organized in a non-standard folder structure where files are not in the same directory,
 you can specify the file paths directly using these parameters:
 
-- ``file_paths`` (*list*): List of .avi file paths to be processed from the same recording session
-- ``configuration_file_path`` (*str*): Path to the metaData.json configuration file
-- ``timeStamps_file_path`` (*str, optional*): Path to the timeStamps.csv file containing timestamps for this recording
+- ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same recording session
+- ``configuration_file_path``: Path to the metaData.json configuration file (required)
+- ``timeStamps_file_path``: Optional path to the timeStamps.csv file. If not provided, timestamps will be generated as regular intervals based on the sampling frequency
 
-**Example with custom file paths:**
+For detailed usage examples with custom file paths, see the
+:py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
+
+ConverterPipe: Composing custom converters for complex sessions
+================================================================
+
+For complex experimental sessions with multiple data streams or non-standard folder structures,
+you can use :py:class:`~neuroconv.nwbconverter.ConverterPipe` to assemble multiple interfaces
+into a single converter. This approach gives you maximum flexibility to handle arbitrary folder structures.
+
+To illustrate how ``ConverterPipe`` works, we'll use the same folder structure that ``MiniscopeConverter``
+expects. **Note:** This is purely for demonstration purposes. You should adapt the paths below to match
+your actual data organization, which may be completely different.
+
+The example folder structure:
+
+.. code-block::
+
+    C6-J588_Disc5/
+    ├── 15_03_28/
+    │   ├── Miniscope/
+    │   │   ├── 0.avi
+    │   │   ├── metaData.json
+    │   │   └── timeStamps.csv
+    │   ├── BehavCam_2/
+    │   │   ├── 0.avi
+    │   │   ├── metaData.json
+    │   │   └── timeStamps.csv
+    │   └── metaData.json
+    └── 15_06_28/
+        └── ...
+
+In this structure, the two timestamp folders (``15_03_28`` and ``15_06_28``) represent **sequential acquisitions** -
+recordings that occurred one after the other at different times. To preserve the time gap between these acquisitions,
+we need to use ``set_aligned_starting_time()`` to shift the timestamps of the second session.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import MiniscopeImagingInterface
-    >>>
-    >>> # Specify individual files for non-standard folder structures
-    >>> file_paths = ["/path/to/video1.avi", "/path/to/video2.avi"]
-    >>> configuration_file_path = "/path/to/metaData.json"
-    >>> timeStamps_file_path = "/path/to/timeStamps.csv"  # optional
-    >>>
-    >>> interface = MiniscopeImagingInterface(
-    ...     file_paths=file_paths,
-    ...     configuration_file_path=configuration_file_path,
-    ...     timeStamps_file_path=timeStamps_file_path
-    ... )
-    >>>
-    >>> # Get metadata and add required session_start_time
-    >>> from datetime import datetime
+    >>> from neuroconv import ConverterPipe
     >>> from zoneinfo import ZoneInfo
-    >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
-    >>> # Convert to NWB
-    >>> nwbfile_path = "miniscope_custom_structure.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> # Initialize imaging interfaces for consecutive sessions
+    >>> # Session 1 starts at time 0
+    >>> session1_interface = MiniscopeImagingInterface(
+    ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
+    ... )
+    >>> session1_interface.set_aligned_starting_time(0.0)
+    >>>
+    >>> # Session 2 starts 180 seconds after session 1 (preserving the time gap)
+    >>> session2_interface = MiniscopeImagingInterface(
+    ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_06_28" / "Miniscope")
+    ... )
+    >>> session2_interface.set_aligned_starting_time(180.0)
+    >>>
+    >>> # Compose using ConverterPipe with descriptive names
+    >>> # Each interface creates its own OnePhotonSeries
+    >>> converter = ConverterPipe(data_interfaces={
+    ...     "MiniscopeSession1": session1_interface,
+    ...     "MiniscopeSession2": session2_interface
+    ... })
+    >>>
+    >>> # Configure metadata (session_start_time is automatically extracted from first session)
+    >>> metadata = converter.get_metadata()
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"]
+    >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>>
+    >>> # Add a second OnePhotonSeries entry to metadata with a unique name
+    >>> session2_metadata = metadata["Ophys"]["OnePhotonSeries"][0].copy()
+    >>> session2_metadata["name"] = "OnePhotonSeriesSession2"
+    >>> metadata["Ophys"]["OnePhotonSeries"].append(session2_metadata)
+    >>> metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "OnePhotonSeriesSession1"
+    >>>
+    >>> # Use conversion_options to specify which photon_series_index each interface should use
+    >>> conversion_options = {
+    ...     "MiniscopeSession1": {"photon_series_index": 0},
+    ...     "MiniscopeSession2": {"photon_series_index": 1}
+    ... }
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(
+    ...     nwbfile_path=nwbfile_path,
+    ...     metadata=metadata,
+    ...     conversion_options=conversion_options,
+    ...     overwrite=True
+    ... )
+
+Note that unlike ``MiniscopeConverter`` which concatenates all acquisitions into a single ``OnePhotonSeries``,
+using ``ConverterPipe`` with multiple ``MiniscopeImagingInterface`` instances writes each Miniscope acquisition
+as a separate ``OnePhotonSeries`` object in the NWB file. This gives you more control over how each acquisition
+is represented and named.
+
+If your acquisitions were **simultaneous** (e.g., recording from two brain regions at the same time), you would
+NOT need to use ``set_aligned_starting_time()`` - each interface would have its own ``OnePhotonSeries`` with
+naturally synchronized timestamps.
+
+To summarize the workflow for aggregating multiple Miniscope acquisitions:
+
+1. Create a ``MiniscopeImagingInterface`` for each folder with data.
+2. For sequential acquisitions, use ``set_aligned_starting_time()`` to align timestamps
+3. Combine interfaces with ``ConverterPipe`` using descriptive names
+4. Configure metadata with unique ``OnePhotonSeries`` names and use ``photon_series_index`` in conversion options
+5. (Optional) Add behavioral video using :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface`
