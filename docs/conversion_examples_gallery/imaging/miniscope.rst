@@ -9,8 +9,8 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
 
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
 
-MiniscopeConverter: Multi-recording format
-==========================================
+MiniscopeConverter: Timestamp-organized multi-session format
+=============================================================
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` is designed for
 data where multiple recordings are organized in timestamp subfolders. It combines both imaging
@@ -67,8 +67,8 @@ frame of one session and the first frame of the next.
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-MiniscopeImagingInterface: Flexible single-recording format
-===========================================================
+MiniscopeImagingInterface: Individual acquisition folder
+=========================================================
 
 For alternative folder structures or when you only need to convert imaging data (without behavioral video),
 use the more flexible :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface`.
@@ -107,7 +107,7 @@ For the standard case, the interface expects a folder with the following structu
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Alternative Parameters for Non-Standard Structures:**
+**Alternative Parameters for Non-Standard Folder Structures:**
 
 If your data is organized in a non-standard folder structure where files are not in the same directory,
 you can specify the file paths directly using these parameters:
@@ -119,8 +119,8 @@ you can specify the file paths directly using these parameters:
 For detailed usage examples with custom file paths, see the
 :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
 
-ConverterPipe: Composing custom converters for complex sessions
-================================================================
+ConverterPipe: Custom multi-acquisition workflows
+==================================================
 
 For complex experimental sessions with multiple data streams or non-standard folder structures,
 you can use :py:class:`~neuroconv.nwbconverter.ConverterPipe` to assemble multiple interfaces
