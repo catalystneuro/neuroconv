@@ -17,10 +17,10 @@ data where multiple recordings are organized in timestamp subfolders. It combine
 and behavioral video data streams into a single conversion.
 
 **Important:** The converter concatenates all recordings into a single continuous data stream.
-Timestamps are preserved to maintain the actual time gaps between recording sessions. For example,
-if you have three recording sessions at different times, they will appear as one continuous
+Timestamps are preserved to maintain the actual time gaps between acquisitions. For example,
+if you have three acquisitions at different times, they will appear as one continuous
 ``OnePhotonSeries`` with timestamps showing large intervals (e.g., 180 seconds) between the last
-frame of one session and the first frame of the next.
+frame of one acquisition and the first frame of the next.
 
 **Expected folder structure:**
 
@@ -48,9 +48,7 @@ frame of one session and the first frame of the next.
 
 .. code-block:: python
 
-    >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
     >>> from neuroconv.converters import MiniscopeConverter
     >>>
     >>> # The 'folder_path' is the path to the main Miniscope folder containing timestamp subfolders
@@ -60,8 +58,7 @@ frame of one session and the first frame of the next.
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=ZoneInfo("US/Pacific")))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
@@ -113,7 +110,7 @@ For the standard case, the interface expects a folder with the following structu
 If your data is organized in a non-standard folder structure where files are not in the same directory,
 you can specify the file paths directly using these parameters:
 
-- ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same recording session
+- ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same acquisition
 - ``configuration_file_path``: Path to the metaData.json configuration file (required)
 - ``timeStamps_file_path``: Optional path to the timeStamps.csv file. If not provided, timestamps will be generated as regular intervals based on the sampling frequency
 
@@ -151,7 +148,7 @@ The example folder structure:
 
 In this structure, the two timestamp folders (``15_03_28`` and ``15_06_28``) represent **sequential acquisitions** -
 recordings that occurred one after the other at different times. To preserve the time gap between these acquisitions,
-we need to use ``set_aligned_starting_time()`` to shift the timestamps of the second session.
+we need to use ``set_aligned_starting_time()`` to shift the timestamps of the second acquisition.
 
 .. code-block:: python
 
@@ -161,22 +158,22 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>>
     >>> # Initialize imaging interfaces for sequential acquisitions
     >>> # Acquisition 1 starts at time 0
-    >>> session1_interface = MiniscopeImagingInterface(
+    >>> acquisition1_interface = MiniscopeImagingInterface(
     ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
     ... )
-    >>> session1_interface.set_aligned_starting_time(0.0)
+    >>> acquisition1_interface.set_aligned_starting_time(0.0)
     >>>
     >>> # Acquisition 2 starts 180 seconds after acquisition 1 (preserving the time gap)
-    >>> session2_interface = MiniscopeImagingInterface(
+    >>> acquisition2_interface = MiniscopeImagingInterface(
     ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_06_28" / "Miniscope")
     ... )
-    >>> session2_interface.set_aligned_starting_time(180.0)
+    >>> acquisition2_interface.set_aligned_starting_time(180.0)
     >>>
     >>> # Compose using ConverterPipe with descriptive names
     >>> # Each interface creates its own OnePhotonSeries
     >>> converter = ConverterPipe(data_interfaces={
-    ...     "MiniscopeSession1": session1_interface,
-    ...     "MiniscopeSession2": session2_interface
+    ...     "MiniscopeAcquisition1": acquisition1_interface,
+    ...     "MiniscopeAcquisition2": acquisition2_interface
     ... })
     >>>
     >>> # Configure metadata (session_start_time is automatically extracted from first acquisition)
@@ -185,15 +182,15 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>>
     >>> # Add a second OnePhotonSeries entry to metadata with a unique name
-    >>> session2_metadata = metadata["Ophys"]["OnePhotonSeries"][0].copy()
-    >>> session2_metadata["name"] = "OnePhotonSeriesSession2"
-    >>> metadata["Ophys"]["OnePhotonSeries"].append(session2_metadata)
-    >>> metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "OnePhotonSeriesSession1"
+    >>> acquisition2_metadata = metadata["Ophys"]["OnePhotonSeries"][0].copy()
+    >>> acquisition2_metadata["name"] = "OnePhotonSeriesAcquisition2"
+    >>> metadata["Ophys"]["OnePhotonSeries"].append(acquisition2_metadata)
+    >>> metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "OnePhotonSeriesAcquisition1"
     >>>
     >>> # Use conversion_options to specify which photon_series_index each interface should use
     >>> conversion_options = {
-    ...     "MiniscopeSession1": {"photon_series_index": 0},
-    ...     "MiniscopeSession2": {"photon_series_index": 1}
+    ...     "MiniscopeAcquisition1": {"photon_series_index": 0},
+    ...     "MiniscopeAcquisition2": {"photon_series_index": 1}
     ... }
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(
