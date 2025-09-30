@@ -2053,7 +2053,7 @@ class TestAddSummaryImages(TestCase):
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
 
-class TestDefaultOphysMetadataImmutability(unittest.TestCase):
+class TestNoMetadataMutation:
     def test_get_default_ophys_metadata_returns_independent_instances(self):
         """Test that _get_default_ophys_metadata() returns independent instances that don't share mutable state."""
         metadata1 = _get_default_ophys_metadata()
@@ -2078,3 +2078,82 @@ class TestDefaultOphysMetadataImmutability(unittest.TestCase):
         assert metadata3["Ophys"]["Device"][0]["name"] == "Microscope"
         assert metadata3["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
         assert metadata3["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
+
+    def test_add_devices_to_nwbfile_does_not_mutate_metadata(self):
+        """Test that add_devices_to_nwbfile does not mutate the input metadata."""
+        nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=datetime.now().astimezone(),
+        )
+
+        # Create metadata with devices
+        metadata = {"Ophys": {"Device": [{"name": "TestMicroscope", "description": "Test description"}]}}
+
+        # Store original values for comparison
+        original_device_name = metadata["Ophys"]["Device"][0]["name"]
+        original_device_description = metadata["Ophys"]["Device"][0]["description"]
+
+        # Call function
+        add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Verify metadata was not mutated
+        assert metadata["Ophys"]["Device"][0]["name"] == original_device_name
+        assert metadata["Ophys"]["Device"][0]["description"] == original_device_description
+        assert len(metadata["Ophys"]["Device"]) == 1
+
+        # Verify device was added to nwbfile
+        assert "TestMicroscope" in nwbfile.devices
+
+    def test_add_imaging_plane_to_nwbfile_does_not_mutate_metadata(self):
+        """Test that add_imaging_plane_to_nwbfile does not mutate the input metadata."""
+        nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=datetime.now().astimezone(),
+        )
+
+        # Create metadata with imaging plane
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+            }
+        }
+
+        # Store original values for comparison
+        original_plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
+        original_plane_description = metadata["Ophys"]["ImagingPlane"][0]["description"]
+        original_excitation = metadata["Ophys"]["ImagingPlane"][0]["excitation_lambda"]
+        original_indicator = metadata["Ophys"]["ImagingPlane"][0]["indicator"]
+        original_channel_count = len(metadata["Ophys"]["ImagingPlane"][0]["optical_channel"])
+
+        # Call function
+        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+
+        # Verify metadata was not mutated
+        assert metadata["Ophys"]["ImagingPlane"][0]["name"] == original_plane_name
+        assert metadata["Ophys"]["ImagingPlane"][0]["description"] == original_plane_description
+        assert metadata["Ophys"]["ImagingPlane"][0]["excitation_lambda"] == original_excitation
+        assert metadata["Ophys"]["ImagingPlane"][0]["indicator"] == original_indicator
+        assert len(metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]) == original_channel_count
+        assert len(metadata["Ophys"]["ImagingPlane"]) == 1
+
+        # Verify imaging plane was added to nwbfile
+        assert "TestImagingPlane" in nwbfile.imaging_planes
