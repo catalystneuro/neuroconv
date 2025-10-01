@@ -1,4 +1,4 @@
-from pydantic import FilePath, validate_call
+from pydantic import FilePath
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 from ....utils import DeepDict
@@ -11,7 +11,12 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for handling Inscopix segmentation."
 
-    @validate_call
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import InscopixSegmentationExtractor
+
+        return InscopixSegmentationExtractor
+
     def __init__(
         self,
         file_path: FilePath,
@@ -26,15 +31,6 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             If True, outputs additional information during processing.
         """
         super().__init__(file_path=file_path, verbose=verbose)
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import InscopixSegmentationExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-
-        return InscopixSegmentationExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

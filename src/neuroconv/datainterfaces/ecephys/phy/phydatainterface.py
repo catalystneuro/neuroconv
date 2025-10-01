@@ -24,13 +24,11 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         ] = "Path to the output Phy folder (containing the params.py)."
         return source_schema
 
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from spikeinterface.extractors import read_phy
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import read_phy
 
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-
-        return read_phy(**self.extractor_kwargs)
+        return read_phy
 
     @validate_call
     def __init__(

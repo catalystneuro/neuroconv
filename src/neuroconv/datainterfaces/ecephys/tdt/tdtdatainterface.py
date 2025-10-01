@@ -10,15 +10,20 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
     info = "Interface for TDT recording data."
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import TdtRecordingExtractor
 
+        return TdtRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain parameter."""
         self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs.pop("gain")
 
-        return TdtRecordingExtractor(**self.extractor_kwargs)
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @validate_call
     def __init__(

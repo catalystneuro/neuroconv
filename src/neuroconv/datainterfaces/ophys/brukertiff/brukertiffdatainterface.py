@@ -89,14 +89,20 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._frame_shape = self.imaging_extractor.get_frame_shape()
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from roiextractors import BrukerTiffMultiPlaneImagingExtractor
 
+        return BrukerTiffMultiPlaneImagingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
 
-        return BrukerTiffMultiPlaneImagingExtractor(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -285,14 +291,20 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
         self._frame_shape = self.imaging_extractor.get_frame_shape()
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from roiextractors import BrukerTiffSinglePlaneImagingExtractor
 
+        return BrukerTiffSinglePlaneImagingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
 
-        return BrukerTiffSinglePlaneImagingExtractor(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def _determine_position_current(self) -> list[float]:
         """

@@ -288,13 +288,15 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core import BinaryRecordingExtractor
+
+        return BinaryRecordingExtractor
+
     def _initialize_extractor(self, interface_kwargs: dict):
         # CellExplorerRecordingInterface uses custom BinaryRecordingExtractor initialization
         # This method is not called due to custom __init__ implementation
-        from spikeinterface.core.binaryrecordingextractor import (
-            BinaryRecordingExtractor,
-        )
-
         # This is just to satisfy the abstract method requirement
         # The actual initialization happens in __init__
         self.extractor_kwargs = interface_kwargs.copy()
@@ -302,7 +304,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs.pop("es_key", None)
 
         # Return a placeholder - this won't actually be used
-        return BinaryRecordingExtractor(
+        return self.get_extractor_class()(
             file_paths=["dummy_path"], sampling_frequency=30000, num_channels=1, dtype="int16"
         )
 
@@ -436,16 +438,23 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import (
             CellExplorerSortingExtractor,
         )
 
+        return CellExplorerSortingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add sampling_frequency parameter."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
-        return CellExplorerSortingExtractor(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """

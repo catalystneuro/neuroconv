@@ -32,14 +32,22 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import AxonaRecordingExtractor
 
+        return AxonaRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add all_annotations parameter."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs["all_annotations"] = True
 
-        return AxonaRecordingExtractor(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """
@@ -151,15 +159,24 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".bin", ".set")
     info = "Interface for Axona LFP data."
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.core import NumpyRecording
 
+        return NumpyRecording
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to use NumpyRecording with custom parameters."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("file_path")
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs["traces_list"] = self.traces_list
         self.extractor_kwargs["sampling_frequency"] = self.sampling_frequency
 
-        return NumpyRecording(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @classmethod
     def get_source_schema(cls) -> dict:

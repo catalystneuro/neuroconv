@@ -59,14 +59,20 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
         self.channel_name = channel_name
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from roiextractors import ThorTiffImagingExtractor
 
+        return ThorTiffImagingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
 
-        return ThorTiffImagingExtractor(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def get_metadata(self) -> DeepDict:
         """

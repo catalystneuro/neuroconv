@@ -1,5 +1,5 @@
 from dateutil.parser import parse
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -28,7 +28,12 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
         return source_schema
 
-    @validate_call
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import MicroManagerTiffImagingExtractor
+
+        return MicroManagerTiffImagingExtractor
+
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Data Interface for MicroManagerTiffImagingExtractor.
@@ -45,15 +50,6 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         # Micro-Manager uses "Default" as channel name, for clarity we rename it to  'OpticalChannelDefault'
         channel_name = self.imaging_extractor._channel_names[0]
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import MicroManagerTiffImagingExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-
-        return MicroManagerTiffImagingExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

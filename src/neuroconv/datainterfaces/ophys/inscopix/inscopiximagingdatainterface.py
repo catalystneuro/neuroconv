@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import FilePath, validate_call
+from pydantic import FilePath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -34,7 +34,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for handling Inscopix imaging data."
 
-    @validate_call
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import InscopixImagingExtractor
+
+        return InscopixImagingExtractor
+
     def __init__(
         self,
         file_path: FilePath,
@@ -65,15 +70,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             **kwargs,
         )
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import InscopixImagingExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-
-        return InscopixImagingExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

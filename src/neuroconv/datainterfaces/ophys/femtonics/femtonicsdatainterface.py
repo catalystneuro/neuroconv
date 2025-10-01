@@ -81,14 +81,20 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # TODO: remove this once roiextractors 0.6.1
         self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from roiextractors import FemtonicsImagingExtractor
 
+        return FemtonicsImagingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
 
-        return FemtonicsImagingExtractor(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def get_metadata(self) -> DeepDict:
         """

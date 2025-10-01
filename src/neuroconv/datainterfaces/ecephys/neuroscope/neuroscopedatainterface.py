@@ -101,19 +101,23 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".dat", ".xml")
     info = "Interface for converting NeuroScope recording data."
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import (
             NeuroScopeRecordingExtractor,
         )
 
+        return NeuroScopeRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain and xml_file_path parameters."""
         self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
-        # xml_file_path is handled in __init__, not passed to extractor
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs.pop("gain", None)
         self.extractor_kwargs.pop("xml_file_path", None)
 
-        return NeuroScopeRecordingExtractor(**self.extractor_kwargs)
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -219,18 +223,22 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".lfp", ".eeg", ".xml")
     info = "Interface for converting NeuroScope LFP data."
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import (
             NeuroScopeRecordingExtractor,
         )
 
+        return NeuroScopeRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain and xml_file_path parameters."""
         self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        # xml_file_path is handled in __init__, not passed to extractor
+        self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("gain", None)
         self.extractor_kwargs.pop("xml_file_path", None)
 
-        return NeuroScopeRecordingExtractor(**self.extractor_kwargs)
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -306,15 +314,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         ] = "Path to .xml file containing device and electrode configuration."
         return source_schema
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import (
             NeuroScopeSortingExtractor,
         )
 
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-
-        return NeuroScopeSortingExtractor(**self.extractor_kwargs)
+        return NeuroScopeSortingExtractor
 
     def __init__(
         self,

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import ConfigDict, FilePath, validate_call
+from pydantic import FilePath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import ArrayType
@@ -13,7 +13,12 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".h5", ".hdf5")
     info = "Interface for HDF5 imaging data."
 
-    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import Hdf5ImagingExtractor
+
+        return Hdf5ImagingExtractor
+
     def __init__(
         self,
         file_path: FilePath,
@@ -48,12 +53,3 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import Hdf5ImagingExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-
-        return Hdf5ImagingExtractor(**self.extractor_kwargs)

@@ -13,6 +13,12 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".sbx",)
     info = "Interface for Scanbox imaging data."
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import SbxImagingExtractor
+
+        return SbxImagingExtractor
+
     @validate_call
     def __init__(
         self,
@@ -36,15 +42,6 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import SbxImagingExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-
-        return SbxImagingExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

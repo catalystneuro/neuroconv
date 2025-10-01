@@ -36,14 +36,11 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return source_schema
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from roiextractors import MiniscopeMultiRecordingImagingExtractor
 
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        self.extractor_kwargs.pop("photon_series_type", None)  # For imaging interfaces
-
-        return MiniscopeMultiRecordingImagingExtractor(**self.extractor_kwargs)
+        return MiniscopeMultiRecordingImagingExtractor
 
     @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):

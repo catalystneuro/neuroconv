@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from pydantic import DirectoryPath, validate_call
+from pydantic import DirectoryPath
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -106,7 +106,12 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
 
-    @validate_call
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import Suite2pSegmentationExtractor
+
+        return Suite2pSegmentationExtractor
+
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -145,14 +150,6 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import Suite2pSegmentationExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("plane_segmentation_name", None)
-        return Suite2pSegmentationExtractor(**self.extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
         """

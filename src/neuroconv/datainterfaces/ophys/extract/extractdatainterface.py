@@ -10,6 +10,12 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".mat",)
     info = "Interface for EXTRACT segmentation."
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import ExtractSegmentationExtractor
+
+        return ExtractSegmentationExtractor
+
     def __init__(
         self,
         file_path: FilePath,
@@ -32,11 +38,3 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
             sampling_frequency=sampling_frequency,
             output_struct_name=output_struct_name,
         )
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import ExtractSegmentationExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-
-        return ExtractSegmentationExtractor(**self.extractor_kwargs)

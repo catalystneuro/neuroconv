@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import FilePath, validate_call
+from pydantic import FilePath
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
@@ -27,7 +27,12 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
-    @validate_call
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import TiffImagingExtractor
+
+        return TiffImagingExtractor
+
     def __init__(
         self,
         file_path: FilePath,
@@ -51,12 +56,3 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
             photon_series_type=photon_series_type,
         )
-
-    def _initialize_extractor(self, interface_kwargs: dict):
-        from roiextractors import TiffImagingExtractor
-
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        self.extractor_kwargs.pop("photon_series_type", None)  # For imaging interfaces
-
-        return TiffImagingExtractor(**self.extractor_kwargs)

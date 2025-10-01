@@ -27,15 +27,22 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to an Axon Binary Format (.abf) file"
         return source_schema
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import AxonRecordingExtractor
 
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
-        self.extractor_kwargs["all_annotations"] = True  # Add extractor-specific parameter
+        return AxonRecordingExtractor
 
-        return AxonRecordingExtractor(**self.extractor_kwargs)
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add all_annotations parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,

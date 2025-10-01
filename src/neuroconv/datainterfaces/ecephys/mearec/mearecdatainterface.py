@@ -18,14 +18,11 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".h5",)
     info = "Interface for MEArec recording data."
 
-    def _initialize_extractor(self, interface_kwargs: dict):
+    @classmethod
+    def get_extractor_class(cls):
         from spikeinterface.extractors.extractor_classes import MEArecRecordingExtractor
 
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
-        self.extractor_kwargs.pop("es_key", None)  # For recording interfaces
-
-        return MEArecRecordingExtractor(**self.extractor_kwargs)
+        return MEArecRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:
