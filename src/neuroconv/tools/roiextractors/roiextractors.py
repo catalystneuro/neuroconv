@@ -275,7 +275,6 @@ def add_imaging_plane_to_nwbfile(
     # If user provided imaging planes but the requested name was not found, raise an error
     has_user_requested_plane = user_plane_metadata is not None
     has_imaging_planes = bool(imaging_planes_list)
-
     if not has_user_requested_plane and has_imaging_planes:
         raise ValueError(
             f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
@@ -296,7 +295,6 @@ def add_imaging_plane_to_nwbfile(
         OpticalChannel(**channel_metadata) for channel_metadata in imaging_plane_kwargs["optical_channel"]
     ]
 
-    # Create and add imaging plane to nwbfile
     imaging_plane = ImagingPlane(**imaging_plane_kwargs)
     nwbfile.add_imaging_plane(imaging_plane)
 
