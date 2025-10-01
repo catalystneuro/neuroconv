@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import DirectoryPath, FilePath, validate_call
@@ -253,9 +254,23 @@ class MiniscopeConverter(NWBConverter):
                 canonical_name = f"ImagingPlane{device_ref.replace(' ', '_')}"
                 imaging_plane_overrides.setdefault(canonical_name, imaging_plane_entry)
 
+        interface_entries: list[dict] = []
         for interface_key in imaging_interface_keys:
             interface = self.data_interface_objects[interface_key]
             interface_metadata = interface.get_metadata()
+            session_start_time = interface_metadata.get("NWBFile", {}).get("session_start_time")
+            interface_entries.append(
+                dict(
+                    key=interface_key,
+                    interface=interface,
+                    metadata=interface_metadata,
+                    session_start_time=session_start_time,
+                )
+            )
+
+        for entry in interface_entries:
+            interface = entry["interface"]
+            interface_metadata = entry["metadata"]
 
             device_metadata = interface_metadata["Ophys"]["Device"][0]
             original_device_name = getattr(interface, "_device_name_from_metadata", device_metadata.get("name"))
@@ -275,13 +290,15 @@ class MiniscopeConverter(NWBConverter):
 
             device_name = device_metadata.get("name", original_device_name)
             if not device_name:
-                device_name = interface_key.split("/", 1)[-1]
+                device_name = entry["key"].split("/", 1)[-1]
 
             sanitized_device_label = device_name.replace(" ", "_")
             interface._miniscope_device_label = sanitized_device_label
             interface._device_name_from_metadata = device_name
+            entry["sanitized_device_label"] = sanitized_device_label
 
             segment_label = getattr(interface, "_segment_label", None)
+            entry["segment_label"] = segment_label
 
             imaging_plane_metadata = interface_metadata["Ophys"]["ImagingPlane"][0]
             imaging_plane_index = getattr(interface, "_imaging_plane_metadata_index", None)
@@ -305,6 +322,36 @@ class MiniscopeConverter(NWBConverter):
                     else f"OnePhotonSeries{sanitized_device_label}"
                 )
                 one_photon_metadata.update(name=one_photon_series_name, imaging_plane=imaging_plane_name)
+
+        def _normalize_start_time(dt: datetime | None) -> datetime | None:
+            if dt is None:
+                return None
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+
+        normalized_times = []
+        for entry in interface_entries:
+            start_time = entry["session_start_time"]
+            normalized = _normalize_start_time(start_time) if isinstance(start_time, datetime) else None
+            entry["normalized_start_time"] = normalized
+            if normalized is not None:
+                normalized_times.append(normalized)
+
+        if normalized_times:
+            base_time = min(normalized_times)
+            for entry in interface_entries:
+                normalized = entry.get("normalized_start_time")
+                if normalized is None:
+                    continue
+                offset = (normalized - base_time).total_seconds()
+                if offset:
+                    entry["interface"].set_aligned_starting_time(offset)
+
+        for entry in interface_entries:
+            interface_key = entry["key"]
+            interface = entry["interface"]
+            interface_metadata = entry["metadata"]
 
             interface_options = conversion_options.get(interface_key, {})
             interface_stub_test = interface_options.get("stub_test", stub_test)
