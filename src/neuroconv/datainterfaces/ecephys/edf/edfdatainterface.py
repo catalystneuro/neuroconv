@@ -60,7 +60,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return EDFRecordingExtractor
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        """Override to add all_annotations, use_names_as_ids and pop channels_to_skip."""
+        """Override to add use_names_as_ids and pop channels_to_skip."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
@@ -68,7 +68,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs["all_annotations"] = True
         self.extractor_kwargs["use_names_as_ids"] = True
 
-        return self.get_extractor_class()(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,

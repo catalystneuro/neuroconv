@@ -44,15 +44,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         return NeuralynxRecordingExtractor
 
-    def _initialize_extractor(self, interface_kwargs: dict):
-        """Override to add all_annotations parameter."""
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-        self.extractor_kwargs["all_annotations"] = True
-
-        return self.get_extractor_class()(**self.extractor_kwargs)
-
     def __init__(
         self,
         folder_path: DirectoryPath,

@@ -25,6 +25,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Extends the base implementation to also remove the 'es_key' parameter
         which is specific to the recording interface, not the extractor.
+        Also adds 'all_annotations=True' to ensure all metadata is loaded.
 
         Parameters
         ----------
@@ -39,6 +40,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)

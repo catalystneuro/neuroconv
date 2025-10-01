@@ -33,17 +33,6 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         return AxonRecordingExtractor
 
-    def _initialize_extractor(self, interface_kwargs: dict):
-        """Override to add all_annotations parameter."""
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("es_key", None)
-        self.extractor_kwargs["all_annotations"] = True
-
-        extractor_class = self.get_extractor_class()
-        extractor_instance = extractor_class(**self.extractor_kwargs)
-        return extractor_instance
-
     def __init__(
         self,
         file_path: FilePath,

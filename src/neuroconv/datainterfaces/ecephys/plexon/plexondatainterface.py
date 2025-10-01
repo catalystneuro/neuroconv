@@ -166,14 +166,16 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         return Plexon2RecordingExtractor
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        """Override to add all_annotations and stream_id parameters."""
+        """Override to add stream_id parameter."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
-        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["all_annotations"] = True  # Handled by base class now
         self.extractor_kwargs["stream_id"] = self.stream_id
 
-        return self.get_extractor_class()(**self.extractor_kwargs)
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):

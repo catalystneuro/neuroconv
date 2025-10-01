@@ -43,14 +43,17 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return SpikeGLXRecordingExtractor
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        """Override to add all_annotations, stream_id, and set folder_path."""
+        """Override to add stream_id and set folder_path."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
-        self.extractor_kwargs["folder_path"] = self.folder_path
         self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["folder_path"] = self.folder_path
         self.extractor_kwargs["stream_id"] = self.stream_id
-        return self.get_extractor_class()(**self.extractor_kwargs)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @validate_call
     def __init__(
