@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Optional
 
 from numpy import ndarray
@@ -34,6 +35,14 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
     display_name = "Minian Segmentation"
     associated_suffixes = (".zarr",)
     info = "Interface for Minian segmentation data."
+
+    def _initialize_extractor(self, interface_kwargs):
+        from roiextractors import MinianSegmentationExtractor
+
+        self.extractor_kwargs = deepcopy(interface_kwargs)
+        self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+
+        return MinianSegmentationExtractor(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:
