@@ -24,6 +24,17 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
 
         return WhiteMatterRecordingExtractor
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop all_annotations since WhiteMatter extractor doesn't support it."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("all_annotations", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
+
     def __init__(
         self,
         file_path: FilePath,

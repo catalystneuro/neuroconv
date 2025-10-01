@@ -16,30 +16,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "spike sorting")
 
-    def _initialize_extractor(self, interface_kwargs: dict):
-        """
-        Initialize and return the extractor instance for sorting interfaces.
-
-        Adds 'all_annotations=True' to ensure all metadata is loaded.
-
-        Parameters
-        ----------
-        interface_kwargs : dict
-            The source data parameters passed to the interface constructor.
-
-        Returns
-        -------
-        extractor_instance
-            An initialized sorting extractor instance.
-        """
-        self.extractor_kwargs = interface_kwargs.copy()
-        self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs["all_annotations"] = True
-
-        extractor_class = self.get_extractor_class()
-        extractor_instance = extractor_class(**self.extractor_kwargs)
-        return extractor_instance
-
     def __init__(self, verbose: bool = False, **source_data):
 
         super().__init__(**source_data)
