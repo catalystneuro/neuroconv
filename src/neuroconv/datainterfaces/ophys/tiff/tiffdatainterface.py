@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 
@@ -33,6 +33,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
         return TiffImagingExtractor
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

@@ -691,7 +691,7 @@ class ScanImageMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             return metadata
 
         imaging_plane_metadata = ophys_metadata["ImagingPlane"][0]
-        channel_name = self.interface_kwargs["channel_name"]
+        channel_name = self.source_data["channel_name"]
         optical_channel_metadata = [
             channel for channel in imaging_plane_metadata["optical_channel"] if channel["name"] == channel_name
         ]
@@ -995,7 +995,7 @@ class ScanImageSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             return metadata
 
         imaging_plane_metadata = ophys_metadata["ImagingPlane"][0]
-        channel_name = self.interface_kwargs["channel_name"]
+        channel_name = self.source_data["channel_name"]
         optical_channel_metadata = [
             channel for channel in imaging_plane_metadata["optical_channel"] if channel["name"] == channel_name
         ]

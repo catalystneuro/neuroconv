@@ -1,5 +1,5 @@
 from dateutil.parser import parse
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -34,6 +34,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
         return MicroManagerTiffImagingExtractor
 
+    @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
         Data Interface for MicroManagerTiffImagingExtractor.

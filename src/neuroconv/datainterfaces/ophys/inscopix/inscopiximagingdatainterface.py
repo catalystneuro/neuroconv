@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import FilePath
+from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
@@ -40,6 +40,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         return InscopixImagingExtractor
 
+    @validate_call
     def __init__(
         self,
         file_path: FilePath,

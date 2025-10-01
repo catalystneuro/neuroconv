@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
@@ -112,6 +112,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return Suite2pSegmentationExtractor
 
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,

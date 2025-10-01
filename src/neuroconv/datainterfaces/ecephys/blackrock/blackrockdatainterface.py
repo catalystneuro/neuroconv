@@ -37,11 +37,10 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         return BlackrockRecordingExtractor
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        """Override to add stream_id and pop nsx_override."""
+        """Override to add stream_id."""
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
-        self.extractor_kwargs.pop("nsx_override", None)
         self.extractor_kwargs["stream_id"] = self.stream_id
 
         return self.get_extractor_class()(**self.extractor_kwargs)
