@@ -265,6 +265,10 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         self.photon_series_type = "OnePhotonSeries"
 
+        # Force timestamps to be cached so downstream has_time_vector checks behave consistently.
+        # The extractor lazily loads timestamps from CSV; touching them here avoids later misclassification.
+        self.imaging_extractor.get_timestamps()
+
     def get_metadata(self) -> dict:
         """Get metadata with device information from Miniscope configuration."""
         from pathlib import Path
