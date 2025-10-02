@@ -267,24 +267,21 @@ def add_imaging_plane_to_nwbfile(
     imaging_planes_list = metadata.get("Ophys", {}).get("ImagingPlane", [])
 
     # Search for imaging plane by name in user metadata
-    user_plane_metadata = next(
+    user_provided_plane_metadata = next(
         (plane for plane in imaging_planes_list if plane["name"] == imaging_plane_name),
         None,
     )
 
-    # If user provided imaging planes but the requested name was not found, raise an error
-    has_user_requested_plane = user_plane_metadata is not None
-    has_imaging_planes = bool(imaging_planes_list)
-    if not has_user_requested_plane and has_imaging_planes:
+    if user_provided_plane_metadata is None:
         raise ValueError(
             f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
         )
 
     # Start with defaults and update with user-provided values if available
     imaging_plane_kwargs = default_imaging_plane
-    if has_user_requested_plane:
+    if user_provided_plane_metadata:
         # Note this is safe because we don't modify the values of the added keys
-        imaging_plane_kwargs.update(user_plane_metadata)
+        imaging_plane_kwargs.update(user_provided_plane_metadata)
 
     # Replace device name string with actual device object from nwbfile
     device_name = imaging_plane_kwargs["device"]
