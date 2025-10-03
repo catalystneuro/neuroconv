@@ -301,42 +301,31 @@ def add_imaging_plane_to_nwbfile(
     return nwbfile
 
 
-def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
+def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
-    Adds the image segmentation specified by the metadata to the nwb file.
+    Adds the image segmentation container to the nwb file.
 
     Parameters
     ----------
     nwbfile : NWBFile
         The nwbfile to add the image segmentation to.
-    metadata: dict, optional
-        The metadata to create the image segmentation from.
+    metadata: dict
+        The metadata in the neuroconv format. See `_get_default_segmentation_metadata()` for an example.
 
     Returns
     -------
     NWBFile
         The NWBFile passed as an input with the image segmentation added.
     """
-    # Get defaults
+    # Get ImageSegmentation name from metadata or use default
     default_metadata = _get_default_segmentation_metadata()
-    default_image_segmentation = default_metadata["Ophys"]["ImageSegmentation"]
+    default_name = default_metadata["Ophys"]["ImageSegmentation"]["name"]
 
-    # Get user metadata or use defaults
-    metadata = metadata or {}
-    user_image_segmentation = metadata.get("Ophys", {}).get("ImageSegmentation")
-
-    if user_image_segmentation is None:
-        image_segmentation_metadata = default_image_segmentation
-    else:
-        # Start with defaults and update with user-provided values
-        image_segmentation_metadata = default_image_segmentation.copy()
-        image_segmentation_metadata.update(user_image_segmentation)
-
-    image_segmentation_name = image_segmentation_metadata["name"]
+    image_segmentation_name = metadata.get("Ophys", {}).get("ImageSegmentation", {}).get("name", default_name)
 
     ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
 
-    # Check if the image segmentation already exists in the NWB file
+    # Add ImageSegmentation container if it doesn't already exist
     if image_segmentation_name not in ophys.data_interfaces:
         ophys.add(ImageSegmentation(name=image_segmentation_name))
 
