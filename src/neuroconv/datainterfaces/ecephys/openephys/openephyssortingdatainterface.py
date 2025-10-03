@@ -31,9 +31,14 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysSortingExtractor,
+        )
+
+        return OpenEphysSortingExtractor
+
     @validate_call
     def __init__(self, folder_path: DirectoryPath, experiment_id: int = 0, recording_id: int = 0):
-        from spikeextractors import OpenEphysSortingExtractor
-
-        self.Extractor = OpenEphysSortingExtractor
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)

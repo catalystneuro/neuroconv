@@ -19,7 +19,13 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
     associated_suffixes = (".raw", ".h5")
     info = "Interface for MaxOne recording data."
 
-    ExtractorName = "MaxwellRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            MaxwellRecordingExtractor,
+        )
+
+        return MaxwellRecordingExtractor
 
     @staticmethod
     def auto_install_maxwell_hdf5_compression_plugin(

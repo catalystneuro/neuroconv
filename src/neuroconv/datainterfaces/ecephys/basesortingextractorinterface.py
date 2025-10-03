@@ -16,8 +16,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "spike sorting")
 
-    ExtractorModuleName = "spikeinterface.extractors.extractor_classes"
-
     def __init__(self, verbose: bool = False, **source_data):
 
         super().__init__(**source_data)

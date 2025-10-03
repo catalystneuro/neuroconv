@@ -13,6 +13,12 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".sbx",)
     info = "Interface for Scanbox imaging data."
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import SbxImagingExtractor
+
+        return SbxImagingExtractor
+
     @validate_call
     def __init__(
         self,

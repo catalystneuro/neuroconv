@@ -289,6 +289,26 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     binary_file_extension = "dat"
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core import BinaryRecordingExtractor
+
+        return BinaryRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        # CellExplorerRecordingInterface uses custom BinaryRecordingExtractor initialization
+        # This method is not called due to custom __init__ implementation
+        # This is just to satisfy the abstract method requirement
+        # The actual initialization happens in __init__
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        # Return a placeholder - this won't actually be used
+        return self.get_extractor_class()(
+            file_paths=["dummy_path"], sampling_frequency=30000, num_channels=1, dtype="int16"
+        )
+
+    @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Folder containing the .session.mat file"
@@ -418,11 +438,23 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     associated_suffixes = (".mat", ".sessionInfo", ".spikes", ".cellinfo")
     info = "Interface for CellExplorer sorting data."
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            CellExplorerSortingExtractor,
+        )
 
-        return extractor_kwargs
+        return CellExplorerSortingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add sampling_frequency parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """
@@ -541,7 +573,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             sampling_frequency = int(extracellular_data["sr"])
 
             # Create a dummy recording extractor
-            from spikeinterface.core.numpyextractors import NumpyRecording
+            from spikeinterface.core import NumpyRecording
 
             traces_list = [np.empty(shape=(1, num_channels))]
             channel_ids = [str(1 + i) for i in range(num_channels)]

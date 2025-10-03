@@ -19,7 +19,32 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "voltage", "recording")
 
-    ExtractorModuleName = "spikeinterface.extractors.extractor_classes"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for recording interfaces.
+
+        Extends the base implementation to also remove the 'es_key' parameter
+        which is specific to the recording interface, not the extractor.
+        Also adds 'all_annotations=True' to ensure all metadata is loaded.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized recording extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
@@ -133,13 +158,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
-        new_recording = self.get_extractor()(
-            **{
-                keyword: value
-                for keyword, value in self.extractor_kwargs.items()
-                if keyword not in ["verbose", "es_key"]
-            }
-        )
+        new_recording = self._initialize_extractor(self.source_data)
+
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:

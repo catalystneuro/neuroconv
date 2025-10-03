@@ -27,11 +27,11 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to an Axon Binary Format (.abf) file"
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import AxonRecordingExtractor
 
-        return extractor_kwargs
+        return AxonRecordingExtractor
 
     def __init__(
         self,
@@ -54,13 +54,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         self.file_path = Path(file_path)
 
-        init_kwargs = dict(
-            file_path=self.file_path,
-            verbose=verbose,
-            es_key=es_key,
-        )
-
-        super().__init__(**init_kwargs)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def _get_start_datetime(self, neo_reader):
         """

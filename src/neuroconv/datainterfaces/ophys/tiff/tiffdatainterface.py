@@ -27,6 +27,12 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import TiffImagingExtractor
+
+        return TiffImagingExtractor
+
     @validate_call
     def __init__(
         self,
