@@ -2162,3 +2162,58 @@ class TestNoMetadataMutation:
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_photon_series_no_metadata_mutation(self):
+        """Test that add_photon_series_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        nwbfile = mock_NWBFile()
+        imaging_extractor = generate_dummy_imaging_extractor(
+            num_rows=10, num_columns=10, num_samples=30, sampling_frequency=30.0
+        )
+
+        # Create metadata with photon series
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "TwoPhotonSeries": [
+                    {
+                        "name": "TestTwoPhotonSeries",
+                        "description": "Test two photon series",
+                        "unit": "px",
+                        "imaging_plane": "TestImagingPlane",
+                    }
+                ],
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_photon_series_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type="TwoPhotonSeries",
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
