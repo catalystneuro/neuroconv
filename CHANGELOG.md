@@ -10,6 +10,7 @@
 * Added `MiniscopeImagingInterface` for single Miniscope acquisition folders with automatic session_start_time extraction, improved docstrings, and comprehensive documentation showing `MiniscopeConverter` for multi-acquisition data, `MiniscopeImagingInterface` for individual folders, and `ConverterPipe` for custom multi-acquisition workflows [PR #1524](https://github.com/catalystneuro/neuroconv/pull/1524)
 
 ## Improvements
+* Refactored `add_devices_to_nwbfile` and `add_imaging_plane_to_nwbfile` to avoid `dict_deep_update` and metadata mutation, using defaults directly from single source of truth `_get_default_ophys_metadata()` [PR #1527](https://github.com/catalystneuro/neuroconv/pull/1527)
 * Refactored ecephys metadata functions to use a single source of truth pattern, eliminating hardcoded duplications and improving maintainability [PR #1522](https://github.com/catalystneuro/neuroconv/pull/1522)
 * Refactored ophys metadata functions to use a single source of truth pattern, preventing accidental mutation of global state and improving maintainability [PR #1521](https://github.com/catalystneuro/neuroconv/pull/1521)
 * Add ruff-rule to detect non-pep585 annotation [PR #1520](https://github.com/catalystneuro/roiextractors/pull/1520)
