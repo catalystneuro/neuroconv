@@ -48,11 +48,7 @@ from neuroconv.utils import dict_deep_update
 class TestAddDevices(unittest.TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
+        self.nwbfile = mock_NWBFile()
 
         self.metadata = dict(Ophys=dict())
 
