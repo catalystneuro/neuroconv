@@ -1,18 +1,25 @@
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
+from .miniscopeimagingdatainterface import _MiniscopeMultiRecordingInterface
+from ... import MiniscopeBehaviorInterface
 from ....nwbconverter import NWBConverter
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import get_json_schema_from_method_signature
 
 
 class MiniscopeConverter(NWBConverter):
-    """Primary conversion class for handling Miniscope data streams."""
+    """Primary conversion class for handling Miniscope multi-recording data streams.
+
+    This converter is designed for data where multiple recordings are organized
+    in timestamp subfolders, each containing Miniscope and behavioral camera subfolders.
+    """
 
     display_name = "Miniscope Imaging and Video"
-    keywords = MiniscopeImagingInterface.keywords + MiniscopeBehaviorInterface.keywords
-    associated_suffixes = MiniscopeImagingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
+    keywords = _MiniscopeMultiRecordingInterface.keywords + MiniscopeBehaviorInterface.keywords
+    associated_suffixes = (
+        _MiniscopeMultiRecordingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
+    )
     info = "Converter for handling both imaging and video recordings from Miniscope."
 
     @classmethod
@@ -54,7 +61,7 @@ class MiniscopeConverter(NWBConverter):
         """
         self.verbose = verbose
         self.data_interface_objects = dict(
-            MiniscopeImaging=MiniscopeImagingInterface(folder_path=folder_path),
+            MiniscopeImaging=_MiniscopeMultiRecordingInterface(folder_path=folder_path),
             MiniscopeBehavCam=MiniscopeBehaviorInterface(folder_path=folder_path),
         )
 
