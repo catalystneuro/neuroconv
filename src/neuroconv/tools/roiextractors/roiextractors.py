@@ -232,7 +232,7 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
 
 def add_imaging_plane_to_nwbfile(
     nwbfile: NWBFile,
-    metadata: dict | None = None,
+    metadata: dict,
     imaging_plane_name: str | None = None,
 ) -> NWBFile:
     """
@@ -243,10 +243,11 @@ def add_imaging_plane_to_nwbfile(
     ----------
     nwbfile : NWBFile
         An previously defined -in memory- NWBFile.
-    metadata : dict, optional
-        The metadata in the nwb conversion tools format. If None, uses defaults from _get_default_ophys_metadata().
+    metadata : dict
+        The metadata in the neuroconv format. See `_get_default_ophys_metadata()` for an example.
     imaging_plane_name: str, optional
-        The name of the imaging plane to be added. If None, uses the default imaging plane name.
+        The name of the imaging plane to be added. If None, this function adds the default imaging plane
+        in _get_default_ophys_metadata().
 
     Returns
     -------
@@ -256,6 +257,9 @@ def add_imaging_plane_to_nwbfile(
     default_metadata = _get_default_ophys_metadata()
     default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
 
+    # Track whether user explicitly provided a name
+    user_provided_a_name = imaging_plane_name is not None
+
     imaging_plane_name = imaging_plane_name or default_imaging_plane["name"]
 
     if imaging_plane_name in nwbfile.imaging_planes:
@@ -263,25 +267,30 @@ def add_imaging_plane_to_nwbfile(
 
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-    metadata = metadata or {}
-    imaging_planes_list = metadata.get("Ophys", {}).get("ImagingPlane", [])
-
-    # Search for imaging plane by name in user metadata
-    user_provided_plane_metadata = next(
-        (plane for plane in imaging_planes_list if plane["name"] == imaging_plane_name),
-        None,
-    )
-
-    if user_provided_plane_metadata is None:
-        raise ValueError(
-            f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
+    if user_provided_a_name:
+        # User explicitly requested a specific plane - search for it in metadata
+        imaging_planes_list = metadata.get("Ophys", {}).get("ImagingPlane", [])
+        metadata_found = next(
+            (plane for plane in imaging_planes_list if plane["name"] == imaging_plane_name),
+            None,
         )
 
-    # Start with defaults and update with user-provided values if available
-    imaging_plane_kwargs = default_imaging_plane
-    if user_provided_plane_metadata:
-        # Note this is safe because we don't modify the values of the added keys
-        imaging_plane_kwargs.update(user_provided_plane_metadata)
+        if metadata_found is None:
+            raise ValueError(
+                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
+            )
+
+        # Copy user metadata to avoid mutation
+        imaging_plane_kwargs = metadata_found.copy()
+
+        # Fill in any missing required fields with defaults
+        required_fields = ["name", "excitation_lambda", "indicator", "location", "device", "optical_channel"]
+        for field in required_fields:
+            if field not in imaging_plane_kwargs:
+                imaging_plane_kwargs[field] = default_imaging_plane[field]
+    else:
+        # User didn't provide a name, use local copy of defaults as kwargs
+        imaging_plane_kwargs = default_imaging_plane
 
     # Replace device name string with actual device object from nwbfile
     device_name = imaging_plane_kwargs["device"]
