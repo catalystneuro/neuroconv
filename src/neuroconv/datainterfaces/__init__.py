@@ -33,6 +33,7 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import (
     CellExplorerSortingInterface,
 )
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
+from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
@@ -91,6 +92,7 @@ from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterfac
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
+from .ophys.minian.miniandatainterface import MinianSegmentationInterface
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
@@ -140,6 +142,7 @@ interface_list = [
     AxonaLFPDataInterface,
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
+    EDFAnalogInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
     PlexonLFPInterface,
@@ -173,6 +176,7 @@ interface_list = [
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     TDTFiberPhotometryInterface,
+    MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
     VideoInterface,

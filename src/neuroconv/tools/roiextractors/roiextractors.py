@@ -42,101 +42,103 @@ from ...utils import (
 from ...utils.str_utils import human_readable_size
 
 
-def _get_default_ophys_metadata() -> DeepDict:
-    """Fill default metadata for Device and ImagingPlane."""
+def _get_default_ophys_metadata():
+    """
+    Returns fresh ophys default metadata dictionary.
+
+    Single source of truth for all ophys default metadata.
+    Each call returns a new instance to prevent accidental mutation of global state.
+    """
     metadata = get_default_nwbfile_metadata()
 
-    default_device = dict(name="Microscope")
-
-    default_optical_channel = dict(
-        name="OpticalChannel",
-        emission_lambda=np.nan,
-        description="An optical channel of the microscope.",
-    )
-
-    default_imaging_plane = dict(
-        name="ImagingPlane",
-        description="The plane or volume being imaged by the microscope.",
-        excitation_lambda=np.nan,
-        indicator="unknown",
-        location="unknown",
-        device=default_device["name"],
-        optical_channel=[default_optical_channel],
-    )
-
-    metadata.update(
-        Ophys=dict(
-            Device=[default_device],
-            ImagingPlane=[default_imaging_plane],
-        ),
-    )
+    metadata["Ophys"] = {
+        "Device": [{"name": "Microscope"}],
+        "ImagingPlane": [
+            {
+                "name": "ImagingPlane",
+                "description": "The plane or volume being imaged by the microscope.",
+                "excitation_lambda": np.nan,
+                "indicator": "unknown",
+                "location": "unknown",
+                "device": "Microscope",
+                "optical_channel": [
+                    {
+                        "name": "OpticalChannel",
+                        "emission_lambda": np.nan,
+                        "description": "An optical channel of the microscope.",
+                    }
+                ],
+            }
+        ],
+        "TwoPhotonSeries": [
+            {
+                "name": "TwoPhotonSeries",
+                "description": "Imaging data from two-photon excitation microscopy.",
+                "unit": "n.a.",
+                "imaging_plane": "ImagingPlane",
+            }
+        ],
+        "OnePhotonSeries": [
+            {
+                "name": "OnePhotonSeries",
+                "description": "Imaging data from one-photon excitation microscopy.",
+                "unit": "n.a.",
+                "imaging_plane": "ImagingPlane",
+            }
+        ],
+        "Fluorescence": {
+            "name": "Fluorescence",
+            "PlaneSegmentation": {
+                "raw": {"name": "RoiResponseSeries", "description": "Array of raw fluorescence traces.", "unit": "n.a."}
+            },
+            "BackgroundPlaneSegmentation": {
+                "neuropil": {"name": "neuropil", "description": "Array of neuropil traces.", "unit": "n.a."}
+            },
+        },
+        "DfOverF": {
+            "name": "DfOverF",
+            "PlaneSegmentation": {
+                "dff": {"name": "RoiResponseSeries", "description": "Array of df/F traces.", "unit": "n.a."}
+            },
+        },
+        "ImageSegmentation": {
+            "name": "ImageSegmentation",
+            "plane_segmentations": [
+                {"name": "PlaneSegmentation", "description": "Segmented ROIs", "imaging_plane": "ImagingPlane"},
+                {
+                    "name": "BackgroundPlaneSegmentation",
+                    "description": "Segmented Background Components",
+                    "imaging_plane": "ImagingPlane",
+                },
+            ],
+        },
+        "SegmentationImages": {
+            "name": "SegmentationImages",
+            "description": "The summary images of the segmentation.",
+            "PlaneSegmentation": {"correlation": {"name": "correlation", "description": "The correlation image."}},
+        },
+    }
 
     return metadata
 
 
 def _get_default_segmentation_metadata() -> DeepDict:
-    """Fill default metadata for segmentation."""
-    metadata = _get_default_ophys_metadata()
+    """Fill default metadata for segmentation using _get_default_ophys_metadata()."""
+    from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
 
-    default_fluorescence_roi_response_series = dict(
-        name="RoiResponseSeries", description="Array of raw fluorescence traces.", unit="n.a."
-    )
+    # Start with base NWB metadata
+    metadata = get_default_nwbfile_metadata()
 
-    default_fluorescence = dict(
-        name="Fluorescence",
-        PlaneSegmentation=dict(
-            raw=default_fluorescence_roi_response_series,
-        ),
-        BackgroundPlaneSegmentation=dict(
-            neuropil=dict(name="neuropil", description="Array of neuropil traces.", unit="n.a."),
-        ),
-    )
-
-    default_dff_roi_response_series = dict(
-        name="RoiResponseSeries",
-        description="Array of df/F traces.",
-        unit="n.a.",
-    )
-
-    default_df_over_f = dict(
-        name="DfOverF",
-        PlaneSegmentation=dict(
-            dff=default_dff_roi_response_series,
-        ),
-    )
-
-    default_image_segmentation = dict(
-        name="ImageSegmentation",
-        plane_segmentations=[
-            dict(
-                name="PlaneSegmentation",
-                description="Segmented ROIs",
-                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
-            ),
-            dict(
-                name="BackgroundPlaneSegmentation",
-                description="Segmented Background Components",
-                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
-            ),
-        ],
-    )
-
-    default_segmentation_images = dict(
-        name="SegmentationImages",
-        description="The summary images of the segmentation.",
-        PlaneSegmentation=dict(
-            correlation=dict(name="correlation", description="The correlation image."),
-        ),
-    )
-
-    metadata["Ophys"].update(
-        dict(
-            Fluorescence=default_fluorescence,
-            DfOverF=default_df_over_f,
-            ImageSegmentation=default_image_segmentation,
-            SegmentationImages=default_segmentation_images,
-        ),
-    )
+    # Get fresh ophys defaults and add to metadata
+    ophys_defaults = _get_default_ophys_metadata()
+    metadata["Ophys"] = {
+        "Device": ophys_defaults["Ophys"]["Device"],
+        "ImagingPlane": ophys_defaults["Ophys"]["ImagingPlane"],
+        "Fluorescence": ophys_defaults["Ophys"]["Fluorescence"],
+        "DfOverF": ophys_defaults["Ophys"]["DfOverF"],
+        "ImageSegmentation": ophys_defaults["Ophys"]["ImageSegmentation"],
+        "SegmentationImages": ophys_defaults["Ophys"]["SegmentationImages"],
+    }
 
     return metadata
 
@@ -161,34 +163,33 @@ def get_nwb_imaging_metadata(
         Dictionary containing metadata for devices, imaging planes, and photon series
         specific to the imaging data.
     """
+    # Get fresh ophys defaults
     metadata = _get_default_ophys_metadata()
 
     # TODO: get_num_channels is deprecated, remove
     channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
 
-    imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-    for index, channel_name in enumerate(channel_name_list):
-        if index == 0:
-            imaging_plane["optical_channel"][index]["name"] = channel_name
-        else:
-            imaging_plane["optical_channel"].append(
-                dict(
-                    name=channel_name,
-                    emission_lambda=np.nan,
-                    description="An optical channel of the microscope.",
-                )
-            )
+    # Update optical channels based on extractor data
+    optical_channels = []
+    for channel_name in channel_name_list:
+        optical_channel = metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][0].copy()
+        optical_channel["name"] = channel_name
+        optical_channels.append(optical_channel)
 
-    one_photon_description = "Imaging data from one-photon excitation microscopy."
-    two_photon_description = "Imaging data from two-photon excitation microscopy."
-    photon_series_metadata = dict(
-        name=photon_series_type,
-        description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
-        unit="n.a.",
-        imaging_plane=imaging_plane["name"],
-        dimension=list(imgextractor.get_sample_shape()),
-    )
-    metadata["Ophys"].update({photon_series_type: [photon_series_metadata]})
+    # Update imaging plane with correct optical channels
+    metadata["Ophys"]["ImagingPlane"][0]["optical_channel"] = optical_channels
+
+    # Add photon series with dimension from extractor
+    photon_series_metadata = metadata["Ophys"][photon_series_type][0].copy()
+    photon_series_metadata["dimension"] = list(imgextractor.get_sample_shape())
+    metadata["Ophys"][photon_series_type] = [photon_series_metadata]
+
+    # Keep only Device, ImagingPlane, and the specific photon series type
+    metadata["Ophys"] = {
+        "Device": metadata["Ophys"]["Device"],
+        "ImagingPlane": metadata["Ophys"]["ImagingPlane"],
+        photon_series_type: metadata["Ophys"][photon_series_type],
+    }
 
     return metadata
 
@@ -196,9 +197,14 @@ def get_nwb_imaging_metadata(
 def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
     """
     Add optical physiology devices from metadata.
-    The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
-    This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
+    Notes
+    -----
+    The metadata concerning the optical physiology should be stored in ``metadata['Ophys']['Device']``.
+
+    Deprecation: Passing ``pynwb.device.Device`` objects directly inside
+    ``metadata['Ophys']['Device']`` is deprecated and will be removed on or after March 2026.
+    Please pass device definitions as dictionaries instead (e.g., ``{"name": "Microscope"}``).
     """
     metadata_copy = {} if metadata is None else deepcopy(metadata)
     default_metadata = _get_default_ophys_metadata()
@@ -206,6 +212,13 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     device_metadata = metadata_copy["Ophys"]["Device"]
 
     for device in device_metadata:
+        if not isinstance(device, dict):
+            warnings.warn(
+                "Passing pynwb.device.Device objects in metadata['Ophys']['Device'] is deprecated and will be "
+                "removed on or after March 2026. Please pass device definitions as dictionaries instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
         device_name = device["name"] if isinstance(device, dict) else device.name
         if device_name not in nwbfile.devices:
             device = Device(**device) if isinstance(device, dict) else device
@@ -324,7 +337,7 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
     image_segmentation_name = image_segmentation_metadata["name"]
 
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
 
     # Check if the image segmentation already exists in the NWB file
     if image_segmentation_name not in ophys.data_interfaces:
@@ -410,7 +423,7 @@ def add_photon_series_to_nwbfile(
     if parent_container == "acquisition" and photon_series_name in nwbfile.acquisition:
         raise ValueError(f"{photon_series_name} already added to nwbfile.acquisition.")
     elif parent_container == "processing/ophys":
-        ophys = get_module(nwbfile, name="ophys")
+        ophys = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
         if photon_series_name in ophys.data_interfaces:
             raise ValueError(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
 
@@ -462,7 +475,7 @@ def add_photon_series_to_nwbfile(
     if parent_container == "acquisition":
         nwbfile.add_acquisition(photon_series)
     elif parent_container == "processing/ophys":
-        ophys = get_module(nwbfile, name="ophys")
+        ophys = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
         ophys.add(photon_series)
 
     return nwbfile
@@ -884,7 +897,7 @@ def _add_plane_segmentation(
     add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy)
 
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation_name = image_segmentation_metadata["name"]
     image_segmentation = ophys[image_segmentation_name]
 
@@ -1218,7 +1231,7 @@ def _create_roi_table_region(
     )
 
     image_segmentation_name = image_segmentation_metadata["name"]
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys[image_segmentation_name]
 
     # Get plane segmentation from the image segmentation
@@ -1241,7 +1254,7 @@ def _create_roi_table_region(
 def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str):
     """Private method to get the container for the segmentation data.
     If the container does not exist, it is created."""
-    ophys = get_module(nwbfile, "ophys")
+    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
 
     if data_interface_name in ophys.data_interfaces:
         return ophys.get(data_interface_name)

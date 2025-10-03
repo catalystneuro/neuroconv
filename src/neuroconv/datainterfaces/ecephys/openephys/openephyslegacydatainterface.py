@@ -11,7 +11,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface for converting legacy Open Ephys data (.continuous files).
 
-    Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_openephys`.
     """
 
     display_name = "OpenEphys Legacy Recording"
@@ -33,7 +33,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         list of str
             The names of the available recording streams.
         """
-        from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysLegacyRecordingExtractor,
+        )
 
         stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
@@ -69,7 +71,6 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
 
-        See :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor` for options.
 
         Parameters
         ----------
@@ -79,7 +80,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The name of the recording stream.
         block_index : int, optional, default: None
             The index of the block to extract from the data.
-        verbose : bool, default: Falseee
+        verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
         available_streams = self.get_stream_names(folder_path=folder_path)

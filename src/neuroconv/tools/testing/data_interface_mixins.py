@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Type
+from typing import Literal
 
 import numpy as np
 import pytest
@@ -57,7 +57,7 @@ class DataInterfaceTestMixin:
         Directory where test files should be saved.
     """
 
-    data_interface_cls: Type[BaseDataInterface]
+    data_interface_cls: type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
     conversion_options: dict | None = None
@@ -237,7 +237,7 @@ class TemporalAlignmentMixin:
     Generic class for testing temporal alignment methods.
     """
 
-    data_interface_cls: Type[BaseDataInterface]
+    data_interface_cls: type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
     conversion_options: dict | None = None
@@ -337,7 +337,7 @@ class TemporalAlignmentMixin:
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: Type[BaseImagingExtractorInterface]
+    data_interface_cls: type[BaseImagingExtractorInterface]
     optical_series_name: str = "TwoPhotonSeries"
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -347,11 +347,9 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         imaging = self.interface.imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name=self.optical_series_name)
 
-        exclude_channel_comparison = False
-        if imaging.get_channel_names() is None:
-            exclude_channel_comparison = True
-
-        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+        # Exclude channel comparison: imaging extractors now effectively have a single channel
+        # and NWB readers may assign a default channel name (e.g., "OpticalChannel").
+        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison=True)
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
@@ -395,7 +393,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     Generic class for testing any recording interface.
     """
 
-    data_interface_cls: Type[BaseRecordingExtractorInterface]
+    data_interface_cls: type[BaseRecordingExtractorInterface]
     is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -614,8 +612,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: Type[BaseSortingExtractorInterface]
-    associated_recording_cls: Type[BaseRecordingExtractorInterface] | None = None
+    data_interface_cls: type[BaseSortingExtractorInterface]
+    associated_recording_cls: type[BaseRecordingExtractorInterface] | None = None
     associated_recording_kwargs: dict | None = None
 
     def setUpFreshInterface(self):

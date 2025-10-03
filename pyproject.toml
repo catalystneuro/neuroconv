@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.7.6"
+version = "0.8.2"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -14,6 +14,7 @@ authors = [
     { name = "Heberto Mayorquin" },
     { name = "Paul Adkisson" },
     { name = "Luiz Tauffer" },
+    { name=  "Alessandra Trapani" },
     { name = "Ben Dichter", email = "ben.dichter@catalystneuro.com" },
 ]
 
@@ -70,7 +71,7 @@ sorting_analyzer = [   # These dependencies are for testing the sorting analyzer
     "scipy",
 ]
 
-dandi = ["dandi>=0.69"]
+dandi = ["dandi>=0.70.0"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
@@ -97,7 +98,7 @@ audio = [
 ]
 sleap = [
     "av>=10.0.0",
-    "sleap-io>=0.3.0",
+    "sleap-io>=0.5.2",
     "ndx-pose>=0.2.2",
 ]
 deeplabcut = [
@@ -193,7 +194,6 @@ phy = [
 
 plexon = [
     "neuroconv[ecephys_minimal]",
-    "zugbruecke >= 0.2.1; platform_system != 'Windows'",  # Here for backwards compatibility with older versions of the gallery. Remove in 0.8
 ]
 
 plexon2 = [
@@ -259,14 +259,13 @@ image = [
 
 ## Fiber Photometry
 fiber_photometry = [
-    "ndx-fiber-photometry",
-    "pynwb<3.1.0",
+    "ndx-fiber-photometry>=0.2.2",
 ]
 
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.6",
+    "roiextractors>=0.7",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -284,6 +283,10 @@ cnmfe = [
 extract = [
     "neuroconv[ophys_minimal]",
 ]
+minian = [
+    "neuroconv[ophys_minimal]",
+]
+
 femtonics = [
     "neuroconv[ophys_minimal]",
 ]
@@ -353,8 +356,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
-    "isx>=2.0; (sys_platform != 'darwin' or platform_machine != 'arm64') and python_version < '3.13'",
-    "neuroconv[ophys_minimal]",
+    "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
     "neuroconv[miniscope]",
@@ -362,7 +364,7 @@ ophys = [
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
-    # "neuroconv[tdt_fp]", # TODO: add tdt_fp back to ophys when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+    "neuroconv[tdt_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
@@ -391,6 +393,7 @@ doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
+    "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",  # TODO: remove when spikeinterface>=0.105.0
 ]
 
 [tool.black]
@@ -423,6 +426,8 @@ select = [
     "I",  # All isort rules
     "D101",  # Missing docstring in public class
     "D103",  # Missing docstring in public function
+    "UP006", # non-pep585 annotation (tuple, list -> tuple, list)
+    "UP007" # non-pep604 annotation (Union[x, y] -> X | Y )
 ]
 fixable = ["ALL"]
 

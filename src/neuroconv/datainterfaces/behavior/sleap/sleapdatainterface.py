@@ -6,7 +6,6 @@ from pynwb.file import NWBFile
 
 from .sleap_utils import extract_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_package
 
 
 class SLEAPInterface(BaseTemporalAlignmentInterface):
@@ -41,7 +40,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .slp file (the output of sleap)
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         video_file_path : FilePath, optional
             The file path of the video for extracting timestamps.
@@ -54,7 +53,6 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         import ndx_pose  # noqa: F401
 
         self.file_path = Path(file_path)
-        self.sleap_io = get_package(package_name="sleap_io")
         self.video_file_path = video_file_path
         self.video_sample_rate = frames_per_second
         self.verbose = verbose
@@ -100,7 +98,8 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         if self.video_sample_rate:
             pose_estimation_metadata.update(video_sample_rate=self.video_sample_rate)
 
-        labels = self.sleap_io.load_slp(self.file_path)
-        self.sleap_io.io.nwb.append_nwb_data(
-            labels=labels, nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata
-        )
+        from sleap_io import load_slp
+        from sleap_io.io.nwb_predictions import append_nwb_data
+
+        labels = load_slp(self.file_path)
+        append_nwb_data(labels=labels, nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata)
