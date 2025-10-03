@@ -309,31 +309,29 @@ def add_imaging_plane_to_nwbfile(
 
 def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
-    Adds the image segmentation specified by the metadata to the nwb file.
+    Adds the image segmentation container to the nwb file.
 
     Parameters
     ----------
     nwbfile : NWBFile
         The nwbfile to add the image segmentation to.
     metadata: dict
-        The metadata to create the image segmentation from.
+        The metadata in the neuroconv format. See `_get_default_segmentation_metadata()` for an example.
 
     Returns
     -------
     NWBFile
         The NWBFile passed as an input with the image segmentation added.
     """
-    # Set the defaults and required infrastructure
-    metadata_copy = deepcopy(metadata)
+    # Get ImageSegmentation name from metadata or use default
     default_metadata = _get_default_segmentation_metadata()
-    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+    default_name = default_metadata["Ophys"]["ImageSegmentation"]["name"]
 
-    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
-    image_segmentation_name = image_segmentation_metadata["name"]
+    image_segmentation_name = metadata.get("Ophys", {}).get("ImageSegmentation", {}).get("name", default_name)
 
     ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
 
-    # Check if the image segmentation already exists in the NWB file
+    # Add ImageSegmentation container if it doesn't already exist
     if image_segmentation_name not in ophys.data_interfaces:
         ophys.add(ImageSegmentation(name=image_segmentation_name))
 
