@@ -390,17 +390,14 @@ def add_photon_series_to_nwbfile(
     """
 
     iterator_options = iterator_options or dict()
+    metadata = metadata or {}
 
-    metadata_copy = {} if metadata is None else deepcopy(metadata)
     assert photon_series_type in [
         "OnePhotonSeries",
         "TwoPhotonSeries",
     ], "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'."
-    metadata_copy = dict_deep_update(
-        get_nwb_imaging_metadata(imaging, photon_series_type=photon_series_type), metadata_copy, append_list=False
-    )
 
-    if photon_series_type == "TwoPhotonSeries" and "OnePhotonSeries" in metadata_copy["Ophys"]:
+    if photon_series_type == "TwoPhotonSeries" and "OnePhotonSeries" in metadata.get("Ophys", {}):
         warnings.warn(
             "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
         )
@@ -410,8 +407,29 @@ def add_photon_series_to_nwbfile(
         "processing/ophys",
     ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
-    # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
-    photon_series_metadata = metadata_copy["Ophys"][photon_series_type][photon_series_index]
+    # Get defaults from single source of truth
+    default_metadata = _get_default_ophys_metadata()
+    default_photon_series = default_metadata["Ophys"][photon_series_type][0]
+
+    # Extract photon series metadata from user or use defaults
+    user_photon_series_list = metadata.get("Ophys", {}).get(photon_series_type, [])
+    if user_photon_series_list and photon_series_index < len(user_photon_series_list):
+        user_photon_series = user_photon_series_list[photon_series_index]
+
+        # Track whether user explicitly provided imaging_plane name (before filling defaults)
+        # This determines whether we should search metadata for a specific plane or create defaults
+        user_provided_imaging_plane_name = "imaging_plane" in user_photon_series
+
+        photon_series_metadata = user_photon_series.copy()
+        # Fill missing required fields with defaults
+        for field in ["name", "description", "unit", "imaging_plane"]:
+            if field not in photon_series_metadata:
+                photon_series_metadata[field] = default_photon_series[field]
+    else:
+        # User didn't provide photon series metadata - using all defaults
+        user_provided_imaging_plane_name = False
+        photon_series_metadata = default_photon_series
+
     photon_series_name = photon_series_metadata["name"]
 
     if parent_container == "acquisition" and photon_series_name in nwbfile.acquisition:
@@ -421,12 +439,28 @@ def add_photon_series_to_nwbfile(
         if photon_series_name in ophys.data_interfaces:
             raise ValueError(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
 
-    # Add the image plane to nwb
+    # Get the actual imaging plane name from photon series metadata
     imaging_plane_name = photon_series_metadata["imaging_plane"]
-    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
+
+    if user_provided_imaging_plane_name:
+        # User explicitly provided imaging_plane name - search for it in metadata
+        imaging_plane_name_to_search = imaging_plane_name
+    else:
+        # User didn't provide imaging_plane - signal to create from defaults
+        imaging_plane_name_to_search = None
+
+    add_imaging_plane_to_nwbfile(
+        nwbfile=nwbfile,
+        metadata=metadata,
+        imaging_plane_name=imaging_plane_name_to_search,
+    )
+
+    # Retrieve the plane using the actual name (always set in photon_series_metadata)
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
-    photon_series_kwargs = deepcopy(photon_series_metadata)
-    photon_series_kwargs.update(imaging_plane=imaging_plane)
+
+    # Build photon series kwargs from extracted metadata
+    photon_series_kwargs = photon_series_metadata.copy()
+    photon_series_kwargs["imaging_plane"] = imaging_plane
 
     # Add the data
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
@@ -434,10 +468,11 @@ def add_photon_series_to_nwbfile(
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
-    photon_series_kwargs.update(data=frames_to_iterator)
+    photon_series_kwargs["data"] = frames_to_iterator
 
-    # Add dimension
-    photon_series_kwargs.update(dimension=imaging.get_sample_shape())
+    # Add dimension: respect user-provided value, else derive from extractor
+    if "dimension" not in photon_series_kwargs:
+        photon_series_kwargs["dimension"] = imaging.get_sample_shape()
 
     # Add timestamps or rate
     if always_write_timestamps:
