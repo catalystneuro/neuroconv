@@ -2251,3 +2251,19 @@ class TestNoMetadataMutation:
                 metadata=metadata,
                 photon_series_type="TwoPhotonSeries",
             )
+
+    def test_add_image_segmentation_no_metadata_mutation(self):
+        """Test that add_image_segmentation_to_nwbfile does not mutate the input metadata."""
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with image segmentation
+        metadata = {"Ophys": {"ImageSegmentation": {"name": "TestImageSegmentation"}}}
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
