@@ -406,7 +406,11 @@ def add_photon_series_to_nwbfile(
 
     # Extract photon series metadata from user or use defaults
     user_photon_series_list = metadata.get("Ophys", {}).get(photon_series_type, [])
-    if user_photon_series_list and photon_series_index < len(user_photon_series_list):
+    if user_photon_series_list:
+        if photon_series_index >= len(user_photon_series_list):
+            raise IndexError(
+                f"photon_series_index ({photon_series_index}) out of range. Must be less than {len(user_photon_series_list)}."
+            )
         user_photon_series_metadata = user_photon_series_list[photon_series_index]
 
         # Determine if imaging_plane was user-provided, if the value is None this will be used
