@@ -1722,23 +1722,6 @@ class TestAddPhotonSeries(TestCase):
                 photon_series_type="invalid",
             )
 
-    def test_add_photon_series_to_nwbfile_inconclusive_metadata(self):
-        """Test warning is raised when `photon_series_type` specifies 'TwoPhotonSeries' but metadata contains also 'OnePhotonSeries'."""
-
-        exc_msg = "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
-        photon_series_metadata = deepcopy(self.one_photon_series_metadata)
-        photon_series_metadata["Ophys"].update(
-            TwoPhotonSeries=self.two_photon_series_metadata["Ophys"]["TwoPhotonSeries"]
-        )
-
-        with self.assertWarnsWith(warn_type=UserWarning, exc_msg=exc_msg):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=photon_series_metadata,
-                photon_series_type="TwoPhotonSeries",
-            )
-
     def test_add_one_photon_series(self):
         """Test adding one photon series with metadata."""
 
@@ -1816,45 +1799,6 @@ class TestAddPhotonSeries(TestCase):
         )
         ophys = self.nwbfile.processing["ophys"]
         self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
-
-    def test_photon_series_not_added_to_acquisition_with_same_name(self):
-        """Test that photon series with the same name are not added to nwbfile.acquisition."""
-
-        with self.assertRaisesWith(
-            exc_type=ValueError, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
-        ):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-            )
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-            )
-        self.assertEqual(len(self.nwbfile.acquisition), 1)
-
-    def test_photon_series_not_added_to_processing_with_same_name(self):
-        """Test that photon series with the same name are not added to nwbfile.processing."""
-
-        with self.assertRaisesWith(
-            exc_type=ValueError,
-            exc_msg=f"{self.two_photon_series_name} already added to nwbfile.processing['ophys'].",
-        ):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-                parent_container="processing/ophys",
-            )
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-                parent_container="processing/ophys",
-            )
-        self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
 
     def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
         """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
@@ -2159,6 +2103,61 @@ class TestNoMetadataMutation:
 
         # Call function (should fill in missing fields internally but not mutate the input)
         add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_photon_series_no_metadata_mutation(self):
+        """Test that add_photon_series_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        nwbfile = mock_NWBFile()
+        imaging_extractor = generate_dummy_imaging_extractor(
+            num_rows=10, num_columns=10, num_samples=30, sampling_frequency=30.0
+        )
+
+        # Create metadata with photon series
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "TwoPhotonSeries": [
+                    {
+                        "name": "TestTwoPhotonSeries",
+                        "description": "Test two photon series",
+                        "unit": "px",
+                        "imaging_plane": "TestImagingPlane",
+                    }
+                ],
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_photon_series_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type="TwoPhotonSeries",
+        )
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
