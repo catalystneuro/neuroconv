@@ -871,21 +871,26 @@ def _add_plane_segmentation(
     iterator_options = iterator_options or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_segmentation_metadata()
+    default_metadata = _get_default_ophys_metadata()
     default_plane_segmentation = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
         default_plane_segmentation_index
     ]
 
+    # Add image segmentation container
+    default_image_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["name"]
+    image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
+    image_segmentation_name = image_segmentation_metadata.get("name", default_image_segmentation_name)
+    add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
+    image_segmentation = ophys_module[image_segmentation_name]
+
     # Track whether user explicitly provided a plane segmentation name
     user_provided_plane_segmentation_name = plane_segmentation_name is not None
-
-    # Determine plane segmentation name
     plane_segmentation_name = plane_segmentation_name or default_plane_segmentation["name"]
 
     # Extract plane segmentation metadata from user or use defaults
-    user_plane_segmentations_list = (
-        metadata.get("Ophys", {}).get("ImageSegmentation", {}).get("plane_segmentations", [])
-    )
+    user_plane_segmentations_list = image_segmentation_metadata.get("plane_segmentations", [])
     user_plane_segmentation = next(
         (ps for ps in user_plane_segmentations_list if ps["name"] == plane_segmentation_name),
         None,
@@ -898,18 +903,19 @@ def _add_plane_segmentation(
         )
 
     if user_plane_segmentation is not None:
-        # User provided plane segmentation - use it and fill missing required fields
-        plane_segmentation_metadata = user_plane_segmentation.copy()
-        for field in ["name", "description", "imaging_plane"]:
-            if field not in plane_segmentation_metadata:
-                plane_segmentation_metadata[field] = default_plane_segmentation[field]
+        # User provided plane segmentation use it and fill missing required fields
+        plane_segmentation_kwargs = user_plane_segmentation.copy()
+        required_fields = ["name", "description", "imaging_plane"]
+        for field in required_fields:
+            if field not in plane_segmentation_kwargs:
+                plane_segmentation_kwargs[field] = default_plane_segmentation[field]
     else:
         # User didn't provide plane segmentation - use defaults
-        plane_segmentation_metadata = default_plane_segmentation
+        plane_segmentation_kwargs = default_plane_segmentation
 
     # Add dependencies (passing unmodified metadata)
     # Check if user provided imaging plane metadata, otherwise use default
-    imaging_plane_name_from_plane_seg = plane_segmentation_metadata["imaging_plane"]
+    imaging_plane_name_from_plane_seg = plane_segmentation_kwargs["imaging_plane"]
     user_imaging_planes_list = metadata.get("Ophys", {}).get("ImagingPlane", [])
     user_has_imaging_plane = any(
         plane["name"] == imaging_plane_name_from_plane_seg for plane in user_imaging_planes_list
@@ -917,16 +923,6 @@ def _add_plane_segmentation(
 
     imaging_plane_name_to_add = imaging_plane_name_from_plane_seg if user_has_imaging_plane else None
     add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add)
-    add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-    # Get ImageSegmentation container
-    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
-    image_segmentation_name = (
-        metadata.get("Ophys", {})
-        .get("ImageSegmentation", {})
-        .get("name", default_metadata["Ophys"]["ImageSegmentation"]["name"])
-    )
-    image_segmentation = ophys[image_segmentation_name]
 
     if plane_segmentation_name in image_segmentation.plane_segmentations:
         # At the moment, we don't support extending an existing PlaneSegmentation.
@@ -934,7 +930,6 @@ def _add_plane_segmentation(
 
     # Build PlaneSegmentation object
     imaging_plane = nwbfile.imaging_planes[imaging_plane_name_from_plane_seg]
-    plane_segmentation_kwargs = plane_segmentation_metadata
     plane_segmentation_kwargs["imaging_plane"] = imaging_plane
     plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
 
