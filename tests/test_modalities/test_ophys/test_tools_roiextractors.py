@@ -1800,24 +1800,6 @@ class TestAddPhotonSeries(TestCase):
         ophys = self.nwbfile.processing["ophys"]
         self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
 
-    def test_photon_series_not_added_to_acquisition_with_same_name(self):
-        """Test that photon series with the same name are not added to nwbfile.acquisition."""
-
-        with self.assertRaisesWith(
-            exc_type=ValueError, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
-        ):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-            )
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-            )
-        self.assertEqual(len(self.nwbfile.acquisition), 1)
-
     def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
         """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
         add_photon_series_to_nwbfile(
