@@ -160,3 +160,37 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         data_interface_names = list(converter.data_interface_objects.keys())
         expected_interface_names = ["InterfaceA001", "InterfaceB", "InterfaceA002"]
         self.assertListEqual(data_interface_names, expected_interface_names)
+
+
+def test_converter_pipe_append_on_disk(tmp_path):
+    """Test that append_on_disk_nwbfile works for ConverterPipe with multiple interfaces."""
+    from pynwb import NWBHDF5IO
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    from neuroconv.tools.testing.mock_interfaces import (
+        MockRecordingInterface,
+        MockSortingInterface,
+    )
+
+    nwbfile_path = tmp_path / "test_append.nwb"
+
+    nwbfile = mock_NWBFile()
+    with NWBHDF5IO(nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    # Append to existing file with converter containing both recording and sorting interfaces
+    sorting_interface = MockSortingInterface(num_units=3, durations=(0.1,))
+    recording_interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
+    converter = ConverterPipe(data_interfaces=[sorting_interface, recording_interface])
+    converter.run_conversion(nwbfile_path=nwbfile_path, append_on_disk_nwbfile=True)
+
+    # Verify both interfaces' data was appended
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        # Original mock file data still exists
+        assert nwbfile.session_description is not None
+        # Sorting interface data
+        assert nwbfile.units is not None
+        assert len(nwbfile.units) == 3
+        # Recording interface data
+        assert "ElectricalSeries" in nwbfile.acquisition
