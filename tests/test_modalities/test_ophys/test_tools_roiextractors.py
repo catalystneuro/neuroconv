@@ -2232,3 +2232,85 @@ class TestNoMetadataMutation:
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_fluorescence_traces_no_metadata_mutation(self):
+        """Test that add_fluorescence_traces_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        # Create metadata with fluorescence traces
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "ImageSegmentation": {
+                    "name": "TestImageSegmentation",
+                    "plane_segmentations": [
+                        {
+                            "name": "PlaneSegmentation",
+                            "description": "Test plane segmentation",
+                            "imaging_plane": "TestImagingPlane",
+                        }
+                    ],
+                },
+                "Fluorescence": {
+                    "PlaneSegmentation": {
+                        "raw": {
+                            "name": "RoiResponseSeries",
+                            "description": "Raw fluorescence",
+                            "unit": "n.a.",
+                        },
+                        "deconvolved": {
+                            "name": "Deconvolved",
+                            "description": "Deconvolved fluorescence",
+                            "unit": "n.a.",
+                        },
+                        "neuropil": {
+                            "name": "Neuropil",
+                            "description": "Neuropil fluorescence",
+                            "unit": "n.a.",
+                        },
+                    },
+                },
+                "DfOverF": {
+                    "PlaneSegmentation": {
+                        "dff": {
+                            "name": "RoiResponseSeries",
+                            "description": "DfOverF",
+                            "unit": "n.a.",
+                        }
+                    },
+                },
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_fluorescence_traces_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"

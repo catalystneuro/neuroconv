@@ -11,6 +11,7 @@
 * Added `MiniscopeImagingInterface` for single Miniscope acquisition folders with automatic session_start_time extraction, improved docstrings, and comprehensive documentation showing `MiniscopeConverter` for multi-acquisition data, `MiniscopeImagingInterface` for individual folders, and `ConverterPipe` for custom multi-acquisition workflows [PR #1524](https://github.com/catalystneuro/neuroconv/pull/1524)
 
 ## Improvements
+* Refactored `_add_fluorescence_traces_to_nwbfile` and `_create_roi_table_region` to remove `deepcopy(metadata)` and `dict_deep_update` patterns. Now extracts DfOverF and Fluorescence metadata separately from user or defaults, checks user metadata first before falling back to defaults for each trace, and passes unmodified metadata to dependencies without mutation. [PR #1542](https://github.com/catalystneuro/neuroconv/pull/1542)
 * Refactored `add_imaging_plane_to_nwbfile` to avoid `dict_deep_update` and metadata mutation, applying targeted defaults only for required fields at point of object creation (issue #1511) [PR #1530](https://github.com/catalystneuro/neuroconv/pull/1530)
 * Refactored `add_devices_to_nwbfile` and `add_imaging_plane_to_nwbfile` to avoid `dict_deep_update` and metadata mutation, using defaults directly from single source of truth `_get_default_ophys_metadata()` [PR #1527](https://github.com/catalystneuro/neuroconv/pull/1527)
 * Refactored ecephys metadata functions to use a single source of truth pattern, eliminating hardcoded duplications and improving maintainability [PR #1522](https://github.com/catalystneuro/neuroconv/pull/1522)
@@ -22,6 +23,7 @@
 * Updated ophys roiextractors tests to use only public APIs instead of accessing private attributes, improving compatibility with roiextractors segmentation model changes [PR #1526](https://github.com/catalystneuro/neuroconv/pull/1526)
 * Refactored `add_photon_series_to_nwbfile` to remove `get_nwb_imaging_metadata` middleman and inline extractor derivation. Now only derives `dimension` from imaging extractor when user doesn't provide it, ensuring user-provided values are always respected. Passes unmodified metadata to dependencies without mutation. [PR #1537](https://github.com/catalystneuro/neuroconv/pull/1537)
 * Refactored `_add_plane_segmentation` to remove `deepcopy(metadata)` and `dict_deep_update` patterns. Now extracts user plane segmentation metadata directly, fills missing required fields with defaults, and passes unmodified metadata to dependencies without mutation. Tracks user intent to provide clear error messages when custom plane segmentation names are not found. [PR #1539](https://github.com/catalystneuro/neuroconv/pull/1539)
+
 
 # v0.8.1 (September 16, 2025)
 
