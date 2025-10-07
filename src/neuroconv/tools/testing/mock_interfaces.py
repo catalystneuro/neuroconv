@@ -52,7 +52,7 @@ class MockTimeSeriesInterface(BaseDataInterface):
     A mock TimeSeries interface for testing purposes.
 
     This interface uses pynwb's mock_TimeSeries to create synthetic time series data
-    without SpikeInterface dependencies.
+    without only pynwb as a dependency.
     """
 
     def __init__(
