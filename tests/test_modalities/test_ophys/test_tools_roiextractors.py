@@ -2177,3 +2177,58 @@ class TestNoMetadataMutation:
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_plane_segmentation_no_metadata_mutation(self):
+        """Test that add_plane_segmentation_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        # Create metadata with plane segmentation
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "ImageSegmentation": {
+                    "name": "TestImageSegmentation",
+                    "plane_segmentations": [
+                        {
+                            "name": "TestPlaneSegmentation",
+                            "description": "Test plane segmentation",
+                            "imaging_plane": "TestImagingPlane",
+                        }
+                    ],
+                },
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_plane_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            plane_segmentation_name="TestPlaneSegmentation",
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
