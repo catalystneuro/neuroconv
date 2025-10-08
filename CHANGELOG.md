@@ -23,6 +23,7 @@
 * Updated ophys roiextractors tests to use only public APIs instead of accessing private attributes, improving compatibility with roiextractors segmentation model changes [PR #1526](https://github.com/catalystneuro/neuroconv/pull/1526)
 * Refactored `add_photon_series_to_nwbfile` to remove `get_nwb_imaging_metadata` middleman and inline extractor derivation. Now only derives `dimension` from imaging extractor when user doesn't provide it, ensuring user-provided values are always respected. Passes unmodified metadata to dependencies without mutation. [PR #1537](https://github.com/catalystneuro/neuroconv/pull/1537)
 * Refactored `_add_plane_segmentation` to remove `deepcopy(metadata)` and `dict_deep_update` patterns. Now extracts user plane segmentation metadata directly, fills missing required fields with defaults, and passes unmodified metadata to dependencies without mutation. Tracks user intent to provide clear error messages when custom plane segmentation names are not found. [PR #1539](https://github.com/catalystneuro/neuroconv/pull/1539)
+* Refactored `add_summary_images_to_nwbfile` to remove `deepcopy(metadata)` and `dict_deep_update` patterns. Now uses `_get_default_ophys_metadata()` directly and extracts SegmentationImages metadata from user or uses defaults. Changed error handling from `AssertionError` to `ValueError` for invalid plane segmentation names. [PR #1540](https://github.com/catalystneuro/neuroconv/pull/1540)
 
 
 # v0.8.1 (September 16, 2025)

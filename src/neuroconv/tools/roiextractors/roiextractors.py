@@ -1408,33 +1408,44 @@ def add_summary_images_to_nwbfile(
     """
     metadata = metadata or dict()
 
-    # Set the defaults and required infrastructure
-    metadata_copy = deepcopy(metadata)
-    default_metadata = _get_default_segmentation_metadata()
-    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+    # Get defaults from single source of truth
+    default_metadata = _get_default_ophys_metadata()
+    default_segmentation_images = default_metadata["Ophys"]["SegmentationImages"]
 
-    segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
-    images_container_name = segmentation_images_metadata["name"]
+    # Extract SegmentationImages metadata from user or use defaults
+    user_segmentation_images = metadata.get("Ophys", {}).get("SegmentationImages", {})
+
+    # Get container name and description
+    images_container_name = user_segmentation_images.get("name", default_segmentation_images["name"])
+    images_container_description = user_segmentation_images.get(
+        "description", default_segmentation_images["description"]
+    )
 
     images_dict = segmentation_extractor.get_images_dict()
     images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
     if not images_to_add:
         return nwbfile
 
-    ophys = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+    ophys_module = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
 
-    image_collection_does_not_exist = images_container_name not in ophys.data_interfaces
-    if image_collection_does_not_exist:
-        ophys.add(Images(name=images_container_name, description=segmentation_images_metadata["description"]))
-    image_collection = ophys.data_interfaces[images_container_name]
+    # Add Images container if it doesn't exist
+    if images_container_name not in ophys_module.data_interfaces:
+        ophys_module.add(Images(name=images_container_name, description=images_container_description))
+    image_collection = ophys_module.data_interfaces[images_container_name]
 
-    plane_segmentation_name = (
-        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
-    )
-    assert (
-        plane_segmentation_name in segmentation_images_metadata
-    ), f"Plane segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['SegmentationImages']"
-    images_metadata = segmentation_images_metadata[plane_segmentation_name]
+    # Determine plane segmentation name
+    default_plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    plane_segmentation_name = plane_segmentation_name or default_plane_segmentation_name
+
+    # Get images metadata for this plane segmentation
+    if plane_segmentation_name in user_segmentation_images:
+        images_metadata = user_segmentation_images[plane_segmentation_name]
+    elif plane_segmentation_name in default_segmentation_images:
+        images_metadata = default_segmentation_images[plane_segmentation_name]
+    else:
+        raise ValueError(
+            f"Plane segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['SegmentationImages']"
+        )
 
     for img_name, img in images_to_add.items():
         image_kwargs = dict(name=img_name, data=img.T)

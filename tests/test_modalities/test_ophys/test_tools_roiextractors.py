@@ -1941,7 +1941,7 @@ class TestAddSummaryImages(TestCase):
 
     def test_add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
         with self.assertRaisesWith(
-            exc_type=AssertionError,
+            exc_type=ValueError,
             exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
         ):
             add_summary_images_to_nwbfile(
