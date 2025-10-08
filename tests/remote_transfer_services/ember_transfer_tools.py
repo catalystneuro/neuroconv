@@ -1,0 +1,39 @@
+import os
+import sys
+from datetime import datetime
+from platform import python_version as get_python_version
+
+import pytest
+from pynwb import NWBHDF5IO
+
+from neuroconv.tools.data_transfers import automatic_dandi_upload
+from neuroconv.tools.nwb_helpers import (
+    get_default_nwbfile_metadata,
+    make_nwbfile_from_metadata,
+)
+
+DANDI_API_KEY = os.getenv("DANDI_API_KEY")
+if DANDI_API_KEY is not None:
+    del os.environ["DANDI_API_KEY"]  # Will only remove within this test run
+
+EMBER_API_KEY = os.getenv("EMBER_API_KEY")
+HAVE_EMBER_KEY = EMBER_API_KEY is not None and EMBER_API_KEY != ""  # can be "" from external forks
+
+
+@pytest.mark.skipif(
+    not HAVE_EMBER_KEY,
+    reason="You must set your HAVE_EMBER_KEY to run this test!",
+)
+def test_automatic_ember_upload(tmp_path):
+    nwb_folder_path = tmp_path / "test_nwb"
+    nwb_folder_path.mkdir()
+    metadata = get_default_nwbfile_metadata()
+    metadata["NWBFile"].update(
+        session_start_time=datetime.now().astimezone(),
+        session_id=f"test-automatic-upload-{sys.platform}-{get_python_version().replace('.', '-')}",
+    )
+    metadata.update(Subject=dict(subject_id="foo", species="Mus musculus", age="P1D", sex="U"))
+    with NWBHDF5IO(path=nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
+        io.write(make_nwbfile_from_metadata(metadata=metadata))
+
+    automatic_dandi_upload(dandiset_id="000431", nwb_folder_path=nwb_folder_path, instance="ember")

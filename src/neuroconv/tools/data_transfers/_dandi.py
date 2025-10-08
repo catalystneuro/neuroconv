@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
+from typing import Literal
 from warnings import warn
 
 from pydantic import DirectoryPath
@@ -20,18 +21,24 @@ def automatic_dandi_upload(
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
+    *,
+    instance: Literal["dandi", "ember", "sandbox"] | str = "dandi",
 ) -> list[Path]:
     """
     Fully automated upload of NWB files to a Dandiset.
 
-    Requires an API token set as an environment variable named ``DANDI_API_KEY``.
+    Requires an API token set as an environment variable:
+    - For DANDI and sandbox instances: ``DANDI_API_KEY``
+    - For EMBER instance: ``EMBER_API_KEY``
 
     To set this in your bash terminal in Linux or macOS, run
         export DANDI_API_KEY=...
+        export EMBER_API_KEY=...
     or in Windows
         set DANDI_API_KEY=...
+        set EMBER_API_KEY=...
 
-    DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
+    WARNING: DO NOT STORE THESE VALUES IN ANY PUBLICLY SHARED CODE.
 
     Parameters
     ----------
@@ -42,47 +49,103 @@ def automatic_dandi_upload(
     dandiset_folder_path : folder path, optional
         A separate folder location within which to download the dandiset.
         Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
-        Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
+        Default behavior downloads the Dandiset to a folder adjacent to the 'nwb_folder_path'.
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
     sandbox : bool, optional
-        Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
-        Defaults to False.
+        .. deprecated:: 0.8.0
+            The 'sandbox' parameter is deprecated and will be removed in March 2026.
+            Use instance='sandbox' instead.
     staging : bool, optional
         .. deprecated:: 0.6.0
-            The 'staging' parameter is deprecated and will be removed in February 2026.
-            Use 'sandbox' instead.
+            The 'staging' parameter is deprecated and will be removed in March 2026.
+            Use instance='sandbox' instead.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
         The number of jobs to use in the DANDI upload process.
     number_of_threads : int, optional
         The number of threads to use in the DANDI upload process.
+    instance : str, default = "dandi"
+        The DANDI instance to use. Either "dandi" (default), "ember", "sandbox", or an explicit URL.
     """
     from dandi.download import download as dandi_download
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
 
-    # Handle deprecated 'staging' parameter and set defaults
+    # Handle deprecated parameters and validate parameters FIRST
+    # This allows parameter validation tests to run without requiring API keys
     if staging is not None and sandbox is not None:
-        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
+        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use instance='sandbox' instead.")
 
-    if staging is not None:
-        warn(
-            "The 'staging' parameter is deprecated and will be removed in February 2026. " "Use 'sandbox' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        sandbox = staging
+    if staging is not None or sandbox is not None:
+        if staging is not None:
+            warn(
+                "The 'staging' parameter is deprecated and will be removed in March 2026. Use instance='sandbox' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            instance = "sandbox"
+        elif sandbox is not None:
+            warn(
+                "The 'sandbox' parameter is deprecated and will be removed in March 2026. Use instance='sandbox' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            instance = "sandbox" if sandbox else "dandi"
 
-    if sandbox is None:
-        sandbox = False
+    # Validate instance parameter
+    if instance not in ["dandi", "ember", "sandbox"] and not instance.startswith("https://"):
+        message = "The 'instance' parameter must be either 'dandi', 'ember', 'sandbox', or a full URL starting with 'https://'."
+        raise ValueError(message)
 
-    assert os.getenv("DANDI_API_KEY"), (
-        "Unable to find environment variable 'DANDI_API_KEY'. "
-        "Please retrieve your token from DANDI and set this environment variable."
-    )
+    # Validate API keys early (before URL setup)
+    if instance in ["dandi", "sandbox"]:
+        if not os.getenv("DANDI_API_KEY"):
+            raise EnvironmentError(
+                "Missing required environment variable 'DANDI_API_KEY' for DANDI instance.\n\n"
+                "To set this environment variable:\n"
+                "  • Linux/macOS: export DANDI_API_KEY='your_token_here'\n"
+                "  • Windows: set DANDI_API_KEY=your_token_here\n"
+                "  • Python: os.environ['DANDI_API_KEY'] = 'your_token_here'\n\n"
+                "To obtain your DANDI API token:\n"
+                "  1. Visit https://dandiarchive.org/\n"
+                "  2. Sign in with your account\n"
+                "  3. Go to your profile settings\n"
+                "  4. Generate or copy your API token\n\n"
+                "WARNING: Never commit API tokens to version control!"
+            )
+    elif instance == "ember":
+        if not os.getenv("EMBER_API_KEY"):
+            raise EnvironmentError(
+                "Missing required environment variable 'EMBER_API_KEY' for EMBER instance.\n\n"
+                "To set this environment variable:\n"
+                "  • Linux/macOS: export EMBER_API_KEY='your_token_here'\n"
+                "  • Windows: set EMBER_API_KEY=your_token_here\n"
+                "  • Python: os.environ['EMBER_API_KEY'] = 'your_token_here'\n\n"
+                "To obtain your EMBER API token:\n"
+                "  1. Visit https://dandi.emberarchive.org/\n"
+                "  2. Sign in with your account\n"
+                "  3. Go to your profile settings\n"
+                "  4. Generate or copy your API token\n\n"
+                "WARNING: Never commit API tokens to version control!"
+            )
+
+    # Set up URLs and dandi_instance based on the final instance value
+    if instance == "dandi":
+        url_base = "https://dandiarchive.org"
+        dandi_instance = "dandi"
+    elif instance == "ember":
+        url_base = "https://dandi.emberarchive.org"
+        dandi_instance = "ember"
+    elif instance == "sandbox":
+        url_base = "https://sandbox.dandiarchive.org"
+        dandi_instance = "dandi-sandbox"
+    else:
+        # Custom URL
+        url_base = instance.removesuffix("/")
+        dandi_instance = instance
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
@@ -92,7 +155,6 @@ def automatic_dandi_upload(
     if number_of_threads is not None and number_of_threads > 1 and number_of_jobs is None:
         number_of_jobs = -1
 
-    url_base = "https://sandbox.dandiarchive.org" if sandbox else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
@@ -120,8 +182,6 @@ def automatic_dandi_upload(
     # The above block can be removed once they add the feature
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
-
-    dandi_instance = "dandi-sandbox" if sandbox else "dandi"  # Test
 
     dandi_upload(
         paths=organized_nwbfiles,
