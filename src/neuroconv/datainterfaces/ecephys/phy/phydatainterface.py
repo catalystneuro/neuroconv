@@ -24,6 +24,12 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         ] = "Path to the output Phy folder (containing the params.py)."
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import read_phy
+
+        return read_phy
+
     @validate_call
     def __init__(
         self,

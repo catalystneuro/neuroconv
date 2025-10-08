@@ -10,6 +10,12 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
     associated_suffixes = (".mat",)
     info = "Interface for EXTRACT segmentation."
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import ExtractSegmentationExtractor
+
+        return ExtractSegmentationExtractor
+
     def __init__(
         self,
         file_path: FilePath,

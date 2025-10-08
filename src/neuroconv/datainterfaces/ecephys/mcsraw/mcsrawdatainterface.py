@@ -15,6 +15,12 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for MCSRaw recording data."
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import MCSRawRecordingExtractor
+
+        return MCSRawRecordingExtractor
+
+    @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .raw file."

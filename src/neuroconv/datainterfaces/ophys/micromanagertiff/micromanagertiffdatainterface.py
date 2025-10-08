@@ -28,6 +28,12 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "The folder containing the OME-TIF image files."
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import MicroManagerTiffImagingExtractor
+
+        return MicroManagerTiffImagingExtractor
+
     @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """

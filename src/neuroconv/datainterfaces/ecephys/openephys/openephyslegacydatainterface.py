@@ -19,6 +19,14 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for converting legacy OpenEphys recording data."
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysLegacyRecordingExtractor,
+        )
+
+        return OpenEphysLegacyRecordingExtractor
+
+    @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
         """
         Get the names of available recording streams in the OpenEphys legacy folder.

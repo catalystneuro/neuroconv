@@ -36,6 +36,12 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
 
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import MiniscopeMultiRecordingImagingExtractor
+
+        return MiniscopeMultiRecordingImagingExtractor
+
     @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """

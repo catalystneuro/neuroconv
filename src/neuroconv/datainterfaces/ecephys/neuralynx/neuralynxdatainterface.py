@@ -36,11 +36,13 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxRecordingExtractor,
+        )
 
-        return extractor_kwargs
+        return NeuralynxRecordingExtractor
 
     def __init__(
         self,
@@ -115,6 +117,14 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     display_name = "Neuralynx Sorting"
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxSortingExtractor,
+        )
+
+        return NeuralynxSortingExtractor
 
     def __init__(
         self,
