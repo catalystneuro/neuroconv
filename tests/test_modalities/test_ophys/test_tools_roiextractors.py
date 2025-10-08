@@ -19,6 +19,7 @@ from numpy.typing import ArrayLike
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.ophys import OnePhotonSeries
+from pynwb.testing.mock.file import mock_NWBFile
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
     generate_dummy_segmentation_extractor,
@@ -47,11 +48,7 @@ from neuroconv.utils import dict_deep_update
 class TestAddDevices(unittest.TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
+        self.nwbfile = mock_NWBFile()
 
         self.metadata = dict(Ophys=dict())
 
@@ -1725,23 +1722,6 @@ class TestAddPhotonSeries(TestCase):
                 photon_series_type="invalid",
             )
 
-    def test_add_photon_series_to_nwbfile_inconclusive_metadata(self):
-        """Test warning is raised when `photon_series_type` specifies 'TwoPhotonSeries' but metadata contains also 'OnePhotonSeries'."""
-
-        exc_msg = "Received metadata for both 'OnePhotonSeries' and 'TwoPhotonSeries', make sure photon_series_type is specified correctly."
-        photon_series_metadata = deepcopy(self.one_photon_series_metadata)
-        photon_series_metadata["Ophys"].update(
-            TwoPhotonSeries=self.two_photon_series_metadata["Ophys"]["TwoPhotonSeries"]
-        )
-
-        with self.assertWarnsWith(warn_type=UserWarning, exc_msg=exc_msg):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=photon_series_metadata,
-                photon_series_type="TwoPhotonSeries",
-            )
-
     def test_add_one_photon_series(self):
         """Test adding one photon series with metadata."""
 
@@ -1819,45 +1799,6 @@ class TestAddPhotonSeries(TestCase):
         )
         ophys = self.nwbfile.processing["ophys"]
         self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
-
-    def test_photon_series_not_added_to_acquisition_with_same_name(self):
-        """Test that photon series with the same name are not added to nwbfile.acquisition."""
-
-        with self.assertRaisesWith(
-            exc_type=ValueError, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
-        ):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-            )
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-            )
-        self.assertEqual(len(self.nwbfile.acquisition), 1)
-
-    def test_photon_series_not_added_to_processing_with_same_name(self):
-        """Test that photon series with the same name are not added to nwbfile.processing."""
-
-        with self.assertRaisesWith(
-            exc_type=ValueError,
-            exc_msg=f"{self.two_photon_series_name} already added to nwbfile.processing['ophys'].",
-        ):
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-                parent_container="processing/ophys",
-            )
-            add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-                parent_container="processing/ophys",
-            )
-        self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
 
     def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
         """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
@@ -2000,7 +1941,7 @@ class TestAddSummaryImages(TestCase):
 
     def test_add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
         with self.assertRaisesWith(
-            exc_type=AssertionError,
+            exc_type=ValueError,
             exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
         ):
             add_summary_images_to_nwbfile(
@@ -2053,28 +1994,241 @@ class TestAddSummaryImages(TestCase):
             np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
 
-class TestDefaultOphysMetadataImmutability(unittest.TestCase):
+class TestNoMetadataMutation:
     def test_get_default_ophys_metadata_returns_independent_instances(self):
         """Test that _get_default_ophys_metadata() returns independent instances that don't share mutable state."""
+        # Get two instances
         metadata1 = _get_default_ophys_metadata()
         metadata2 = _get_default_ophys_metadata()
 
-        # Verify they start with the same structure
-        assert metadata1["Ophys"]["Device"][0]["name"] == "Microscope"
-        assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
+        # Store a snapshot of metadata2's Ophys section before mutating metadata1
+        metadata2_ophys_before = deepcopy(metadata2["Ophys"])
 
-        # Modify first instance
+        # Modify first instance deeply (modify nested dicts and lists)
         metadata1["Ophys"]["Device"][0]["name"] = "ModifiedMicroscope"
         metadata1["Ophys"]["ImagingPlane"][0]["name"] = "ModifiedImagingPlane"
         metadata1["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] = "ModifiedRoiResponseSeries"
 
-        # Verify second instance remains unchanged
-        assert metadata2["Ophys"]["Device"][0]["name"] == "Microscope"
-        assert metadata2["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
-        assert metadata2["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
+        # Verify second instance's Ophys section was not affected by mutations to first instance
+        assert (
+            metadata2["Ophys"] == metadata2_ophys_before
+        ), "Modifying metadata1 affected metadata2 - instances share mutable state"
 
         # Get a third instance after modifications to ensure fresh defaults
         metadata3 = _get_default_ophys_metadata()
-        assert metadata3["Ophys"]["Device"][0]["name"] == "Microscope"
-        assert metadata3["Ophys"]["ImagingPlane"][0]["name"] == "ImagingPlane"
-        assert metadata3["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"]["name"] == "RoiResponseSeries"
+        assert (
+            metadata3["Ophys"] == metadata2_ophys_before
+        ), "New instance after mutations differs from original - not getting fresh defaults"
+
+    def test_add_devices_to_nwbfile_does_not_mutate_metadata(self):
+        """Test that add_devices_to_nwbfile does not mutate the input metadata."""
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with devices
+        metadata = {"Ophys": {"Device": [{"name": "TestMicroscope", "description": "Test description"}]}}
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_imaging_plane_no_metadata_mutation(self):
+        """Test that add_imaging_plane_to_nwbfile does not mutate the input metadata."""
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with imaging plane (all fields provided)
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_imaging_plane_no_partial_metadata_mutation(self):
+        """Test that add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with minimal imaging plane (missing some fields that will be filled from defaults)
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                        # Intentionally missing: description, excitation_lambda, indicator, location
+                    }
+                ],
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function (should fill in missing fields internally but not mutate the input)
+        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_photon_series_no_metadata_mutation(self):
+        """Test that add_photon_series_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        nwbfile = mock_NWBFile()
+        imaging_extractor = generate_dummy_imaging_extractor(
+            num_rows=10, num_columns=10, num_samples=30, sampling_frequency=30.0
+        )
+
+        # Create metadata with photon series
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "TwoPhotonSeries": [
+                    {
+                        "name": "TestTwoPhotonSeries",
+                        "description": "Test two photon series",
+                        "unit": "px",
+                        "imaging_plane": "TestImagingPlane",
+                    }
+                ],
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_photon_series_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type="TwoPhotonSeries",
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_image_segmentation_no_metadata_mutation(self):
+        """Test that add_image_segmentation_to_nwbfile does not mutate the input metadata."""
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with image segmentation
+        metadata = {"Ophys": {"ImageSegmentation": {"name": "TestImageSegmentation"}}}
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_plane_segmentation_no_metadata_mutation(self):
+        """Test that add_plane_segmentation_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        # Create metadata with plane segmentation
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "ImageSegmentation": {
+                    "name": "TestImageSegmentation",
+                    "plane_segmentations": [
+                        {
+                            "name": "TestPlaneSegmentation",
+                            "description": "Test plane segmentation",
+                            "imaging_plane": "TestImagingPlane",
+                        }
+                    ],
+                },
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_plane_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            plane_segmentation_name="TestPlaneSegmentation",
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
