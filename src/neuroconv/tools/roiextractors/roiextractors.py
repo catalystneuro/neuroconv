@@ -1,7 +1,6 @@
 import math
 import warnings
 from collections import defaultdict
-from copy import deepcopy
 from typing import Literal
 
 import numpy as np
@@ -89,7 +88,12 @@ def _get_default_ophys_metadata():
         "Fluorescence": {
             "name": "Fluorescence",
             "PlaneSegmentation": {
-                "raw": {"name": "RoiResponseSeries", "description": "Array of raw fluorescence traces.", "unit": "n.a."}
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Array of raw fluorescence traces.",
+                    "unit": "n.a.",
+                },
+                "deconvolved": {"name": "Deconvolved", "description": "Array of deconvolved traces.", "unit": "n.a."},
             },
             "BackgroundPlaneSegmentation": {
                 "neuropil": {"name": "neuropil", "description": "Array of neuropil traces.", "unit": "n.a."}
@@ -420,7 +424,8 @@ def add_photon_series_to_nwbfile(
         # Build photon series metadata from user input
         photon_series_kwargs = user_photon_series_metadata.copy()
         # Fill missing required fields with defaults
-        for field in ["name", "description", "unit", "imaging_plane"]:
+        required_fields = ["name", "description", "unit", "imaging_plane"]
+        for field in required_fields:
             if field not in photon_series_kwargs:
                 photon_series_kwargs[field] = default_photon_series[field]
     else:
@@ -1162,20 +1167,6 @@ def _add_fluorescence_traces_to_nwbfile(
         plane_segmentation_name=plane_segmentation_name,  # Pass original (possibly None) value
     )
 
-    roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
-
-    # Add timestamps or rate
-    if segmentation_extractor.has_time_vector():
-        timestamps = segmentation_extractor.get_timestamps()
-        estimated_rate = calculate_regular_series_rate(series=timestamps)
-        if estimated_rate:
-            roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
-        else:
-            roi_response_series_kwargs.update(timestamps=timestamps, rate=None)
-    else:
-        rate = float(segmentation_extractor.get_sampling_frequency())
-        roi_response_series_kwargs.update(rate=rate)
-
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
         trace_name for trace_name in traces_to_add.keys() if trace_name != "dff"
@@ -1199,34 +1190,70 @@ def _add_fluorescence_traces_to_nwbfile(
         if is_dff:
             user_plane_traces = user_df_over_f.get(plane_segmentation_name_for_lookup, {})
             default_plane_traces = default_df_over_f.get(plane_segmentation_name_for_lookup, {})
+            # Fall back to default plane if custom plane not in defaults
+            if not default_plane_traces:
+                default_plane_traces = default_df_over_f.get(default_plane_segmentation_name, {})
         else:
             user_plane_traces = user_fluorescence.get(plane_segmentation_name_for_lookup, {})
             default_plane_traces = default_fluorescence.get(plane_segmentation_name_for_lookup, {})
+            # Fall back to default plane if custom plane not in defaults
+            if not default_plane_traces:
+                default_plane_traces = default_fluorescence.get(default_plane_segmentation_name, {})
 
-        # Check if trace metadata exists in user or defaults
-        if trace_name in user_plane_traces:
-            trace_metadata = dict(user_plane_traces[trace_name])
-        elif trace_name in default_plane_traces:
-            trace_metadata = dict(default_plane_traces[trace_name])
-        else:
+        # Extract trace metadata from user or use defaults
+        user_trace_metadata = user_plane_traces.get(trace_name)
+        default_trace_metadata = default_plane_traces.get(trace_name)
+
+        if user_trace_metadata is None and default_trace_metadata is None:
             raise ValueError(
                 f"Metadata for trace '{trace_name}' not found for plane segmentation '{plane_segmentation_name_for_lookup}' "
                 f"in {'DfOverF' if is_dff else 'Fluorescence'} metadata."
             )
 
-        if trace_metadata["name"] in data_interface.roi_response_series:
+        # Build roi response series kwargs from user metadata or defaults
+        if user_trace_metadata is not None:
+            roi_response_series_kwargs = dict(user_trace_metadata)
+            # Fill missing required fields with defaults
+            required_fields = ["name", "description", "unit"]
+            for field in required_fields:
+                if field not in roi_response_series_kwargs:
+                    roi_response_series_kwargs[field] = default_trace_metadata[field]
+        else:
+            # Use defaults
+            roi_response_series_kwargs = dict(default_trace_metadata)
+
+        if roi_response_series_kwargs["name"] in data_interface.roi_response_series:
             continue
 
-        # Pop the rate from the metadata if irregular time series
-        if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
-            trace_metadata.pop("rate")
+        # Add data and rois
+        roi_response_series_kwargs["data"] = SliceableDataChunkIterator(trace, **iterator_options)
+        roi_response_series_kwargs["rois"] = roi_table_region
+
+        # Add timestamps or rate (following same pattern as photon series)
+        # NOTE: Unlike photon series, we currently support user-provided rate in metadata for regular timestamps
+        # TODO: I think we should remove the support for passing rate on the metadata.
+        segmentation_has_timestamps = segmentation_extractor.has_time_vector()
+        if segmentation_has_timestamps:
+            timestamps = segmentation_extractor.get_timestamps()
+            estimated_rate = calculate_regular_series_rate(series=timestamps)
+            starting_time = timestamps[0]
+        else:
+            estimated_rate = float(segmentation_extractor.get_sampling_frequency())
+            starting_time = 0.0
+
+        if estimated_rate:
+            # Regular timestamps or no timestamps - use rate
+            roi_response_series_kwargs["starting_time"] = starting_time
+            # Use metadata rate if provided, otherwise use estimated/sampled rate
+            if "rate" not in roi_response_series_kwargs:
+                roi_response_series_kwargs["rate"] = estimated_rate
+        else:
+            # Irregular timestamps - use explicit timestamps
+            # Remove rate from metadata if present (can't specify both rate and timestamps)
+            roi_response_series_kwargs.pop("rate", None)
+            roi_response_series_kwargs["timestamps"] = timestamps
 
         # Build the roi response series
-        roi_response_series_kwargs.update(
-            data=SliceableDataChunkIterator(trace, **iterator_options),
-            rois=roi_table_region,
-            **trace_metadata,
-        )
         roi_response_series = RoiResponseSeries(**roi_response_series_kwargs)
 
         # Add trace to the data interface
@@ -1275,8 +1302,8 @@ def _create_roi_table_region(
         # Use the default PlaneSegmentation name
         plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
 
-    ophys = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
-    image_segmentation = ophys[image_segmentation_name]
+    ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
+    image_segmentation = ophys_module[image_segmentation_name]
 
     # Get plane segmentation from the image segmentation
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
