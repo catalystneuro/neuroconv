@@ -94,6 +94,7 @@ def _get_default_ophys_metadata():
                     "unit": "n.a.",
                 },
                 "deconvolved": {"name": "Deconvolved", "description": "Array of deconvolved traces.", "unit": "n.a."},
+                "neuropil": {"name": "Neuropil", "description": "Array of neuropil traces.", "unit": "n.a."},
             },
             "BackgroundPlaneSegmentation": {
                 "neuropil": {"name": "neuropil", "description": "Array of neuropil traces.", "unit": "n.a."}
