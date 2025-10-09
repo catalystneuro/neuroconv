@@ -1213,8 +1213,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
     # TODO: This test is commented out because it relies on buggy behavior from main branch
     # In main, roi_response_series_kwargs was shared across all trace iterations, causing rate
     # from one trace's metadata to leak into other traces that didn't have rate in their metadata.
-    # The refactored code correctly creates fresh kwargs for each trace, so only traces with
-    # rate in their metadata will use that rate; other traces will use the estimated rate.
+    # Is this buggy behavior, should we remove the test?
     # This needs to be discussed in PR review to decide:
     # 1. Whether to support rate in metadata at all (photon series doesn't support this)
     # 2. If we support it, update this test to check each trace individually

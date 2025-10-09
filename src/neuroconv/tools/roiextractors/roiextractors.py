@@ -1230,7 +1230,6 @@ def _add_fluorescence_traces_to_nwbfile(
         roi_response_series_kwargs["data"] = SliceableDataChunkIterator(trace, **iterator_options)
         roi_response_series_kwargs["rois"] = roi_table_region
 
-        # Add timestamps or rate (following same pattern as photon series)
         # NOTE: Unlike photon series, we currently support user-provided rate in metadata for regular timestamps
         # TODO: I think we should remove the support for passing rate on the metadata.
         segmentation_has_timestamps = segmentation_extractor.has_time_vector()
@@ -1285,11 +1284,6 @@ def _create_roi_table_region(
     """
     # Get ImageSegmentation name from user metadata or use default
     default_metadata = _get_default_ophys_metadata()
-    image_segmentation_name = (
-        metadata.get("Ophys", {})
-        .get("ImageSegmentation", {})
-        .get("name", default_metadata["Ophys"]["ImageSegmentation"]["name"])
-    )
 
     add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
@@ -1304,6 +1298,11 @@ def _create_roi_table_region(
         plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
 
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
+
+    default_image_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["name"]
+    image_segmentation_name = (
+        metadata.get("Ophys", {}).get("ImageSegmentation", {}).get("name", default_image_segmentation_name)
+    )
     image_segmentation = ophys_module[image_segmentation_name]
 
     # Get plane segmentation from the image segmentation
