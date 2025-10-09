@@ -92,7 +92,7 @@ def get_default_dataset_io_configurations(
         existing_file = nwbfile.read_io._file
     elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "zarr"
-        existing_file = nwbfile.read_io.file.store
+        existing_file = nwbfile.read_io._file.store
     backend = backend or detected_backend
 
     if detected_backend is not None and detected_backend != backend:
