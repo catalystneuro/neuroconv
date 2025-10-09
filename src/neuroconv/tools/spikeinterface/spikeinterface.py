@@ -1048,7 +1048,7 @@ def _recording_traces_to_hdmf_iterator(
 
     supported_iterator_types = ["v2", None]
     if iterator_type not in supported_iterator_types:
-        message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
+        message = f"iterator_type '{iterator_type}' is not supported. Must be either 'v2' (recommended) or None."
         raise ValueError(message)
 
     iterator_opts = dict() if iterator_opts is None else iterator_opts
