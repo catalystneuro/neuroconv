@@ -478,7 +478,7 @@ def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NW
 
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-    group_names = _get_group_names(recording=recording)
+    group_names = _get_group_name(recording=recording)
 
     # Get default electrode group metadata from single source of truth
     ecephys_defaults = _get_default_ecephys_metadata()
@@ -531,7 +531,7 @@ def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NW
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
 
-def _get_electrode_names(recording: BaseRecording) -> np.ndarray | None:
+def _get_electrode_name(recording: BaseRecording) -> np.ndarray | None:
     """
     Extract electrode names from a recording when a probe is attached.
 
@@ -583,7 +583,7 @@ def _get_electrode_names(recording: BaseRecording) -> np.ndarray | None:
     return None
 
 
-def _get_channel_names(recording: BaseRecording) -> np.ndarray:
+def _get_channel_name(recording: BaseRecording) -> np.ndarray:
     """
     Extract channel names from a recording.
 
@@ -614,7 +614,7 @@ def _get_channel_names(recording: BaseRecording) -> np.ndarray:
     return channel_names
 
 
-def _get_group_names(recording: BaseRecording) -> np.ndarray:
+def _get_group_name(recording: BaseRecording) -> np.ndarray:
     """
     Extract the canonical `group_name` from the recording, which will be written
     in the electrodes table.
@@ -740,9 +740,9 @@ def _build_channel_to_electrodes_table_map(
         table_lookup[virtual_id] = row_index
 
     # When there is no probe id information, the field is populated with empty strings
-    group_names = _get_group_names(recording=recording)
-    electrode_names = _get_electrode_names(recording=recording)
-    channel_names = _get_channel_names(recording=recording)
+    group_names = _get_group_name(recording=recording)
+    electrode_names = _get_electrode_name(recording=recording)
+    channel_names = _get_channel_name(recording=recording)
 
     # Use empty strings for electrode names when no probe is attached
     if electrode_names is None:
@@ -916,9 +916,9 @@ def add_electrodes_to_nwbfile(
         data_to_add[property] = dict(description=description, data=data, index=index)
 
     # Special cases properties
-    group_names = _get_group_names(recording=recording)
-    electrode_names = _get_electrode_names(recording=recording)
-    channel_names = _get_channel_names(recording=recording)
+    group_names = _get_group_name(recording=recording)
+    electrode_names = _get_electrode_name(recording=recording)
+    channel_names = _get_channel_name(recording=recording)
 
     # Always write channel_name column
     data_to_add["channel_name"] = dict(description="unique channel reference", data=channel_names, index=False)
@@ -1010,9 +1010,9 @@ def add_electrodes_to_nwbfile(
         cols_args = data_to_add["channel_name"]
         data = cols_args["data"]
 
-        # Backfill previous rows with stringified electrode IDs
-        previous_electrode_ids = nwbfile.electrodes.id[:previous_table_size]
-        default_value = np.array([str(id) for id in previous_electrode_ids])
+        previous_ids = nwbfile.electrodes.id[:previous_table_size]
+        default_value = np.array(previous_ids).astype("str")
+
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column("channel_name", **cols_args)
