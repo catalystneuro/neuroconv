@@ -564,12 +564,20 @@ def _get_electrode_names(recording: BaseRecording) -> np.ndarray | None:
 
     # Try to get electrode names from probe contact_ids
     if recording.has_probe():
-        probe = recording.get_probe()
-        contact_ids = probe.contact_ids
-        # contact_ids is None for microelectrode arrays (Biocam, Maxwell, MEArec) - this is valid in probeinterface
-        # These formats have probes for geometry but rely on channel-based identification
-        if contact_ids is not None:
-            return np.array(contact_ids)
+        # get_probegroup() works for both single and multiple probes
+        probegroup = recording.get_probegroup()
+
+        # Collect contact_ids from all probes
+        all_contact_ids = []
+        for probe in probegroup.probes:
+            contact_ids = probe.contact_ids
+            # contact_ids is None for microelectrode arrays (Biocam, Maxwell, MEArec) - this is valid in probeinterface
+            # These formats have probes for geometry but rely on channel-based identification
+            if contact_ids is not None:
+                all_contact_ids.extend(contact_ids)
+
+        if len(all_contact_ids) > 0:
+            return np.array(all_contact_ids)
 
     # Return None if no electrode names available
     return None
@@ -721,6 +729,8 @@ def _build_channel_to_electrodes_table_map(
     has_electrode_column = "electrode_name" in nwbfile.electrodes.colnames
     has_channel_column = "channel_name" in nwbfile.electrodes.colnames
 
+    # Build lookup table from existing rows
+    # Note: We check if columns exist before trying to access them
     table_lookup = {}
     for row_index in range(len(nwbfile.electrodes)):
         group = nwbfile.electrodes["group_name"][row_index]
@@ -1000,10 +1010,9 @@ def add_electrodes_to_nwbfile(
         cols_args = data_to_add["channel_name"]
         data = cols_args["data"]
 
-        # Fill previous rows with empty strings (not stringified IDs)
-        # This is critical for the concatenation approach to work correctly
-        default_value = np.array([""] * previous_table_size)
-
+        # Backfill previous rows with stringified electrode IDs
+        previous_electrode_ids = nwbfile.electrodes.id[:previous_table_size]
+        default_value = np.array([str(id) for id in previous_electrode_ids])
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column("channel_name", **cols_args)
@@ -1012,10 +1021,7 @@ def add_electrodes_to_nwbfile(
         cols_args = data_to_add["electrode_name"]
         data = cols_args["data"]
 
-        # Fill previous rows with empty strings (not stringified IDs)
-        # This is critical for the concatenation approach to work correctly
         default_value = np.array([""] * previous_table_size)
-
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column("electrode_name", **cols_args)

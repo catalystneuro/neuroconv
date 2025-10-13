@@ -438,7 +438,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_electrode_name_column_added_with_probe(self):
         """Test that electrode_name column is added when probe is attached."""
         # Create interface with probe attached
-        interface = MockRecordingInterface(num_channels=4, durations=[0.100], has_probe=True)
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], set_probe=True)
 
         # Verify probe is attached
         assert interface.has_probe()

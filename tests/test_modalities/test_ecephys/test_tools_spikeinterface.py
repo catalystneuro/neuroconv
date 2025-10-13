@@ -558,7 +558,9 @@ class TestAddElectrodes(TestCase):
     def setUpClass(cls):
         """Use common recording objects and values."""
         cls.num_channels = 4
-        cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
+        cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3], set_probe=False)
+        # Set group property to match the electrode group that will be created in setUp
+        cls.base_recording.set_channel_groups([0] * cls.num_channels)
 
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
@@ -581,7 +583,7 @@ class TestAddElectrodes(TestCase):
     def test_default_electrode_column_names(self):
         add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
 
-        expected_electrode_column_names = ["location", "group", "group_name", "channel_name", "rel_x", "rel_y"]
+        expected_electrode_column_names = ["location", "group", "group_name", "channel_name"]
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
         self.assertCountEqual(actual_electrode_column_names, expected_electrode_column_names)
 
@@ -715,14 +717,14 @@ class TestAddElectrodes(TestCase):
 
         values_dic = self.defaults
 
-        # Previous properties
-        values_dic.update(rel_x=0.0, rel_y=0.0, id=123, channel_name=str(123))
+        # Since we're not using a probe, rel_x and rel_y columns won't exist
+        values_dic.update(id=123, channel_name=str(123))
         self.nwbfile.add_electrode(**values_dic)
 
-        values_dic.update(rel_x=0.0, rel_y=0.0, id=124, channel_name=str(124))
+        values_dic.update(id=124, channel_name=str(124))
         self.nwbfile.add_electrode(**values_dic)
 
-        values_dic.update(rel_x=0.0, rel_y=0.0, id=None, channel_name="6")  # automatic ID set
+        values_dic.update(id=None, channel_name="6")  # automatic ID set
         self.nwbfile.add_electrode(**values_dic)
 
         expected_ids = [0, 1, 2, 3, 123, 124, 6]
