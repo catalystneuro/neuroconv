@@ -435,6 +435,65 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_electrode_groups = ["0", "0", "1", "2", "3", "3"]
         np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
 
+    def test_electrode_name_column_added_with_probe(self):
+        """Test that electrode_name column is added when probe is attached."""
+        # Create interface with probe attached
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], has_probe=True)
+
+        # Verify probe is attached
+        assert interface.has_probe()
+
+        # Create NWB file
+        nwbfile = interface.create_nwbfile()
+
+        # Check that electrode_name column exists
+        assert "electrode_name" in nwbfile.electrodes.colnames, "electrode_name column should be present with probe"
+
+        # Check that electrode names match expected format (e0, e1, e2, e3)
+        electrode_names = nwbfile.electrodes["electrode_name"][:]
+        expected_electrode_names = ["e0", "e1", "e2", "e3"]
+        np.testing.assert_array_equal(electrode_names, expected_electrode_names)
+
+        # Check that channel_name column also exists
+        assert "channel_name" in nwbfile.electrodes.colnames
+
+    def test_electrode_name_column_not_added_without_probe(self):
+        """Test that electrode_name column is NOT added when no probe is attached."""
+        # Create interface without probe
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], has_probe=False)
+
+        # Verify no probe is attached
+        assert not interface.has_probe()
+
+        # Create NWB file
+        nwbfile = interface.create_nwbfile()
+
+        # Check that electrode_name column does NOT exist
+        assert "electrode_name" not in nwbfile.electrodes.colnames, (
+            "electrode_name column should NOT be present without probe"
+        )
+
+        # Check that channel_name column still exists (always present)
+        assert "channel_name" in nwbfile.electrodes.colnames
+
+    def test_electrode_name_matches_probe_contact_ids(self):
+        """Test that electrode_name values correctly match probe contact IDs."""
+        # Create interface with probe
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100], has_probe=True)
+
+        # Create NWB file
+        nwbfile = interface.create_nwbfile()
+
+        # Get electrode names from table
+        electrode_names = nwbfile.electrodes["electrode_name"][:]
+
+        # Get contact IDs directly from probe
+        probe = interface.recording_extractor.get_probe()
+        expected_contact_ids = probe.contact_ids
+
+        # They should match
+        np.testing.assert_array_equal(electrode_names, expected_contact_ids)
+
 
 class TestAssertions(TestCase):
     @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
