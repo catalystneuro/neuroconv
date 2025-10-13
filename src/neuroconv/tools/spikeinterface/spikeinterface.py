@@ -282,8 +282,10 @@ def _add_recording_segment_to_nwbfile(
     # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
-    # Create a region for the electrodes table
-    electrode_table_indices = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
+    # Create a region for the electrodes table by matching recording channels to table rows
+    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_ids = recording.get_channel_ids()
+    electrode_table_indices = [channel_map[channel_id] for channel_id in channel_ids]
     electrode_table_region = nwbfile.create_electrode_table_region(
         region=electrode_table_indices,
         description="electrode_table_region",
@@ -476,7 +478,7 @@ def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NW
 
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-    group_names = _get_group_name(recording=recording)
+    group_names = _get_group_names(recording=recording)
 
     # Get default electrode group metadata from single source of truth
     ecephys_defaults = _get_default_ecephys_metadata()
@@ -529,10 +531,61 @@ def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NW
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
 
-def _get_channel_name(recording: BaseRecording) -> np.ndarray:
+def _get_electrode_names(recording: BaseRecording) -> np.ndarray | None:
     """
-    Extract the canonical `channel_name` from the recording, which will be written
-    in the electrodes table.
+    Extract electrode names from a recording when a probe is attached.
+
+    The purpose of this auxiliary method is to unify electrode name extraction from a recording
+    across the ecephys pipeline and neuroconv. This achieves consistency and avoids duplication of code.
+
+    For recordings with attached probes (via ProbeInterface), electrode names are derived from
+    probe contact identifiers. These represent physical electrodes, allowing multiple channels
+    (e.g., AP and LF bands in neuropixel) from the same electrode to be properly grouped.
+
+    When available, we use the electrode_name property. If not available but a probe is attached,
+    we extract contact_ids from the probe. Otherwise, we return None to indicate no probe-based
+    electrode information is available.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        The recording object from which to extract electrode names.
+
+    Returns
+    -------
+    np.ndarray | None
+        An array containing electrode names if available from the recording property or probe.
+        Returns None if the recording has no electrode_name property and no probe attached.
+    """
+    # Check if recording has electrode_name property already set
+    electrode_names = recording.get_property("electrode_name")
+    if electrode_names is not None:
+        return electrode_names
+
+    # Try to get electrode names from probe contact_ids
+    if recording.has_probe():
+        probe = recording.get_probe()
+        contact_ids = probe.contact_ids
+        # contact_ids is None for microelectrode arrays (Biocam, Maxwell, MEArec) - this is valid in probeinterface
+        # These formats have probes for geometry but rely on channel-based identification
+        if contact_ids is not None:
+            return np.array(contact_ids)
+
+    # Return None if no electrode names available
+    return None
+
+
+def _get_channel_names(recording: BaseRecording) -> np.ndarray:
+    """
+    Extract channel names from a recording.
+
+    The purpose of this auxiliary method is to unify channel name extraction from a recording
+    across the ecephys pipeline and neuroconv. This achieves consistency and avoids duplication of code.
+
+    Spike interface sometimes inherits channel names from neo, those are usually human
+    readable names in comparison to channel ids that only serve the purpose of unique identification.
+
+    When available, we use the channel names, otherwise we fallback to channel ids as strings.
 
     Parameters
     ----------
@@ -545,8 +598,7 @@ def _get_channel_name(recording: BaseRecording) -> np.ndarray:
         An array containing the channel names. If the `channel_name` property is not
         available, the channel IDs as strings will be returned.
     """
-
-    # That uses either the `channel_name` property or the channel ids as string otherwise.
+    # Uses either the `channel_name` property or the channel ids as string otherwise
     channel_names = recording.get_property("channel_name")
     if channel_names is None:
         channel_names = recording.get_channel_ids().astype("str", copy=False)
@@ -554,7 +606,7 @@ def _get_channel_name(recording: BaseRecording) -> np.ndarray:
     return channel_names
 
 
-def _get_group_name(recording: BaseRecording) -> np.ndarray:
+def _get_group_names(recording: BaseRecording) -> np.ndarray:
     """
     Extract the canonical `group_name` from the recording, which will be written
     in the electrodes table.
@@ -579,20 +631,20 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
     """
     # Get default electrode group name from single source of truth
     ecephys_defaults = _get_default_ecephys_metadata()
-    default_value = ecephys_defaults["Ecephys"]["ElectrodeGroup"][0]["name"]
+    default_group_name = ecephys_defaults["Ecephys"]["ElectrodeGroup"][0]["name"]
     group_names = recording.get_property("group_name")
     groups = recording.get_channel_groups()
 
     if group_names is None:
         group_names = groups
     if group_names is None:
-        group_names = np.full(recording.get_num_channels(), fill_value=default_value)
+        group_names = np.full(recording.get_num_channels(), fill_value=default_group_name)
 
     # Always ensure group_names are strings
     group_names = group_names.astype("str", copy=False)
 
     # If for any reason the group names are empty, fill them with the default
-    group_names[group_names == ""] = default_value
+    group_names[group_names == ""] = default_group_name
 
     # Validate group names against groups
     if groups is not None:
@@ -614,68 +666,83 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
     return group_names
 
 
-def _get_electrodes_table_global_ids(nwbfile: pynwb.NWBFile) -> list[str]:
+def _build_channel_to_electrodes_table_map(
+    recording: BaseRecording, nwbfile: pynwb.NWBFile
+) -> dict[str | int, int | None]:
     """
-    Generate a list of global identifiers for channels in the electrode table of an NWB file.
+    Build a mapping from recording channel IDs to electrode table row indices.
 
-    These identifiers are used to map electrodes across writing operations.
+    The purpose of this function is to work as a single source of truth for matching
+    recordings with electrode table rows in NWB.
 
-    Parameters
-    ----------
-    nwbfile : pynwb.NWBFile
-        The NWB file from which to extract the electrode table information.
+    The way that this works is that an element is fully identified by three fields:
+    - group_name
+    - electrode_name (if probe is attached)
+    - channel_name
 
-    Returns
-    -------
-    list[str]
-        A list of unique keys, each representing a combination of channel name and
-        group name from the electrodes table. If the electrodes table or the
-        necessary columns are not present, an empty list is returned.
-    """
+    We do the match in two passes, first for every row we build a virtual global id that has
+    this format:
+    {group_name}_{electrode_name}_{channel_name}
 
-    if nwbfile.electrodes is None:
-        return []
+    Where the electrode_name is "" if no probe is attached.
 
-    if "channel_name" not in nwbfile.electrodes.colnames or "group_name" not in nwbfile.electrodes.colnames:
-        return []
+    Then, to see to which row a channel belongs to, we build the same virtual id
+    and we do a lookup in the table.
 
-    channel_names = nwbfile.electrodes["channel_name"][:]
-    group_names = nwbfile.electrodes["group_name"][:]
-    unique_keys = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
-
-    return unique_keys
-
-
-def _get_electrode_table_indices_for_recording(recording: BaseRecording, nwbfile: pynwb.NWBFile) -> list[int]:
-    """
-    Get the indices of the electrodes in the NWBFile that correspond to the channels
-    in the recording.
-
-    This function matches the `channel_name` and `group_name` from the recording to
-    the global identifiers in the NWBFile's electrodes table, returning the indices
-    of these matching electrodes.
+    **Matching Logic**:
+    - If recording has probe → match by (group_name, electrode_name, channel_name)
+    - If recording has no probe → match by (group_name, "", channel_name)
 
     Parameters
     ----------
     recording : BaseRecording
-        The recording object from which to extract channel and group names.
+        The recording object whose channels need to be mapped.
     nwbfile : pynwb.NWBFile
-        The NWBFile containing the electrodes table to search for matches.
+        The NWB file containing the electrode table.
 
     Returns
     -------
-    list[int]
-        A list of indices corresponding to the positions in the NWBFile's electrodes
-        table that match the channels in the recording.
+    dict[str | int, int | None]
+        Dictionary mapping channel ID to electrode table row index.
+        Value is None if the channel is not found in the table.
+        Keys are channel IDs from recording.get_channel_ids().
     """
+    num_channels = recording.get_num_channels()
+    channel_ids = recording.get_channel_ids()
 
-    channel_names = _get_channel_name(recording=recording)
-    group_names = _get_group_name(recording=recording)
-    channel_global_ids = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
-    table_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
-    electrode_table_indices = [table_global_ids.index(ch_id) for ch_id in channel_global_ids]
+    # Initialize mapping with None (channel not in table)
+    channel_to_electrode_row = defaultdict(lambda: None)
 
-    return electrode_table_indices
+    # If no electrode table, all channels are unmapped
+    if nwbfile.electrodes is None or len(nwbfile.electrodes) == 0:
+        return {channel_id: None for channel_id in channel_ids}
+
+    # Determine which columns exist in the table
+    has_electrode_column = "electrode_name" in nwbfile.electrodes.colnames
+    has_channel_column = "channel_name" in nwbfile.electrodes.colnames
+
+    table_lookup = {}
+    for row_index in range(len(nwbfile.electrodes)):
+        group = nwbfile.electrodes["group_name"][row_index]
+        electrode = nwbfile.electrodes["electrode_name"][row_index] if has_electrode_column else ""
+        channel = nwbfile.electrodes["channel_name"][row_index] if has_channel_column else ""
+        virtual_id = f"{group}_{electrode}_{channel}"
+        table_lookup[virtual_id] = row_index
+
+    # When there is no probe id information, the field is populated with empty strings
+    group_names = _get_group_names(recording=recording)
+    electrode_names = _get_electrode_names(recording=recording)
+    channel_names = _get_channel_names(recording=recording)
+
+    # Use empty strings for electrode names when no probe is attached
+    if electrode_names is None:
+        electrode_names = [""] * num_channels
+
+    for channel_id, group, electrode, channel in zip(channel_ids, group_names, electrode_names, channel_names):
+        virtual_id = f"{group}_{electrode}_{channel}"
+        channel_to_electrode_row[channel_id] = table_lookup.get(virtual_id, None)
+
+    return dict(channel_to_electrode_row)
 
 
 def _get_null_value_for_property(property: str, sample_data: Any, null_values_for_properties: dict[str, Any]) -> Any:
@@ -839,10 +906,19 @@ def add_electrodes_to_nwbfile(
         data_to_add[property] = dict(description=description, data=data, index=index)
 
     # Special cases properties
-    channel_names = _get_channel_name(recording=recording)
+    group_names = _get_group_names(recording=recording)
+    electrode_names = _get_electrode_names(recording=recording)
+    channel_names = _get_channel_names(recording=recording)
+
+    # Always write channel_name column
     data_to_add["channel_name"] = dict(description="unique channel reference", data=channel_names, index=False)
 
-    group_names = _get_group_name(recording=recording)
+    # Write electrode_name column when probe is attached
+    if electrode_names is not None:
+        data_to_add["electrode_name"] = dict(
+            description="unique electrode reference from probe contact identifiers", data=electrode_names, index=False
+        )
+
     data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
@@ -895,40 +971,68 @@ def add_electrodes_to_nwbfile(
         nul_values_for_rows[property] = null_value
 
     # We only add new electrodes to the table
-    existing_global_ids = _get_electrodes_table_global_ids(nwbfile=nwbfile)
-    channel_global_ids = [f"{ch_name}_{gr_name}" for ch_name, gr_name in zip(channel_names, group_names)]
-    channel_indices_to_add = [index for index, key in enumerate(channel_global_ids) if key not in existing_global_ids]
+    # Use the mapping function to determine which channels are already in the table
+    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+
+    # Channels to add are those that don't have a row mapping (None)
+    channel_ids_to_add = [channel_id for channel_id, row in channel_map.items() if row is None]
+
+    # Create mapping from channel_id to channel_index for data array access
+    channel_ids = recording.get_channel_ids()
+    channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
 
     properties_with_data = properties_to_add_by_rows.intersection(data_to_add)
-    for channel_index in channel_indices_to_add:
+    for channel_id in channel_ids_to_add:
+        channel_index = channel_id_to_index[channel_id]
         electrode_kwargs = nul_values_for_rows
         data_dict = {property: data_to_add[property]["data"][channel_index] for property in properties_with_data}
         electrode_kwargs.update(**data_dict)
         nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
-    # The channel_name column as we use channel_name, group_name as a unique identifier
+    # The channel_name/electrode_name column as we use it with group_name as a unique identifier
     # We fill previously inexistent values with the electrode table ids
     electrode_table_size = len(nwbfile.electrodes.id[:])
-    previous_table_size = electrode_table_size - recording.get_num_channels()
+    num_channels_added = len(channel_ids_to_add)
+    previous_table_size = electrode_table_size - num_channels_added
 
+    # Handle channel_name and electrode_name columns (both may be present for probe-based recordings)
     if "channel_name" in properties_to_add_by_columns:
         cols_args = data_to_add["channel_name"]
         data = cols_args["data"]
 
-        previous_ids = nwbfile.electrodes.id[:previous_table_size]
-        default_value = np.array(previous_ids).astype("str")
+        # Fill previous rows with empty strings (not stringified IDs)
+        # This is critical for the concatenation approach to work correctly
+        default_value = np.array([""] * previous_table_size)
 
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column("channel_name", **cols_args)
 
+    if "electrode_name" in properties_to_add_by_columns:
+        cols_args = data_to_add["electrode_name"]
+        data = cols_args["data"]
+
+        # Fill previous rows with empty strings (not stringified IDs)
+        # This is critical for the concatenation approach to work correctly
+        default_value = np.array([""] * previous_table_size)
+
+        extended_data = np.hstack([default_value, data])
+        cols_args["data"] = extended_data
+        nwbfile.add_electrode_column("electrode_name", **cols_args)
+
+    # Now find indices for this recording in the updated table
+    # Rebuild the map after adding electrodes
+    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+
+    # Get indices where this recording's data goes (all should be found now)
     all_indices = np.arange(electrode_table_size)
-    indices_for_new_data = _get_electrode_table_indices_for_recording(recording=recording, nwbfile=nwbfile)
+    channel_ids = recording.get_channel_ids()
+    indices_for_new_data = [channel_map[channel_id] for channel_id in channel_ids]
     indices_for_null_values = [index for index in all_indices if index not in indices_for_new_data]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns
-    for property in properties_to_add_by_columns - {"channel_name"}:
+    # Add properties as columns (exclude channel_name and electrode_name as they were handled above)
+    for property in properties_to_add_by_columns - {"channel_name", "electrode_name"}:
         cols_args = data_to_add[property]
         data = cols_args["data"]
 
