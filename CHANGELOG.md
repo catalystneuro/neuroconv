@@ -2,6 +2,7 @@
 
 ## Removals, Deprecations and Changes
 * Ophys: Passing `pynwb.device.Device` objects in `metadata['Ophys']['Device']` to `add_devices_to_nwbfile` now issues a `FutureWarning` and is deprecated. This feature will be removed on or after March 2026. Pass device definitions as dictionaries instead (e.g., `{ "name": "Microscope" }`). . [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
+* Bump minimal python-neo version to 0.14.3 [PR #1550](https://github.com/catalystneuro/neuroconv/pull/1550)
 
 ## Bug Fixes
 * Capped h5py to <3.15 for macOS 13 and earlier to prevent compatibility issues [PR #1551](https://github.com/catalystneuro/neuroconv/pull/1551)
