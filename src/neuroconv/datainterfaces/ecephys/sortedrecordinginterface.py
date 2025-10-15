@@ -107,12 +107,12 @@ class SortedRecordingConverter(ConverterPipe):
         )
 
         from ...tools.spikeinterface.spikeinterface import (
-            _build_channel_to_electrodes_table_map,
+            _build_channel_id_to_electrodes_table_map,
         )
 
         # Get the electrode table indices that correspond to the recording's channel IDs
         # channel_map is already a dict mapping channel_id -> electrode_table_index
-        channel_id_to_electrode_table_index = _build_channel_to_electrodes_table_map(
+        channel_id_to_electrode_table_index = _build_channel_id_to_electrodes_table_map(
             recording=self.recording_interface.recording_extractor,
             nwbfile=nwbfile,
         )

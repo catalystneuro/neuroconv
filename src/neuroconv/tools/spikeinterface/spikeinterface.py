@@ -298,7 +298,7 @@ def _add_recording_segment_to_nwbfile(
     add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     # Create a region for the electrodes table by matching recording channels to table rows
-    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
     channel_ids = recording.get_channel_ids()
     electrode_table_indices = [channel_map[channel_id] for channel_id in channel_ids]
     electrode_table_region = nwbfile.create_electrode_table_region(
@@ -689,7 +689,7 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
     return group_names
 
 
-def _build_channel_to_electrodes_table_map(
+def _build_channel_id_to_electrodes_table_map(
     recording: BaseRecording, nwbfile: pynwb.NWBFile
 ) -> dict[str | int, int | None]:
     """
@@ -721,7 +721,7 @@ def _build_channel_to_electrodes_table_map(
     recording : BaseRecording
         The recording object whose channels need to be mapped.
     nwbfile : pynwb.NWBFile
-        The NWB file containing the electrode table.
+        The NWBFile containing the electrode table.
 
     Returns
     -------
@@ -997,7 +997,7 @@ def add_electrodes_to_nwbfile(
 
     # We only add new electrodes to the table
     # Use the mapping function to determine which channels are already in the table
-    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
 
     # Channels to add are those that don't have a row mapping (None)
     channel_ids_to_add = [channel_id for channel_id, row in channel_map.items() if row is None]
@@ -1043,7 +1043,7 @@ def add_electrodes_to_nwbfile(
 
     # Now find indices for this recording in the updated table
     # Rebuild the map after adding electrodes
-    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
 
     # Get indices where this recording's data goes (all should be found now)
     all_indices = np.arange(electrode_table_size)
