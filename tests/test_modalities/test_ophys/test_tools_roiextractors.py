@@ -1534,7 +1534,7 @@ class TestAddPhotonSeries(TestCase):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
             AssertionError,
-            "'iterator_type' must be either 'v1', 'v2' (recommended), or None.",
+            "'iterator_type' must be either 'v2' (recommended) or None.",
         ):
             _add_photon_series_to_nwbfile(
                 imaging=self.imaging_extractor,
@@ -1587,14 +1587,14 @@ class TestAddPhotonSeries(TestCase):
         expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
-    def test_v1_iterator(self):
-        """Test adding two photon series with using DataChunkIterator as iterator type."""
-        _add_photon_series_to_nwbfile(
-            imaging=self.imaging_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.two_photon_series_metadata,
-            iterator_type="v1",
-        )
+        """Test adding two photon series with deprecated v1 iterator type."""
+        with self.assertWarns(FutureWarning):
+            _add_photon_series_to_nwbfile(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                iterator_type="v1",
+            )
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
