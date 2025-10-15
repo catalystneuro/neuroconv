@@ -309,14 +309,15 @@ class TestSortedSpikeGLXConverter:
             # Verify electrode mappings match expectations
             units_df = nwbfile.units.to_dataframe()
 
-            # Define expected channel patterns and group names for each unit (no stream prefix in electrode table)
+            # Define expected channel patterns and group names for each unit
+            # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
             unit_channel_patterns = {
-                "unit_a": ["AP0", "AP1"],
-                "unit_b": ["AP2"],
-                "unit_c": ["AP3", "AP4", "AP5"],  # imec0.ap units
-                "unit_x": ["AP0", "AP1"],
-                "unit_y": ["AP2"],
-                "unit_z": ["AP3", "AP4", "AP5"],  # imec1.ap units
+                "unit_a": ["AP0,LF0", "AP1,LF1"],
+                "unit_b": ["AP2,LF2"],
+                "unit_c": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec0.ap units
+                "unit_x": ["AP0,LF0", "AP1,LF1"],
+                "unit_y": ["AP2,LF2"],
+                "unit_z": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec1.ap units
             }
 
             unit_group_patterns = {
@@ -416,11 +417,12 @@ class TestSortedSpikeGLXConverter:
                 ), f"Expected device {expected_device_name}, got {device_value}"
 
             # Define expected channel names and group names for each unit (single probe)
+            # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
             expected_unit_channel_names = {
-                "unit_a": ["AP0", "AP1", "AP2"],  # First 3 channels
-                "unit_b": ["AP10", "AP11"],  # Channels 10-11
-                "unit_c": ["AP20"],  # Channel 20
-                "unit_d": ["AP30", "AP31"],  # Channels 30-31
+                "unit_a": ["AP0,LF0", "AP1,LF1", "AP2,LF2"],  # First 3 channels
+                "unit_b": ["AP10,LF10", "AP11,LF11"],  # Channels 10-11
+                "unit_c": ["AP20,LF20"],  # Channel 20
+                "unit_d": ["AP30,LF30", "AP31,LF31"],  # Channels 30-31
             }
 
             expected_unit_group_names = {

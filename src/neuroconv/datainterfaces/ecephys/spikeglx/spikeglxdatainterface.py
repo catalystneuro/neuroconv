@@ -7,7 +7,6 @@ import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 
 from .spikeglx_utils import (
-    add_recording_extractor_properties,
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
     get_session_start_time,
@@ -119,8 +118,63 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
             self.es_key = electrical_series_name
 
-        # Set electrodes properties
-        add_recording_extractor_properties(self.recording_extractor)
+        # Set electrode properties from probe information
+        probe = self.recording_extractor.get_probe()
+        channel_ids = self.recording_extractor.get_channel_ids()
+
+        # Should follow pattern 'Imec0', 'Imec1', etc.
+        probe_name = self.recording_extractor.stream_id[:5].capitalize()
+
+        # Set group_name property based on shank count
+        if probe.get_shank_count() > 1:
+            shank_ids = probe.shank_ids
+            self.recording_extractor.set_property(key="shank_ids", values=shank_ids)
+            group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in shank_ids]
+        else:
+            group_name = [f"Neuropixels{probe_name}"] * len(channel_ids)
+
+        self.recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
+
+        # Set contact geometry properties
+        contact_shapes = probe.contact_shapes
+        self.recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+
+        contact_ids = probe.contact_ids  # Format: "e0", "e1" or "s0e0", "s0e1" for multi-shank
+        self.recording_extractor.set_property(key="contact_ids", ids=channel_ids, values=contact_ids)
+
+        # Note: electrode_name is now automatically extracted from probe.contact_ids
+        # by _get_electrode_name() in spikeinterface.py, so we don't need to set it here
+
+        # Set channel_name property for multi-stream deduplication
+        # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
+        # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
+        current_stream_kind = self._signals_info_dict["stream_kind"]  # "ap" or "lf"
+
+        # Check if companion stream exists (AP has LF, LF has AP)
+        device = self._signals_info_dict["device"]  # e.g., "imec0"
+        companion_stream_kind = "lf" if current_stream_kind == "ap" else "ap"
+        companion_stream_id = f"{device}.{companion_stream_kind}"
+        companion_key = (0, companion_stream_id)
+
+        signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict
+        has_companion_stream = companion_key in signals_info_dict
+
+        # Build channel names
+        channel_names = []
+        for channel_id in channel_ids:
+            # Extract channel number from channel_id (e.g., "imec0.ap#AP0" -> "0")
+            channel_number = channel_id.split("#")[-1][2:]
+
+            if has_companion_stream:
+                # Multi-stream: show both AP and LF (alphabetically sorted)
+                channel_name = f"AP{channel_number},LF{channel_number}"
+            else:
+                # Single stream: just use the current stream name
+                channel_name = f"{current_stream_kind.upper()}{channel_number}"
+
+            channel_names.append(channel_name)
+
+        self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -151,6 +205,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
+            dict(
+                name="electrode_name",
+                description=(
+                    "The unique name of this electrode. Derived from probe contact identifiers. "
+                    "Multiple channels (e.g., AP and LF bands) from the same physical electrode "
+                    "will share the same electrode_name."
+                ),
+            ),
             dict(name="contact_shapes", description="The shape of the electrode"),
             dict(name="contact_ids", description="The id of the contact on the electrode"),
             dict(
