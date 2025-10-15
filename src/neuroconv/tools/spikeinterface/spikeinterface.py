@@ -31,6 +31,7 @@ def add_recording_to_nwbfile(
     write_electrical_series: bool = True,
     write_scaled: bool = False,
     iterator_type: str = "v2",
+    iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
 ):
@@ -62,10 +63,12 @@ def add_recording_to_nwbfile(
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
+    iterator_options: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    iterator_opts: dict, optional
+        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
@@ -77,6 +80,18 @@ def add_recording_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+
+    # Handle deprecated iterator_opts parameter
+    if iterator_opts is not None:
+        warnings.warn(
+            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
+            "Use 'iterator_options' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        if iterator_options is not None:
+            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+        iterator_options = iterator_opts
 
     if metadata is None:
         metadata = _get_default_ecephys_metadata()
@@ -103,7 +118,7 @@ def add_recording_to_nwbfile(
             es_key=es_key,
             write_scaled=write_scaled,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_opts=iterator_options,
             always_write_timestamps=always_write_timestamps,
         )
 
