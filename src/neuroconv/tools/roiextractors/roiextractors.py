@@ -546,7 +546,7 @@ def _imaging_frames_to_hdmf_iterator(
         for i in range(num_samples):
             yield imaging.get_series(start_sample=i, end_sample=i + 1).squeeze().T
 
-    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v2' or None."
+    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v2' (recommended) or None."
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
