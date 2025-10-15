@@ -369,8 +369,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             * buffer_shape : tuple, optional
                 Manual specification of buffer shape. Must be a multiple of chunk_shape along each axis.
                 Cannot be set if buffer_gb is specified.
-            * chunk_mb : float, default: 1.0
-                Target chunk size in MB for HDF5 storage (recommended to keep below 1 MB).
+            * chunk_mb : float, default: 10.0
+                Target chunk size in MB for HDF5 storage.
+                HDF5 recommends chunks between 10-50 MB for optimal cloud performance.
+                This controls both the iteration chunk size and the final HDF5 dataset chunk layout.
             * chunk_shape : tuple, optional
                 Manual specification of chunk shape for the HDF5 dataset.
                 Cannot be set if chunk_mb is specified.
