@@ -15,6 +15,7 @@ from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
+from ..probeinterface import populate_probe_contacts_in_nwbfile
 from ...utils import (
     DeepDict,
     calculate_regular_series_rate,
@@ -732,12 +733,16 @@ def _build_channel_to_electrodes_table_map(
     # Build lookup table from existing rows
     # Note: We check if columns exist before trying to access them
     table_lookup = {}
+    fallback_lookup = {}
     for row_index in range(len(nwbfile.electrodes)):
         group = nwbfile.electrodes["group_name"][row_index]
         electrode = nwbfile.electrodes["electrode_name"][row_index] if has_electrode_column else ""
         channel = nwbfile.electrodes["channel_name"][row_index] if has_channel_column else ""
-        virtual_id = f"{group}_{electrode}_{channel}"
-        table_lookup[virtual_id] = row_index
+        table_lookup[(group, electrode, channel)] = row_index
+
+        # Allow fallback matches that ignore channel names when the stored value is empty.
+        if channel == "" or not has_channel_column:
+            fallback_lookup[(group, electrode)] = row_index
 
     # When there is no probe id information, the field is populated with empty strings
     group_names = _get_group_name(recording=recording)
@@ -749,8 +754,11 @@ def _build_channel_to_electrodes_table_map(
         electrode_names = [""] * num_channels
 
     for channel_id, group, electrode, channel in zip(channel_ids, group_names, electrode_names, channel_names):
-        virtual_id = f"{group}_{electrode}_{channel}"
-        channel_to_electrode_row[channel_id] = table_lookup.get(virtual_id, None)
+        key = (group, electrode, channel)
+        row_index = table_lookup.get(key, None)
+        if row_index is None:
+            row_index = fallback_lookup.get((group, electrode), None)
+        channel_to_electrode_row[channel_id] = row_index
 
     return dict(channel_to_electrode_row)
 
@@ -885,6 +893,39 @@ def add_electrodes_to_nwbfile(
     for property in electrodes_metadata:
         property_descriptions[property["name"]] = property["description"]
 
+    handled_by_probe = False
+    probe_related_fields: set[str] = set()
+    contact_array = None
+    if hasattr(recording, "has_probe") and recording.has_probe():
+        probegroup = recording.get_probegroup()
+        contact_array = recording.get_property("contact_vector")
+        if contact_array is None:
+            contact_array = probegroup.to_numpy(complete=True)
+            dtype_names = contact_array.dtype.names
+            if "device_channel_indices" in dtype_names:
+                connected_mask = contact_array["device_channel_indices"] >= 0
+                contact_array = contact_array[connected_mask]
+            if contact_array.size == 0:
+                raise ValueError("Probe does not contain any connected contacts.")
+            if "device_channel_indices" in dtype_names:
+                order = np.lexsort((contact_array["device_channel_indices"], contact_array["probe_index"]))
+            else:
+                order = np.lexsort((np.arange(contact_array.size), contact_array["probe_index"]))
+            contact_array = contact_array[order]
+        else:
+            contact_array = np.asarray(contact_array)
+
+        group_names_probe = _get_group_name(recording=recording)
+        populate_probe_contacts_in_nwbfile(
+            probegroup=probegroup,
+            contact_array=contact_array,
+            group_names=group_names_probe,
+            nwbfile=nwbfile,
+            metadata=metadata,
+        )
+        handled_by_probe = True
+        probe_related_fields = set(contact_array.dtype.names).union({"contact_ids", "electrode_name", "group_name"})
+
     # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
     data_to_add = dict()
 
@@ -901,8 +942,21 @@ def add_electrodes_to_nwbfile(
         "group_name",  # We handle this here _get_group_name
         "group",  # We handle this here with _get_group_name
     ]
+    spikeinterface_special_cases.extend(
+        [
+            "contact_shapes",
+            "contact_ids",
+            "si_units",
+            "shank_ids",
+        ]
+    )
+    if handled_by_probe:
+        spikeinterface_special_cases.extend(list(probe_related_fields))
+
     excluded_properties = list(exclude) + spikeinterface_special_cases
     properties_to_extract = [property for property in recording_properties if property not in excluded_properties]
+    if handled_by_probe:
+        properties_to_extract = [property for property in properties_to_extract if property not in probe_related_fields]
 
     for property in properties_to_extract:
         data = np.asarray(recording.get_property(property)).copy()  # Do not modify properties of the recording
@@ -924,7 +978,7 @@ def add_electrodes_to_nwbfile(
     data_to_add["channel_name"] = dict(description="unique channel reference", data=channel_names, index=False)
 
     # Write electrode_name column when probe is attached
-    if electrode_names is not None:
+    if electrode_names is not None and not handled_by_probe:
         data_to_add["electrode_name"] = dict(
             description="unique electrode reference from probe contact identifiers", data=electrode_names, index=False
         )
@@ -945,7 +999,7 @@ def add_electrodes_to_nwbfile(
         data_to_add["location"] = data_to_add["brain_area"]
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
-    else:
+    elif not handled_by_probe:
         default_location = _get_default_ecephys_metadata()["Ecephys"]["ElectrodeGroup"][0]["location"]
         data = np.full(recording.get_num_channels(), fill_value=default_location)
         data_to_add["location"] = dict(description="location", data=data, index=False)

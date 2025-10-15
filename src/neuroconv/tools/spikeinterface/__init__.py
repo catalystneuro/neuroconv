@@ -20,4 +20,5 @@ from .spikeinterface import (
 )
 
 
+from ..probeinterface import add_probe_to_nwbfile, add_spikeglx_probe_to_nwbfile
 from .spikeinterfacerecordingdatachunkiterator import get_electrical_series_chunk_shape

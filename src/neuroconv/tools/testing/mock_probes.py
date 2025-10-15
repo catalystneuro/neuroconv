@@ -35,4 +35,14 @@ def generate_mock_probe(num_channels: int, num_shanks: int = 3):
     probe.set_contacts(positions=positions, shapes="circle", shape_params={"radius": 5})
     probe.set_device_channel_indices(np.arange(num_channels))
     probe.set_shank_ids(shank_ids)
+    contact_counts: dict[int, int] = {}
+    contact_ids: list[str] = []
+    for shank_id in shank_ids:
+        count = contact_counts.get(shank_id, 0)
+        contact_ids.append(f"s{shank_id}e{count}")
+        contact_counts[shank_id] = count + 1
+    probe.set_contact_ids(contact_ids)
+    probe.name = "MockProbe"
+    probe.manufacturer = "MockManufacturer"
+    probe.model_name = "MockModel"
     return probe
