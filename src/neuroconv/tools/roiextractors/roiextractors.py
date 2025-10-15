@@ -230,13 +230,13 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     return nwbfile
 
 
-def add_imaging_plane_to_nwbfile(
+def _add_imaging_plane_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
     imaging_plane_name: str | None = None,
 ) -> NWBFile:
     """
-    Adds the imaging plane specified by the metadata to the nwb file.
+    Private implementation. Adds the imaging plane specified by the metadata to the nwb file.
     The imaging plane that is added is the one located in metadata["Ophys"]["ImagingPlane"][imaging_plane_index]
 
     Parameters
@@ -307,9 +307,51 @@ def add_imaging_plane_to_nwbfile(
     return nwbfile
 
 
-def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+def add_imaging_plane_to_nwbfile(
+    nwbfile: NWBFile,
+    metadata: dict,
+    imaging_plane_name: str | None = None,
+) -> NWBFile:
     """
-    Adds the image segmentation container to the nwb file.
+    Adds the imaging plane specified by the metadata to the nwb file.
+
+    .. deprecated:: 0.8.2
+        `add_imaging_plane_to_nwbfile` is deprecated and will be removed on or after March 2026.
+        This is a low-level function that should not be called directly by users.
+        Use high-level interface methods like `BaseImagingExtractorInterface.add_to_nwbfile()` instead.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        An previously defined -in memory- NWBFile.
+    metadata : dict
+        The metadata in the neuroconv format. See `_get_default_ophys_metadata()` for an example.
+    imaging_plane_name: str, optional
+        The name of the imaging plane to be added. If None, this function adds the default imaging plane
+        in _get_default_ophys_metadata().
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the imaging plane added.
+    """
+    warnings.warn(
+        "The 'add_imaging_plane_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseImagingExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return _add_imaging_plane_to_nwbfile(
+        nwbfile=nwbfile,
+        metadata=metadata,
+        imaging_plane_name=imaging_plane_name,
+    )
+
+
+def _add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+    """
+    Private implementation. Adds the image segmentation container to the nwb file.
 
     Parameters
     ----------
@@ -338,7 +380,38 @@ def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFi
     return nwbfile
 
 
-def add_photon_series_to_nwbfile(
+def add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+    """
+    Adds the image segmentation container to the nwb file.
+
+    .. deprecated:: 0.8.2
+        `add_image_segmentation_to_nwbfile` is deprecated and will be removed on or after March 2026.
+        This is a low-level function that should not be called directly by users.
+        Use high-level interface methods like `BaseSegmentationExtractorInterface.add_to_nwbfile()` instead.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The nwbfile to add the image segmentation to.
+    metadata: dict
+        The metadata in the neuroconv format. See `_get_default_segmentation_metadata()` for an example.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile passed as an input with the image segmentation added.
+    """
+    warnings.warn(
+        "The 'add_image_segmentation_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseSegmentationExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return _add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+
+def _add_photon_series_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
@@ -350,7 +423,7 @@ def add_photon_series_to_nwbfile(
     always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
-    Add photon series to NWB file.
+    Private implementation. Add photon series to NWB file.
 
     Adds photon series from ImagingExtractor to NWB file object.
     The photon series can be added to the NWB file either as a TwoPhotonSeries
@@ -429,7 +502,7 @@ def add_photon_series_to_nwbfile(
         imaging_plane_name = None  # Will create default imaging plane
 
     # Add imaging plane (None signals to create default imaging plane)
-    add_imaging_plane_to_nwbfile(
+    _add_imaging_plane_to_nwbfile(
         nwbfile=nwbfile,
         metadata=metadata,
         imaging_plane_name=imaging_plane_name,
@@ -482,6 +555,72 @@ def add_photon_series_to_nwbfile(
         ophys_module.add(photon_series)
 
     return nwbfile
+
+
+def add_photon_series_to_nwbfile(
+    imaging: ImagingExtractor,
+    nwbfile: NWBFile,
+    metadata: dict | None = None,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+    photon_series_index: int = 0,
+    parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
+    always_write_timestamps: bool = False,
+) -> NWBFile:
+    """
+    Add photon series to NWB file.
+
+    .. deprecated:: 0.8.2
+        `add_photon_series_to_nwbfile` is deprecated and will be removed on or after March 2026.
+        This is a low-level function that should not be called directly by users.
+        Use high-level interface methods like `BaseImagingExtractorInterface.add_to_nwbfile()` instead.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The imaging extractor to get the data from.
+    nwbfile : NWBFile
+        The nwbfile to add the photon series to.
+    metadata: dict
+        The metadata for the photon series.
+    photon_series_type: {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to add, default is TwoPhotonSeries.
+    photon_series_index: int, default: 0
+        The metadata for the photon series is a list of the different photon series to add.
+        Specify which element of the list with this parameter.
+    parent_container: {'acquisition', 'processing/ophys'}, optional
+        The container where the photon series is added, default is nwbfile.acquisition.
+        When 'processing/ophys' is chosen, the photon series is added to ``nwbfile.processing['ophys']``.
+    iterator_type: str, default: 'v2'
+        The type of iterator to use when adding the photon series to the NWB file.
+    iterator_options: dict, optional
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile passed as an input with the photon series added.
+    """
+    warnings.warn(
+        "The 'add_photon_series_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseImagingExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return _add_photon_series_to_nwbfile(
+        imaging=imaging,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        photon_series_type=photon_series_type,
+        photon_series_index=photon_series_index,
+        parent_container=parent_container,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        always_write_timestamps=always_write_timestamps,
+    )
 
 
 def _check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
@@ -609,7 +748,7 @@ def add_imaging_to_nwbfile(
 
     """
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-    nwbfile = add_photon_series_to_nwbfile(
+    nwbfile = _add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -745,7 +884,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     return metadata
 
 
-def add_plane_segmentation_to_nwbfile(
+def _add_plane_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None,
@@ -756,7 +895,7 @@ def add_plane_segmentation_to_nwbfile(
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
-    Adds the plane segmentation specified by the metadata to the image segmentation.
+    Private implementation. Adds the plane segmentation specified by the metadata to the image segmentation.
 
     If the plane segmentation already exists in the image segmentation, it is not added again.
 
@@ -852,6 +991,67 @@ def add_plane_segmentation_to_nwbfile(
     return nwbfile
 
 
+def add_plane_segmentation_to_nwbfile(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: dict | None,
+    plane_segmentation_name: str | None = None,
+    include_roi_centroids: bool = True,
+    include_roi_acceptance: bool = True,
+    mask_type: Literal["image", "pixel", "voxel"] = "image",
+    iterator_options: dict | None = None,
+) -> NWBFile:
+    """
+    Adds the plane segmentation specified by the metadata to the image segmentation.
+
+    .. deprecated:: 0.8.2
+        `add_plane_segmentation_to_nwbfile` is deprecated and will be removed on or after March 2026.
+        This is a low-level function that should not be called directly by users.
+        Use high-level interface methods like `BaseSegmentationExtractorInterface.add_to_nwbfile()` instead.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the results from.
+    nwbfile : NWBFile
+        The NWBFile to add the plane segmentation to.
+    metadata : dict, optional
+        The metadata for the plane segmentation.
+    plane_segmentation_name : str, optional
+        The name of the plane segmentation to be added.
+    include_roi_centroids : bool, default: True
+        Whether to include the ROI centroids on the PlaneSegmentation table.
+    include_roi_acceptance : bool, default: True
+        Whether to include if the detected ROI was 'accepted' or 'rejected'.
+    mask_type : str, default: 'image'
+        Type of ROI mask: 'image', 'pixel', or 'voxel'.
+    iterator_options : dict, optional
+        Options for iterating over image masks.
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the plane segmentation added.
+    """
+    warnings.warn(
+        "The 'add_plane_segmentation_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseSegmentationExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return _add_plane_segmentation_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
+        include_roi_centroids=include_roi_centroids,
+        include_roi_acceptance=include_roi_acceptance,
+        mask_type=mask_type,
+        iterator_options=iterator_options,
+    )
+
+
 def _add_plane_segmentation(
     background_or_roi_ids: list[int | str],
     image_or_pixel_masks: np.ndarray,
@@ -880,7 +1080,7 @@ def _add_plane_segmentation(
     default_image_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["name"]
     image_segmentation_metadata = metadata.get("Ophys", {}).get("ImageSegmentation", {})
     image_segmentation_name = image_segmentation_metadata.get("name", default_image_segmentation_name)
-    add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    _add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys_module[image_segmentation_name]
@@ -922,7 +1122,7 @@ def _add_plane_segmentation(
     )
 
     imaging_plane_name_to_add = imaging_plane_name_from_plane_seg if user_has_imaging_plane else None
-    add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add)
+    _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add)
 
     if plane_segmentation_name in image_segmentation.plane_segmentations:
         # At the moment, we don't support extending an existing PlaneSegmentation.
@@ -1246,7 +1446,7 @@ def _create_roi_table_region(
     """
     image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
 
-    add_plane_segmentation_to_nwbfile(
+    _add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -1486,7 +1686,7 @@ def add_segmentation_to_nwbfile(
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     # Add PlaneSegmentation:
-    add_plane_segmentation_to_nwbfile(
+    _add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
