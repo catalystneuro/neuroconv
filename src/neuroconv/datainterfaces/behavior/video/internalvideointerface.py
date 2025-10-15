@@ -267,10 +267,6 @@ class InternalVideoInterface(BaseDataInterface):
                 RAM to use for buffering data chunks in GB.
             * buffer_shape : tuple, optional
                 Manual specification of buffer shape. Cannot be set with buffer_gb.
-            * chunk_mb : float, default: 10.0
-                Target chunk size in MB for HDF5 storage.
-            * chunk_shape : tuple, optional
-                Manual specification of chunk shape. Cannot be set with chunk_mb.
             * display_progress : bool, default: False
                 Enable tqdm progress bar during video write.
             * progress_bar_options : dict, optional
@@ -278,6 +274,10 @@ class InternalVideoInterface(BaseDataInterface):
                 See https://github.com/tqdm/tqdm#parameters for all tqdm options.
                 Common options: 'desc' (description), 'position' (for multiple bars),
                 'leave' (keep bar after completion).
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         parent_container: {'acquisition', 'processing/behavior'}
             The container where the ImageSeries is added, default is nwbfile.acquisition.
             When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].

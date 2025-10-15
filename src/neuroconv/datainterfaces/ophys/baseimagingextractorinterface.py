@@ -185,9 +185,13 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             None: Loads all data into memory before writing (not recommended for large datasets).
             Note: 'v1' is deprecated and will be removed on or after March 2026.
         iterator_options : dict, optional
-            Options for controlling the iterative write process. See the
-            `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+            Options for controlling the iterative write process (buffer size, progress bars).
+            See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
             for more information on chunked data writing.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """

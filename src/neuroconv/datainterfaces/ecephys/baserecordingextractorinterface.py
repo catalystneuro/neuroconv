@@ -369,18 +369,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             * buffer_shape : tuple, optional
                 Manual specification of buffer shape. Must be a multiple of chunk_shape along each axis.
                 Cannot be set if buffer_gb is specified.
-            * chunk_mb : float, default: 10.0
-                Target chunk size in MB for HDF5 storage.
-                HDF5 recommends chunks between 10-50 MB for optimal cloud performance.
-                This controls both the iteration chunk size and the final HDF5 dataset chunk layout.
-            * chunk_shape : tuple, optional
-                Manual specification of chunk shape for the HDF5 dataset.
-                Cannot be set if chunk_mb is specified.
             * display_progress : bool, default: False
                 Enable tqdm progress bar during data write.
             * progress_bar_options : dict, optional
                 Additional options passed to tqdm progress bar.
                 See https://github.com/tqdm/tqdm#parameters for all tqdm options.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         iterator_opts : dict, optional
             Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
