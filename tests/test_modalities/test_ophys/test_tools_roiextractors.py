@@ -30,16 +30,16 @@ from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
     add_devices_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
-    add_image_segmentation_to_nwbfile,
-    add_imaging_plane_to_nwbfile,
-    add_photon_series_to_nwbfile,
-    add_plane_segmentation_to_nwbfile,
     add_summary_images_to_nwbfile,
 )
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
 from neuroconv.tools.roiextractors.roiextractors import (
+    _add_image_segmentation_to_nwbfile,
+    _add_imaging_plane_to_nwbfile,
+    _add_photon_series_to_nwbfile,
+    _add_plane_segmentation_to_nwbfile,
     _get_default_ophys_metadata,
 )
 from neuroconv.utils import dict_deep_update
@@ -178,7 +178,7 @@ class TestAddImagingPlane(TestCase):
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
     def test_add_imaging_plane_to_nwbfile(self):
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
@@ -190,12 +190,12 @@ class TestAddImagingPlane(TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
         self.imaging_plane_metadata["description"] = "modified description"
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
@@ -209,7 +209,7 @@ class TestAddImagingPlane(TestCase):
         first_imaging_plane_description = "first_imaging_plane_description"
         self.imaging_plane_metadata["name"] = first_imaging_plane_name
         self.imaging_plane_metadata["description"] = first_imaging_plane_description
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=first_imaging_plane_name
         )
 
@@ -218,7 +218,7 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane_description = "second_imaging_plane_description"
         self.imaging_plane_metadata["name"] = second_imaging_plane_name
         self.imaging_plane_metadata["description"] = second_imaging_plane_description
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=second_imaging_plane_name
         )
 
@@ -241,7 +241,7 @@ class TestAddImagingPlane(TestCase):
             exc_type=ValueError,
             exc_msg=f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane'].",
         ):
-            add_imaging_plane_to_nwbfile(
+            _add_imaging_plane_to_nwbfile(
                 nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name
             )
 
@@ -254,10 +254,10 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlane"][0])
         second_imaging_plane_metadata.update(name="second_imaging_plane_name")
         imaging_planes_metadata.append(second_imaging_plane_metadata)
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name=self.imaging_plane_name
         )
-        add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile(
             nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name="second_imaging_plane_name"
         )
 
@@ -290,11 +290,11 @@ class TestAddImageSegmentation(unittest.TestCase):
 
     def test_add_image_segmentation_to_nwbfile(self):
         """
-        Test that add_image_segmentation_to_nwbfile method adds an image segmentation to the nwbfile
+        Test that _add_image_segmentation_to_nwbfile method adds an image segmentation to the nwbfile
         specified by the metadata.
         """
 
-        add_image_segmentation_to_nwbfile(nwbfile=self.nwbfile, metadata=self.metadata)
+        _add_image_segmentation_to_nwbfile(nwbfile=self.nwbfile, metadata=self.metadata)
 
         ophys = get_module(self.nwbfile, "ophys")
 
@@ -371,9 +371,9 @@ class TestAddPlaneSegmentation(TestCase):
         self.metadata["Ophys"].update(image_segmentation_metadata)
 
     def test_add_plane_segmentation_to_nwbfile(self):
-        """Test that add_plane_segmentation_to_nwbfile method adds a plane segmentation to the nwbfile
+        """Test that _add_plane_segmentation_to_nwbfile method adds a plane segmentation to the nwbfile
         specified by the metadata."""
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -404,7 +404,7 @@ class TestAddPlaneSegmentation(TestCase):
 
     def test_do_not_include_roi_centroids(self):
         """Test that setting `include_roi_centroids=False` prevents the centroids from being calculated and added."""
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -420,7 +420,7 @@ class TestAddPlaneSegmentation(TestCase):
 
     def test_do_not_include_acceptance(self):
         """Test that setting `include_roi_acceptance=False` prevents the boolean acceptance columns from being added."""
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -488,7 +488,7 @@ class TestAddPlaneSegmentation(TestCase):
             rejected_list=rejected_list,
         )
 
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -523,7 +523,7 @@ class TestAddPlaneSegmentation(TestCase):
 
         segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
 
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -555,7 +555,7 @@ class TestAddPlaneSegmentation(TestCase):
 
         segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
 
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -583,7 +583,7 @@ class TestAddPlaneSegmentation(TestCase):
             "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel'. " "Received 'invalid'."
         )
         with pytest.raises(AssertionError, match=expected_error_message):
-            add_plane_segmentation_to_nwbfile(
+            _add_plane_segmentation_to_nwbfile(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
@@ -613,7 +613,7 @@ class TestAddPlaneSegmentation(TestCase):
                 "Using mask_type='pixel' instead."
             ),
         ):
-            add_plane_segmentation_to_nwbfile(
+            _add_plane_segmentation_to_nwbfile(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
@@ -651,7 +651,7 @@ class TestAddPlaneSegmentation(TestCase):
                 "Using mask_type='voxel' instead."
             ),
         ):
-            add_plane_segmentation_to_nwbfile(
+            _add_plane_segmentation_to_nwbfile(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
@@ -671,7 +671,7 @@ class TestAddPlaneSegmentation(TestCase):
         """Test that adding a plane segmentation with the same name will not overwrite
         the existing plane segmentation."""
 
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -680,7 +680,7 @@ class TestAddPlaneSegmentation(TestCase):
 
         self.plane_segmentation_metadata["description"] = "modified description"
 
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -704,7 +704,7 @@ class TestAddPlaneSegmentation(TestCase):
         first_plane_segmentation_description = "first_plane_segmentation_description"
         self.plane_segmentation_metadata["name"] = first_plane_segmentation_name
         self.plane_segmentation_metadata["description"] = first_plane_segmentation_description
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -716,7 +716,7 @@ class TestAddPlaneSegmentation(TestCase):
         second_plane_segmentation_description = "second_plane_segmentation_description"
         self.plane_segmentation_metadata["name"] = second_plane_segmentation_name
         self.plane_segmentation_metadata["description"] = second_plane_segmentation_description
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=self.segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -745,7 +745,7 @@ class TestAddPlaneSegmentation(TestCase):
             exc_type=ValueError,
             exc_msg=f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations'].",
         ):
-            add_plane_segmentation_to_nwbfile(
+            _add_plane_segmentation_to_nwbfile(
                 segmentation_extractor=self.segmentation_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
@@ -786,7 +786,7 @@ class TestAddPlaneSegmentation(TestCase):
         self.metadata["Ophys"].update(image_segmentation_metadata)
 
         # Add to NWB
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -1503,7 +1503,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_default_values(self):
         """Test adding two photon series with default values."""
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
         )
 
@@ -1534,9 +1534,9 @@ class TestAddPhotonSeries(TestCase):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
             AssertionError,
-            "'iterator_type' must be either 'v1', 'v2' (recommended), or None.",
+            "'iterator_type' must be either 'v2' (recommended) or None.",
         ):
-            add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1568,8 +1568,8 @@ class TestAddPhotonSeries(TestCase):
             _check_if_imaging_fits_into_memory(imaging=mock_imaging)
 
     def test_non_iterative_two_photon(self):
-        """Test adding two photon series with using DataChunkIterator as iterator type."""
-        add_photon_series_to_nwbfile(
+        """Test adding two photon series without using DataChunkIterator."""
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1587,14 +1587,15 @@ class TestAddPhotonSeries(TestCase):
         expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
-    def test_v1_iterator(self):
-        """Test adding two photon series with using DataChunkIterator as iterator type."""
-        add_photon_series_to_nwbfile(
-            imaging=self.imaging_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.two_photon_series_metadata,
-            iterator_type="v1",
-        )
+    def test_deprecated_v1_iterator_two_photon(self):
+        """Test adding two photon series with deprecated v1 iterator type."""
+        with self.assertWarns(FutureWarning):
+            _add_photon_series_to_nwbfile(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                iterator_type="v1",
+            )
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
@@ -1614,7 +1615,7 @@ class TestAddPhotonSeries(TestCase):
         """Test that iterator options are propagated to the data chunk iterator."""
         buffer_shape = (20, 5, 5)
         chunk_shape = (10, 5, 5)
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1631,7 +1632,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_mb_propagation(self):
         """Test that chunk_mb is propagated to the data chunk iterator and the chunk shape is correctly set to fit."""
         chunk_mb = 10.0
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1648,7 +1649,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_shape_is_at_least_one(self):
         """Test that when a small chunk_mb is selected the chunk shape is guaranteed to include at least one frame."""
         chunk_mb = 1.0
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1664,7 +1665,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_shape_does_not_exceed_maxshape(self):
         """Test that when a large chunk_mb is selected the chunk shape is guaranteed to not exceed maxshape."""
         chunk_mb = 1000.0
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1678,7 +1679,7 @@ class TestAddPhotonSeries(TestCase):
         assert_array_equal(chunk_shape, data_chunk_iterator.maxshape)
 
     def test_add_two_photon_series_roundtrip(self):
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
         )
 
@@ -1715,7 +1716,7 @@ class TestAddPhotonSeries(TestCase):
             AssertionError,
             "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'.",
         ):
-            add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1732,7 +1733,7 @@ class TestAddPhotonSeries(TestCase):
             binning=2,
             power=500.0,
         )
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -1747,7 +1748,7 @@ class TestAddPhotonSeries(TestCase):
         self.assertEqual(one_photon_series.unit, "n.a.")
 
     def test_add_one_photon_series_roundtrip(self):
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
@@ -1777,7 +1778,7 @@ class TestAddPhotonSeries(TestCase):
             exc_type=AssertionError,
             exc_msg="'parent_container' must be either 'acquisition' or 'processing/ophys'.",
         ):
-            add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1789,7 +1790,7 @@ class TestAddPhotonSeries(TestCase):
         metadata = self.one_photon_series_metadata
         metadata["Ophys"]["OnePhotonSeries"][0].update(name="OnePhotonSeriesProcessed")
 
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
@@ -1802,7 +1803,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
         """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1818,7 +1819,7 @@ class TestAddPhotonSeries(TestCase):
         shared_photon_series_metadata["Ophys"]["ImagingPlane"][0]["name"] = shared_imaging_plane_name
         shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["imaging_plane"] = shared_imaging_plane_name
 
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
@@ -1826,7 +1827,7 @@ class TestAddPhotonSeries(TestCase):
         )
 
         shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
@@ -2037,7 +2038,7 @@ class TestNoMetadataMutation:
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_imaging_plane_no_metadata_mutation(self):
-        """Test that add_imaging_plane_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_imaging_plane_to_nwbfile does not mutate the input metadata."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with imaging plane (all fields provided)
@@ -2068,13 +2069,13 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+        _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_imaging_plane_no_partial_metadata_mutation(self):
-        """Test that add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
+        """Test that _add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with minimal imaging plane (missing some fields that will be filled from defaults)
@@ -2102,13 +2103,13 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function (should fill in missing fields internally but not mutate the input)
-        add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+        _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_photon_series_no_metadata_mutation(self):
-        """Test that add_photon_series_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_photon_series_to_nwbfile does not mutate the input metadata."""
         from roiextractors.testing import generate_dummy_imaging_extractor
 
         nwbfile = mock_NWBFile()
@@ -2152,7 +2153,7 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -2163,7 +2164,7 @@ class TestNoMetadataMutation:
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_image_segmentation_no_metadata_mutation(self):
-        """Test that add_image_segmentation_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_image_segmentation_to_nwbfile does not mutate the input metadata."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with image segmentation
@@ -2173,13 +2174,13 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        _add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_plane_segmentation_no_metadata_mutation(self):
-        """Test that add_plane_segmentation_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_plane_segmentation_to_nwbfile does not mutate the input metadata."""
         from roiextractors.testing import generate_dummy_segmentation_extractor
 
         nwbfile = mock_NWBFile()
@@ -2223,7 +2224,7 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        add_plane_segmentation_to_nwbfile(
+        _add_plane_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,

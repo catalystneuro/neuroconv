@@ -39,7 +39,8 @@ dependencies = [
     "numpy>=1.26.0; python_version >= '3.12'",
     "PyYAML>=5.4",
     "ruamel.yaml~=0.18.15",  # https://sourceforge.net/p/ruamel-yaml-clib/tickets/47/
-    "h5py>=3.9.0",
+    "h5py>=3.9.0,<3.15; sys_platform == 'darwin'",
+    "h5py>=3.9.0; sys_platform != 'darwin'",
     "hdmf>=4.0.0",
     "hdmf_zarr>=0.11",
     "pynwb>=3.0.0",
@@ -134,7 +135,7 @@ behavior = [
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.103.0",
-    "neo>=0.14.1"
+    "neo>=0.14.3"
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
