@@ -1,7 +1,7 @@
 # v0.8.2 (Upcoming)
 
 ## Removals, Deprecations and Changes
-* Ophys: Low-level helper functions `add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, and `add_plane_segmentation_to_nwbfile` are deprecated and will be removed on or after March 2026. These are low-level functions that should not be called directly. [PR #1550](https://github.com/catalystneuro/neuroconv/pull/1550)
+* Ophys: Low-level helper functions `add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, and `add_plane_segmentation_to_nwbfile` are deprecated and will be removed on or after March 2026. These are low-level functions that should not be called directly. [PR #1552](https://github.com/catalystneuro/neuroconv/pull/1552)
 * Ophys: Passing `pynwb.device.Device` objects in `metadata['Ophys']['Device']` to `add_devices_to_nwbfile` now issues a `FutureWarning` and is deprecated. This feature will be removed on or after March 2026. Pass device definitions as dictionaries instead (e.g., `{ "name": "Microscope" }`). . [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 * Ecephys: The `iterator_opts` parameter is deprecated across all ecephys interfaces and will be removed on or after March 2026. Use `iterator_options` instead for consistent naming with ophys and behavior interfaces. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
 * Ophys: The `iterator_type='v1'` option for imaging data is deprecated and will be removed on or after March 2026. Use `iterator_type='v2'`or `None` (no chunking). This aligns ophys with ecephys, which only supports 'v2' and None. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
