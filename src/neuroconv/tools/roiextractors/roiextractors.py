@@ -525,22 +525,20 @@ def _imaging_frames_to_hdmf_iterator(
     ----------
     imaging : ImagingExtractor
         The imaging extractor to get the data from.
-    iterator_type : {"v2", "v1",  None}, default: 'v2'
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-        None: write the TimeSeries with no memory chunking.
+    iterator_type : {"v2", None}, default: 'v2'
+        The type of iterator for chunked data writing.
+        'v2': Uses iterative write with control over chunking and progress bars.
+        None: Loads all data into memory before writing (not recommended for large datasets).
+        Note: 'v1' is deprecated and will be removed on or after March 2026.
     iterator_options : dict, optional
-        Dictionary of options for the iterator.
-        For 'v1' this is the same as the options for the DataChunkIterator.
-        For 'v2', see
-        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
-        for the full list of options.
+        Options for controlling the iterative write process. See the
+        `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+        for more information on chunked data writing.
 
     Returns
     -------
-    DataChunkIterator
-        The frames of the imaging extractor wrapped in an iterator object.
+    iterator
+        The frames of the imaging extractor wrapped in an iterator for chunked writing.
     """
 
     def data_generator(imaging):
@@ -548,7 +546,7 @@ def _imaging_frames_to_hdmf_iterator(
         for i in range(num_samples):
             yield imaging.get_series(start_sample=i, end_sample=i + 1).squeeze().T
 
-    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
+    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v2' (recommended) or None."
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
@@ -556,6 +554,12 @@ def _imaging_frames_to_hdmf_iterator(
         return imaging.get_series().transpose((0, 2, 1))
 
     if iterator_type == "v1":
+        warnings.warn(
+            "iterator_type='v1' is deprecated and will be removed on or after March 2026. "
+            "Use iterator_type='v2' for better chunking control and progress bar support.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if "buffer_size" not in iterator_options:
             iterator_options.update(buffer_size=10)
         return DataChunkIterator(data=data_generator(imaging), **iterator_options)
@@ -662,17 +666,15 @@ def write_imaging_to_nwbfile(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
-    iterator_type: {"v2", "v1",  None}, default: 'v2'
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-        None: write the TimeSeries with no memory chunking.
+    iterator_type: {"v2", None}, default: 'v2'
+        The type of iterator for chunked data writing.
+        'v2': Uses iterative write with control over chunking and progress bars.
+        None: Loads all data into memory before writing (not recommended for large datasets).
+        Note: 'v1' is deprecated and will be removed on or after March 2026.
     iterator_options : dict, optional
-        Dictionary of options for the iterator.
-        For 'v1' this is the same as the options for the DataChunkIterator.
-        For 'v2', see
-        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
-        for the full list of options.
+        Options for controlling the iterative write process. See the
+        `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+        for more information on chunked data writing.
     """
     assert (
         nwbfile_path is None or nwbfile is None

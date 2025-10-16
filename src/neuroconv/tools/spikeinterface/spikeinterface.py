@@ -31,6 +31,7 @@ def add_recording_to_nwbfile(
     write_electrical_series: bool = True,
     write_scaled: bool = False,
     iterator_type: str = "v2",
+    iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
 ):
@@ -62,10 +63,12 @@ def add_recording_to_nwbfile(
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
+    iterator_options: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    iterator_opts: dict, optional
+        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
@@ -77,6 +80,18 @@ def add_recording_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+
+    # Handle deprecated iterator_opts parameter
+    if iterator_opts is not None:
+        warnings.warn(
+            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
+            "Use 'iterator_options' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        if iterator_options is not None:
+            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+        iterator_options = iterator_opts
 
     if metadata is None:
         metadata = _get_default_ecephys_metadata()
@@ -103,7 +118,7 @@ def add_recording_to_nwbfile(
             es_key=es_key,
             write_scaled=write_scaled,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_opts=iterator_options,
             always_write_timestamps=always_write_timestamps,
         )
 
@@ -283,7 +298,7 @@ def _add_recording_segment_to_nwbfile(
     add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     # Create a region for the electrodes table by matching recording channels to table rows
-    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
     channel_ids = recording.get_channel_ids()
     electrode_table_indices = [channel_map[channel_id] for channel_id in channel_ids]
     electrode_table_region = nwbfile.create_electrode_table_region(
@@ -674,7 +689,7 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
     return group_names
 
 
-def _build_channel_to_electrodes_table_map(
+def _build_channel_id_to_electrodes_table_map(
     recording: BaseRecording, nwbfile: pynwb.NWBFile
 ) -> dict[str | int, int | None]:
     """
@@ -706,7 +721,7 @@ def _build_channel_to_electrodes_table_map(
     recording : BaseRecording
         The recording object whose channels need to be mapped.
     nwbfile : pynwb.NWBFile
-        The NWB file containing the electrode table.
+        The NWBFile containing the electrode table.
 
     Returns
     -------
@@ -982,7 +997,7 @@ def add_electrodes_to_nwbfile(
 
     # We only add new electrodes to the table
     # Use the mapping function to determine which channels are already in the table
-    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
 
     # Channels to add are those that don't have a row mapping (None)
     channel_ids_to_add = [channel_id for channel_id, row in channel_map.items() if row is None]
@@ -1028,7 +1043,7 @@ def add_electrodes_to_nwbfile(
 
     # Now find indices for this recording in the updated table
     # Rebuild the map after adding electrodes
-    channel_map = _build_channel_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
 
     # Get indices where this recording's data goes (all should be found now)
     all_indices = np.arange(electrode_table_size)
@@ -1158,7 +1173,7 @@ def _recording_traces_to_hdmf_iterator(
 
     supported_iterator_types = ["v2", None]
     if iterator_type not in supported_iterator_types:
-        message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
+        message = f"iterator_type '{iterator_type}' is not supported. Must be either 'v2' (recommended) or None."
         raise ValueError(message)
 
     iterator_opts = dict() if iterator_opts is None else iterator_opts
