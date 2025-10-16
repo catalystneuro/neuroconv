@@ -326,11 +326,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        set_probe: bool = False,
     ):
         super().__init__(
             num_channels=num_channels,
             sampling_frequency=sampling_frequency,
             durations=durations,
+            set_probe=set_probe,
             seed=seed,
             verbose=verbose,
             es_key=es_key,
@@ -338,6 +340,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+
+        # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
+        if set_probe and self.recording_extractor.has_probe():
+            probe = self.recording_extractor.get_probe()
+            contact_ids = [f"e{i}" for i in range(num_channels)]
+            probe.set_contact_ids(contact_ids)
+            self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
     def get_metadata(self) -> DeepDict:
         """
