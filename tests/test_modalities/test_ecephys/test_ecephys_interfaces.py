@@ -435,6 +435,30 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_electrode_groups = ["0", "0", "1", "2", "3", "3"]
         np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
 
+    def test_electrode_name_column_added_with_probe(self):
+        """Test that electrode_name column is added when probe is attached."""
+        # Create interface with probe attached
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], set_probe=True)
+
+        # Verify probe is attached
+        assert interface.has_probe()
+
+        # Create NWB file
+        nwbfile = interface.create_nwbfile()
+
+        # Check that electrode_name column exists
+        assert "electrode_name" in nwbfile.electrodes.colnames, "electrode_name column should be present with probe"
+
+        # Check that electrode names match expected format (e0, e1, e2, e3)
+        electrode_names = nwbfile.electrodes["electrode_name"][:]
+        expected_electrode_names = ["e0", "e1", "e2", "e3"]
+        np.testing.assert_array_equal(electrode_names, expected_electrode_names)
+
+        # Verify electrode names match probe contact IDs
+        probe = interface.recording_extractor.get_probe()
+        expected_contact_ids = probe.contact_ids
+        np.testing.assert_array_equal(electrode_names, expected_contact_ids)
+
 
 class TestAssertions(TestCase):
     @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
