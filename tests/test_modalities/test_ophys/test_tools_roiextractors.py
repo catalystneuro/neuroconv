@@ -1568,7 +1568,7 @@ class TestAddPhotonSeries(TestCase):
             _check_if_imaging_fits_into_memory(imaging=mock_imaging)
 
     def test_non_iterative_two_photon(self):
-        """Test adding two photon series with using DataChunkIterator as iterator type."""
+        """Test adding two photon series without using DataChunkIterator."""
         _add_photon_series_to_nwbfile(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
@@ -1587,6 +1587,7 @@ class TestAddPhotonSeries(TestCase):
         expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
+    def test_deprecated_v1_iterator_two_photon(self):
         """Test adding two photon series with deprecated v1 iterator type."""
         with self.assertWarns(FutureWarning):
             _add_photon_series_to_nwbfile(
