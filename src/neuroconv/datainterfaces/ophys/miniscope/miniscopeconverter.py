@@ -225,6 +225,8 @@ class MiniscopeConverter(NWBConverter):
         """Allow standard stub options alongside per-interface schemas."""
 
         schema = super().get_conversion_options_schema()
+
+        # Add top-level stub options for converter-wide settings
         schema["properties"]["stub_test"] = {
             "type": "boolean",
             "default": False,
@@ -242,6 +244,10 @@ class MiniscopeConverter(NWBConverter):
             "default": 100,
             "description": "Deprecated. Use 'stub_samples' instead. Number of frames to include when 'stub_test' is enabled.",
         }
+
+        # Note: Individual interfaces inherit stub_samples from BaseImagingExtractorInterface
+        # which automatically infers it from the add_to_nwbfile method signature
+
         return schema
 
     def add_to_nwbfile(
@@ -250,14 +256,27 @@ class MiniscopeConverter(NWBConverter):
         metadata,
         conversion_options: dict | None = None,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        stub_samples: int = 100,
     ):
         """Add Miniscope interfaces to the provided NWBFile."""
+        import warnings
+
+        # Handle deprecation of stub_frames
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_samples = stub_frames
+
         imaging_interface_keys = [key for key in self.data_interface_objects if key.startswith("MiniscopeImaging")]
 
         conversion_options = conversion_options.copy() if conversion_options else {}
         stub_test = conversion_options.pop("stub_test", stub_test)
-        stub_frames = conversion_options.pop("stub_frames", stub_frames)
+        stub_samples = conversion_options.pop("stub_samples", conversion_options.pop("stub_frames", stub_samples))
 
         global_ophys_metadata = metadata.get("Ophys", {}) if metadata else {}
         device_list = list(global_ophys_metadata.get("Device", [])) if global_ophys_metadata else []
@@ -385,9 +404,13 @@ class MiniscopeConverter(NWBConverter):
 
             interface_options = conversion_options.get(interface_key, {})
             interface_stub_test = interface_options.get("stub_test", stub_test)
-            interface_stub_frames = interface_options.get("stub_frames", stub_frames)
+            interface_stub_frames = interface_options.get(
+                "stub_frames", interface_options.get("stub_samples", stub_samples)
+            )
             passthrough_options = {
-                key: value for key, value in interface_options.items() if key not in {"stub_test", "stub_frames"}
+                key: value
+                for key, value in interface_options.items()
+                if key not in {"stub_test", "stub_frames", "stub_samples"}
             }
 
             interface.add_to_nwbfile(
@@ -457,13 +480,14 @@ class MiniscopeConverter(NWBConverter):
         # Get existing conversion_options or create empty dict
         conversion_options = kwargs.pop("conversion_options", {})
 
-        # Apply stub_test and stub_samples to all imaging interfaces
+        # Apply stub_test and stub_frames to all imaging interfaces
+        # Note: Using stub_frames for schema compatibility; the interface converts to stub_samples internally
         imaging_interface_keys = [key for key in self.data_interface_objects if key.startswith("MiniscopeImaging")]
         for interface_key in imaging_interface_keys:
             if interface_key not in conversion_options:
                 conversion_options[interface_key] = {}
             conversion_options[interface_key].setdefault("stub_test", stub_test)
-            conversion_options[interface_key].setdefault("stub_samples", stub_samples)
+            conversion_options[interface_key].setdefault("stub_frames", stub_samples)
 
         super().run_conversion(
             nwbfile_path=nwbfile_path,
