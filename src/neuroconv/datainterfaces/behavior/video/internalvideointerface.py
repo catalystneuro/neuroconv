@@ -207,6 +207,7 @@ class InternalVideoInterface(BaseDataInterface):
         metadata: dict | None = None,
         stub_test: bool = False,
         buffer_data: bool = True,
+        iterator_options: dict | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: str | None = None,
         always_write_timestamps: bool = False,
@@ -254,6 +255,29 @@ class InternalVideoInterface(BaseDataInterface):
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
             of 70 (from compression experiments). Based on experiments for a ~30 FPS system of ~400 x ~600 color
             frames, the equivalent uncompressed RAM usage is around 2GB per minute of video. The default is True.
+        iterator_options : dict, optional
+            Options for controlling iterative write when buffer_data=True.
+            See the `pynwb tutorial on iterative write
+            <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Available options:
+
+            * buffer_gb : float, default: 1.0
+                RAM to use for buffering data chunks in GB.
+            * buffer_shape : tuple, optional
+                Manual specification of buffer shape. Cannot be set with buffer_gb.
+            * display_progress : bool, default: False
+                Enable tqdm progress bar during video write.
+            * progress_bar_options : dict, optional
+                Additional options passed to tqdm progress bar.
+                See https://github.com/tqdm/tqdm#parameters for all tqdm options.
+                Common options: 'desc' (description), 'position' (for multiple bars),
+                'leave' (keep bar after completion).
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         parent_container: {'acquisition', 'processing/behavior'}
             The container where the ImageSeries is added, default is nwbfile.acquisition.
             When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
@@ -303,9 +327,11 @@ class InternalVideoInterface(BaseDataInterface):
             buffer_data = True
 
         if buffer_data:
+            iterator_options = iterator_options or dict()
             data_iterator = VideoDataChunkIterator(
                 video_file=file_path,
                 stub_test=stub_test,
+                **iterator_options,
             )
             image_series_kwargs.update(data=data_iterator)
 
