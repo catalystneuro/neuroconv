@@ -85,6 +85,7 @@ linkcheck_anchors = False
 linkcheck_ignore = [
     "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
     r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
+    "https://catalystneuro.com/*/",
 ]
 
 # --------------------------------------------------
