@@ -110,7 +110,7 @@ def automatic_dandi_upload(
     else:
         url_base = instance.removesuffix("/")
         dandi_instance = instance
-    
+
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
     )
