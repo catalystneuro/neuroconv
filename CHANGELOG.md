@@ -1,4 +1,14 @@
-# v0.8.2 (Upcoming)
+# v0.8.3 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+# v0.8.2 (October 17, 2025)
 
 ## Removals, Deprecations and Changes
 * Extractor interfaces: The `extractor` attribute and `get_extractor()` method are deprecated and will be removed on or after March 2026. These were confusingly named as they return extractor classes, not instances. Use the private `_extractor_class` attribute or access the instance directly via `_extractor_instance` [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
@@ -61,10 +71,7 @@
 * Added test to mimic bad channel removal in `write_sorting_analyzer_to_nwbfile` [PR #1506](https://github.com/catalystneuro/neuroconv/pull/1506)
 * Enhanced `SortedRecordingConverter` documentation with detailed explanation of the timing problem it solves when linking units to electrodes, and moved electrode linking guide from user guide to how-to section [PR #1479](https://github.com/catalystneuro/neuroconv/pull/1479)
 * Use attestation instead of token for publish action [PR #1497](https://github.com/catalystneuro/neuroconv/pull/1497)
-
-
 * Added EMBER support via the new `instance` option for `neuroconv.tools.data_transfers.automatic_dandi_upload`. [PR #1486](https://github.com/catalystneuro/neuroconv/pull/1486)
-
 
 
 # v0.8.0 (August 21, 2025)
