@@ -142,9 +142,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         contact_ids = probe.contact_ids  # Format: "e0", "e1" or "s0e0", "s0e1" for multi-shank
         self.recording_extractor.set_property(key="contact_ids", ids=channel_ids, values=contact_ids)
 
-        # Note: electrode_name is now automatically extracted from probe.contact_ids
-        # by _get_electrode_name() in spikeinterface.py, so we don't need to set it here
-
         # Set channel_name property for multi-stream deduplication
         # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
         # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
