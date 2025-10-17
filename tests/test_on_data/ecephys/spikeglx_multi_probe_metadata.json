@@ -39,6 +39,10 @@
         "description": "Name of the ElectrodeGroup this electrode is a part of."
       },
       {
+        "name": "electrode_name",
+        "description": "The unique name of this electrode. Derived from probe contact identifiers. Multiple channels (e.g., AP and LF bands) from the same physical electrode will share the same electrode_name."
+      },
+      {
         "name": "contact_shapes",
         "description": "The shape of the electrode"
       },
