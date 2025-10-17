@@ -7,6 +7,8 @@
 ## Features
 
 ## Improvements
+* Refactored extractor interfaces to use explicit `_initialize_extractor` method instead of implicit string-based initialization, improving code clarity and maintainability across all recording, sorting, imaging, and segmentation interfaces [PR #1515](https://github.com/catalystneuro/neuroconv/pull/1515)
+
 
 # v0.8.2 (October 17, 2025)
 
