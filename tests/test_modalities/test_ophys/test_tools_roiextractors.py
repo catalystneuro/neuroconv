@@ -1210,41 +1210,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.assertEqual(roi_response_series[series_name].starting_time, times[0])
             self.assertEqual(roi_response_series[series_name].timestamps, None)
 
-    # TODO: This test is commented out because it relies on buggy behavior from main branch
-    # In main, roi_response_series_kwargs was shared across all trace iterations, causing rate
-    # from one trace's metadata to leak into other traces that didn't have rate in their metadata.
-    # Is this buggy behavior, should we remove the test?
-    # This needs to be discussed in PR review to decide:
-    # 1. Whether to support rate in metadata at all (photon series doesn't support this)
-    # 2. If we support it, update this test to check each trace individually
-    # def test_add_fluorescence_traces_to_nwbfile_regular_timestamps_with_metadata(self):
-    #     """Test adding traces with regular timestamps and also metadata-specified rate."""
-    #     times = np.arange(0, 5)
-    #     segmentation_extractor = generate_dummy_segmentation_extractor(
-    #         num_rois=2,
-    #         num_samples=5,
-    #         num_rows=self.num_rows,
-    #         num_columns=self.num_columns,
-    #     )
-    #     segmentation_extractor.set_times(times)
-    #
-    #     metadata = deepcopy(self.metadata)
-    #     metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
-    #     metadata["Ophys"]["DfOverF"]["PlaneSegmentation"]["dff"].update(rate=1.23)
-    #
-    #     add_fluorescence_traces_to_nwbfile(
-    #         segmentation_extractor=segmentation_extractor,
-    #         nwbfile=self.nwbfile,
-    #         metadata=metadata,
-    #     )
-    #
-    #     ophys = get_module(self.nwbfile, "ophys")
-    #     roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-    #     for series_name in roi_response_series.keys():
-    #         self.assertEqual(roi_response_series[series_name].rate, 1.23)
-    #         self.assertEqual(roi_response_series[series_name].starting_time, 0)
-    #         self.assertEqual(roi_response_series[series_name].timestamps, None)
-
     def test_add_fluorescence_traces_to_nwbfile_irregular_timestamps_with_metadata(self):
         """Test adding traces with default timestamps and metadata rates (auto included in current segmentation interfaces)."""
         times = [0.0, 0.12, 0.15, 0.19, 0.1]

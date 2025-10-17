@@ -1536,8 +1536,15 @@ def _add_fluorescence_traces_to_nwbfile(
         roi_response_series_kwargs["data"] = SliceableDataChunkIterator(trace, **iterator_options)
         roi_response_series_kwargs["rois"] = roi_table_region
 
-        # NOTE: Unlike photon series, we currently support user-provided rate in metadata for regular timestamps
-        # TODO: I think we should remove the support for passing rate on the metadata.
+        # Deprecation warning for user-provided rate in metadata
+        if user_trace_metadata is not None and "rate" in user_trace_metadata:
+            warnings.warn(
+                f"Passing 'rate' in metadata for trace '{trace_name}' is deprecated and will be removed on or after March 2026. "
+                f"The rate will be automatically calculated from the segmentation extractor's timestamps or sampling frequency.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
         segmentation_has_timestamps = segmentation_extractor.has_time_vector()
         if segmentation_has_timestamps:
             timestamps = segmentation_extractor.get_timestamps()
