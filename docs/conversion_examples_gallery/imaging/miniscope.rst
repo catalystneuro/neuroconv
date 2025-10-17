@@ -10,7 +10,7 @@ Install NeuroConv with the additional dependencies necessary for reading Minisco
 Miniscope simultaneously records optical physiology and behavior in the form of video data.
 
 Miniscope Converter
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` follows the folder
 hierarchy recorded by the Miniscope acquisition software. That layout is defined by the
