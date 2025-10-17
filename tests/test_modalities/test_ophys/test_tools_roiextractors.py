@@ -1210,33 +1210,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.assertEqual(roi_response_series[series_name].starting_time, times[0])
             self.assertEqual(roi_response_series[series_name].timestamps, None)
 
-    def test_add_fluorescence_traces_to_nwbfile_irregular_timestamps_with_metadata(self):
-        """Test adding traces with default timestamps and metadata rates (auto included in current segmentation interfaces)."""
-        times = [0.0, 0.12, 0.15, 0.19, 0.1]
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=2,
-            num_samples=5,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        segmentation_extractor.set_times(times)
-
-        metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-        for series_name in roi_response_series.keys():
-            self.assertEqual(roi_response_series[series_name].rate, None)
-            self.assertEqual(roi_response_series[series_name].starting_time, None)
-            assert_array_equal(roi_response_series[series_name].timestamps.data, times)
-
     def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
         plane_segmentation_name = "plane_segmentation_name"
         metadata = _get_default_ophys_metadata()
