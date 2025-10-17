@@ -1,4 +1,4 @@
-# v0.8.2 (Upcoming)
+# v0.8.2 (October 17, 2025)
 
 ## Removals, Deprecations and Changes
 * Ophys: Low-level helper functions `add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, and `add_plane_segmentation_to_nwbfile` are deprecated and will be removed on or after March 2026. These are low-level functions that should not be called directly. [PR #1552](https://github.com/catalystneuro/neuroconv/pull/1552)
