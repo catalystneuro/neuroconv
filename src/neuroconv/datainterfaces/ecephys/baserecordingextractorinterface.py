@@ -324,6 +324,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
         iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
@@ -351,30 +352,34 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        iterator_type : {'v2'}
-            The type of DataChunkIterator to use.
-            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking
-        iterator_opts : dict, optional
-            Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are:
+        iterator_type : {'v2', None}, default: 'v2'
+            The type of iterator for chunked data writing.
+            'v2': Uses iterative write with control over chunking and progress bars.
+            None: Loads all data into memory before writing (not recommended for large datasets).
+        iterator_options : dict, optional
+            Options for controlling iterative write when iterator_type='v2'.
+            See the `pynwb tutorial on iterative write
+            <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Available options:
 
             * buffer_gb : float, default: 1.0
-                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                buffer shape.
+                RAM to use for buffering data chunks in GB. Recommended to be as much free RAM as available.
             * buffer_shape : tuple, optional
-                Manual specification of buffer shape to return on each iteration.
-                Must be a multiple of chunk_shape along each axis.
-                Cannot be set if `buffer_gb` is specified.
-            * chunk_mb : float. default: 1.0
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-            * chunk_shape : tuple, optional
-                Manual specification of the internal chunk shape for the HDF5 dataset.
-                Cannot be set if `chunk_mb` is also specified.
+                Manual specification of buffer shape. Must be a multiple of chunk_shape along each axis.
+                Cannot be set if buffer_gb is specified.
             * display_progress : bool, default: False
-                Display a progress bar with iteration rate and estimated completion time.
+                Enable tqdm progress bar during data write.
             * progress_bar_options : dict, optional
-                Dictionary of keyword arguments to be passed directly to tqdm.
-                See https://github.com/tqdm/tqdm#parameters for options.
+                Additional options passed to tqdm progress bar.
+                See https://github.com/tqdm/tqdm#parameters for all tqdm options.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
+        iterator_opts : dict, optional
+            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             Set to True to always write timestamps.
             By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
@@ -382,6 +387,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             explicitly, regardless of whether the sampling rate is uniform.
         """
         from ...tools.spikeinterface import _stub_recording, add_recording_to_nwbfile
+
+        # Handle deprecated iterator_opts parameter
+        if iterator_opts is not None:
+            warnings.warn(
+                "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
+                "Use 'iterator_options' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if iterator_options is not None:
+                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+            iterator_options = iterator_opts
 
         recording = self.recording_extractor
         if stub_test:
@@ -397,6 +414,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
         )
