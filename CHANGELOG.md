@@ -7,6 +7,7 @@
 * Ophys: The `iterator_type='v1'` option for imaging data is deprecated and will be removed on or after March 2026. Use `iterator_type='v2'`or `None` (no chunking). This aligns ophys with ecephys, which only supports 'v2' and None. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
 * Bump minimal python-neo version to 0.14.3 [PR #1550](https://github.com/catalystneuro/neuroconv/pull/1550)
 * Add macos-15 intel to CI testing matrix. We no longer support macos 13 and 14 with intel as there is no free runner available [PR #1555](https://github.com/catalystneuro/neuroconv/pull/1555)
+* Ophys: Passing `rate` in trace metadata (e.g., `metadata['Ophys']['Fluorescence']['PlaneSegmentation']['raw']['rate']`) is deprecated and will be removed on or after March 2026. [PR #1543](https://github.com/catalystneuro/neuroconv/pull/1543)
 
 ## Bug Fixes
 * Capped h5py to <3.15 for macOS to prevent compatibility issues [PR #1551](https://github.com/catalystneuro/neuroconv/pull/1551)
