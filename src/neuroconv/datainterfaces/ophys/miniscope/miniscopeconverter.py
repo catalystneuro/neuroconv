@@ -15,7 +15,6 @@ from .miniscopeimagingdatainterface import (
 from ... import MiniscopeBehaviorInterface
 from ....nwbconverter import NWBConverter
 from ....tools import get_package
-from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import get_json_schema_from_method_signature
 
 
@@ -23,10 +22,8 @@ class MiniscopeConverter(NWBConverter):
     """Bundle Miniscope imaging and optional behavior recordings into a single NWB conversion."""
 
     display_name = "Miniscope Imaging and Video"
-    keywords = _MiniscopeMultiRecordingInterface.keywords + MiniscopeBehaviorInterface.keywords
-    associated_suffixes = (
-        _MiniscopeMultiRecordingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
-    )
+    keywords = MiniscopeImagingInterface.keywords + MiniscopeBehaviorInterface.keywords
+    associated_suffixes = MiniscopeImagingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
     info = "Converter for handling both imaging and video recordings from Miniscope."
 
     @classmethod
@@ -75,17 +72,20 @@ class MiniscopeConverter(NWBConverter):
         - ``devices[miniscopes]``: mapping of Miniscope device names (e.g., ``"ACC_miniscope2"``) to their
           acquisition parameters.
 
-        Example 1 – Dual Miniscope layout (stub dataset)::
+        Example 1 - Dual Miniscope with 5-level hierarchy::
 
             {
-                "dataDirectory": "./stub/dual_miniscope_with_config",
+                "dataDirectory": "./dual_miniscope_data",
                 "directoryStructure": [
-                    "experiment_name",
-                    "experiment_name",
-                    "animal_name",
+                    "researcherName",
+                    "experimentName",
+                    "animalName",
                     "date",
                     "time"
                 ],
+                "researcherName": "researcher_name",
+                "experimentName": "experiment_name",
+                "animalName": "animal_name",
                 "devices": {
                     "miniscopes": {
                         "ACC_miniscope2": {...},
@@ -96,28 +96,48 @@ class MiniscopeConverter(NWBConverter):
 
         This produces a folder tree such as::
 
-            stub/dual_miniscope_with_config/
-            ├── experiment_name/
+            dual_miniscope_data/
+            ├── researcher_name/
             │   └── experiment_name/
             │       └── animal_name/
             │           └── 2025_06_12/
             │               ├── 15_15_04/
             │               │   ├── ACC_miniscope2/
-            │               │   └── HPC_miniscope1/
+            │               │   │   ├── 0.avi
+            │               │   │   ├── 1.avi
+            │               │   │   ├── 2.avi
+            │               │   │   ├── metaData.json
+            │               │   │   └── timeStamps.csv
+            │               │   ├── HPC_miniscope1/
+            │               │   │   ├── 0.avi
+            │               │   │   ├── 1.avi
+            │               │   │   ├── 2.avi
+            │               │   │   ├── metaData.json
+            │               │   │   └── timeStamps.csv
+            │               │   └── metaData.json
             │               └── 15_26_31/
             │                   ├── ACC_miniscope2/
-            │                   └── HPC_miniscope1/
+            │                   │   ├── 0.avi
+            │                   │   ├── 1.avi
+            │                   │   ├── metaData.json
+            │                   │   └── timeStamps.csv
+            │                   ├── HPC_miniscope1/
+            │                   │   ├── 0.avi
+            │                   │   ├── 1.avi
+            │                   │   ├── metaData.json
+            │                   │   └── timeStamps.csv
+            │                   └── metaData.json
 
-        Example 2 – Single Miniscope per timestamp::
+        Example 2 - Single Miniscope with 3-level hierarchy::
 
             {
+                "dataDirectory": "./miniscope_recordings",
                 "directoryStructure": [
-                    "researcherName",
-                    "experimentName",
                     "animalName",
                     "date",
                     "time"
                 ],
+                "animalName": "mouse_001",
                 "devices": {
                     "miniscopes": {
                         "Miniscope": {...}
@@ -127,13 +147,17 @@ class MiniscopeConverter(NWBConverter):
 
         Which yields::
 
-            <root>/
-            └── Researcher/
-                └── Experiment/
-                    └── Animal/
-                        └── 2024_10_01/
-                            └── 12_00_00/
-                                └── Miniscope/
+            miniscope_recordings/
+            └── mouse_001/
+                └── 2022_09_19/
+                    └── 09_18_41/
+                        ├── Miniscope/
+                        │   ├── 0.avi
+                        │   ├── 1.avi
+                        │   ├── 2.avi
+                        │   ├── metaData.json
+                        │   └── timeStamps.csv
+                        └── metaData.json
 
         The converter walks the directory structure, creating one imaging interface per Miniscope device and
         preserving their individual timestamps. Behavior video is added only if ``BehavCam_`` folders (with
@@ -204,13 +228,19 @@ class MiniscopeConverter(NWBConverter):
         schema["properties"]["stub_test"] = {
             "type": "boolean",
             "default": False,
-            "description": "If True, limit each Miniscope segment to 'stub_frames' frames during conversion.",
+            "description": "If True, limit each Miniscope segment to 'stub_samples' samples during conversion.",
+        }
+        schema["properties"]["stub_samples"] = {
+            "type": "integer",
+            "minimum": 1,
+            "default": 100,
+            "description": "Number of samples (frames) to include when 'stub_test' is enabled.",
         }
         schema["properties"]["stub_frames"] = {
             "type": "integer",
             "minimum": 1,
             "default": 100,
-            "description": "Number of frames to include when 'stub_test' is enabled.",
+            "description": "Deprecated. Use 'stub_samples' instead. Number of frames to include when 'stub_test' is enabled.",
         }
         return schema
 
@@ -385,7 +415,9 @@ class MiniscopeConverter(NWBConverter):
         metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        stub_samples: int = 100,
+        **kwargs,
     ) -> None:
         """
         Run the NWB conversion process for the instantiated data interfaces.
@@ -401,26 +433,46 @@ class MiniscopeConverter(NWBConverter):
         overwrite : bool, optional
             If True, overwrites the existing NWBFile at `nwbfile_path`. If False (default), data is appended.
         stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_frames`) is written for testing purposes,
+            If True, only a subset of the data (up to `stub_samples`) is written for testing purposes,
             by default False.
         stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True, by default 100.
+            Deprecated. Use `stub_samples` instead.
+        stub_samples : int, optional
+            The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
+        **kwargs
+            Additional keyword arguments passed to the parent NWBConverter.run_conversion method.
         """
-        if metadata is None:
-            metadata = self.get_metadata()
+        import warnings
 
-        self.validate_metadata(metadata=metadata)
+        # Handle deprecation of stub_frames
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_samples = stub_frames
 
-        self.temporally_align_data_interfaces()
+        # Get existing conversion_options or create empty dict
+        conversion_options = kwargs.pop("conversion_options", {})
 
-        with make_or_load_nwbfile(
+        # Apply stub_test and stub_samples to all imaging interfaces
+        imaging_interface_keys = [key for key in self.data_interface_objects if key.startswith("MiniscopeImaging")]
+        for interface_key in imaging_interface_keys:
+            if interface_key not in conversion_options:
+                conversion_options[interface_key] = {}
+            conversion_options[interface_key].setdefault("stub_test", stub_test)
+            conversion_options[interface_key].setdefault("stub_samples", stub_samples)
+
+        super().run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_frames=stub_frames)
+            conversion_options=conversion_options,
+            **kwargs,
+        )
 
     def _build_imaging_interfaces_from_user_config(
         self, user_config_path: Path
@@ -449,8 +501,85 @@ class MiniscopeConverter(NWBConverter):
         user_config_path: Path,
         device_names: list[str],
     ) -> dict[str, list[Path]]:
-        """Fetch recording folder paths for each Miniscope device using the User Config description."""
+        """Fetch recording folder paths for each Miniscope device using the User Config description.
 
+        This method resolves the data directory path and walks through the configured directory structure
+        to discover all recording sessions containing the specified Miniscope devices.
+
+        Parameters
+        ----------
+        user_config : dict
+            The parsed User Config JSON containing 'dataDirectory', 'directoryStructure', and device
+            configuration fields.
+        user_config_path : Path
+            Path to the User Config file, used to resolve relative paths in the configuration.
+        device_names : list[str]
+            List of Miniscope device names (e.g., ["ACC_miniscope2", "HPC_miniscope1"]) to search for
+            within each session.
+
+        Returns
+        -------
+        dict[str, list[Path]]
+            Dictionary mapping each device name to a list of directory paths containing its recordings.
+            For example: {"ACC_miniscope2": [Path(...)/15_15_04/ACC_miniscope2, Path(...)/15_26_31/ACC_miniscope2]}
+
+        Notes
+        -----
+        Path Resolution Strategy:
+            1. If 'dataDirectory' is specified in the config, try these candidate paths in order:
+               - The path as-is (verbatim from config)
+               - If the path is relative, also try:
+                 * Relative to the User Config file location
+                 * Relative to the converter's folder_path
+            2. Always add converter's folder_path as a final fallback
+            3. Use the first candidate path that exists on disk
+
+        Session Discovery:
+            - Calls _resolve_session_paths to walk the directory structure using the configured hierarchy
+              (e.g., researcherName/experimentName/animalName/date/time)
+            - Sorts discovered sessions using natural sorting for consistent ordering
+
+        Device Discovery:
+            - For each session path, searches for subdirectories matching each device name
+            - Handles both sanitized names (spaces replaced with underscores) and original names
+            - Skips sessions that don't contain a particular device (supporting partial recordings)
+
+        Examples
+        --------
+        Given a config with two devices and two recording sessions::
+
+            user_config = {
+                "dataDirectory": "./data",
+                "directoryStructure": ["animalName", "date", "time"],
+                "animalName": "mouse_001",
+                "devices": {"miniscopes": {"ACC_miniscope2": {...}, "HPC_miniscope1": {...}}}
+            }
+
+        And a file structure::
+
+            data/
+            └── mouse_001/
+                └── 2025_06_12/
+                    ├── 15_15_04/
+                    │   ├── ACC_miniscope2/
+                    │   └── HPC_miniscope1/
+                    └── 15_26_31/
+                        ├── ACC_miniscope2/
+                        └── HPC_miniscope1/
+
+        Returns::
+
+            {
+                "ACC_miniscope2": [
+                    Path("data/mouse_001/2025_06_12/15_15_04/ACC_miniscope2"),
+                    Path("data/mouse_001/2025_06_12/15_26_31/ACC_miniscope2")
+                ],
+                "HPC_miniscope1": [
+                    Path("data/mouse_001/2025_06_12/15_15_04/HPC_miniscope1"),
+                    Path("data/mouse_001/2025_06_12/15_26_31/HPC_miniscope1")
+                ]
+            }
+        """
         data_directory = user_config.get("dataDirectory")
         candidate_base_paths = []
         if data_directory:
@@ -568,8 +697,98 @@ class MiniscopeConverter(NWBConverter):
         directory_structure: list[str],
         user_config: dict,
     ) -> list[Path]:
-        """Discover session directories by walking the filesystem and validating against the User Config."""
+        """Discover session directories by walking the filesystem and validating against the User Config.
 
+        This method walks through a hierarchical directory structure based on the 'directoryStructure' field
+        in the User Config, discovering all session paths that match the configured hierarchy. It supports
+        both constrained paths (when config values are specified) and exploratory discovery (when values are
+        not specified).
+
+        Parameters
+        ----------
+        base_path : Path
+            The root directory to start searching from (typically the resolved data directory).
+        directory_structure : list[str]
+            Ordered list of configuration keys defining the directory hierarchy
+            (e.g., ["researcherName", "experimentName", "animalName", "date", "time"]).
+        user_config : dict
+            The User Config dictionary containing expected values for each key in directory_structure.
+
+        Returns
+        -------
+        list[Path]
+            List of all discovered session paths (the leaf directories after traversing the full hierarchy).
+            If directory_structure is empty, returns [base_path].
+
+        Notes
+        -----
+        Directory Traversal Logic:
+            For each level in the directory hierarchy (each key in directory_structure):
+
+            1. **If config value is specified** (e.g., user_config["animalName"] = "mouse_001"):
+               - First checks if the parent directory name already matches (supports nested configs)
+               - Otherwise looks for subdirectories matching the expected value (or sanitized version)
+               - Raises FileNotFoundError if no match is found
+               - Supports space/underscore variations (e.g., "Miniscope V4" → "Miniscope_V4")
+
+            2. **If config value is NOT specified** (e.g., user_config["date"] is missing):
+               - Discovers ALL subdirectories at that level
+               - Allows exploration of multiple dates, sessions, etc.
+
+            3. **Error Handling**:
+               - Raises FileNotFoundError if no subdirectories exist when expected
+               - Provides helpful error messages listing available directories
+
+        Examples
+        --------
+        Example 1 - Fully constrained path::
+
+            base_path = Path("./data")
+            directory_structure = ["animalName", "date", "time"]
+            user_config = {"animalName": "mouse_001", "date": "2025_06_12"}
+            # Note: "time" is not in config, so all time directories are discovered
+
+        With file structure::
+
+            data/
+            └── mouse_001/
+                └── 2025_06_12/
+                    ├── 15_15_04/
+                    └── 15_26_31/
+
+        Returns::
+
+            [Path("data/mouse_001/2025_06_12/15_15_04"),
+             Path("data/mouse_001/2025_06_12/15_26_31")]
+
+        Example 2 - Exploratory discovery::
+
+            directory_structure = ["animalName", "date", "time"]
+            user_config = {}  # No constraints specified
+
+        With file structure::
+
+            data/
+            ├── mouse_001/
+            │   └── 2025_06_12/
+            │       └── 15_15_04/
+            └── mouse_002/
+                └── 2025_06_13/
+                    └── 09_30_00/
+
+        Returns::
+
+            [Path("data/mouse_001/2025_06_12/15_15_04"),
+             Path("data/mouse_002/2025_06_13/09_30_00")]
+
+        Example 3 - Empty directory structure::
+
+            directory_structure = []
+
+        Returns::
+
+            [base_path]  # Base path itself is the session
+        """
         if not base_path.exists():
             raise FileNotFoundError(f"Configured Miniscope data directory '{base_path}' does not exist.")
 

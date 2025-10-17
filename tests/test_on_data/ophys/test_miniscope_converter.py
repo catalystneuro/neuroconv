@@ -94,7 +94,7 @@ class TestMiniscopeConverter:
 
 
 class TestMiniscopeConverterWithUserConfig:
-    stub_root_path = Path("/home/heberto/data/miniscope/NWB_data_share/stub/dual_miniscope_with_config")
+    stub_root_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
 
     @classmethod
     def setup_class(cls) -> None:
