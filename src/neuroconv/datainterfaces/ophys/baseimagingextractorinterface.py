@@ -202,10 +202,19 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 Use `stub_samples` instead.
         always_write_timestamps : bool, optional
             Whether to always write timestamps, by default False.
-        iterator_type : str, optional
-            The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
+        iterator_type : {"v2", None}, default: "v2"
+            The type of iterator for chunked data writing.
+            'v2': Uses iterative write with control over chunking and progress bars.
+            None: Loads all data into memory before writing (not recommended for large datasets).
+            Note: 'v1' is deprecated and will be removed on or after March 2026.
         iterator_options : dict, optional
-            Additional options for controlling the iteration process, by default None.
+            Options for controlling the iterative write process (buffer size, progress bars).
+            See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """

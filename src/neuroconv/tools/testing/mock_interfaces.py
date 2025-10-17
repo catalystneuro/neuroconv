@@ -47,6 +47,120 @@ class MockInterface(BaseDataInterface):
         return None
 
 
+class MockTimeSeriesInterface(BaseDataInterface):
+    """
+    A mock TimeSeries interface for testing purposes.
+
+    This interface uses pynwb's mock_TimeSeries to create synthetic time series data
+    without only pynwb as a dependency.
+    """
+
+    def __init__(
+        self,
+        *,
+        num_channels: int = 4,
+        sampling_frequency: float = 30_000.0,
+        duration: float = 1.0,
+        seed: int = 0,
+        verbose: bool = False,
+        metadata_key: str = "TimeSeries",
+    ):
+        """
+        Initialize a mock TimeSeries interface.
+
+        Parameters
+        ----------
+        num_channels : int, optional
+            Number of channels to generate, by default 4.
+        sampling_frequency : float, optional
+            Sampling frequency in Hz, by default 30,000.0 Hz.
+        duration : float, optional
+            Duration of the data in seconds, by default 1.0.
+        seed : int, optional
+            Seed for the random number generator, by default 0.
+        verbose : bool, optional
+            Control verbosity, by default False.
+        metadata_key : str, optional
+            Key for the TimeSeries metadata in the metadata dictionary, by default "TimeSeries".
+        """
+        self.num_channels = num_channels
+        self.sampling_frequency = sampling_frequency
+        self.duration = duration
+        self.seed = seed
+        self.metadata_key = metadata_key
+
+        super().__init__(verbose=verbose)
+
+    def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the TimeSeries interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile and TimeSeries metadata.
+        """
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Add TimeSeries metadata using the metadata_key
+        metadata["TimeSeries"] = {
+            self.metadata_key: {
+                "name": self.metadata_key,
+                "description": f"Mock TimeSeries data with {self.num_channels} channels",
+                "unit": "n.a.",
+            }
+        }
+
+        return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+    ):
+        """
+        Add mock TimeSeries data to an NWB file.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to which the TimeSeries data will be added.
+        metadata : dict, optional
+            Metadata dictionary. If None, uses default metadata.
+        """
+        from pynwb.testing.mock.base import mock_TimeSeries
+
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        # Generate mock data
+        rng = np.random.default_rng(self.seed)
+        num_samples = int(self.duration * self.sampling_frequency)
+        data = rng.standard_normal(size=(num_samples, self.num_channels)).astype("float32")
+
+        # Get TimeSeries kwargs from metadata
+        time_series_metadata = metadata.get("TimeSeries", {}).get(self.metadata_key, {})
+
+        tseries_kwargs = {
+            "name": time_series_metadata.get("name", "MockTimeSeries"),
+            "description": time_series_metadata.get("description", "Mock TimeSeries data"),
+            "unit": time_series_metadata.get("unit", "n.a."),
+            "data": data,
+            "starting_time": 0.0,
+            "rate": self.sampling_frequency,
+        }
+
+        # Apply any additional metadata
+        for key in ["comments", "conversion", "offset"]:
+            if key in time_series_metadata:
+                tseries_kwargs[key] = time_series_metadata[key]
+
+        time_series = mock_TimeSeries(**tseries_kwargs)
+        nwbfile.add_acquisition(time_series)
+
+
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
     """
     A mock behavior event interface for testing purposes.
@@ -224,11 +338,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        set_probe: bool = False,
     ):
         super().__init__(
             num_channels=num_channels,
             sampling_frequency=sampling_frequency,
             durations=durations,
+            set_probe=set_probe,
             seed=seed,
             verbose=verbose,
             es_key=es_key,
@@ -236,6 +352,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+
+        # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
+        if set_probe and self.recording_extractor.has_probe():
+            probe = self.recording_extractor.get_probe()
+            contact_ids = [f"e{i}" for i in range(num_channels)]
+            probe.set_contact_ids(contact_ids)
+            self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
     def get_metadata(self) -> DeepDict:
         """

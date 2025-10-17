@@ -181,7 +181,12 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
-            The options to use when iterating over the image masks of the segmentation extractor.
+            Options for controlling the iterative write process (buffer size, progress bars) when
+            writing image masks and traces.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
 

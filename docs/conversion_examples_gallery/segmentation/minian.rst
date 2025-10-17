@@ -14,7 +14,6 @@ Minian does not store sampling frequency information in its native output. For N
 
 1. **sampling_frequency** parameter (recommended for regular sampling)
 2. **timeStamps.csv file** containing frame timestamps (often copied from Miniscope outputs)
-3. If neither is provided, the interface will raise an informative error
 
 .. code-block:: python
 
