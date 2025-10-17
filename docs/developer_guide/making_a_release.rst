@@ -6,7 +6,7 @@ A simple to-do list for the Neuroconv release process:
 1. **Format Changelog**:
 
    - Double check changelog entries to ensure they are in the correct format.
-   - Set the data to the current date of the release: `Example <https://github.com/catalystneuro/neuroconv/commit/760022080845a1a8438c68fcf9d918e287b6ca3d>`_
+   - Set the data to the current date of the release: `Example <https://github.com/catalystneuro/neuroconv/commit/129ab774ccb04677a2037ff6deab9d647d7b0e25>`_
 
 
 2. **Set the Correct Version for Release**:
