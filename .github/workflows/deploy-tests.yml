@@ -77,6 +77,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
       python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
