@@ -83,19 +83,6 @@ def automatic_dandi_upload(
         message = "The 'instance' parameter must be either 'dandi', 'ember', or a full URL starting with 'https://'."
         raise ValueError(message)
 
-    if instance == "dandi" and staging:
-        url_base = "https://gui-staging.dandiarchive.org"
-        dandi_instance = "dandi-staging"
-    elif instance == "dandi" and not staging:
-        url_base = "https://dandiarchive.org"
-        dandi_instance = "dandi"
-    elif instance == "ember":
-        url_base = "https://dandi.emberarchive.org"
-        dandi_instance = "ember"
-    else:
-        url_base = instance.removesuffix("/")
-        dandi_instance = instance
-
     # Handle deprecated 'staging' parameter and set defaults
     if staging is not None and sandbox is not None:
         raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
@@ -110,6 +97,19 @@ def automatic_dandi_upload(
 
     if sandbox is None:
         sandbox = False
+
+    if instance == "dandi" and sandbox:
+        url_base = "https://sandbox.dandiarchive.org"
+        dandi_instance = "dandi-sandbox"
+    elif instance == "dandi" and not sandbox:
+        url_base = "https://dandiarchive.org"
+        dandi_instance = "dandi"
+    elif instance == "ember":
+        url_base = "https://dandi.emberarchive.org"
+        dandi_instance = "ember"
+    else:
+        url_base = instance.removesuffix("/")
+        dandi_instance = instance
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
