@@ -51,7 +51,7 @@ different times, they will appear as one continuous ``OnePhotonSeries`` with tim
 180 seconds) between the last frame of one acquisition and the first frame of the next.
 
 Miniscope Imaging Interface
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` provides a flexible interface
 for converting imaging data from a single Miniscope acquisition. It supports two usage modes to accommodate
@@ -103,7 +103,7 @@ For more information see the
 :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
 
 Combining Multiple Acquisitions
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.nwbconverter.ConverterPipe` allows you to assemble multiple interfaces
 into a single converter for complex experimental sessions with multiple data streams and flexible folder structures.
