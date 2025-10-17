@@ -1210,61 +1210,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.assertEqual(roi_response_series[series_name].starting_time, times[0])
             self.assertEqual(roi_response_series[series_name].timestamps, None)
 
-    def test_add_fluorescence_traces_to_nwbfile_regular_timestamps_with_metadata(self):
-        """Test adding traces with regular timestamps and also metadata-specified rate."""
-        times = np.arange(0, 5)
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=2,
-            num_samples=5,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        segmentation_extractor.set_times(times)
-
-        metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
-        metadata["Ophys"]["DfOverF"]["PlaneSegmentation"]["dff"].update(rate=1.23)
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-        for series_name in roi_response_series.keys():
-            self.assertEqual(roi_response_series[series_name].rate, 1.23)
-            self.assertEqual(roi_response_series[series_name].starting_time, 0)
-            self.assertEqual(roi_response_series[series_name].timestamps, None)
-
-    def test_add_fluorescence_traces_to_nwbfile_irregular_timestamps_with_metadata(self):
-        """Test adding traces with default timestamps and metadata rates (auto included in current segmentation interfaces)."""
-        times = [0.0, 0.12, 0.15, 0.19, 0.1]
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=2,
-            num_samples=5,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        segmentation_extractor.set_times(times)
-
-        metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-        for series_name in roi_response_series.keys():
-            self.assertEqual(roi_response_series[series_name].rate, None)
-            self.assertEqual(roi_response_series[series_name].starting_time, None)
-            assert_array_equal(roi_response_series[series_name].timestamps.data, times)
-
     def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
         plane_segmentation_name = "plane_segmentation_name"
         metadata = _get_default_ophys_metadata()
@@ -2229,6 +2174,88 @@ class TestNoMetadataMutation:
             nwbfile=nwbfile,
             metadata=metadata,
             plane_segmentation_name="TestPlaneSegmentation",
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_add_fluorescence_traces_no_metadata_mutation(self):
+        """Test that add_fluorescence_traces_to_nwbfile does not mutate the input metadata."""
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        # Create metadata with fluorescence traces
+        metadata = {
+            "Ophys": {
+                "Device": [{"name": "TestMicroscope"}],
+                "ImagingPlane": [
+                    {
+                        "name": "TestImagingPlane",
+                        "description": "Test imaging plane",
+                        "excitation_lambda": 488.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device": "TestMicroscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "emission_lambda": 510.0,
+                                "description": "Green channel",
+                            }
+                        ],
+                    }
+                ],
+                "ImageSegmentation": {
+                    "name": "TestImageSegmentation",
+                    "plane_segmentations": [
+                        {
+                            "name": "PlaneSegmentation",
+                            "description": "Test plane segmentation",
+                            "imaging_plane": "TestImagingPlane",
+                        }
+                    ],
+                },
+                "Fluorescence": {
+                    "PlaneSegmentation": {
+                        "raw": {
+                            "name": "RoiResponseSeries",
+                            "description": "Raw fluorescence",
+                            "unit": "n.a.",
+                        },
+                        "deconvolved": {
+                            "name": "Deconvolved",
+                            "description": "Deconvolved fluorescence",
+                            "unit": "n.a.",
+                        },
+                        "neuropil": {
+                            "name": "Neuropil",
+                            "description": "Neuropil fluorescence",
+                            "unit": "n.a.",
+                        },
+                    },
+                },
+                "DfOverF": {
+                    "PlaneSegmentation": {
+                        "dff": {
+                            "name": "RoiResponseSeries",
+                            "description": "DfOverF",
+                            "unit": "n.a.",
+                        }
+                    },
+                },
+            }
+        }
+
+        # Deep copy to compare entire structure before and after
+        metadata_before = deepcopy(metadata)
+
+        # Call function
+        add_fluorescence_traces_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
         )
 
         # Verify metadata was not mutated - compare entire dict structure

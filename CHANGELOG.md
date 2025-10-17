@@ -7,6 +7,7 @@
 * Ophys: The `iterator_type='v1'` option for imaging data is deprecated and will be removed on or after March 2026. Use `iterator_type='v2'`or `None` (no chunking). This aligns ophys with ecephys, which only supports 'v2' and None. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
 * Bump minimal python-neo version to 0.14.3 [PR #1550](https://github.com/catalystneuro/neuroconv/pull/1550)
 * Add macos-15 intel to CI testing matrix. We no longer support macos 13 and 14 with intel as there is no free runner available [PR #1555](https://github.com/catalystneuro/neuroconv/pull/1555)
+* Ophys: Passing `rate` in trace metadata (e.g., `metadata['Ophys']['Fluorescence']['PlaneSegmentation']['raw']['rate']`) is deprecated and will be removed on or after March 2026. [PR #1543](https://github.com/catalystneuro/neuroconv/pull/1543)
 
 ## Bug Fixes
 * Capped h5py to <3.15 for macOS to prevent compatibility issues [PR #1551](https://github.com/catalystneuro/neuroconv/pull/1551)
@@ -21,6 +22,7 @@
 
 ## Improvements
 * Refactored electrode table infrastructure to add `electrode_name` column for probe-based recordings. The electrode table now uses `(group_name, electrode_name, channel_name)` as the unique identifier, enabling channel-specific metadata storage while `electrode_name` indicates which channels share physical electrodes. This supports multi-band recordings (e.g., AP/LF in Neuropixels) and multi-probe setups. [PR #1548](https://github.com/catalystneuro/neuroconv/pull/1548)
+* Refactored `_add_fluorescence_traces_to_nwbfile` and `_create_roi_table_region` to remove `deepcopy(metadata)` and `dict_deep_update` patterns. Now extracts DfOverF and Fluorescence metadata separately from user or defaults, checks user metadata first before falling back to defaults for each trace, and passes unmodified metadata to dependencies without mutation. [PR #1543](https://github.com/catalystneuro/neuroconv/pull/1543)
 * Aligned iterator type support across ecephys and ophys modules. Both now support only `iterator_type='v2'` and `None`. Fixed misleading error message in spikeinterface that incorrectly mentioned 'v1' support. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
 * Standardized iterator parameter naming across the codebase by introducing `iterator_options` as the preferred parameter name. Updated `BaseRecordingExtractorInterface` and `add_recording_to_nwbfile` to accept both `iterator_options` (new) and `iterator_opts` (deprecated) for backward compatibility. Improved documentation with comprehensive iterator options descriptions including tqdm progress bar support. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
 * Refactored `add_imaging_plane_to_nwbfile` to avoid `dict_deep_update` and metadata mutation, applying targeted defaults only for required fields at point of object creation (issue #1511) [PR #1530](https://github.com/catalystneuro/neuroconv/pull/1530)
