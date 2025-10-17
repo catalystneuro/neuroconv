@@ -20,9 +20,6 @@ that configuration to discover session folders and per-device subdirectories, co
 streams into a single NWB conversion. Behavioral video is handled automatically when present in the dataset.
 
 
-
-The example below uses the dual-Miniscopes stub dataset bundled with this guide:
-
 .. code-block:: python
 
     >>> from pathlib import Path
