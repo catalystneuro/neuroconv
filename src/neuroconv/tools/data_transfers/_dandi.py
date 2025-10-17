@@ -98,10 +98,10 @@ def automatic_dandi_upload(
     if sandbox is None:
         sandbox = False
 
-    if instance == "dandi" and staging:
-        url_base = "https://gui-staging.dandiarchive.org"
-        dandi_instance = "dandi-staging"
-    elif instance == "dandi" and not staging:
+    if instance == "dandi" and sandbox:
+        url_base = "https://sandbox.dandiarchive.org"
+        dandi_instance = "dandi-sandbox"
+    elif instance == "dandi" and not sandbox:
         url_base = "https://dandiarchive.org"
         dandi_instance = "dandi"
     elif instance == "ember":
