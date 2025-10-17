@@ -185,6 +185,12 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     info = "Interface for Miniscope imaging data from single recordings."
     ExtractorName = "MiniscopeImagingExtractor"
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import MiniscopeImagingExtractor
+
+        return MiniscopeImagingExtractor
+
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
         """
         Map interface parameters to extractor parameters.
