@@ -764,7 +764,7 @@ def _imaging_frames_to_hdmf_iterator(
         Note: 'v1' is deprecated and will be removed on or after March 2026.
     iterator_options : dict, optional
         Options for controlling the iterative write process. See the
-        `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+        `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
         for more information on chunked data writing.
 
     Returns
@@ -905,7 +905,7 @@ def write_imaging_to_nwbfile(
         Note: 'v1' is deprecated and will be removed on or after March 2026.
     iterator_options : dict, optional
         Options for controlling the iterative write process. See the
-        `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+        `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
         for more information on chunked data writing.
     """
     assert (

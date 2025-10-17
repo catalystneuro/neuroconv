@@ -258,7 +258,7 @@ class InternalVideoInterface(BaseDataInterface):
         iterator_options : dict, optional
             Options for controlling iterative write when buffer_data=True.
             See the `pynwb tutorial on iterative write
-            <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+            <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
             for more information on chunked data writing.
 
             Available options:

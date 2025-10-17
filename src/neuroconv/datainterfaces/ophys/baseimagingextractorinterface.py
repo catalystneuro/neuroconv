@@ -186,7 +186,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             Note: 'v1' is deprecated and will be removed on or after March 2026.
         iterator_options : dict, optional
             Options for controlling the iterative write process (buffer size, progress bars).
-            See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/general/iterative_write.html>`_
+            See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
             for more information on chunked data writing.
 
             Note: To configure chunk size and compression, use the backend configuration system
