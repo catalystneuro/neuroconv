@@ -30,7 +30,6 @@ from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
     add_devices_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
-    add_summary_images_to_nwbfile,
 )
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
@@ -40,6 +39,7 @@ from neuroconv.tools.roiextractors.roiextractors import (
     _add_imaging_plane_to_nwbfile,
     _add_photon_series_to_nwbfile,
     _add_plane_segmentation_to_nwbfile,
+    _add_summary_images_to_nwbfile,
     _get_default_ophys_metadata,
 )
 from neuroconv.utils import dict_deep_update
@@ -1812,10 +1812,10 @@ class TestAddSummaryImages(TestCase):
             session_start_time=self.session_start_time,
         )
 
-    def test_add_summary_images_to_nwbfile(self):
+    def test__add_summary_images_to_nwbfile(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
-        add_summary_images_to_nwbfile(
+        _add_summary_images_to_nwbfile(
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor,
             metadata=self.metadata,
@@ -1843,7 +1843,7 @@ class TestAddSummaryImages(TestCase):
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
         segmentation_extractor._image_correlation = None
 
-        add_summary_images_to_nwbfile(
+        _add_summary_images_to_nwbfile(
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor,
             metadata=self.metadata,
@@ -1865,7 +1865,7 @@ class TestAddSummaryImages(TestCase):
 
         self.nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
 
-        add_summary_images_to_nwbfile(
+        _add_summary_images_to_nwbfile(
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor,
             metadata=self.metadata,
@@ -1879,28 +1879,28 @@ class TestAddSummaryImages(TestCase):
             num_rows=10, num_columns=15, has_summary_images=False
         )
 
-        add_summary_images_to_nwbfile(
+        _add_summary_images_to_nwbfile(
             nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, metadata=self.metadata
         )
 
         assert len(self.nwbfile.processing) == 0
 
-    def test_add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
+    def test__add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
         ):
-            add_summary_images_to_nwbfile(
+            _add_summary_images_to_nwbfile(
                 nwbfile=self.nwbfile,
                 segmentation_extractor=generate_dummy_segmentation_extractor(num_rows=10, num_columns=15),
                 metadata=self.metadata,
                 plane_segmentation_name="invalid_plane_segmentation_name",
             )
 
-    def test_add_summary_images_to_nwbfile_from_two_planes(self):
+    def test__add_summary_images_to_nwbfile_from_two_planes(self):
         segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
-        add_summary_images_to_nwbfile(
+        _add_summary_images_to_nwbfile(
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor_first_plane,
             metadata=self.metadata,
@@ -1919,7 +1919,7 @@ class TestAddSummaryImages(TestCase):
 
         segmentation_extractor_second_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
-        add_summary_images_to_nwbfile(
+        _add_summary_images_to_nwbfile(
             nwbfile=self.nwbfile,
             segmentation_extractor=segmentation_extractor_second_plane,
             metadata=metadata,
