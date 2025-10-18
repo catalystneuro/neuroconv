@@ -1812,7 +1812,7 @@ class TestAddSummaryImages(TestCase):
             session_start_time=self.session_start_time,
         )
 
-    def test__add_summary_images_to_nwbfile(self):
+    def test_add_summary_images_to_nwbfile(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
         _add_summary_images_to_nwbfile(
@@ -1885,7 +1885,7 @@ class TestAddSummaryImages(TestCase):
 
         assert len(self.nwbfile.processing) == 0
 
-    def test__add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
+    def test_add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
@@ -1897,7 +1897,7 @@ class TestAddSummaryImages(TestCase):
                 plane_segmentation_name="invalid_plane_segmentation_name",
             )
 
-    def test__add_summary_images_to_nwbfile_from_two_planes(self):
+    def test_add_summary_images_to_nwbfile_from_two_planes(self):
         segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
         _add_summary_images_to_nwbfile(
