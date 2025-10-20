@@ -19,6 +19,12 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         ] = "Path to the output Phy folder (containing the params.py)"
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import read_kilosort
+
+        return read_kilosort
+
     def __init__(
         self,
         folder_path: DirectoryPath,

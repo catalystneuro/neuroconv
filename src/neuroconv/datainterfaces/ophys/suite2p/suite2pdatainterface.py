@@ -106,6 +106,12 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import Suite2pSegmentationExtractor
+
+        return Suite2pSegmentationExtractor
+
     @validate_call
     def __init__(
         self,

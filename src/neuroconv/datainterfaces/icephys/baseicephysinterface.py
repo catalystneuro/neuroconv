@@ -19,8 +19,6 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
 
-    ExtractorModuleName = "neo"
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
@@ -42,12 +40,12 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
         from ...tools.neo import get_number_of_electrodes, get_number_of_segments
 
-        self.source_data = dict()
-        self.source_data["file_paths"] = file_paths
+        super().__init__(file_paths=file_paths)
 
         self.readers_list = list()
         for f in file_paths:
-            self.readers_list.append(self.get_extractor()(filename=f))
+            file_source_data = {"filename": f}
+            self.readers_list.append(self._initialize_extractor(file_source_data))
 
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
