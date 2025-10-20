@@ -208,7 +208,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 ),
             ),
             dict(name="contact_shapes", description="The shape of the electrode"),
-            dict(name="contact_ids", description="The id of the contact on the electrode"),
             dict(
                 name="inter_sample_shift",
                 description=(
