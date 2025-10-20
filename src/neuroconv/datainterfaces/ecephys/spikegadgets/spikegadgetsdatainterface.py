@@ -16,6 +16,23 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for SpikeGadgets recording data."
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGadgetsRecordingExtractor,
+        )
+
+        return SpikeGadgetsRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gains parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("gains", None)
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
+
+    @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(cls, exclude=["source_data"])
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")

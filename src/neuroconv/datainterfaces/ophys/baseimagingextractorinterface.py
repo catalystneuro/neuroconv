@@ -32,7 +32,30 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         "calcium imaging",
     )
 
-    ExtractorModuleName = "roiextractors"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for imaging interfaces.
+
+        Extends the base implementation to also remove the 'photon_series_type' parameter
+        which is specific to the imaging interface, not the extractor.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized imaging extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -133,7 +156,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
+        reinitialized_extractor = self._initialize_extractor(self.source_data)
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:

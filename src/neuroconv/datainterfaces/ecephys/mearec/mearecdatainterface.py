@@ -19,6 +19,12 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for MEArec recording data."
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import MEArecRecordingExtractor
+
+        return MEArecRecordingExtractor
+
+    @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the MEArec .h5 file."

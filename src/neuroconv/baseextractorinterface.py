@@ -1,9 +1,9 @@
 """Abstract class defining the structure of all Extractor-based Interfaces."""
 
-from abc import ABC
+import warnings
+from abc import ABC, abstractmethod
 
 from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from .tools import get_package
 
 
 class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
@@ -11,38 +11,91 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     Abstract class defining the structure of all Extractor-based Interfaces.
     """
 
-    # Manually override any of these attributes in a subclass if needed.
-    # Note that values set at the level of class definition are called upon import.
-    ExtractorModuleName: str | None = None
-    ExtractorName: str | None = None  # Defaults to __name__.replace("Interface", "Extractor").
-    Extractor = None  # Class loads dynamically on first call to .get_extractor()
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        self._extractor_instance = self._initialize_extractor(source_data)
 
     @classmethod
-    def get_extractor(cls):
+    @abstractmethod
+    def get_extractor_class(cls):
         """
         Get the extractor class for this interface.
+
+        This classmethod must be implemented by each concrete interface to specify
+        which extractor class to use.
+
+        Returns
+        -------
+        type or callable
+            The extractor class or function to use for initialization.
+        """
+        pass
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for this interface.
+
+        This default implementation handles common parameter filtering and
+        extractor instantiation. Override this method if custom parameter
+        remapping or special initialization logic is needed.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
+
+    @property
+    def extractor(self):
+        """
+        Get the extractor class for this interface.
+
+        .. deprecated:: 0.8.2
+            The `extractor` attribute is deprecated and will be removed on or after March 2026.
+            This attribute was confusingly named as it returns a class, not an instance.
+            Use the class method `get_extractor_class()`
+        Returns
+        -------
+        type
+            The extractor class.
+        """
+        warnings.warn(
+            "The 'extractor' attribute is deprecated and will be removed on or after March 2026. "
+            "This attribute was confusingly named as it returns a class, not an instance.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.get_extractor_class()
+
+    def get_extractor(self):
+        """
+        Get the extractor class for this interface.
+
+        .. deprecated:: 0.8.2
+            The `get_extractor()` method is deprecated and will be removed on or after March 2026.
+            This method was confusingly named as it returns a class, not an instance.
+            Use `get_extractor_class()` instead.
 
         Returns
         -------
         type
-            The extractor class that will be used to read the data.
+            The extractor class.
         """
-        if cls.Extractor is not None:
-            return cls.Extractor
-        extractor_module = get_package(package_name=cls.ExtractorModuleName)
-        extractor = getattr(
-            extractor_module,
-            cls.ExtractorName or cls.__name__.replace("Interface", "Extractor"),
+        warnings.warn(
+            "The 'get_extractor()' method is deprecated and will be removed on or after March 2026. "
+            "This method was confusingly named as it returns a class, not an instance.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        cls.Extractor = extractor
-        return extractor
-
-    def __init__(self, **source_data):
-        super().__init__(**source_data)
-        self.extractor = self.get_extractor()
-        self.extractor_kwargs = self._source_data_to_extractor_kwargs(source_data)
-        self._extractor_instance = self.extractor(**self.extractor_kwargs)
-
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        """This functions maps the source_data to kwargs required to initialize the Extractor."""
-        return source_data
+        return self.get_extractor_class()

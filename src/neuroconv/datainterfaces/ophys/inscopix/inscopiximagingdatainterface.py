@@ -34,6 +34,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".isxd",)
     info = "Interface for handling Inscopix imaging data."
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import InscopixImagingExtractor
+
+        return InscopixImagingExtractor
+
     @validate_call
     def __init__(
         self,
