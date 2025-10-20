@@ -81,6 +81,21 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # TODO: remove this once roiextractors 0.6.1
         self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import FemtonicsImagingExtractor
+
+        return FemtonicsImagingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
+
     def get_metadata(self) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
@@ -213,8 +228,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         list of str
             List of available session keys.
         """
-        Extractor = cls.get_extractor()
-        return Extractor.get_available_sessions(file_path=file_path)
+        from roiextractors import FemtonicsImagingExtractor
+
+        return FemtonicsImagingExtractor.get_available_sessions(file_path=file_path)
 
     @classmethod
     def get_available_munits(cls, file_path: FilePath, session_name: str = None) -> list[str]:
@@ -235,7 +251,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         list of str
             List of available unit keys.
         """
-        Extractor = cls.get_extractor()
+        from roiextractors import FemtonicsImagingExtractor
 
         # If no session_name provided, only auto-select if there's exactly one session
         if session_name is None:
@@ -248,7 +264,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 )
             session_name = available_sessions[0]
 
-        return Extractor.get_available_munits(file_path=file_path, session_name=session_name)
+        return FemtonicsImagingExtractor.get_available_munits(file_path=file_path, session_name=session_name)
 
     @classmethod
     def get_available_channels(cls, file_path: FilePath, session_name: str = None, munit_name: str = None) -> list[str]:
@@ -273,7 +289,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         list of str
             List of available channel names.
         """
-        Extractor = cls.get_extractor()
+        from roiextractors import FemtonicsImagingExtractor
 
         # If no session_name provided, only auto-select if there's exactly one session
         if session_name is None:
@@ -298,4 +314,6 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 )
             munit_name = available_munits[0]
 
-        return Extractor.get_available_channels(file_path=file_path, session_name=session_name, munit_name=munit_name)
+        return FemtonicsImagingExtractor.get_available_channels(
+            file_path=file_path, session_name=session_name, munit_name=munit_name
+        )

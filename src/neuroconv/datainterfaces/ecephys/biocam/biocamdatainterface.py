@@ -15,6 +15,12 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Biocam recording data."
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import BiocamRecordingExtractor
+
+        return BiocamRecordingExtractor
+
+    @classmethod
     def get_source_schema(cls) -> dict:
         schema = super().get_source_schema()
         schema["properties"]["file_path"]["description"] = "Path to the .bwr file."

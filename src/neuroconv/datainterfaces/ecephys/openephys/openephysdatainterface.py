@@ -14,7 +14,13 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".dat", ".oebin", ".npy")
     info = "Interface for converting any OpenEphys recording data."
 
-    ExtractorName = "OpenEphysBinaryRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
+
+        return OpenEphysBinaryRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:

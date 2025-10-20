@@ -20,8 +20,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     keywords = ("segmentation", "roi", "cells")
 
-    ExtractorModuleName = "roiextractors"
-
     def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
@@ -122,7 +120,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        reinitialized_extractor = self._initialize_extractor(self.source_data)
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:

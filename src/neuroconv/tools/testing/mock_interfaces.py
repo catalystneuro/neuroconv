@@ -315,8 +315,20 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 class MockRecordingInterface(BaseRecordingExtractorInterface):
     """An interface with a spikeinterface recording object for testing purposes."""
 
-    ExtractorModuleName = "spikeinterface.core.generate"
-    ExtractorName = "generate_recording"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core.generate import generate_recording
+
+        return generate_recording
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -369,8 +381,19 @@ class MockSortingInterface(BaseSortingExtractorInterface):
     # TODO: Implement this class with the lazy generator once is merged
     # https://github.com/SpikeInterface/spikeinterface/pull/2227
 
-    ExtractorModuleName = "spikeinterface.core.generate"
-    ExtractorName = "generate_sorting"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core.generate import generate_sorting
+
+        return generate_sorting
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -421,8 +444,20 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     A mock imaging interface for testing purposes.
     """
 
-    ExtractorModuleName = "roiextractors.testing"
-    ExtractorName = "generate_dummy_imaging_extractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        return generate_dummy_imaging_extractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -501,8 +536,19 @@ class MockImagingInterface(BaseImagingExtractorInterface):
 class MockSegmentationInterface(BaseSegmentationExtractorInterface):
     """A mock segmentation interface for testing purposes."""
 
-    ExtractorModuleName = "roiextractors.testing"
-    ExtractorName = "generate_dummy_segmentation_extractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        return generate_dummy_segmentation_extractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,

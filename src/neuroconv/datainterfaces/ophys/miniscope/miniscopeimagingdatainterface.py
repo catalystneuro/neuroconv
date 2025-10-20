@@ -36,6 +36,12 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
 
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import MiniscopeMultiRecordingImagingExtractor
+
+        return MiniscopeMultiRecordingImagingExtractor
+
     @validate_call
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
         """
@@ -178,6 +184,12 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".avi", ".csv", ".json")
     info = "Interface for Miniscope imaging data from single recordings."
     ExtractorName = "MiniscopeImagingExtractor"
+
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import MiniscopeImagingExtractor
+
+        return MiniscopeImagingExtractor
 
     def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
         """
