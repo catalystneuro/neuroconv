@@ -915,7 +915,9 @@ def add_electrodes_to_nwbfile(
         "channel_names",  # Some formats from neo also have this property, skip it
         "group_name",  # We handle this here _get_group_name
         "group",  # We handle this here with _get_group_name
+        "contact_ids",  # Handled via _get_electrode_name
     ]
+
     excluded_properties = list(exclude) + spikeinterface_special_cases
     properties_to_extract = [property for property in recording_properties if property not in excluded_properties]
 
