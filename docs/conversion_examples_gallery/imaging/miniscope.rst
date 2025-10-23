@@ -26,10 +26,10 @@ streams into a single NWB conversion. Behavioral video is handled automatically 
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.converters import MiniscopeConverter
     >>>
-    >>> folder_path = Path("/home/heberto/data/miniscope/NWB_data_share/stub/dual_miniscope_with_config")
+    >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
     >>> converter = MiniscopeConverter(
-    ...     folder_path=str(folder_path),
-    ...     user_configuration_file_path=str(folder_path / "UserConfigFile.json"),
+    ...     folder_path=folder_path,
+    ...     user_configuration_file_path=folder_path / "UserConfigFile.json",
     ...     verbose=False,
     ... )
     >>>
