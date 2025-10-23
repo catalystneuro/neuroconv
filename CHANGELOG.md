@@ -1,11 +1,16 @@
 # v0.8.3 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Ophys: Low-level helper functions `add_background_plane_segmentation_to_nwbfile`, `add_fluorescence_traces_to_nwbfile`, `add_background_fluorescence_traces_to_nwbfile`, and `add_summary_images_to_nwbfile` are deprecated and will be removed on or after March 2026. These are low-level functions that should not be called directly. [PR #1559](https://github.com/catalystneuro/neuroconv/pull/1559)
+* Refactored extractor interfaces to use explicit `_initialize_extractor` method instead of implicit string-based initialization, improving code clarity and maintainability across all recording, sorting, imaging, and segmentation interfaces [PR #1515](https://github.com/catalystneuro/neuroconv/pull/1515)
+* Extractor interfaces: The `extractor` attribute and `get_extractor()` method are deprecated and will be removed on or after March 2026. These were confusingly named as they return extractor classes, not instances. Use the private `_extractor_class` attribute or access the instance directly via `_extractor_instance` [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 
 ## Bug Fixes
+* Excluded `contact_ids` property from being added as a duplicate column in the electrodes table. This property is already represented via the `electrode_name` column which uses probe contact identifiers. [PR #1560](https://github.com/catalystneuro/neuroconv/pull/1560)
 
 ## Features
 * Miniscope converter now uses the configuration file to read general folder structures [PR #1528](https://github.com/catalystneuro/neuroconv/pull/1528)
+* Support roiextractors 0.7.2 [PR #1566](https://github.com/catalystneuro/neuroconv/pull/1566)
 
 ## Improvements
 
@@ -31,6 +36,7 @@
 * Support NIDQ analog streams in `OpenEphysBinaryAnalogInterface` [PR #1503](https://github.com/catalystneuro/neuroconv/pull/1503)
 * Added `MiniscopeImagingInterface` for single Miniscope acquisition folders with automatic session_start_time extraction, improved docstrings, and comprehensive documentation showing `MiniscopeConverter` for multi-acquisition data, `MiniscopeImagingInterface` for individual folders, and `ConverterPipe` for custom multi-acquisition workflows [PR #1524](https://github.com/catalystneuro/neuroconv/pull/1524)
 * Added `iterator_options` parameter to `InternalVideoInterface` to support tqdm progress bars and custom chunking options during video write operations. [PR #1546](https://github.com/catalystneuro/neuroconv/pull/1546)
+* Added EMBER support via the new `instance` option for `neuroconv.tools.data_transfers.automatic_dandi_upload`. [PR #1486](https://github.com/catalystneuro/neuroconv/pull/1486)
 
 ## Improvements
 * Refactored electrode table infrastructure to add `electrode_name` column for probe-based recordings. The electrode table now uses `(group_name, electrode_name, channel_name)` as the unique identifier, enabling channel-specific metadata storage while `electrode_name` indicates which channels share physical electrodes. This supports multi-band recordings (e.g., AP/LF in Neuropixels) and multi-probe setups. [PR #1548](https://github.com/catalystneuro/neuroconv/pull/1548)
@@ -44,6 +50,7 @@
 * Add ruff-rule to detect non-pep585 annotation [PR #1520](https://github.com/catalystneuro/roiextractors/pull/1520)
 * Replaced deprecated `frame_to_time()` method calls with `get_timestamps()` in optical physiology interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 * Added SpikeGLXNIDQ interface to conversion gallery with documentation on how different channel types (XA, MA, MD, XD) are converted to NWB [PR #1505](https://github.com/catalystneuro/neuroconv/pull/1505)
+* Refactored extractor interfaces to use explicit `_initialize_extractor` method instead of implicit string-based initialization, improving code clarity and maintainability across all recording, sorting, imaging, and segmentation interfaces [PR #1513](https://github.com/catalystneuro/neuroconv/pull/1513)
 * Updated `TDTFiberPhotometryInterface` to support the latest version of `ndx-fiber-photometry` (v0.2.1) [PR #1430](https://github.com/catalystneuro/neuroconv/pull/1430)
 * Updated ophys roiextractors tests to use only public APIs instead of accessing private attributes, improving compatibility with roiextractors segmentation model changes [PR #1526](https://github.com/catalystneuro/neuroconv/pull/1526)
 * Refactored `add_photon_series_to_nwbfile` to remove `get_nwb_imaging_metadata` middleman and inline extractor derivation. Now only derives `dimension` from imaging extractor when user doesn't provide it, ensuring user-provided values are always respected. Passes unmodified metadata to dependencies without mutation. [PR #1537](https://github.com/catalystneuro/neuroconv/pull/1537)
@@ -70,7 +77,6 @@
 * Added test to mimic bad channel removal in `write_sorting_analyzer_to_nwbfile` [PR #1506](https://github.com/catalystneuro/neuroconv/pull/1506)
 * Enhanced `SortedRecordingConverter` documentation with detailed explanation of the timing problem it solves when linking units to electrodes, and moved electrode linking guide from user guide to how-to section [PR #1479](https://github.com/catalystneuro/neuroconv/pull/1479)
 * Use attestation instead of token for publish action [PR #1497](https://github.com/catalystneuro/neuroconv/pull/1497)
-* Added EMBER support via the new `instance` option for `neuroconv.tools.data_transfers.automatic_dandi_upload`. [PR #1486](https://github.com/catalystneuro/neuroconv/pull/1486)
 
 
 # v0.8.0 (August 21, 2025)

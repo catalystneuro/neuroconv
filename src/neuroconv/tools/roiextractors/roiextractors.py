@@ -97,6 +97,7 @@ def _get_default_ophys_metadata():
                 "neuropil": {"name": "Neuropil", "description": "Array of neuropil traces.", "unit": "n.a."},
                 "denoised": {"name": "Denoised", "description": "Array of denoised traces.", "unit": "n.a."},
                 "baseline": {"name": "Baseline", "description": "Array of baseline traces.", "unit": "n.a."},
+                "background": {"name": "Background", "description": "Array of background traces.", "unit": "n.a."},
             },
             "BackgroundPlaneSegmentation": {
                 "neuropil": {"name": "neuropil", "description": "Array of neuropil traces.", "unit": "n.a."}
@@ -1321,7 +1322,7 @@ def _add_plane_segmentation(
     return nwbfile
 
 
-def add_background_plane_segmentation_to_nwbfile(
+def _add_background_plane_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None,
@@ -1330,7 +1331,7 @@ def add_background_plane_segmentation_to_nwbfile(
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
-    Add background plane segmentation data from a SegmentationExtractor object to an NWBFile.
+    Private implementation. Add background plane segmentation data from a SegmentationExtractor object to an NWBFile.
 
     Parameters
     ----------
@@ -1375,6 +1376,51 @@ def add_background_plane_segmentation_to_nwbfile(
     return nwbfile
 
 
+def add_background_plane_segmentation_to_nwbfile(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: dict | None,
+    background_plane_segmentation_name: str | None = None,
+    mask_type: Literal["image", "pixel", "voxel"] = "image",
+    iterator_options: dict | None = None,
+) -> NWBFile:
+    """
+    .. deprecated:: 0.8.2
+        This function is deprecated and will be removed on or after March 2026.
+        It is kept as-is for backward compatibility. Use high-level interface methods instead.
+    """
+    warnings.warn(
+        "The 'add_background_plane_segmentation_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseSegmentationExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+    # Duplicated implementation - kept verbatim for backward compatibility
+    default_plane_segmentation_index = 1
+    background_ids = segmentation_extractor.get_background_ids()
+    if mask_type == "image":
+        image_or_pixel_masks = segmentation_extractor.get_background_image_masks()
+    elif mask_type == "pixel" or mask_type == "voxel":
+        image_or_pixel_masks = segmentation_extractor.get_background_pixel_masks()
+    else:
+        raise AssertionError(
+            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel'. " f"Received '{mask_type}'."
+        )
+    nwbfile = _add_plane_segmentation(
+        background_or_roi_ids=background_ids,
+        image_or_pixel_masks=image_or_pixel_masks,
+        default_plane_segmentation_index=default_plane_segmentation_index,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        plane_segmentation_name=background_plane_segmentation_name,
+        mask_type=mask_type,
+        iterator_options=iterator_options,
+    )
+    return nwbfile
+
+
 def add_fluorescence_traces_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
@@ -1384,30 +1430,19 @@ def add_fluorescence_traces_to_nwbfile(
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
-    Adds the fluorescence traces specified by the metadata to the nwb file.
-    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"].
-    The df/F traces that are added are the one located in metadata["Ophys"]["DfOverF"].
-
-    Parameters
-    ----------
-    segmentation_extractor : SegmentationExtractor
-        The segmentation extractor to get the traces from.
-    nwbfile : NWBFile
-        The nwbfile to add the fluorescence traces to.
-    metadata : dict
-        The metadata for the fluorescence traces.
-    plane_segmentation_name : str, optional
-        The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
-    include_background_segmentation : bool, default: False
-        Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
-        neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
-    iterator_options : dict, optional
-
-    Returns
-    -------
-    NWBFile
-        The nwbfile passed as an input with the fluorescence traces added.
+    .. deprecated:: 0.8.2
+        This function is deprecated and will be removed on or after March 2026.
+        It is kept as-is for backward compatibility. Use high-level interface methods instead.
     """
+    warnings.warn(
+        "The 'add_fluorescence_traces_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseSegmentationExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+    # Duplicated implementation - kept verbatim for backward compatibility
     default_plane_segmentation_index = 0
 
     traces_to_add = segmentation_extractor.get_traces_dict()
@@ -1416,7 +1451,7 @@ def add_fluorescence_traces_to_nwbfile(
         trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
     }
     if include_background_segmentation:
-        traces_to_add.pop("neuropil")
+        traces_to_add.pop("neuropil", None)
     if not traces_to_add:
         return nwbfile
 
@@ -1663,27 +1698,19 @@ def add_background_fluorescence_traces_to_nwbfile(
     compression_options: dict | None = None,  # TODO: remove completely after 10/1/2024
 ) -> NWBFile:
     """
-    Adds the fluorescence traces specified by the metadata to the nwb file.
-    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"].
-    The df/F traces that are added are the one located in metadata["Ophys"]["DfOverF"].
-
-    Parameters
-    ----------
-    segmentation_extractor : SegmentationExtractor
-        The segmentation extractor to get the traces from.
-    nwbfile : NWBFile
-        The nwbfile to add the fluorescence traces to.
-    metadata : dict
-        The metadata for the fluorescence traces.
-    plane_segmentation_name : str, optional
-        The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
-    iterator_options : dict, optional
-
-    Returns
-    -------
-    NWBFile
-        The nwbfile passed as an input with the fluorescence traces added.
+    .. deprecated:: 0.8.2
+        This function is deprecated and will be removed on or after March 2026.
+        It is kept as-is for backward compatibility. Use high-level interface methods instead.
     """
+    warnings.warn(
+        "The 'add_background_fluorescence_traces_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseSegmentationExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+    # Duplicated implementation - kept verbatim for backward compatibility
     # TODO: remove completely after 10/1/2024
     if compression_options is not None:
         warnings.warn(
@@ -1721,14 +1748,14 @@ def add_background_fluorescence_traces_to_nwbfile(
     return nwbfile
 
 
-def add_summary_images_to_nwbfile(
+def _add_summary_images_to_nwbfile(
     nwbfile: NWBFile,
     segmentation_extractor: SegmentationExtractor,
     metadata: dict | None = None,
     plane_segmentation_name: str | None = None,
 ) -> NWBFile:
     """
-    Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
+    Private implementation. Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
 
     Parameters
     ----------
@@ -1746,6 +1773,79 @@ def add_summary_images_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the summary images added.
     """
+    metadata = metadata or dict()
+
+    # Get defaults from single source of truth
+    default_metadata = _get_default_ophys_metadata()
+    default_segmentation_images = default_metadata["Ophys"]["SegmentationImages"]
+
+    # Extract SegmentationImages metadata from user or use defaults
+    user_segmentation_images = metadata.get("Ophys", {}).get("SegmentationImages", {})
+
+    # Get container name and description
+    images_container_name = user_segmentation_images.get("name", default_segmentation_images["name"])
+    images_container_description = user_segmentation_images.get(
+        "description", default_segmentation_images["description"]
+    )
+
+    images_dict = segmentation_extractor.get_images_dict()
+    images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
+    if not images_to_add:
+        return nwbfile
+
+    ophys_module = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+
+    # Add Images container if it doesn't exist
+    if images_container_name not in ophys_module.data_interfaces:
+        ophys_module.add(Images(name=images_container_name, description=images_container_description))
+    image_collection = ophys_module.data_interfaces[images_container_name]
+
+    # Determine plane segmentation name
+    default_plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    plane_segmentation_name = plane_segmentation_name or default_plane_segmentation_name
+
+    # Get images metadata for this plane segmentation
+    if plane_segmentation_name in user_segmentation_images:
+        images_metadata = user_segmentation_images[plane_segmentation_name]
+    elif plane_segmentation_name in default_segmentation_images:
+        images_metadata = default_segmentation_images[plane_segmentation_name]
+    else:
+        raise ValueError(
+            f"Plane segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['SegmentationImages']"
+        )
+
+    for img_name, img in images_to_add.items():
+        image_kwargs = dict(name=img_name, data=img.T)
+        image_metadata = images_metadata.get(img_name, None)
+        if image_metadata is not None:
+            image_kwargs.update(image_metadata)
+
+        # Note that nwb uses the conversion width x height (columns, rows) and roiextractors uses the transpose
+        image_collection.add_image(GrayscaleImage(**image_kwargs))
+
+    return nwbfile
+
+
+def add_summary_images_to_nwbfile(
+    nwbfile: NWBFile,
+    segmentation_extractor: SegmentationExtractor,
+    metadata: dict | None = None,
+    plane_segmentation_name: str | None = None,
+) -> NWBFile:
+    """
+    .. deprecated:: 0.8.2
+        This function is deprecated and will be removed on or after March 2026.
+        It is kept as-is for backward compatibility. Use high-level interface methods instead.
+    """
+    warnings.warn(
+        "The 'add_summary_images_to_nwbfile' function is deprecated and will be removed on or after March 2026. "
+        "This is a low-level function that should not be called directly. "
+        "Use high-level interface methods like BaseSegmentationExtractorInterface.add_to_nwbfile() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+    # Duplicated implementation - kept verbatim for backward compatibility
     metadata = metadata or dict()
 
     # Get defaults from single source of truth
@@ -1858,7 +1958,7 @@ def add_segmentation_to_nwbfile(
         iterator_options=iterator_options,
     )
     if include_background_segmentation:
-        add_background_plane_segmentation_to_nwbfile(
+        _add_background_plane_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -1867,27 +1967,53 @@ def add_segmentation_to_nwbfile(
             iterator_options=iterator_options,
         )
 
-    # Add fluorescence traces:
-    add_fluorescence_traces_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        plane_segmentation_name=plane_segmentation_name,
-        include_background_segmentation=include_background_segmentation,
-        iterator_options=iterator_options,
-    )
-
+    # Add fluorescence traces (preprocessing inline to call private function):
+    default_plane_segmentation_index = 0
+    traces_to_add = segmentation_extractor.get_traces_dict()
+    # Filter empty data and background traces
+    traces_to_add = {
+        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
+    }
     if include_background_segmentation:
-        add_background_fluorescence_traces_to_nwbfile(
+        traces_to_add.pop("neuropil", None)
+    if traces_to_add:
+        roi_ids = segmentation_extractor.get_roi_ids()
+        _add_fluorescence_traces_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
+            traces_to_add=traces_to_add,
+            background_or_roi_ids=roi_ids,
             nwbfile=nwbfile,
             metadata=metadata,
-            background_plane_segmentation_name=background_plane_segmentation_name,
+            default_plane_segmentation_index=default_plane_segmentation_index,
+            plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
         )
 
+    if include_background_segmentation:
+        # Add background fluorescence traces (preprocessing inline to call private function):
+        default_plane_segmentation_index = 1
+        traces_to_add = segmentation_extractor.get_traces_dict()
+        # Filter empty data and background traces
+        traces_to_add = {
+            trace_name: trace
+            for trace_name, trace in traces_to_add.items()
+            if trace is not None and trace.size != 0 and trace_name == "neuropil"
+        }
+        if traces_to_add:
+            background_ids = segmentation_extractor.get_background_ids()
+            _add_fluorescence_traces_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                traces_to_add=traces_to_add,
+                background_or_roi_ids=background_ids,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                default_plane_segmentation_index=default_plane_segmentation_index,
+                plane_segmentation_name=background_plane_segmentation_name,
+                iterator_options=iterator_options,
+            )
+
     # Adding summary images (mean and correlation)
-    add_summary_images_to_nwbfile(
+    _add_summary_images_to_nwbfile(
         nwbfile=nwbfile,
         segmentation_extractor=segmentation_extractor,
         metadata=metadata,

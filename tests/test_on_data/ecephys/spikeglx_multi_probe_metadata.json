@@ -47,10 +47,6 @@
         "description": "The shape of the electrode"
       },
       {
-        "name": "contact_ids",
-        "description": "The id of the contact on the electrode"
-      },
-      {
         "name": "inter_sample_shift",
         "description": "Array of relative phase shifts for each channel, with values ranging from 0 to 1, representing the fractional delay within the sampling period due to sequential ADC."
       }
