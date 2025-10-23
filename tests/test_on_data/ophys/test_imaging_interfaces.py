@@ -882,7 +882,7 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
         cls.imaging_plane_metadata = dict(
             name=cls.imaging_plane_name,
             device=cls.device_name,
-            imaging_rate=15.0,
+            imaging_rate=15.037593984962406,  # Actual rate calculated from timestamps
         )
 
         cls.photon_series_name = "OnePhotonSeries"
