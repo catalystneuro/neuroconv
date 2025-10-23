@@ -9,6 +9,7 @@
 * Excluded `contact_ids` property from being added as a duplicate column in the electrodes table. This property is already represented via the `electrode_name` column which uses probe contact identifiers. [PR #1560](https://github.com/catalystneuro/neuroconv/pull/1560)
 
 ## Features
+Support roiextractors 0.7.1 [PR #1566](https://github.com/catalystneuro/neuroconv/pull/1566)
 
 ## Improvements
 
