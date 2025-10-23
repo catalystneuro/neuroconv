@@ -948,14 +948,21 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             assert one_photon_series.unit == "px"
             assert one_photon_series.data.shape == (5, 752, 480)  # Single recording has 5 frames
             assert one_photon_series.data.dtype == np.uint8
-            assert one_photon_series.rate == 15.0  # Single recording has sampling rate
-            assert one_photon_series.starting_frame is None
-            assert one_photon_series.timestamps is None  # Uses rate instead of timestamps
 
-            # Verify that interface can still get original timestamps even if not used in NWB
+            # After roiextractors #509, MiniscopeImagingExtractor provides native timestamps
+            # from timeStamps.csv, so the photon series uses timestamps instead of rate
+            assert one_photon_series.rate is None  # Uses timestamps instead of rate
+            assert one_photon_series.timestamps is not None  # Now uses hardware timestamps
+            assert len(one_photon_series.timestamps) == 5
+            assert one_photon_series.starting_frame is None
+
+            # Verify that interface can get original timestamps
             interface_times = self.interface.get_original_timestamps()
             assert interface_times is not None
             assert len(interface_times) == 5
+
+            # Verify timestamps match between interface and NWB
+            np.testing.assert_array_almost_equal(one_photon_series.timestamps[:], interface_times)
 
     def test_file_paths_parameter(self):
         """Test using file_paths parameter for non-standard structures."""
