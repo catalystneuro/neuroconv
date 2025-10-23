@@ -266,6 +266,18 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
                 "Use either folder_path alone or provide file_paths with configuration_file_path."
             )
 
+        # Store the device folder path for metadata extraction
+        # The device folder contains metaData.json and .avi files
+        if folder_path is not None:
+            self._device_folder_path = Path(folder_path)
+        elif configuration_file_path is not None:
+            self._device_folder_path = Path(configuration_file_path).parent
+        elif file_paths is not None:
+            # Infer from file_paths - all .avi files should be in the same folder
+            self._device_folder_path = Path(file_paths[0]).parent
+        else:
+            self._device_folder_path = None
+
         # Initialize with the provided parameters
         super().__init__(
             folder_path=folder_path,
@@ -279,22 +291,34 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     def get_metadata(self) -> dict:
         """Get metadata with device information from Miniscope configuration."""
-        from pathlib import Path
+        from roiextractors import MiniscopeImagingExtractor
 
         metadata = super().get_metadata()
 
-        # Extract device metadata from the extractor's config
+        # Read device metadata from metaData.json using the extractor's static method
+        device_metadata_path = self._device_folder_path / "metaData.json"
+
+        # Extract device metadata from the configuration file
         device_metadata = metadata["Ophys"]["Device"][0]
-        device_name = self.imaging_extractor._miniscope_config.get("deviceName", "Miniscope")
+        device_name = "Miniscope"  # Default
 
-        # Only include valid Device schema fields
-        device_updates = {"name": device_name}
+        if device_metadata_path.exists():
+            miniscope_config = MiniscopeImagingExtractor._read_device_folder_metadata(
+                metadata_file_path=str(device_metadata_path)
+            )
+            device_name = miniscope_config.get("deviceName", "Miniscope")
 
-        # Map deviceType to model_name if available
-        if "deviceType" in self.imaging_extractor._miniscope_config:
-            device_updates["model_name"] = self.imaging_extractor._miniscope_config["deviceType"]
+            # Only include valid Device schema fields
+            device_updates = {"name": device_name}
 
-        device_metadata.update(device_updates)
+            # Map deviceType to model_name if available
+            if "deviceType" in miniscope_config:
+                device_updates["model_name"] = miniscope_config["deviceType"]
+
+            device_metadata.update(device_updates)
+        else:
+            # Fallback if metaData.json doesn't exist
+            device_metadata.update({"name": device_name})
 
         # Update imaging plane metadata
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
@@ -310,8 +334,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         # Extract session_start_time from parent folder's metaData.json if available
         # The parent folder of the Miniscope folder may contain the recording session metaData.json
-        miniscope_folder = Path(self.imaging_extractor._miniscope_folder_path)
-        parent_metadata_path = miniscope_folder.parent / "metaData.json"
+        parent_metadata_path = self._device_folder_path.parent / "metaData.json"
 
         if parent_metadata_path.exists():
             from roiextractors.extractors.miniscopeimagingextractor.miniscope_utils import (
