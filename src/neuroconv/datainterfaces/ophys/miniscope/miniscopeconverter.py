@@ -54,7 +54,14 @@ class MiniscopeConverter(NWBConverter):
         Parameters
         ----------
         folder_path : DirectoryPath
-            Root directory containing the Miniscope acquisition.
+            **Root data directory** containing the Miniscope acquisition data. This should be the base directory
+            where the configured directory structure (e.g., researcher/experiment/animal/date/time) begins.
+
+            - With config file: The top-level directory containing the hierarchy defined by 'directoryStructure'
+            - Without config file (legacy): The directory containing timestamp subfolders with Miniscope/ folders
+
+            IMPORTANT: The 'dataDirectory' field in the User Config file is ignored. Always pass the actual
+            data root directory as folder_path.
         user_configuration_file_path : FilePath, optional
             Path to the Miniscope "User Config" JSON file (the Miniscope documentation and source code refer to
             this artifact as ``UserConfigFile.json``). When provided, the converter uses the configuration to
@@ -202,26 +209,25 @@ class MiniscopeConverter(NWBConverter):
                 raise ValueError("'devices[miniscopes]' is missing from the provided User Config file.")
             device_names = list(miniscope_devices.keys())
 
-            # Resolve base data directory
-            base_path = self._resolve_base_path(
-                user_config=user_config,
-                config_path=config_path,
-            )
+            # Use folder_path as the base data directory
+            base_path = self._folder_path
 
             # Discover all session folders
-            # Build folder structure pattern: str = exact match, None = wildcard
+            # Build virtual path pattern with {wildcards} for unconstrained levels
             directory_structure = user_config.get("directoryStructure", [])
-            folder_structure = []
+            path_components = []
             for key in directory_structure:
                 expected_value = user_config.get(key)
                 if isinstance(expected_value, str) and expected_value:
-                    folder_structure.append(expected_value)
+                    path_components.append(expected_value)  # Exact folder name
                 else:
-                    folder_structure.append(None)
+                    path_components.append(f"{{{key}}}")  # Wildcard: {animalName}, {date}, etc.
+
+            virtual_path_pattern = "/".join(path_components) if path_components else ""
 
             session_folders = self._resolve_folder_path_structure(
                 base_path=base_path,
-                folder_structure=folder_structure,
+                virtual_path_pattern=virtual_path_pattern,
             )
 
             # Sort sessions naturally
@@ -539,57 +545,6 @@ class MiniscopeConverter(NWBConverter):
             **kwargs,
         )
 
-    def _resolve_base_path(
-        self,
-        user_config: dict,
-        config_path: Path,
-    ) -> Path:
-        """Resolve the base data directory path from User Config.
-
-        Tries multiple candidate paths in order:
-        1. dataDirectory from config (as-is)
-        2. If relative: dataDirectory relative to config file
-        3. If relative: dataDirectory relative to folder_path
-        4. Fallback: folder_path
-
-        Parameters
-        ----------
-        user_config : dict
-            The parsed User Config dictionary.
-        config_path : Path
-            Path to the User Config file.
-
-        Returns
-        -------
-        Path
-            The resolved base data directory path.
-
-        Raises
-        ------
-        FileNotFoundError
-            If none of the candidate paths exist.
-        """
-        data_directory = user_config.get("dataDirectory")
-        candidate_base_paths = []
-
-        if data_directory:
-            candidate_path = Path(data_directory)
-            candidate_base_paths.append(candidate_path)
-            if not candidate_path.is_absolute():
-                candidate_base_paths.append((config_path.parent / candidate_path).resolve())
-                candidate_base_paths.append((self._folder_path / candidate_path).resolve())
-        candidate_base_paths.append(self._folder_path)
-
-        base_path = next((path for path in candidate_base_paths if path.exists()), None)
-        if base_path is None:
-            searched = ", ".join(str(path) for path in candidate_base_paths)
-            raise FileNotFoundError(
-                "Unable to locate Miniscope data directory based on the configuration. "
-                f"Attempted: {searched or '<none>'}."
-            )
-
-        return base_path
-
     def _find_device_folders_in_session(
         self,
         session_folder: Path,
@@ -693,24 +648,28 @@ class MiniscopeConverter(NWBConverter):
     def _resolve_folder_path_structure(
         self,
         base_path: Path,
-        folder_structure: list[str | None],
+        virtual_path_pattern: str,
     ) -> list[Path]:
-        """Resolve folder path structure to actual filesystem paths.
+        """Resolve virtual path pattern to actual filesystem paths.
 
-        Walks the filesystem level-by-level according to the folder structure pattern.
-        For each level, either matches an exact folder name or expands to all subdirectories.
+        Walks the filesystem level-by-level following the pattern. Components in {braces}
+        are wildcards that match any folder name. Other components must match exactly
+        (with space/underscore sanitization).
 
         Parameters
         ----------
         base_path : Path
             The root directory to start searching from.
-        folder_structure : list[str | None]
-            Pattern where str = exact folder name to match, None = match any folder.
+        virtual_path_pattern : str
+            Path pattern with {wildcards} for unconstrained levels.
+            Example: "researcher_name/experiment_name/{animalName}/{date}/{time}"
+            - "researcher_name" and "experiment_name" must match exactly
+            - {animalName}, {date}, {time} match any folder names
 
         Returns
         -------
         list[Path]
-            List of all discovered leaf paths after traversing the hierarchy.
+            List of all discovered session paths matching the pattern.
 
         Raises
         ------
@@ -720,29 +679,39 @@ class MiniscopeConverter(NWBConverter):
 
         Examples
         --------
-        With folder_structure = ["researcher_name", None, None] and filesystem::
+        Pattern: "researcher_name/{experimentName}/{date}"
+        Filesystem::
 
             base_path/
             └── researcher_name/
-                └── experiment_a/
-                    ├── 2025_06_12/
-                    └── 2025_06_13/
+                ├── experiment_a/
+                │   ├── 2025_06_12/
+                │   └── 2025_06_13/
+                └── experiment_b/
+                    └── 2025_06_14/
 
-        Returns all leaf directories: [
+        Returns: [
             base_path/researcher_name/experiment_a/2025_06_12,
-            base_path/researcher_name/experiment_a/2025_06_13
+            base_path/researcher_name/experiment_a/2025_06_13,
+            base_path/researcher_name/experiment_b/2025_06_14
         ]
         """
         if not base_path.exists():
             raise FileNotFoundError(f"Miniscope data directory '{base_path}' does not exist.")
 
-        if not folder_structure:
+        if not virtual_path_pattern:
             return [base_path]
 
+        # Parse pattern into components
+        pattern_components = virtual_path_pattern.split("/")
         current_paths = [base_path]
 
-        for level_index, expected_name in enumerate(folder_structure):
+        for level_index, pattern_component in enumerate(pattern_components):
             next_paths = []
+
+            # Check if this component is a wildcard (enclosed in braces)
+            is_wildcard = pattern_component.startswith("{") and pattern_component.endswith("}")
+            expected_folder_name = None if is_wildcard else pattern_component
 
             for parent_path in current_paths:
                 if not parent_path.exists():
@@ -751,30 +720,32 @@ class MiniscopeConverter(NWBConverter):
                 subdirs = [child for child in parent_path.iterdir() if child.is_dir()]
 
                 if not subdirs:
-                    expected_text = "any directory" if expected_name is None else f"directory '{expected_name}'"
+                    expected_text = (
+                        f"wildcard {pattern_component}" if is_wildcard else f"directory '{expected_folder_name}'"
+                    )
                     raise FileNotFoundError(
                         f"No subdirectories found at level {level_index} under '{parent_path}'. "
                         f"Expected {expected_text}"
                     )
 
-                if expected_name is None:
+                if is_wildcard:
+                    # Wildcard: match any subdirectory
                     next_paths.extend(subdirs)
                 else:
-                    # Match directory name with space/underscore sanitization
-                    candidate_names = {expected_name, expected_name.replace(" ", "_")}
+                    # Exact match with space/underscore sanitization
+                    candidate_names = {expected_folder_name, expected_folder_name.replace(" ", "_")}
                     matches = [d for d in subdirs if d.name in candidate_names]
                     if not matches:
                         available = ", ".join(sorted(d.name for d in subdirs))
                         raise FileNotFoundError(
-                            f"Expected directory '{expected_name}' at level {level_index} under '{parent_path}', "
+                            f"Expected directory '{expected_folder_name}' at level {level_index} under '{parent_path}', "
                             f"but found: {available}"
                         )
                     next_paths.extend(matches)
 
             if not next_paths:
                 raise FileNotFoundError(
-                    f"No directories resolved at level {level_index} "
-                    f"(expected: {expected_name if expected_name else 'any directory'})"
+                    f"No directories resolved at level {level_index} " f"(pattern: '{pattern_component}')"
                 )
 
             current_paths = next_paths
