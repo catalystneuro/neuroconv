@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import DirectoryPath, FilePath, validate_call
@@ -372,28 +372,21 @@ class MiniscopeConverter(NWBConverter):
                 )
                 one_photon_metadata.update(name=one_photon_series_name, imaging_plane=imaging_plane_name)
 
-        def _normalize_start_time(dt: datetime | None) -> datetime | None:
-            if dt is None:
-                return None
-            if dt.tzinfo is None:
-                return dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc)
-
-        normalized_times = []
+        start_times = []
         for entry in interface_entries:
             start_time = entry["session_start_time"]
-            normalized = _normalize_start_time(start_time) if isinstance(start_time, datetime) else None
-            entry["normalized_start_time"] = normalized
-            if normalized is not None:
-                normalized_times.append(normalized)
+            if isinstance(start_time, datetime):
+                start_times.append(start_time)
+            else:
+                entry["session_start_time"] = None
 
-        if normalized_times:
-            base_time = min(normalized_times)
+        if start_times:
+            base_time = min(start_times)
             for entry in interface_entries:
-                normalized = entry.get("normalized_start_time")
-                if normalized is None:
+                start_time = entry["session_start_time"]
+                if start_time is None:
                     continue
-                offset = (normalized - base_time).total_seconds()
+                offset = (start_time - base_time).total_seconds()
                 if offset:
                     entry["interface"].set_aligned_starting_time(offset)
 
