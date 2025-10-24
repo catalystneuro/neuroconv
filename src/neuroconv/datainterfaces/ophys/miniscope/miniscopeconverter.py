@@ -188,12 +188,59 @@ class MiniscopeConverter(NWBConverter):
         """
         self.verbose = verbose
         self._folder_path = Path(folder_path)
-
         self.data_interface_objects: dict[str, object] = {}
 
         if user_configuration_file_path is not None:
-            imaging_interfaces = self._build_imaging_interfaces_from_user_config(
-                user_config_path=Path(user_configuration_file_path)
+            # Load user configuration
+            config_path = Path(user_configuration_file_path)
+            with config_path.open() as f:
+                user_config = json.load(f)
+
+            # Extract device names from configuration
+            miniscope_devices = user_config.get("devices", {}).get("miniscopes", {})
+            if not miniscope_devices:
+                raise ValueError("'devices[miniscopes]' is missing from the provided User Config file.")
+            device_names = list(miniscope_devices.keys())
+
+            # Resolve base data directory
+            base_path = self._resolve_base_path(
+                user_config=user_config,
+                config_path=config_path,
+            )
+
+            # Discover all session folders
+            # Build folder structure pattern: str = exact match, None = wildcard
+            directory_structure = user_config.get("directoryStructure", [])
+            folder_structure = []
+            for key in directory_structure:
+                expected_value = user_config.get(key)
+                if isinstance(expected_value, str) and expected_value:
+                    folder_structure.append(expected_value)
+                else:
+                    folder_structure.append(None)
+
+            session_folders = self._resolve_folder_path_structure(
+                base_path=base_path,
+                folder_structure=folder_structure,
+            )
+
+            # Sort sessions naturally
+            natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
+            session_folders = natsort.natsorted(session_folders, key=lambda path: path.as_posix())
+
+            # For each session, find device folders and create interfaces
+            device_folders_by_device = {device_name: [] for device_name in device_names}
+            for session_folder in session_folders:
+                device_folders_in_session = self._find_device_folders_in_session(
+                    session_folder=session_folder,
+                    device_names=device_names,
+                )
+                for device_name, device_folder in device_folders_in_session.items():
+                    device_folders_by_device[device_name].append(device_folder)
+
+            # Build interfaces from discovered device folders
+            imaging_interfaces = self._build_imaging_interfaces_from_device_folders(
+                device_folders_by_device=device_folders_by_device,
             )
             if not imaging_interfaces:
                 raise ValueError(
@@ -201,6 +248,7 @@ class MiniscopeConverter(NWBConverter):
                 )
             self.data_interface_objects.update(imaging_interfaces)
         else:
+            # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             default_interface = _MiniscopeMultiRecordingInterface(folder_path=folder_path)
             default_metadata = default_interface.get_metadata()
             device_metadata = default_metadata["Ophys"]["Device"][0]
@@ -491,119 +539,44 @@ class MiniscopeConverter(NWBConverter):
             **kwargs,
         )
 
-    def _build_imaging_interfaces_from_user_config(
-        self, user_config_path: Path
-    ) -> dict[str, MiniscopeImagingInterface]:
-        """Create Miniscope imaging interfaces using the acquisition User Config file."""
-
-        with user_config_path.open() as f:
-            user_config = json.load(f)
-
-        miniscope_devices = user_config.get("devices", {}).get("miniscopes", {})
-        if not miniscope_devices:
-            raise ValueError("'devices[miniscopes]' is missing from the provided User Config file.")
-
-        device_directories = self._get_configured_device_directories(
-            user_config=user_config,
-            user_config_path=user_config_path,
-            device_names=list(miniscope_devices.keys()),
-        )
-
-        return self._build_imaging_interfaces_from_directories(device_directories=device_directories)
-
-    def _get_configured_device_directories(
+    def _resolve_base_path(
         self,
-        *,
         user_config: dict,
-        user_config_path: Path,
-        device_names: list[str],
-    ) -> dict[str, list[Path]]:
-        """Fetch recording folder paths for each Miniscope device using the User Config description.
+        config_path: Path,
+    ) -> Path:
+        """Resolve the base data directory path from User Config.
 
-        This method resolves the data directory path and walks through the configured directory structure
-        to discover all recording sessions containing the specified Miniscope devices.
+        Tries multiple candidate paths in order:
+        1. dataDirectory from config (as-is)
+        2. If relative: dataDirectory relative to config file
+        3. If relative: dataDirectory relative to folder_path
+        4. Fallback: folder_path
 
         Parameters
         ----------
         user_config : dict
-            The parsed User Config JSON containing 'dataDirectory', 'directoryStructure', and device
-            configuration fields.
-        user_config_path : Path
-            Path to the User Config file, used to resolve relative paths in the configuration.
-        device_names : list[str]
-            List of Miniscope device names (e.g., ["ACC_miniscope2", "HPC_miniscope1"]) to search for
-            within each session.
+            The parsed User Config dictionary.
+        config_path : Path
+            Path to the User Config file.
 
         Returns
         -------
-        dict[str, list[Path]]
-            Dictionary mapping each device name to a list of directory paths containing its recordings.
-            For example: {"ACC_miniscope2": [Path(...)/15_15_04/ACC_miniscope2, Path(...)/15_26_31/ACC_miniscope2]}
+        Path
+            The resolved base data directory path.
 
-        Notes
-        -----
-        Path Resolution Strategy:
-            1. If 'dataDirectory' is specified in the config, try these candidate paths in order:
-               - The path as-is (verbatim from config)
-               - If the path is relative, also try:
-                 * Relative to the User Config file location
-                 * Relative to the converter's folder_path
-            2. Always add converter's folder_path as a final fallback
-            3. Use the first candidate path that exists on disk
-
-        Session Discovery:
-            - Calls _resolve_session_paths to walk the directory structure using the configured hierarchy
-              (e.g., researcherName/experimentName/animalName/date/time)
-            - Sorts discovered sessions using natural sorting for consistent ordering
-
-        Device Discovery:
-            - For each session path, searches for subdirectories matching each device name
-            - Handles both sanitized names (spaces replaced with underscores) and original names
-            - Skips sessions that don't contain a particular device (supporting partial recordings)
-
-        Examples
-        --------
-        Given a config with two devices and two recording sessions::
-
-            user_config = {
-                "dataDirectory": "./data",
-                "directoryStructure": ["animalName", "date", "time"],
-                "animalName": "mouse_001",
-                "devices": {"miniscopes": {"ACC_miniscope2": {...}, "HPC_miniscope1": {...}}}
-            }
-
-        And a file structure::
-
-            data/
-            └── mouse_001/
-                └── 2025_06_12/
-                    ├── 15_15_04/
-                    │   ├── ACC_miniscope2/
-                    │   └── HPC_miniscope1/
-                    └── 15_26_31/
-                        ├── ACC_miniscope2/
-                        └── HPC_miniscope1/
-
-        Returns::
-
-            {
-                "ACC_miniscope2": [
-                    Path("data/mouse_001/2025_06_12/15_15_04/ACC_miniscope2"),
-                    Path("data/mouse_001/2025_06_12/15_26_31/ACC_miniscope2")
-                ],
-                "HPC_miniscope1": [
-                    Path("data/mouse_001/2025_06_12/15_15_04/HPC_miniscope1"),
-                    Path("data/mouse_001/2025_06_12/15_26_31/HPC_miniscope1")
-                ]
-            }
+        Raises
+        ------
+        FileNotFoundError
+            If none of the candidate paths exist.
         """
         data_directory = user_config.get("dataDirectory")
         candidate_base_paths = []
+
         if data_directory:
             candidate_path = Path(data_directory)
             candidate_base_paths.append(candidate_path)
             if not candidate_path.is_absolute():
-                candidate_base_paths.append((user_config_path.parent / candidate_path).resolve())
+                candidate_base_paths.append((config_path.parent / candidate_path).resolve())
                 candidate_base_paths.append((self._folder_path / candidate_path).resolve())
         candidate_base_paths.append(self._folder_path)
 
@@ -615,52 +588,58 @@ class MiniscopeConverter(NWBConverter):
                 f"Attempted: {searched or '<none>'}."
             )
 
-        directory_structure = user_config.get("directoryStructure", [])
-        folder_structure = self._build_folder_path_structure(
-            directory_structure=directory_structure,
-            user_config=user_config,
-        )
-        session_paths = self._resolve_folder_path_structure(
-            base_path=base_path,
-            folder_structure=folder_structure,
-        )
+        return base_path
 
-        natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
-        session_paths = natsort.natsorted(session_paths, key=lambda path: path.as_posix())
+    def _find_device_folders_in_session(
+        self,
+        session_folder: Path,
+        device_names: list[str],
+    ) -> dict[str, Path]:
+        """Find device-specific folders within a session folder.
 
-        device_directories: dict[str, list[Path]] = {device_name: [] for device_name in device_names}
-        for session_path in session_paths:
-            if not session_path.exists():
-                continue
-            for device_name in device_names:
-                sanitized_device_name = device_name.replace(" ", "_")
-                candidate_names = [sanitized_device_name]
-                if sanitized_device_name != device_name:
-                    candidate_names.append(device_name)
+        Parameters
+        ----------
+        session_folder : Path
+            The session folder to search in.
+        device_names : list[str]
+            List of device names to look for.
 
-                found_directory = None
-                for candidate_name in candidate_names:
-                    candidate_path = session_path / candidate_name
-                    if candidate_path.exists():
-                        found_directory = candidate_path
-                        break
+        Returns
+        -------
+        dict[str, Path]
+            Mapping of device_name to device_folder path for devices found in this session.
+            Devices not found in this session are omitted (partial recordings supported).
+        """
+        device_folders = {}
 
-                if found_directory is not None:
-                    device_directories[device_name].append(found_directory)
+        if not session_folder.exists():
+            return device_folders
 
-        return device_directories
+        for device_name in device_names:
+            sanitized_device_name = device_name.replace(" ", "_")
+            candidate_names = [sanitized_device_name]
+            if sanitized_device_name != device_name:
+                candidate_names.append(device_name)
 
-    def _build_imaging_interfaces_from_directories(
+            for candidate_name in candidate_names:
+                candidate_path = session_folder / candidate_name
+                if candidate_path.exists():
+                    device_folders[device_name] = candidate_path
+                    break
+
+        return device_folders
+
+    def _build_imaging_interfaces_from_device_folders(
         self,
         *,
-        device_directories: dict[str, list[Path]],
+        device_folders_by_device: dict[str, list[Path]],
     ) -> dict[str, MiniscopeImagingInterface]:
         """Instantiate imaging interfaces for each Miniscope device/segment discovered on disk."""
 
         natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
 
         imaging_interfaces: dict[str, MiniscopeImagingInterface] = {}
-        for device_index, (device_name, folder_paths) in enumerate(device_directories.items()):
+        for device_index, (device_name, folder_paths) in enumerate(device_folders_by_device.items()):
             if not folder_paths:
                 raise FileNotFoundError(
                     f"No directories matching Miniscope device '{device_name}' were found under '{self._folder_path}'."
@@ -710,76 +689,6 @@ class MiniscopeConverter(NWBConverter):
                 imaging_interfaces[interface_key] = interface
 
         return imaging_interfaces
-
-    def _build_folder_path_structure(
-        self,
-        directory_structure: list[str],
-        user_config: dict,
-    ) -> list[str | None]:
-        """Build expected folder path structure from User Config.
-
-        This method extracts the expected folder names from the User Config for each level
-        in the directory hierarchy. Returns a pattern where each element is either a specific
-        folder name (constrained) or None (wildcard - match any folder).
-
-        Parameters
-        ----------
-        directory_structure : list[str]
-            Ordered list of configuration keys defining the directory hierarchy.
-            Example: ["researcherName", "experimentName", "animalName", "date", "time"]
-        user_config : dict
-            The User Config dictionary containing values for directory structure keys.
-
-        Returns
-        -------
-        list[str | None]
-            Pattern where str = exact folder name to match, None = match any folder.
-            Example: ["researcher_name", "experiment_name", None, None] means match
-            first two folders exactly, then discover all subdirectories for remaining levels.
-
-        Examples
-        --------
-        Fully constrained path::
-
-            directory_structure = ["animalName", "date", "time"]
-            user_config = {"animalName": "mouse_001", "date": "2025_06_12"}
-            Returns: ["mouse_001", "2025_06_12", None]
-
-        Fully exploratory::
-
-            directory_structure = ["animalName", "date", "time"]
-            user_config = {}
-            Returns: [None, None, None]
-        """
-        folder_structure = []
-        for key in directory_structure:
-            expected_value = user_config.get(key)
-            if isinstance(expected_value, str) and expected_value:
-                folder_structure.append(expected_value)
-            else:
-                folder_structure.append(None)
-        return folder_structure
-
-    def _match_directory_name(self, subdirs: list[Path], expected_name: str) -> list[Path]:
-        """Match directories by name with space/underscore sanitization.
-
-        Supports matching folder names that differ only in spaces vs underscores.
-        For example, "Miniscope V4" will match both "Miniscope V4" and "Miniscope_V4".
-
-        Parameters
-        ----------
-        subdirs : list[Path]
-            List of subdirectories to search.
-        expected_name : str
-            The expected folder name.
-
-        Returns
-        -------
-        list[Path]
-            List of matching directories.
-        """
-        candidate_names = {expected_name, expected_name.replace(" ", "_")}
-        return [d for d in subdirs if d.name in candidate_names]
 
     def _resolve_folder_path_structure(
         self,
@@ -851,7 +760,9 @@ class MiniscopeConverter(NWBConverter):
                 if expected_name is None:
                     next_paths.extend(subdirs)
                 else:
-                    matches = self._match_directory_name(subdirs, expected_name)
+                    # Match directory name with space/underscore sanitization
+                    candidate_names = {expected_name, expected_name.replace(" ", "_")}
+                    matches = [d for d in subdirs if d.name in candidate_names]
                     if not matches:
                         available = ", ".join(sorted(d.name for d in subdirs))
                         raise FileNotFoundError(
