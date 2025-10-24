@@ -615,10 +615,14 @@ class MiniscopeConverter(NWBConverter):
                 f"Attempted: {searched or '<none>'}."
             )
 
-        session_paths = self._resolve_session_paths(
-            base_path=base_path,
-            directory_structure=user_config.get("directoryStructure", []),
+        directory_structure = user_config.get("directoryStructure", [])
+        folder_structure = self._build_folder_path_structure(
+            directory_structure=directory_structure,
             user_config=user_config,
+        )
+        session_paths = self._resolve_folder_path_structure(
+            base_path=base_path,
+            folder_structure=folder_structure,
         )
 
         natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
@@ -707,151 +711,159 @@ class MiniscopeConverter(NWBConverter):
 
         return imaging_interfaces
 
-    def _resolve_session_paths(
+    def _build_folder_path_structure(
         self,
-        *,
-        base_path: Path,
         directory_structure: list[str],
         user_config: dict,
-    ) -> list[Path]:
-        """Discover session directories by walking the filesystem and validating against the User Config.
+    ) -> list[str | None]:
+        """Build expected folder path structure from User Config.
 
-        This method walks through a hierarchical directory structure based on the 'directoryStructure' field
-        in the User Config, discovering all session paths that match the configured hierarchy. It supports
-        both constrained paths (when config values are specified) and exploratory discovery (when values are
-        not specified).
+        This method extracts the expected folder names from the User Config for each level
+        in the directory hierarchy. Returns a pattern where each element is either a specific
+        folder name (constrained) or None (wildcard - match any folder).
 
         Parameters
         ----------
-        base_path : Path
-            The root directory to start searching from (typically the resolved data directory).
         directory_structure : list[str]
-            Ordered list of configuration keys defining the directory hierarchy
-            (e.g., ["researcherName", "experimentName", "animalName", "date", "time"]).
+            Ordered list of configuration keys defining the directory hierarchy.
+            Example: ["researcherName", "experimentName", "animalName", "date", "time"]
         user_config : dict
-            The User Config dictionary containing expected values for each key in directory_structure.
+            The User Config dictionary containing values for directory structure keys.
+
+        Returns
+        -------
+        list[str | None]
+            Pattern where str = exact folder name to match, None = match any folder.
+            Example: ["researcher_name", "experiment_name", None, None] means match
+            first two folders exactly, then discover all subdirectories for remaining levels.
+
+        Examples
+        --------
+        Fully constrained path::
+
+            directory_structure = ["animalName", "date", "time"]
+            user_config = {"animalName": "mouse_001", "date": "2025_06_12"}
+            Returns: ["mouse_001", "2025_06_12", None]
+
+        Fully exploratory::
+
+            directory_structure = ["animalName", "date", "time"]
+            user_config = {}
+            Returns: [None, None, None]
+        """
+        folder_structure = []
+        for key in directory_structure:
+            expected_value = user_config.get(key)
+            if isinstance(expected_value, str) and expected_value:
+                folder_structure.append(expected_value)
+            else:
+                folder_structure.append(None)
+        return folder_structure
+
+    def _match_directory_name(self, subdirs: list[Path], expected_name: str) -> list[Path]:
+        """Match directories by name with space/underscore sanitization.
+
+        Supports matching folder names that differ only in spaces vs underscores.
+        For example, "Miniscope V4" will match both "Miniscope V4" and "Miniscope_V4".
+
+        Parameters
+        ----------
+        subdirs : list[Path]
+            List of subdirectories to search.
+        expected_name : str
+            The expected folder name.
 
         Returns
         -------
         list[Path]
-            List of all discovered session paths (the leaf directories after traversing the full hierarchy).
-            If directory_structure is empty, returns [base_path].
+            List of matching directories.
+        """
+        candidate_names = {expected_name, expected_name.replace(" ", "_")}
+        return [d for d in subdirs if d.name in candidate_names]
 
-        Notes
-        -----
-        Directory Traversal Logic:
-            For each level in the directory hierarchy (each key in directory_structure):
+    def _resolve_folder_path_structure(
+        self,
+        base_path: Path,
+        folder_structure: list[str | None],
+    ) -> list[Path]:
+        """Resolve folder path structure to actual filesystem paths.
 
-            1. **If config value is specified** (e.g., user_config["animalName"] = "mouse_001"):
-               - First checks if the parent directory name already matches (supports nested configs)
-               - Otherwise looks for subdirectories matching the expected value (or sanitized version)
-               - Raises FileNotFoundError if no match is found
-               - Supports space/underscore variations (e.g., "Miniscope V4" → "Miniscope_V4")
+        Walks the filesystem level-by-level according to the folder structure pattern.
+        For each level, either matches an exact folder name or expands to all subdirectories.
 
-            2. **If config value is NOT specified** (e.g., user_config["date"] is missing):
-               - Discovers ALL subdirectories at that level
-               - Allows exploration of multiple dates, sessions, etc.
+        Parameters
+        ----------
+        base_path : Path
+            The root directory to start searching from.
+        folder_structure : list[str | None]
+            Pattern where str = exact folder name to match, None = match any folder.
 
-            3. **Error Handling**:
-               - Raises FileNotFoundError if no subdirectories exist when expected
-               - Provides helpful error messages listing available directories
+        Returns
+        -------
+        list[Path]
+            List of all discovered leaf paths after traversing the hierarchy.
+
+        Raises
+        ------
+        FileNotFoundError
+            If base_path doesn't exist, no subdirectories found at a level, or
+            expected folder name not found.
 
         Examples
         --------
-        Example 1 - Fully constrained path::
+        With folder_structure = ["researcher_name", None, None] and filesystem::
 
-            base_path = Path("./data")
-            directory_structure = ["animalName", "date", "time"]
-            user_config = {"animalName": "mouse_001", "date": "2025_06_12"}
-            # Note: "time" is not in config, so all time directories are discovered
+            base_path/
+            └── researcher_name/
+                └── experiment_a/
+                    ├── 2025_06_12/
+                    └── 2025_06_13/
 
-        With file structure::
-
-            data/
-            └── mouse_001/
-                └── 2025_06_12/
-                    ├── 15_15_04/
-                    └── 15_26_31/
-
-        Returns::
-
-            [Path("data/mouse_001/2025_06_12/15_15_04"),
-             Path("data/mouse_001/2025_06_12/15_26_31")]
-
-        Example 2 - Exploratory discovery::
-
-            directory_structure = ["animalName", "date", "time"]
-            user_config = {}  # No constraints specified
-
-        With file structure::
-
-            data/
-            ├── mouse_001/
-            │   └── 2025_06_12/
-            │       └── 15_15_04/
-            └── mouse_002/
-                └── 2025_06_13/
-                    └── 09_30_00/
-
-        Returns::
-
-            [Path("data/mouse_001/2025_06_12/15_15_04"),
-             Path("data/mouse_002/2025_06_13/09_30_00")]
-
-        Example 3 - Empty directory structure::
-
-            directory_structure = []
-
-        Returns::
-
-            [base_path]  # Base path itself is the session
+        Returns all leaf directories: [
+            base_path/researcher_name/experiment_a/2025_06_12,
+            base_path/researcher_name/experiment_a/2025_06_13
+        ]
         """
         if not base_path.exists():
-            raise FileNotFoundError(f"Configured Miniscope data directory '{base_path}' does not exist.")
+            raise FileNotFoundError(f"Miniscope data directory '{base_path}' does not exist.")
 
-        if not directory_structure:
+        if not folder_structure:
             return [base_path]
 
-        current_paths: list[Path] = [base_path]
-        for key in directory_structure:
-            expected_value = user_config.get(key)
-            next_paths: list[Path] = []
+        current_paths = [base_path]
+
+        for level_index, expected_name in enumerate(folder_structure):
+            next_paths = []
 
             for parent_path in current_paths:
                 if not parent_path.exists():
                     continue
 
-                subdirectories = [child for child in parent_path.iterdir() if child.is_dir()]
-                if isinstance(expected_value, str) and expected_value:
-                    candidate_names = {expected_value, expected_value.replace(" ", "_")}
-                    parent_matches = parent_path.name in candidate_names
-                    if parent_matches:
-                        next_paths.append(parent_path)
-                        continue
+                subdirs = [child for child in parent_path.iterdir() if child.is_dir()]
 
-                    if not subdirectories:
-                        raise FileNotFoundError(
-                            f"Expected a subdirectory for configuration key '{key}' under '{parent_path}', but none were found."
-                        )
+                if not subdirs:
+                    expected_text = "any directory" if expected_name is None else f"directory '{expected_name}'"
+                    raise FileNotFoundError(
+                        f"No subdirectories found at level {level_index} under '{parent_path}'. "
+                        f"Expected {expected_text}"
+                    )
 
-                    matches = [child for child in subdirectories if child.name in candidate_names]
+                if expected_name is None:
+                    next_paths.extend(subdirs)
+                else:
+                    matches = self._match_directory_name(subdirs, expected_name)
                     if not matches:
-                        available = ", ".join(sorted(child.name for child in subdirectories)) or "<none>"
+                        available = ", ".join(sorted(d.name for d in subdirs))
                         raise FileNotFoundError(
-                            f"Expected directory '{expected_value}' for configuration key '{key}' under '{parent_path}', "
-                            f"but found: {available}."
+                            f"Expected directory '{expected_name}' at level {level_index} under '{parent_path}', "
+                            f"but found: {available}"
                         )
                     next_paths.extend(matches)
-                else:
-                    if not subdirectories:
-                        raise FileNotFoundError(
-                            f"Expected a subdirectory for configuration key '{key}' under '{parent_path}', but none were found."
-                        )
-                    next_paths.extend(subdirectories)
 
             if not next_paths:
                 raise FileNotFoundError(
-                    f"Unable to resolve any directories for configuration key '{key}' starting from {[str(p) for p in current_paths]}."
+                    f"No directories resolved at level {level_index} "
+                    f"(expected: {expected_name if expected_name else 'any directory'})"
                 )
 
             current_paths = next_paths
