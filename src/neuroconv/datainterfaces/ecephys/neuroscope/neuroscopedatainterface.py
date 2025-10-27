@@ -62,7 +62,7 @@ def filter_non_neural_channels(recording_extractor, xml_file_path: str):
         if len(neural_channel_ids) == len(channel_ids_in_recorder):
             return recording_extractor
 
-        sub_recording = recording_extractor.channel_slice(channel_ids=neural_channel_ids)
+        sub_recording = recording_extractor.select_channels(channel_ids=neural_channel_ids)
         return sub_recording
 
 
@@ -95,11 +95,29 @@ def add_recording_extractor_properties(recording_extractor, gain: float | None =
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
-    :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
+    :py:func:`~spikeinterface.extractors.read_neuroscope_recording`."""
 
     display_name = "NeuroScope Recording"
     associated_suffixes = (".dat", ".xml")
     info = "Interface for converting NeuroScope recording data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeRecordingExtractor,
+        )
+
+        return NeuroScopeRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain and xml_file_path parameters."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("gain", None)
+        self.extractor_kwargs.pop("xml_file_path", None)
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -188,7 +206,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
-        new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
+        new_recording = self._initialize_extractor({"file_path": self.source_data["file_path"]})
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:
@@ -205,7 +223,22 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".lfp", ".eeg", ".xml")
     info = "Interface for converting NeuroScope LFP data."
 
-    ExtractorName = "NeuroScopeRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeRecordingExtractor,
+        )
+
+        return NeuroScopeRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain and xml_file_path parameters."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("gain", None)
+        self.extractor_kwargs.pop("xml_file_path", None)
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -280,6 +313,14 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             "description"
         ] = "Path to .xml file containing device and electrode configuration."
         return source_schema
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeSortingExtractor,
+        )
+
+        return NeuroScopeSortingExtractor
 
     def __init__(
         self,

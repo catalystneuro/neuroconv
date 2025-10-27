@@ -31,7 +31,7 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
+    >>> nwbfile_path = output_folder / "my_spikeglx_converter_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
@@ -62,5 +62,34 @@ Defining a 'stream' as a single band on a single NeuroPixels probe, we can conve
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+NIDQ Board
+~~~~~~~~~~
+
+In SpikeGLX, the NIDQ stream is used to record both analog and digital (usually non-neural) signals.
+The :py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxnidqinterface.SpikeGLXNIDQInterface` interface
+can be used to convert these streams to NWB.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
+    >>>
+    >>> # For this interface we need to pass the folder containing the .nidq files
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
+    >>> interface = SpikeGLXNIDQInterface(folder_path=folder_path, verbose=False)
+    >>>
+    >>> # Extract what metadata we can from the source files
+    >>> metadata = interface.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_session.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

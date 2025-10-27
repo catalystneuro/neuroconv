@@ -1,4 +1,6 @@
 import inspect
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -32,9 +34,15 @@ html_static_path = ["_static"]
 html_favicon = "_static/favicon.ico"
 
 # These paths are either relative to html_static_path or fully qualified paths (eg. https://...)
-# html_css_files = [
-#     "css/custom.css",
-# ]
+html_css_files = [
+    "css/custom.css",
+    "css/neuroconv_assistant.css",
+]
+
+html_js_files = [
+    "js/neuroconv_assistant.js",
+]
+
 
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
@@ -44,8 +52,16 @@ html_context = {
     "doc_path": "docs",
 }
 
+
+# Configure version switcher for documentation
+# READTHEDOCS_VERSION_NAME is automatically set by ReadTheDocs during builds
+# Documentation: https://docs.readthedocs.com/platform/stable/reference/environment-variables.html
+# Possible values: "stable", "main", PR numbers like "1483", branch names like "feature/xyz"
+version_match = os.environ.get("READTHEDOCS_VERSION_NAME", "stable")
+
 html_theme_options = {
     "use_edit_page_button": True,
+    "navbar_end": ["version-switcher", "navbar-icon-links"],  # Version switcher in navbar like NumPy/SciPy
     "icon_links": [
         {
             "name": "GitHub",
@@ -54,6 +70,10 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "switcher": {
+        "json_url": "_static/switcher.json",
+        "version_match": version_match,
+    }
 }
 
 # Prevent Sphinx from prefixing class and function names with their module paths
@@ -65,6 +85,7 @@ linkcheck_anchors = False
 linkcheck_ignore = [
     "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
     r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
+    "https://catalystneuro.com/*/",
 ]
 
 # --------------------------------------------------
@@ -90,20 +111,15 @@ autodoc_default_options = {
     "exclude-members": "__new__",  # Do not display __new__ method in the docs
 }
 
-# This is used to remove self from the signature of the class methods
-def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
-    if what == "class":
-        signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
-    return (signature, return_annotation)
-
-
-def setup(app):  # This makes the data-interfaces signatures display on the docs/api, they don't otherwise
-    app.connect("autodoc-process-signature", _correct_signatures)
 
 
 # Toggleprompt
 toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>) for the conversion gallery
 toggleprompt_default_hidden = "true"
+
+# Copybutton
+copybutton_exclude = '.linenos, .gp'  # This avoids copying prompt (>>>) in the conversion gallery (issue #1465)
+
 
 # Intersphinx
 intersphinx_mapping = {
@@ -112,3 +128,71 @@ intersphinx_mapping = {
     "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/", None),
 }
+
+# --------------------------------------------------
+# Custom Sphinx event handlers and setup
+# --------------------------------------------------
+
+def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
+    """Remove self from the signature of class methods."""
+    if what == "class":
+        signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
+    return (signature, return_annotation)
+
+
+def update_version_switcher_in_read_the_docs(app, config):
+    """Update switcher.json for ReadTheDocs PR/branch builds.
+
+    Only runs on ReadTheDocs when building PR or branch versions.
+    Modifies switcher.json directly since RTD uses the checked-out version.
+    """
+
+    # Only run on ReadTheDocs
+    is_read_the_docs_build = bool(os.environ.get("READTHEDOCS"))
+    if not is_read_the_docs_build:
+        return
+
+    # Get the ReadTheDocs version and canonical URL
+    rtd_version = os.environ.get("READTHEDOCS_VERSION")
+
+    # Only update for PR/branch builds (not stable or main)
+    if rtd_version in ["stable", "main"]:
+        return
+
+    switcher_path = Path(app.srcdir) / "_static" / "switcher.json"
+
+
+    # Create entry for current PR/branch
+    # For PR builds, rtd_version is just the number (e.g., "1483")
+    display_name = f"PR {rtd_version} build"
+    entry_to_add = {
+        "name": display_name,
+        "version": rtd_version,
+        "url":  os.environ.get("READTHEDOCS_CANONICAL_URL")
+    }
+
+    # Update switcher.json with PR/branch entry
+    # switcher.json structure: [{"name": str, "version": str, "url": str}, ...]
+    with open(switcher_path, "r") as f:
+        switcher_entries = json.load(f)
+
+    # Avoid duplicated entries
+    version_exists = any(entry["version"] == rtd_version for entry in switcher_entries)
+    if version_exists:
+        return  # Entry already present, no update needed
+
+    # Add and save new entry
+    switcher_entries.append(entry_to_add)
+    with open(switcher_path, "w") as f:
+        json.dump(switcher_entries, f, indent=4)
+
+
+
+
+def setup(app):
+    """Register Sphinx event handlers."""
+    # Connect signature correction for API docs
+    app.connect("autodoc-process-signature", _correct_signatures)
+
+    # Connect switcher.json updater for ReadTheDocs PR/branch builds
+    app.connect("config-inited", update_version_switcher_in_read_the_docs)

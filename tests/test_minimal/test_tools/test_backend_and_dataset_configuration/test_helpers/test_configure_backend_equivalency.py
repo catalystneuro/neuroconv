@@ -1,7 +1,7 @@
 """Tests related to the equivalency feature of `configure_backend`."""
 
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Literal
 
 import numcodecs
 import numpy as np
@@ -21,7 +21,7 @@ from neuroconv.tools.nwb_helpers import (
 def _generate_integer_array(
     seed: int,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 5),
+    shape: tuple[int, int] = (12, 5),
 ) -> np.ndarray:
     random_number_generator = np.random.default_rng(seed=seed)
 

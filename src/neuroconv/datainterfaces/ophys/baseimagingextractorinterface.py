@@ -1,5 +1,6 @@
 """Author: Ben Dichter."""
 
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -31,7 +32,30 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         "calcium imaging",
     )
 
-    ExtractorModuleName = "roiextractors"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for imaging interfaces.
+
+        Extends the base implementation to also remove the 'photon_series_type' parameter
+        which is specific to the imaging interface, not the extractor.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized imaging extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -39,8 +63,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
         **source_data,
     ):
+
+        from roiextractors import ImagingExtractor
+
         super().__init__(**source_data)
-        self.imaging_extractor = self._extractor_instance
+
+        self.imaging_extractor: ImagingExtractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
@@ -128,11 +156,11 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
-        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_samples()))
+        reinitialized_extractor = self._initialize_extractor(self.source_data)
+        return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_samples()))
+        return self.imaging_extractor.get_timestamps()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.imaging_extractor.set_times(times=aligned_timestamps)
@@ -145,10 +173,11 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
         always_write_timestamps: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
+        stub_samples: int = 100,
     ):
         """
         Add imaging data to the NWB file
@@ -169,19 +198,47 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_test : bool, optional
             If True, only writes a small subset of frames for testing purposes, by default False.
         stub_frames : int, optional
-            The number of frames to write when stub_test is True. Will use min(stub_frames, total_frames) to avoid
-            exceeding available frames, by default 100.
-        iterator_type : str, optional
-            The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
+            .. deprecated:: February 2026
+                Use `stub_samples` instead.
+        always_write_timestamps : bool, optional
+            Whether to always write timestamps, by default False.
+        iterator_type : {"v2", None}, default: "v2"
+            The type of iterator for chunked data writing.
+            'v2': Uses iterative write with control over chunking and progress bars.
+            None: Loads all data into memory before writing (not recommended for large datasets).
+            Note: 'v1' is deprecated and will be removed on or after March 2026.
         iterator_options : dict, optional
-            Additional options for controlling the iteration process, by default None.
+            Options for controlling the iterative write process (buffer size, progress bars).
+            See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
         """
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
+        # Handle deprecation of stub_frames in favor of stub_samples
+        if stub_frames is not None and stub_samples != 100:
+            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
+
+        if stub_frames is not None:
+            warnings.warn(
+                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
+                "Use 'stub_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            effective_stub_samples = stub_frames
+        else:
+            effective_stub_samples = stub_samples
+
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_samples()])
-            imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+            effective_stub_samples = min([effective_stub_samples, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=effective_stub_samples)
         else:
             imaging_extractor = self.imaging_extractor
 

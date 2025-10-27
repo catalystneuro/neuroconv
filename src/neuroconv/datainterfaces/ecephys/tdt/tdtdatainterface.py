@@ -10,12 +10,20 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".tbk", ".tbx", ".tev", ".tsq")
     info = "Interface for TDT recording data."
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import TdtRecordingExtractor
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("gain")
+        return TdtRecordingExtractor
 
-        return extractor_kwargs
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("gain")
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @validate_call
     def __init__(
@@ -37,7 +45,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             Select from multiple streams.
         gain : float
             The conversion factor from int16 to microvolts.
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             Allows verbose.
         es_key : str, optional
 

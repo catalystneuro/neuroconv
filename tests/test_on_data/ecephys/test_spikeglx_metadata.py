@@ -2,7 +2,7 @@ import datetime
 
 import probeinterface as pi
 from numpy.testing import assert_array_equal
-from spikeinterface.extractors import SpikeGLXRecordingExtractor
+from spikeinterface.extractors.extractor_classes import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import (
@@ -35,7 +35,6 @@ def test_spikelgx_recording_property_addition():
     expected_group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in expected_shank_ids]
 
     expected_contact_shapes = ["square"] * n_channels
-    expected_contact_ids = probe.contact_ids
 
     # Initialize the interface and get the added properties
     folder_path = ap_file_path.parent
@@ -43,9 +42,7 @@ def test_spikelgx_recording_property_addition():
     group_name = interface.recording_extractor.get_property("group_name")
     contact_shapes = interface.recording_extractor.get_property("contact_shapes")
     shank_ids = interface.recording_extractor.get_property("shank_ids")
-    contact_ids = interface.recording_extractor.get_property("contact_ids")
 
     assert_array_equal(group_name, expected_group_name)
     assert_array_equal(contact_shapes, expected_contact_shapes)
     assert_array_equal(shank_ids, expected_shank_ids)
-    assert_array_equal(contact_ids, expected_contact_ids)

@@ -12,14 +12,20 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
     """
     Primary data interface class for converting MaxOne data.
 
-    Using the :py:class:`~spikeinterface.extractors.MaxwellRecordingExtractor`.
+    Uses the :py:func:`~spikeinterface.extractors.read_maxwell` reader from SpikeInterface.
     """
 
     display_name = "MaxOne Recording"
     associated_suffixes = (".raw", ".h5")
     info = "Interface for MaxOne recording data."
 
-    ExtractorName = "MaxwellRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            MaxwellRecordingExtractor,
+        )
+
+        return MaxwellRecordingExtractor
 
     @staticmethod
     def auto_install_maxwell_hdf5_compression_plugin(

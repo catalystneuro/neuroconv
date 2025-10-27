@@ -47,6 +47,120 @@ class MockInterface(BaseDataInterface):
         return None
 
 
+class MockTimeSeriesInterface(BaseDataInterface):
+    """
+    A mock TimeSeries interface for testing purposes.
+
+    This interface uses pynwb's mock_TimeSeries to create synthetic time series data
+    without only pynwb as a dependency.
+    """
+
+    def __init__(
+        self,
+        *,
+        num_channels: int = 4,
+        sampling_frequency: float = 30_000.0,
+        duration: float = 1.0,
+        seed: int = 0,
+        verbose: bool = False,
+        metadata_key: str = "TimeSeries",
+    ):
+        """
+        Initialize a mock TimeSeries interface.
+
+        Parameters
+        ----------
+        num_channels : int, optional
+            Number of channels to generate, by default 4.
+        sampling_frequency : float, optional
+            Sampling frequency in Hz, by default 30,000.0 Hz.
+        duration : float, optional
+            Duration of the data in seconds, by default 1.0.
+        seed : int, optional
+            Seed for the random number generator, by default 0.
+        verbose : bool, optional
+            Control verbosity, by default False.
+        metadata_key : str, optional
+            Key for the TimeSeries metadata in the metadata dictionary, by default "TimeSeries".
+        """
+        self.num_channels = num_channels
+        self.sampling_frequency = sampling_frequency
+        self.duration = duration
+        self.seed = seed
+        self.metadata_key = metadata_key
+
+        super().__init__(verbose=verbose)
+
+    def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the TimeSeries interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile and TimeSeries metadata.
+        """
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Add TimeSeries metadata using the metadata_key
+        metadata["TimeSeries"] = {
+            self.metadata_key: {
+                "name": self.metadata_key,
+                "description": f"Mock TimeSeries data with {self.num_channels} channels",
+                "unit": "n.a.",
+            }
+        }
+
+        return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+    ):
+        """
+        Add mock TimeSeries data to an NWB file.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to which the TimeSeries data will be added.
+        metadata : dict, optional
+            Metadata dictionary. If None, uses default metadata.
+        """
+        from pynwb.testing.mock.base import mock_TimeSeries
+
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        # Generate mock data
+        rng = np.random.default_rng(self.seed)
+        num_samples = int(self.duration * self.sampling_frequency)
+        data = rng.standard_normal(size=(num_samples, self.num_channels)).astype("float32")
+
+        # Get TimeSeries kwargs from metadata
+        time_series_metadata = metadata.get("TimeSeries", {}).get(self.metadata_key, {})
+
+        tseries_kwargs = {
+            "name": time_series_metadata.get("name", "MockTimeSeries"),
+            "description": time_series_metadata.get("description", "Mock TimeSeries data"),
+            "unit": time_series_metadata.get("unit", "n.a."),
+            "data": data,
+            "starting_time": 0.0,
+            "rate": self.sampling_frequency,
+        }
+
+        # Apply any additional metadata
+        for key in ["comments", "conversion", "offset"]:
+            if key in time_series_metadata:
+                tseries_kwargs[key] = time_series_metadata[key]
+
+        time_series = mock_TimeSeries(**tseries_kwargs)
+        nwbfile.add_acquisition(time_series)
+
+
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
     """
     A mock behavior event interface for testing purposes.
@@ -201,8 +315,20 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 class MockRecordingInterface(BaseRecordingExtractorInterface):
     """An interface with a spikeinterface recording object for testing purposes."""
 
-    ExtractorModuleName = "spikeinterface.core.generate"
-    ExtractorName = "generate_recording"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core.generate import generate_recording
+
+        return generate_recording
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -212,11 +338,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        set_probe: bool = False,
     ):
         super().__init__(
             num_channels=num_channels,
             sampling_frequency=sampling_frequency,
             durations=durations,
+            set_probe=set_probe,
             seed=seed,
             verbose=verbose,
             es_key=es_key,
@@ -224,6 +352,13 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+
+        # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
+        if set_probe and self.recording_extractor.has_probe():
+            probe = self.recording_extractor.get_probe()
+            contact_ids = [f"e{i}" for i in range(num_channels)]
+            probe.set_contact_ids(contact_ids)
+            self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
     def get_metadata(self) -> DeepDict:
         """
@@ -246,8 +381,19 @@ class MockSortingInterface(BaseSortingExtractorInterface):
     # TODO: Implement this class with the lazy generator once is merged
     # https://github.com/SpikeInterface/spikeinterface/pull/2227
 
-    ExtractorModuleName = "spikeinterface.core.generate"
-    ExtractorName = "generate_sorting"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core.generate import generate_sorting
+
+        return generate_sorting
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -298,12 +444,25 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     A mock imaging interface for testing purposes.
     """
 
-    ExtractorModuleName = "roiextractors.testing"
-    ExtractorName = "generate_dummy_imaging_extractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        return generate_dummy_imaging_extractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
-        num_frames: int = 30,
+        num_samples: int | None = None,
+        num_frames: int | None = None,
         num_rows: int = 10,
         num_columns: int = 10,
         sampling_frequency: float = 30,
@@ -315,7 +474,10 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         """
         Parameters
         ----------
+        num_samples : int, optional
+            The number of samples (frames) in the mock imaging data, by default 30.
         num_frames : int, optional
+            Deprecated. Use num_samples instead. Will be removed after February 2025.
             The number of frames in the mock imaging data, by default 30.
         num_rows : int, optional
             The number of rows (height) in each frame of the mock imaging data, by default 10.
@@ -334,9 +496,25 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             controls verbosity
         """
 
+        # Handle deprecation of num_frames parameter
+        if num_frames is not None and num_samples is not None:
+            raise ValueError("Cannot specify both num_frames and num_samples. Use num_samples only.")
+        elif num_frames is not None:
+            import warnings
+
+            warnings.warn(
+                "The 'num_frames' parameter is deprecated and will be removed after February 2025. "
+                "Use 'num_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            num_samples = num_frames
+        elif num_samples is None:
+            num_samples = 30  # Default value
+
         self.seed = seed
         super().__init__(
-            num_frames=num_frames,
+            num_samples=num_samples,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,
@@ -358,13 +536,25 @@ class MockImagingInterface(BaseImagingExtractorInterface):
 class MockSegmentationInterface(BaseSegmentationExtractorInterface):
     """A mock segmentation interface for testing purposes."""
 
-    ExtractorModuleName = "roiextractors.testing"
-    ExtractorName = "generate_dummy_segmentation_extractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        return generate_dummy_segmentation_extractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
         num_rois: int = 10,
-        num_frames: int = 30,
+        num_samples: int | None = None,
+        num_frames: int | None = None,
         num_rows: int = 25,
         num_columns: int = 25,
         sampling_frequency: float = 30.0,
@@ -381,8 +571,11 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         ----------
         num_rois : int, optional
             number of regions of interest, by default 10.
+        num_samples : int, optional
+            number of samples (frames), by default 30.
         num_frames : int, optional
-            description, by default 30.
+            Deprecated. Use num_samples instead. Will be removed after February 2025.
+            number of frames, by default 30.
         num_rows : int, optional
             number of rows in the hypothetical video from which the data was extracted, by default 25.
         num_columns : int, optional
@@ -405,9 +598,25 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             controls verbosity, by default False.
         """
 
+        # Handle deprecation of num_frames parameter
+        if num_frames is not None and num_samples is not None:
+            raise ValueError("Cannot specify both num_frames and num_samples. Use num_samples only.")
+        elif num_frames is not None:
+            import warnings
+
+            warnings.warn(
+                "The 'num_frames' parameter is deprecated and will be removed after February 2025. "
+                "Use 'num_samples' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            num_samples = num_frames
+        elif num_samples is None:
+            num_samples = 30  # Default value
+
         super().__init__(
             num_rois=num_rois,
-            num_frames=num_frames,
+            num_samples=num_samples,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,

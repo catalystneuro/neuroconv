@@ -1,5 +1,6 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
+from pathlib import Path
 from typing import Generator, Literal
 
 import h5py
@@ -28,24 +29,28 @@ def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
 def _is_dataset_written_to_file(
     candidate_dataset: h5py.Dataset | zarr.Array,
     backend: Literal["hdf5", "zarr"],
-    existing_file: h5py.File | zarr.Group | None,
+    existing_file_path: str | None,
 ) -> bool:
     """
     Determine if the neurodata object is already written to the file on disk.
 
     This object should then be skipped by the `get_io_datasets` function when working in append mode.
     """
-    if existing_file is None:
+    if existing_file_path is None:
         return False
+
+    normalized_existing = Path(existing_file_path).resolve()
 
     return (
         isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
         and backend == "hdf5"
-        and candidate_dataset.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
+        and Path(candidate_dataset.file.filename).resolve()
+        == normalized_existing  # If the source HDF5 Dataset is the appending NWBFile
     ) or (
         isinstance(candidate_dataset, zarr.Array)  # If the source data is a Zarr Array
         and backend == "zarr"
-        and candidate_dataset.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
+        and Path(candidate_dataset.store.path).resolve()
+        == normalized_existing  # If the source Zarr 'file' is the appending NWBFile
     )
 
 
@@ -86,13 +91,13 @@ def get_default_dataset_io_configurations(
         )
 
     detected_backend = None
-    existing_file = None
+    existing_file_path = None
     if isinstance(nwbfile.read_io, NWBHDF5IO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "hdf5"
-        existing_file = nwbfile.read_io._file
+        existing_file_path = nwbfile.read_io.source
     elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "zarr"
-        existing_file = nwbfile.read_io.file.store
+        existing_file_path = nwbfile.read_io.source
     backend = backend or detected_backend
 
     if detected_backend is not None and detected_backend != backend:
@@ -112,7 +117,9 @@ def get_default_dataset_io_configurations(
                 candidate_dataset = column.data  # VectorData object
                 # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
-                    candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
+                    candidate_dataset=candidate_dataset,
+                    backend=backend,
+                    existing_file_path=existing_file_path,
                 ):
                     continue  # Skip
 
@@ -151,7 +158,7 @@ def get_default_dataset_io_configurations(
                 # Skip if already written to file
                 # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
-                    candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
+                    candidate_dataset=candidate_dataset, backend=backend, existing_file_path=existing_file_path
                 ):
                     continue
 

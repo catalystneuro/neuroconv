@@ -9,14 +9,19 @@ from ....utils import DeepDict, get_schema_from_hdmf_class
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary data interface class for converting Intan data using the
+    Primary data interface for converting Intan amplifier data from .rhd or .rhs files.
 
-    :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`.
+    This interface is used for data that comes from the RHD2000/RHS2000 amplifier channels,
+    which are the primary neural recording channels.
+
+    If you have other data streams from your Intan system (e.g., analog inputs, auxiliary inputs, DC amplifiers),
+    you should use the :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
     """
 
-    display_name = "Intan Recording"
+    display_name = "Intan Amplifier"
+    keywords = ("intan", "amplifier", "rhd", "rhs", "extracellular electrophysiology", "recording")
     associated_suffixes = (".rhd", ".rhs")
-    info = "Interface for Intan recording data."
+    info = "Interface for converting Intan amplifier data."
     stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
 
     @classmethod
@@ -25,12 +30,23 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import IntanRecordingExtractor
 
-        return extractor_kwargs
+        return IntanRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add stream_id"""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["stream_id"] = self.stream_id
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,

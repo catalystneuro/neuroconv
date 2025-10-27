@@ -301,7 +301,7 @@ class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
 
 
 class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
-    """Test suite for ImageInterface with custom images_container_metadata_key."""
+    """Test suite for ImageInterface with custom metadata_key."""
 
     data_interface_cls = ImageInterface
 
@@ -315,7 +315,7 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
 
         # Create interface with custom metadata key
         self.custom_metadata_key = "CustomImagesKey"
-        self.interface_kwargs = dict(folder_path=tmp_path, images_container_metadata_key=self.custom_metadata_key)
+        self.interface_kwargs = dict(folder_path=tmp_path, metadata_key=self.custom_metadata_key)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
     def test_custom_metadata_key(self):
@@ -342,7 +342,7 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
                 assert isinstance(image, RGBImage)
 
     def test_two_interfaces_different_metadata_keys(self, tmp_path):
-        """Test that images_container_metadata_key controls metadata and container separation."""
+        """Test that metadata_key controls metadata and container separation."""
         from pynwb.testing.mock.file import mock_NWBFile
 
         from neuroconv import ConverterPipe
@@ -358,8 +358,8 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
         generate_random_images(num_images=3, mode="L", output_dir_path=grayscale_dir, format="PNG")
 
         # Create interfaces with different metadata keys
-        rgb_interface = ImageInterface(folder_path=rgb_dir, images_container_metadata_key="RGBImages")
-        grayscale_interface = ImageInterface(folder_path=grayscale_dir, images_container_metadata_key="GrayscaleImages")
+        rgb_interface = ImageInterface(folder_path=rgb_dir, metadata_key="RGBImages")
+        grayscale_interface = ImageInterface(folder_path=grayscale_dir, metadata_key="GrayscaleImages")
 
         # Create converter and add to NWB file
         converter = ConverterPipe(

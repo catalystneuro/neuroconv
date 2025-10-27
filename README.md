@@ -6,6 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/neuroconv.svg)](https://pypi.python.org/pypi/neuroconv)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 [![License](https://img.shields.io/pypi/l/neuroconv.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
+[![DOI](https://zenodo.org/badge/515668556.svg)](https://doi.org/10.5281/zenodo.11492047)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/catalystneuro/neuroconv/main/docs/img/neuroconv_logo.png" width="250" alt="NeuroConv logo"/>

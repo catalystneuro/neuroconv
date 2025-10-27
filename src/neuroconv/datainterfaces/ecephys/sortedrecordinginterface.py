@@ -9,13 +9,32 @@ from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
 
 class SortedRecordingConverter(ConverterPipe):
     """
-    A converter for handling simultaneous recording and sorting data from multiple probes,
-    ensuring correct mapping between sorted units and their corresponding electrodes.
+    A converter for linking spike sorting results with their corresponding recording electrodes.
 
-    This converter addresses the challenge of maintaining proper linkage between sorted units
-    and their recording channels when dealing with multiple recording probes (e.g., multiple
-    Neuropixels probes). It ensures that units from each sorting interface are correctly
-    associated with electrodes from their corresponding recording interface.
+    Problem Statement:
+    When creating NWB files from spike sorting data, units in the UnitsTable need to be properly
+    linked to electrodes in the ElectrodesTable. However, this linkage cannot be established when
+    the interface is initially defined because:
+    1. The ElectrodesTable is created by the recording interface during add_to_nwbfile()
+    2. The UnitsTable is created by the sorting interface during add_to_nwbfile()
+    3. The electrode indices needed for linkage are only available after the ElectrodesTable exists
+
+    Solution:
+    To circumvent this timing problem, this converter creates an explicit mapping from channels to
+    electrodes using the unit_ids_to_channel_ids parameter. This mapping ensures that regardless
+    of how the electrode and units tables are created, we can establish the proper linkage when
+    the tables are actually created during add_to_nwbfile().
+
+    The process works as follows:
+    1. User provides unit_ids_to_channel_ids mapping at converter initialization
+    2. Recording interface creates ElectrodesTable during add_to_nwbfile()
+    3. Converter maps channel IDs to electrode table indices using the created ElectrodesTable
+    4. Using the unit_ids_to_channel_ids, the Converter provides electrode indices to the sorting interface
+    5. Sorting interface creates UnitsTable with correct electrode references
+
+    This ensures proper linkage between sorted units and recording electrodes, maintaining the
+    spatial and technical context essential for downstream analyses such as spatial clustering,
+    quality control, and current source density analysis.
     """
 
     keywords = (
@@ -23,7 +42,7 @@ class SortedRecordingConverter(ConverterPipe):
         "spike sorting",
     )
     display_name = "SortedRecordingConverter"
-    associated_suffixes = ("None",)
+    associated_suffixes = ("electrophysiology", "spike sorting")
     info = "A converter for handling simultaneous recording and sorting data linking metadata properly."
 
     def __init__(
@@ -37,14 +56,14 @@ class SortedRecordingConverter(ConverterPipe):
         ----------
         recording_interface : BaseRecordingExtractorInterface
             The interface handling the raw recording data. This typically represents data
-            from a single probe, like a SpikeGLXRecordingInterface.
+            from a single recording stream (e.g., SpikeGLXRecordingInterface, IntanRecordingInterface).
         sorting_interface : BaseSortingExtractorInterface
             The interface handling the sorted units data. This typically represents the
-            output of a spike sorting algorithm, like a KiloSortSortingInterface.
+            output of a spike sorting algorithm (e.g., KiloSortSortingInterface, MountainSortSortingInterface).
         unit_ids_to_channel_ids : dict[str | int, list[str | int]]
             A mapping from unit IDs to their associated channel IDs. Each unit ID (key)
             maps to a list of channel IDs (values) that were used to detect that unit.
-            This mapping ensures proper linkage between sorted units and recording channels.
+            This mapping ensures proper linkage between sorted units and recording electrodes.
         """
 
         self.recording_interface = recording_interface
@@ -73,7 +92,7 @@ class SortedRecordingConverter(ConverterPipe):
         if unmapped_units:
             raise ValueError(f"Units {unmapped_units} from sorting interface have no channel mapping")
 
-        data_interfaces = [recording_interface, sorting_interface]
+        data_interfaces = {"recording": recording_interface, "sorting": sorting_interface}
         super().__init__(data_interfaces=data_interfaces)
 
     def add_to_nwbfile(self, nwbfile, metadata, conversion_options: dict | None = None):
@@ -88,20 +107,15 @@ class SortedRecordingConverter(ConverterPipe):
         )
 
         from ...tools.spikeinterface.spikeinterface import (
-            _get_electrode_table_indices_for_recording,
+            _build_channel_id_to_electrodes_table_map,
         )
 
-        # This returns the indices in the electrode table that corresponds to the channel ids of the recording
-        electrode_table_indices = _get_electrode_table_indices_for_recording(
+        # Get the electrode table indices that correspond to the recording's channel IDs
+        # channel_map is already a dict mapping channel_id -> electrode_table_index
+        channel_id_to_electrode_table_index = _build_channel_id_to_electrodes_table_map(
             recording=self.recording_interface.recording_extractor,
             nwbfile=nwbfile,
         )
-
-        # Map ids in the recording to the indices in the electrode table
-        channel_id_to_electrode_table_index = {
-            channel_id: electrode_table_indices[channel_index]
-            for channel_index, channel_id in enumerate(self.channel_ids)
-        }
 
         # Create a list of lists with the indices of the electrodes in the electrode table for each unit
         unit_electrode_indices = []

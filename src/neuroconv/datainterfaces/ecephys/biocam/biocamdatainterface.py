@@ -7,12 +7,18 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Biocam data.
 
-    Using the :py:class:`~spikeinterface.extractors.BiocamRecordingExtractor`.
+    Uses the :py:func:`~spikeinterface.extractors.read_biocam` reader from SpikeInterface.
     """
 
     display_name = "Biocam Recording"
     associated_suffixes = (".bwr",)
     info = "Interface for Biocam recording data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import BiocamRecordingExtractor
+
+        return BiocamRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:

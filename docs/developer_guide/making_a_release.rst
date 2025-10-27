@@ -8,10 +8,11 @@ A simple to-do list for the Neuroconv release process:
    - Double check changelog entries to ensure they are in the correct format.
    - Set the data to the current date of the release: `Example <https://github.com/catalystneuro/neuroconv/commit/129ab774ccb04677a2037ff6deab9d647d7b0e25>`_
 
+
 2. **Set the Correct Version for Release**:
 
    - The development version (the current code on `main`) should be one patch version ahead of the latest PyPI release and therefore ready for the next step.
-   - If a minor version bump is necessary, change it accordingly `Example <https://github.com/catalystneuro/neuroconv/commit/af91f09f300cb36ba4fee483196c8cb492c180ae>`_
+   - If a minor version bump is necessary, change it accordingly `Example <https://github.com/catalystneuro/neuroconv/commit/760022080845a1a8438c68fcf9d918e287b6ca3d>`_
 
 3. **Perform Checks**:
 

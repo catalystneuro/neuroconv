@@ -1,5 +1,6 @@
 import os
 from contextlib import redirect_stdout
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -11,7 +12,7 @@ from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package
-from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
+from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
 
 
@@ -45,6 +46,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         # This module should be here so ndx_fiber_photometry is in the global namespace when an pynwb.io object is created
         import ndx_fiber_photometry  # noqa: F401
+        import ndx_ophys_devices  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
         """
@@ -305,8 +307,18 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         from ndx_fiber_photometry import (
             CommandedVoltageSeries,
             FiberPhotometry,
+            FiberPhotometryIndicators,
             FiberPhotometryResponseSeries,
             FiberPhotometryTable,
+            FiberPhotometryViruses,
+            FiberPhotometryVirusInjections,
+        )
+        from ndx_ophys_devices import (
+            FiberInsertion,
+            Indicator,
+            OpticalFiber,
+            ViralVector,
+            ViralVectorInjection,
         )
 
         # Load Data
@@ -330,23 +342,92 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ), "timing_source must be one of 'original', 'aligned_timestamps', or 'aligned_starting_time_and_rate'."
 
         # Add Devices
+        device_model_types = [
+            "OpticalFiberModel",
+            "ExcitationSourceModel",
+            "PhotodetectorModel",
+            "BandOpticalFilterModel",
+            "EdgeOpticalFilterModel",
+            "DichroicMirrorModel",
+        ]
+        for device_type in device_model_types:
+            device_models_metadata = metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", [])
+            for devices_metadata in device_models_metadata:
+                add_ophys_device_model(
+                    nwbfile=nwbfile,
+                    device_metadata=devices_metadata,
+                    device_type=device_type,
+                )
         device_types = [
-            "OpticalFiber",
             "ExcitationSource",
             "Photodetector",
             "BandOpticalFilter",
             "EdgeOpticalFilter",
             "DichroicMirror",
-            "Indicator",
         ]
         for device_type in device_types:
             devices_metadata = metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", [])
             for device_metadata in devices_metadata:
-                add_fiber_photometry_device(
+                add_ophys_device(
                     nwbfile=nwbfile,
                     device_metadata=device_metadata,
                     device_type=device_type,
                 )
+        # Add Optical Fibers (special case bc they have additional FiberInsertion objects)
+        optical_fibers_metadata = metadata["Ophys"]["FiberPhotometry"].get("OpticalFibers", [])
+        for optical_fiber_metadata in optical_fibers_metadata:
+            fiber_insertion_metadata = optical_fiber_metadata["fiber_insertion"]
+            fiber_insertion = FiberInsertion(**fiber_insertion_metadata)
+            optical_fiber_metadata = deepcopy(optical_fiber_metadata)
+            optical_fiber_metadata["fiber_insertion"] = fiber_insertion
+            assert (
+                optical_fiber_metadata["model"] in nwbfile.device_models
+            ), f"Device model {optical_fiber_metadata['model']} not found in NWBFile device_models for {optical_fiber_metadata['name']}."
+            optical_fiber_metadata["model"] = nwbfile.device_models[optical_fiber_metadata["model"]]
+            optical_fiber = OpticalFiber(**optical_fiber_metadata)
+            nwbfile.add_device(optical_fiber)
+
+        # Add Viral Vectors, Injections, and Indicators
+        viral_vectors_metadata = metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryViruses", [])
+        name_to_viral_vector = {}
+        for viral_vector_metadata in viral_vectors_metadata:
+            viral_vector = ViralVector(**viral_vector_metadata)
+            name_to_viral_vector[viral_vector.name] = viral_vector
+        if len(name_to_viral_vector) > 0:
+            viruses = FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values()))
+        else:
+            viruses = None
+
+        viral_vector_injections_metadata = metadata["Ophys"]["FiberPhotometry"].get(
+            "FiberPhotometryVirusInjections", []
+        )
+        name_to_viral_vector_injection = {}
+        for viral_vector_injection_metadata in viral_vector_injections_metadata:
+            viral_vector = name_to_viral_vector[viral_vector_injection_metadata["viral_vector"]]
+            viral_vector_injection_metadata = deepcopy(viral_vector_injection_metadata)
+            viral_vector_injection_metadata["viral_vector"] = viral_vector
+            viral_vector_injection = ViralVectorInjection(**viral_vector_injection_metadata)
+            name_to_viral_vector_injection[viral_vector_injection.name] = viral_vector_injection
+        if len(name_to_viral_vector_injection) > 0:
+            virus_injections = FiberPhotometryVirusInjections(
+                viral_vector_injections=list(name_to_viral_vector_injection.values())
+            )
+        else:
+            virus_injections = None
+
+        indicators_metadata = metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryIndicators", [])
+        name_to_indicator = {}
+        for indicator_metadata in indicators_metadata:
+            if "viral_vector_injection" in indicator_metadata:
+                viral_vector_injection = name_to_viral_vector_injection[indicator_metadata["viral_vector_injection"]]
+                indicator_metadata = deepcopy(indicator_metadata)
+                indicator_metadata["viral_vector_injection"] = viral_vector_injection
+            indicator = Indicator(**indicator_metadata)
+            name_to_indicator[indicator.name] = indicator
+        if len(name_to_indicator) > 0:
+            indicators = FiberPhotometryIndicators(indicators=list(name_to_indicator.values()))
+        else:
+            raise ValueError("At least one indicator must be specified in the metadata.")
 
         # Commanded Voltage Series
         for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
@@ -384,6 +465,8 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         required_fields = [
             "location",
+            "excitation_wavelength_in_nm",
+            "emission_wavelength_in_nm",
             "indicator",
             "optical_fiber",
             "excitation_source",
@@ -395,7 +478,6 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "excitation_source",
             "photodetector",
             "dichroic_mirror",
-            "indicator",
             "excitation_filter",
             "emission_filter",
         ]
@@ -406,6 +488,10 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 ), f"FiberPhotometryTable metadata row {row_metadata['name']} is missing required field {field}."
             row_data = {field: nwbfile.devices[row_metadata[field]] for field in device_fields if field in row_metadata}
             row_data["location"] = row_metadata["location"]
+            row_data["excitation_wavelength_in_nm"] = row_metadata["excitation_wavelength_in_nm"]
+            row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
+            if "indicator" in row_metadata:
+                row_data["indicator"] = name_to_indicator[row_metadata["indicator"]]
             if "coordinates" in row_metadata:
                 row_data["coordinates"] = row_metadata["coordinates"]
             if "commanded_voltage_series" in row_metadata:
@@ -414,6 +500,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",
             fiber_photometry_table=fiber_photometry_table,
+            fiber_photometry_viruses=viruses,
+            fiber_photometry_virus_injections=virus_injections,
+            fiber_photometry_indicators=indicators,
         )
         nwbfile.add_lab_meta_data(fiber_photometry_table_metadata)
 

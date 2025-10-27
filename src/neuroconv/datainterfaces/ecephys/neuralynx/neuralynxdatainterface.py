@@ -9,8 +9,11 @@ from ....utils import DeepDict, dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface for converting Neuralynx data. Uses
-    :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
+    """
+    Primary data interface for converting Neuralynx data.
+
+    Uses :py:func:`~spikeinterface.extractors.read_neuralynx` from SpikeInterface.
+    """
 
     display_name = "Neuralynx Recording"
     associated_suffixes = (".ncs", ".nse", ".ntt", ".nse", ".nev")
@@ -18,7 +21,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
-        from spikeinterface.extractors import NeuralynxRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxRecordingExtractor,
+        )
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
@@ -31,11 +36,13 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxRecordingExtractor,
+        )
 
-        return extractor_kwargs
+        return NeuralynxRecordingExtractor
 
     def __init__(
         self,
@@ -104,12 +111,20 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     """
     Primary data interface for converting Neuralynx sorting data. Uses
-    :py:class:`~spikeinterface.extractors.NeuralynxSortingExtractor`.
+    :py:func:`~spikeinterface.extractors.read_neuralynx_sorting`.
     """
 
     display_name = "Neuralynx Sorting"
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxSortingExtractor,
+        )
+
+        return NeuralynxSortingExtractor
 
     def __init__(
         self,

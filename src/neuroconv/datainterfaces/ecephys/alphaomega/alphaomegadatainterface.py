@@ -8,7 +8,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting AlphaOmega recording data.
 
-    Uses the :py:class:`~spikeinterface.extractors.AlphaOmegaRecordingExtractor`.
+    Uses the :py:func:`~spikeinterface.extractors.read_alphaomega` reader from SpikeInterface.
     """
 
     display_name = "AlphaOmega Recording"
@@ -22,10 +22,23 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder of .mpx files."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["stream_id"] = self.stream_id
-        return extractor_kwargs
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            AlphaOmegaRecordingExtractor,
+        )
+
+        return AlphaOmegaRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add stream_id parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["stream_id"] = self.stream_id
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(self, folder_path: DirectoryPath, verbose: bool = False, es_key: str = "ElectricalSeries"):
         """

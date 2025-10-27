@@ -18,14 +18,21 @@ def _test_sonpy_installation() -> None:
 class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting Spike2 data from CED (Cambridge Electronic
-    Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
+    Design)
+
+    Uses  :py:func:`~spikeinterface.extractors.read_ced` from SpikeInterface.
+    """
 
     display_name = "Spike2 Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("CED",)
     associated_suffixes = (".smrx",)
     info = "Interface for Spike2 recording data from CED (Cambridge Electronic Design)."
 
-    ExtractorName = "CedRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
+
+        return CedRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -50,7 +57,9 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
             Dictionary containing information about all channels in the Spike2 file.
         """
         _test_sonpy_installation()
-        return cls.get_extractor().get_all_channels_info(file_path=file_path)
+        from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
+
+        return CedRecordingExtractor.get_all_channels_info(file_path=file_path)
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
@@ -72,4 +81,4 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         # Subset raw channel properties
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]
         channel_ids_of_raw_data = [channel_info[1] for channel_info in signal_channels if channel_info[4] == "mV"]
-        self.recording_extractor = self.recording_extractor.channel_slice(channel_ids=channel_ids_of_raw_data)
+        self.recording_extractor = self.recording_extractor.select_channels(channel_ids=channel_ids_of_raw_data)

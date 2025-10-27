@@ -1,4 +1,5 @@
 import platform
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,9 @@ from neuroconv.datainterfaces import (
     ScanImageMultiFileImagingInterface,
     ThorImagingInterface,
     TiffImagingInterface,
+)
+from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface import (
+    _MiniscopeMultiRecordingInterface,
 )
 from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageMultiPlaneImagingInterface,
@@ -484,7 +488,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls = request.cls
 
         cls.photon_series_name = "TwoPhotonSeries"
-        cls.num_frames = 5
+        cls.num_samples = 5
         cls.image_shape = (512, 512, 2)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
@@ -538,7 +542,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 20.629515014336377
 
@@ -559,7 +563,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         cls = request.cls
 
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
-        cls.num_frames = 5
+        cls.num_samples = 5
         cls.image_shape = (512, 512)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
@@ -629,7 +633,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 10.314757507168189
 
@@ -649,7 +653,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
 
         cls = request.cls
         cls.photon_series_name = "TwoPhotonSeriesCh2"
-        cls.num_frames = 10
+        cls.num_samples = 10
         cls.image_shape = (512, 512)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.8.64.200")
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
@@ -700,7 +704,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_frames, *self.image_shape)
+            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
             np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
             assert photon_series.rate == 29.873615189896864
 
@@ -853,8 +857,8 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert two_photon_series["name"] == self.optical_series_name
 
 
-class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
-    data_interface_cls = MiniscopeImagingInterface
+class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
+    data_interface_cls = _MiniscopeMultiRecordingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
 
@@ -878,7 +882,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         cls.imaging_plane_metadata = dict(
             name=cls.imaging_plane_name,
             device=cls.device_name,
-            imaging_rate=15.0,
+            imaging_rate=15.037593984962406,  # Actual rate calculated from timestamps
         )
 
         cls.photon_series_name = "OnePhotonSeries"
@@ -906,6 +910,130 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
             AssertionError, match="The main folder should contain at least one subfolder named 'Miniscope'."
         ):
             self.data_interface_cls(folder_path=folder_path)
+
+
+class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
+    )
+    save_directory = OUTPUT_PATH
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+        cls = request.cls
+        cls.device_name = "Miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+        cls.optical_series_name = "OnePhotonSeries"
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Override check_read_nwb for single-recording interface expectations."""
+        import numpy as np
+        from ndx_miniscope import Miniscope
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert self.device_name in nwbfile.devices
+            device = nwbfile.devices[self.device_name]
+            assert isinstance(device, Miniscope)
+            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
+            assert imaging_plane.device.name == self.device_name
+
+            # Check OnePhotonSeries - updated for single recording (5 frames, not 15)
+            assert self.photon_series_name in nwbfile.acquisition
+            one_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert one_photon_series.unit == "px"
+            assert one_photon_series.data.shape == (5, 752, 480)  # Single recording has 5 frames
+            assert one_photon_series.data.dtype == np.uint8
+
+            # After roiextractors #509, MiniscopeImagingExtractor provides native timestamps
+            # from timeStamps.csv, so the photon series uses timestamps instead of rate
+            assert one_photon_series.rate is None  # Uses timestamps instead of rate
+            assert one_photon_series.timestamps is not None  # Now uses hardware timestamps
+            assert len(one_photon_series.timestamps) == 5
+            assert one_photon_series.starting_frame is None
+
+            # Verify that interface can get original timestamps
+            interface_times = self.interface.get_original_timestamps()
+            assert interface_times is not None
+            assert len(interface_times) == 5
+
+            # Verify timestamps match between interface and NWB
+            np.testing.assert_array_almost_equal(one_photon_series.timestamps[:], interface_times)
+
+    def test_file_paths_parameter(self):
+        """Test using file_paths parameter for non-standard structures."""
+        miniscope_folder = (
+            OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"
+        )
+
+        file_paths = [str(miniscope_folder / "0.avi")]
+        configuration_file_path = str(miniscope_folder / "metaData.json")
+        timestamps_path = str(miniscope_folder / "timeStamps.csv")
+
+        interface = self.data_interface_cls(
+            file_paths=file_paths,
+            configuration_file_path=configuration_file_path,
+            timeStamps_file_path=timestamps_path,
+        )
+
+        # Test that metadata extraction works
+        metadata = interface.get_metadata()
+        assert metadata["Ophys"]["Device"][0]["name"] == "Miniscope"
+
+        # Test that it has timestamps
+        timestamps = interface.get_original_timestamps()
+        assert timestamps is not None
+        assert len(timestamps) > 0
+
+    def test_parameter_validation(self):
+        """Test parameter validation for mutually exclusive parameters."""
+        miniscope_folder = (
+            OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"
+        )
+
+        # Test missing required parameters
+        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
+            self.data_interface_cls()
+
+        # Test missing configuration_file_path when using file_paths
+        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
+            self.data_interface_cls(file_paths=[str(miniscope_folder / "0.avi")])
+
+        # Test conflicting parameters
+        with pytest.raises(
+            ValueError,
+            match="When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified",
+        ):
+            self.data_interface_cls(
+                folder_path=str(miniscope_folder),
+                file_paths=[str(miniscope_folder / "0.avi")],
+            )
+
+    def test_session_start_time_extraction(self):
+        """Test that session_start_time is extracted from parent folder metaData.json."""
+        from datetime import datetime
+
+        miniscope_folder = (
+            OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"
+        )
+
+        interface = self.data_interface_cls(folder_path=str(miniscope_folder))
+        metadata = interface.get_metadata()
+
+        # Check that session_start_time was extracted
+        assert "session_start_time" in metadata["NWBFile"]
+        session_start_time = metadata["NWBFile"]["session_start_time"]
+
+        # Verify it's a datetime object
+        assert isinstance(session_start_time, datetime)
+
+        # Verify it matches the expected value from metaData.json
+        expected_start_time = datetime(2021, 10, 7, 15, 3, 28, 635000)
+        assert session_start_time == expected_start_time
 
 
 skip_on_darwin_arm64 = pytest.mark.skipif(
@@ -1145,7 +1273,10 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0."
+        assert (
+            nwbfile_metadata["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
 
@@ -1211,7 +1342,10 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Check NWBFile metadata
         nwbfile_metadata = metadata["NWBFile"]
-        assert nwbfile_metadata["session_description"] == "Session: MSession_0, MUnit: MUnit_0."
+        assert (
+            nwbfile_metadata["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
         assert nwbfile_metadata["experimenter"] == ["flaviod"]
         assert nwbfile_metadata["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
 
@@ -1397,20 +1531,20 @@ class TestFemtonicsImagingInterfaceStaticMethods:
     def test_get_available_channels_p29(self):
         """Test getting available channels for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path)
+        channels = FemtonicsImagingInterface.get_available_channels(file_path=file_path, munit_name="MUnit_0")
         assert channels == ["UG", "UR"]
-
-    def test_get_available_sessions_p29(self):
-        """Test getting available sessions for p29.mesc."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
-        assert sessions == ["MSession_0"]
 
     def test_get_available_munits_p29(self):
         """Test getting available units for p29.mesc."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         units = FemtonicsImagingInterface.get_available_munits(file_path=file_path, session_name="MSession_0")
         assert units == ["MUnit_0", "MUnit_1"]
+
+    def test_get_available_sessions_p29(self):
+        """Test getting available sessions for p29.mesc."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
+        assert sessions == ["MSession_0"]
 
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
@@ -1437,46 +1571,6 @@ class TestFemtonicsImagingInterfaceStaticMethods:
                 channel_name="WRONG_CHANNEL",
             )
 
-    def test_munit_not_specified_with_multiple_units(self):
-        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple units found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\. Please specify 'munit_name'\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                # munit_name not specified
-                channel_name="UG",
-            )
-
-    def test_wrong_munit_name(self):
-        """Test that ValueError is raised when an invalid munit_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Specified munit_name 'WRONG_UNIT' not found in session MSession_0 of Femtonics file: .+\. Available units: \['MUnit_0', 'MUnit_1'\]\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="WRONG_UNIT",
-                channel_name="UG",
-            )
-
-    def test_wrong_session_name(self):
-        """Test that ValueError is raised when an invalid session_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Specified session_name 'WRONG_SESSION' not found in Femtonics file: .+\. Available sessions: \['MSession_0'\]\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                session_name="WRONG_SESSION",
-                munit_name="MUnit_0",
-                channel_name="UG",
-            )
-
     def test_channel_name_not_specified_multiple_channels(self):
         """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
@@ -1487,4 +1581,38 @@ class TestFemtonicsImagingInterfaceStaticMethods:
             FemtonicsImagingInterface(
                 file_path=file_path,
                 munit_name="MUnit_0",
+            )
+
+    def test_munit_not_specified_with_multiple_units(self):
+        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        expected_error = f"Multiple MUnits found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']. Please specify 'munit_name' to select one."
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                # munit_name not specified
+                channel_name="UG",
+            )
+
+    def test_wrong_munit_name(self):
+        """Test that ValueError is raised when an invalid munit_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        expected_error = f"MUnit 'WRONG_UNIT' not found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                munit_name="WRONG_UNIT",
+                channel_name="UG",
+            )
+
+    def test_wrong_session_name(self):
+        """Test that ValueError is raised when an invalid session_name is specified."""
+        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
+        expected_error = f"Session 'WRONG_SESSION' not found in file: {file_path}. Available sessions: ['MSession_0']"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            FemtonicsImagingInterface(
+                file_path=file_path,
+                session_name="WRONG_SESSION",
+                munit_name="MUnit_0",
+                channel_name="UG",
             )

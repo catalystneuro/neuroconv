@@ -4,7 +4,7 @@ import inspect
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Literal, Type
+from typing import Literal
 
 from jsonschema import validate
 from pydantic import FilePath, validate_call
@@ -12,6 +12,7 @@ from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
 from .tools.nwb_helpers import (
+    BACKEND_NWB_IO,
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
     configure_and_write_nwbfile,
@@ -19,7 +20,6 @@ from .tools.nwb_helpers import (
     get_default_backend_configuration,
     get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
-    make_or_load_nwbfile,
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
 from .utils import (
@@ -45,7 +45,7 @@ class NWBConverter:
     associated_suffixes: tuple[str] = tuple()
     info: str | None = None
 
-    data_interface_classes: dict[str, Type[BaseDataInterface]] = {}
+    data_interface_classes: dict[str, type[BaseDataInterface]] = {}
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -298,10 +298,12 @@ class NWBConverter:
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
+        allowed_to_modify_existing = overwrite or append_on_disk_nwbfile
 
-        if file_initially_exists and not overwrite:
+        if file_initially_exists and not allowed_to_modify_existing:
             raise ValueError(
-                f"The file at {nwbfile_path} already exists. Set overwrite=True to overwrite the existing file."
+                f"The file at {nwbfile_path} already exists. Set overwrite=True to overwrite the existing file "
+                "or append_on_disk_nwbfile=True to append to the existing file."
             )
 
         if append_on_disk_nwbfile and appending_to_in_memory_nwbfile:
@@ -317,37 +319,81 @@ class NWBConverter:
         self.validate_conversion_options(conversion_options=conversion_options)
         self.temporally_align_data_interfaces(metadata=metadata, conversion_options=conversion_options)
 
-        if not append_on_disk_nwbfile:
+        writing_new_file = not append_on_disk_nwbfile
 
-            if appending_to_in_memory_nwbfile:
-                self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
-            else:
-                nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
-
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                nwbfile_path=nwbfile_path,
-                backend=backend,
-                backend_configuration=backend_configuration,
-            )
-
-        else:  # We are only using the context in append mode, see issue #1143
-
-            backend = _resolve_backend(backend, backend_configuration)
-            with make_or_load_nwbfile(
+        if writing_new_file:
+            self._write_nwbfile(
                 nwbfile_path=nwbfile_path,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                overwrite=overwrite,
                 backend=backend,
-                verbose=getattr(self, "verbose", False),
-            ) as nwbfile_out:
-                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+                backend_configuration=backend_configuration,
+                conversion_options=conversion_options,
+            )
+        else:
+            self._append_nwbfile(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                backend=backend,
+                backend_configuration=backend_configuration,
+                conversion_options=conversion_options,
+            )
 
-                if backend_configuration is None:
-                    backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+    def _write_nwbfile(
+        self,
+        nwbfile_path: FilePath,
+        nwbfile: NWBFile | None,
+        metadata: dict,
+        backend: Literal["hdf5", "zarr"],
+        backend_configuration: dict,
+        conversion_options: dict,
+    ) -> None:
+        """
+        Write NWBFile to a file path on disk.
 
-                configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
+        Private helper method for run_conversion in write mode.
+        Creates a new NWBFile or uses provided one, then writes to disk.
+        """
+        if nwbfile is not None:
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+        else:
+            nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+
+        configure_and_write_nwbfile(
+            nwbfile=nwbfile,
+            nwbfile_path=nwbfile_path,
+            backend=backend,
+            backend_configuration=backend_configuration,
+        )
+
+    def _append_nwbfile(
+        self,
+        nwbfile_path: FilePath,
+        metadata: dict,
+        backend: Literal["hdf5", "zarr"],
+        backend_configuration: dict,
+        conversion_options: dict,
+    ) -> None:
+        """
+        Append data to an existing NWB file.
+
+        Private helper method for run_conversion in append mode.
+        Reads existing file, adds interface data, and writes back.
+        """
+        backend = _resolve_backend(backend, backend_configuration)
+        IO = BACKEND_NWB_IO[backend]
+
+        with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+
+            if backend_configuration is None:
+                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
+            configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+            io.write(nwbfile)
 
     def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
         """Override this method to implement custom alignment."""

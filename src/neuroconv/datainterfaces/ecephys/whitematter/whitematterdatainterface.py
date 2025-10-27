@@ -9,14 +9,31 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface for converting binary WhiteMatter data (.bin files).
 
-    Uses :py:class:`~spikeinterface.extractors.WhiteMatterRecordingExtractor`.
+    Uses the :py:func:`~spikeinterface.extractors.read_whitematter` reader from SpikeInterface.
     """
 
     display_name = "WhiteMatter Recording"
     associated_suffixes = (".bin",)
     info = "Interface for converting binary WhiteMatter recording data."
 
-    ExtractorName = "WhiteMatterRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            WhiteMatterRecordingExtractor,
+        )
+
+        return WhiteMatterRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop all_annotations since WhiteMatter extractor doesn't support it."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("all_annotations", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,

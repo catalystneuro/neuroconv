@@ -12,12 +12,18 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Plexon data.
 
-    Uses the :py:class:`~spikeinterface.extractors.PlexonRecordingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon` from SpikeInterface.
     """
 
     display_name = "Plexon Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon recording data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import PlexonRecordingExtractor
+
+        return PlexonRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -40,7 +46,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the .plx file.
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         stream_name: str, optional
@@ -70,13 +76,18 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     """
     Primary data interface class for converting Plexon LFP data.
 
-    Uses the :py:class:`~spikeinterface.extractors.PlexonRecordingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon`.
     """
 
     display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon low pass filtered data."
-    ExtractorName = "PlexonRecordingExtractor"
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import PlexonRecordingExtractor
+
+        return PlexonRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -133,7 +144,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Plexon2 data.
 
-    Uses the :py:class:`~spikeinterface.extractors.Plexon2RecordingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon2` from SpikeInterface.
     """
 
     display_name = "Plexon2 Recording"
@@ -146,12 +157,25 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .pl2 file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            Plexon2RecordingExtractor,
+        )
 
-        return extractor_kwargs
+        return Plexon2RecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add stream_id parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True  # Handled by base class now
+        self.extractor_kwargs["stream_id"] = self.stream_id
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
@@ -198,7 +222,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
     """
     Primary data interface class for converting Plexon spiking data.
 
-    Uses :py:class:`~spikeinterface.extractors.PlexonSortingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_plexon_sorting` from SpikeInterface.
     """
 
     display_name = "Plexon Sorting"
@@ -210,6 +234,12 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the plexon spiking data (.plx file)."
         return source_schema
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import PlexonSortingExtractor
+
+        return PlexonSortingExtractor
 
     @validate_call
     def __init__(self, file_path: FilePath, verbose: bool = False):

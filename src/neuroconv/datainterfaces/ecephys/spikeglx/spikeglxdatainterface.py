@@ -7,7 +7,6 @@ import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 
 from .spikeglx_utils import (
-    add_recording_extractor_properties,
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
     get_session_start_time,
@@ -18,7 +17,9 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary SpikeGLX interface for converting raw SpikeGLX data using a :py:class:`~spikeinterface.extractors.SpikeGLXRecordingExtractor`.
+    Primary SpikeGLX interface for converting raw SpikeGLX data.
+
+    Uses the :py:func:`~spikeinterface.extractors.read_spikeglx` reader from SpikeInterface.
     """
 
     display_name = "SpikeGLX Recording"
@@ -26,21 +27,32 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".imec{probe_index}", ".ap", ".lf", ".meta", ".bin")
     info = "Interface for SpikeGLX recording data."
 
-    ExtractorName = "SpikeGLXRecordingExtractor"
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGLXRecordingExtractor,
+        )
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["folder_path"] = self.folder_path
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
-        return extractor_kwargs
+        return SpikeGLXRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add stream_id and set folder_path."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["folder_path"] = self.folder_path
+        self.extractor_kwargs["stream_id"] = self.stream_id
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @validate_call
     def __init__(
@@ -117,8 +129,57 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
             self.es_key = electrical_series_name
 
-        # Set electrodes properties
-        add_recording_extractor_properties(self.recording_extractor)
+        # Set electrode properties from probe information
+        probe = self.recording_extractor.get_probe()
+        channel_ids = self.recording_extractor.get_channel_ids()
+
+        # Should follow pattern 'Imec0', 'Imec1', etc.
+        probe_name = self.recording_extractor.stream_id[:5].capitalize()
+
+        # Set group_name property based on shank count
+        if probe.get_shank_count() > 1:
+            shank_ids = probe.shank_ids
+            self.recording_extractor.set_property(key="shank_ids", values=shank_ids)
+            group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in shank_ids]
+        else:
+            group_name = [f"Neuropixels{probe_name}"] * len(channel_ids)
+
+        self.recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
+
+        # Set contact geometry properties
+        contact_shapes = probe.contact_shapes
+        self.recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
+
+        # Set channel_name property for multi-stream deduplication
+        # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
+        # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
+        current_stream_kind = self._signals_info_dict["stream_kind"]  # "ap" or "lf"
+
+        # Check if companion stream exists (AP has LF, LF has AP)
+        device = self._signals_info_dict["device"]  # e.g., "imec0"
+        companion_stream_kind = "lf" if current_stream_kind == "ap" else "ap"
+        companion_stream_id = f"{device}.{companion_stream_kind}"
+        companion_key = (0, companion_stream_id)
+
+        signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict
+        has_companion_stream = companion_key in signals_info_dict
+
+        # Build channel names
+        channel_names = []
+        for channel_id in channel_ids:
+            # Extract channel number from channel_id (e.g., "imec0.ap#AP0" -> "0")
+            channel_number = channel_id.split("#")[-1][2:]
+
+            if has_companion_stream:
+                # Multi-stream: show both AP and LF (alphabetically sorted)
+                channel_name = f"AP{channel_number},LF{channel_number}"
+            else:
+                # Single stream: just use the current stream name
+                channel_name = f"{current_stream_kind.upper()}{channel_number}"
+
+            channel_names.append(channel_name)
+
+        self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -149,8 +210,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
+            dict(
+                name="electrode_name",
+                description=(
+                    "The unique name of this electrode. Derived from probe contact identifiers. "
+                    "Multiple channels (e.g., AP and LF bands) from the same physical electrode "
+                    "will share the same electrode_name."
+                ),
+            ),
             dict(name="contact_shapes", description="The shape of the electrode"),
-            dict(name="contact_ids", description="The id of the contact on the electrode"),
             dict(
                 name="inter_sample_shift",
                 description=(
@@ -168,9 +236,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        new_recording = self.get_extractor()(
-            folder_path=self.folder_path,
-            stream_id=self.stream_id,
+        new_recording = self._initialize_extractor(
+            self.source_data
         )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
         if self._number_of_segments == 1:
             return new_recording.get_times()

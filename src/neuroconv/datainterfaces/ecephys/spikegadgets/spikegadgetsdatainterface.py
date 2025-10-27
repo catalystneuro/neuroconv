@@ -7,12 +7,30 @@ from ....utils import ArrayType, get_json_schema_from_method_signature
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting data in the SpikeGadgets format.
-    Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`.
+
+    Uses the :py:func:`~spikeinterface.extractors.read_spikegadgets` reader from SpikeInterface.
     """
 
     display_name = "SpikeGadgets Recording"
     associated_suffixes = (".rec",)
     info = "Interface for SpikeGadgets recording data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            SpikeGadgetsRecordingExtractor,
+        )
+
+        return SpikeGadgetsRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gains parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("gains", None)
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(cls) -> dict:
