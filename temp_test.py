@@ -71,7 +71,7 @@ def main():
     if not nwbfile_path.exists():
         write_nwbfile(nwbfile_path, backend=backend)
 
-    backend_configuration_changes = {"processing/ophys/TestPlaneSegmentation/pixel_mask/data": dict(chunk_shape=(3,))}
+    backend_configuration_changes = {"processing/ophys/TestPlaneSegmentation/pixel_mask/data": dict(chunk_shape=(1,))}
     repack_nwbfile(
         nwbfile_path=str(nwbfile_path),
         export_nwbfile_path=str(repacked_nwbfile_path),

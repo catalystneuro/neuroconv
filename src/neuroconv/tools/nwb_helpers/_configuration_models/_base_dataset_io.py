@@ -304,7 +304,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
             )
 
-            buffer_shape = None  # This is the non-iterative path
+            buffer_shape = full_shape
             compression_method = "gzip"
 
         elif isinstance(neurodata_object, ImageSeries) and dataset_name == "data":
@@ -320,7 +320,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 sample_shape=sample_shape,
                 dtype=dtype,
             )
-            buffer_shape = None  # This is the non-iterative path
+            buffer_shape = full_shape
             compression_method = "gzip"
 
         elif dtype != np.dtype("object"):
