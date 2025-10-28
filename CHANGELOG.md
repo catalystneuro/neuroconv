@@ -12,7 +12,7 @@
 Support roiextractors 0.7.2 [PR #1566](https://github.com/catalystneuro/neuroconv/pull/1566)
 
 ## Improvements
-* Added citation information to README, documentation, and CITATION.cff with reference to the SciPy 2025 conference paper [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
+* Added citation information to README, documentation, and CITATION.cff with reference to the SciPy 2025 conference paper [PR #1569](https://github.com/catalystneuro/neuroconv/pull/1569)
 
 # v0.8.2 (October 17, 2025)
 
