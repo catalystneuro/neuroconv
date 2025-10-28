@@ -24,7 +24,7 @@ from neuroconv.tools.nwb_helpers import (
 def generate_complex_nwbfile() -> NWBFile:
     nwbfile = mock_NWBFile()
 
-    raw_array = np.array([[1, 2, 3], [4, 5, 6]])
+    raw_array = np.array([[1, 2, 3], [4, 5, 6]], dtype="int64")
     raw_time_series = mock_TimeSeries(name="RawTimeSeries", data=raw_array)
     nwbfile.add_acquisition(raw_time_series)
 
