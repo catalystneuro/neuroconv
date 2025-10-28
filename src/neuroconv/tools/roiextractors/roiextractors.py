@@ -97,6 +97,7 @@ def _get_default_ophys_metadata():
                 "neuropil": {"name": "Neuropil", "description": "Array of neuropil traces.", "unit": "n.a."},
                 "denoised": {"name": "Denoised", "description": "Array of denoised traces.", "unit": "n.a."},
                 "baseline": {"name": "Baseline", "description": "Array of baseline traces.", "unit": "n.a."},
+                "background": {"name": "Background", "description": "Array of background traces.", "unit": "n.a."},
             },
             "BackgroundPlaneSegmentation": {
                 "neuropil": {"name": "neuropil", "description": "Array of neuropil traces.", "unit": "n.a."}
