@@ -86,6 +86,7 @@ linkcheck_ignore = [
     "https://buzsakilab.com/wp/",  # Ignoring because their ssl certificate is expired
     r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
     "https://catalystneuro.com/*/",
+    "https://doi.org/10.25080/cehj4257",  # Does not seem to support multiple access
 ]
 
 # --------------------------------------------------
