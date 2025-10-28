@@ -4,7 +4,10 @@ from typing import Any, Literal
 
 import numcodecs
 import zarr
+from hdmf import Container
+from hdmf.build.builders import BaseBuilder
 from pydantic import Field, InstanceOf, model_validator
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 
@@ -127,3 +130,28 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+
+    @classmethod
+    def from_neurodata_object(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+        builder: BaseBuilder | None = None,
+        use_default_dataset_io_configuration: bool = True,
+    ) -> Self:
+        if use_default_dataset_io_configuration:
+            return super().from_neurodata_object(
+                neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
+            )
+
+        kwargs = cls.get_kwargs_from_neurodata_object(
+            neurodata_object=neurodata_object,
+            dataset_name=dataset_name,
+        )
+        compression_method = getattr(neurodata_object, dataset_name).compressor
+        filter_methods = getattr(neurodata_object, dataset_name).filters
+        return cls(
+            **kwargs,
+            compression_method=compression_method,
+            filter_methods=filter_methods,
+        )
