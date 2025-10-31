@@ -25,6 +25,12 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
         source_metadata["properties"]["file_path"]["description"] = "Path to .hdf5 file."
         return source_metadata
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import CaimanSegmentationExtractor
+
+        return CaimanSegmentationExtractor
+
     def __init__(self, file_path: FilePath, verbose: bool = False):
         """
         Parameters

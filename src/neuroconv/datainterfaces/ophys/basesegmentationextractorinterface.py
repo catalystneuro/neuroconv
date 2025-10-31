@@ -20,8 +20,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     keywords = ("segmentation", "roi", "cells")
 
-    ExtractorModuleName = "roiextractors"
-
     def __init__(self, verbose: bool = False, **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
@@ -115,14 +113,27 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        from ...tools.roiextractors import get_nwb_segmentation_metadata
+        from ...tools.roiextractors.roiextractors import _get_default_ophys_metadata
 
         metadata = super().get_metadata()
-        metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
+
+        # Get the default ophys metadata (single source of truth)
+        ophys_defaults = _get_default_ophys_metadata()
+
+        # Only include the fields relevant to segmentation (not imaging series)
+        metadata["Ophys"] = {
+            "Device": ophys_defaults["Ophys"]["Device"],
+            "ImagingPlane": ophys_defaults["Ophys"]["ImagingPlane"],
+            "Fluorescence": ophys_defaults["Ophys"]["Fluorescence"],
+            "DfOverF": ophys_defaults["Ophys"]["DfOverF"],
+            "ImageSegmentation": ophys_defaults["Ophys"]["ImageSegmentation"],
+            "SegmentationImages": ophys_defaults["Ophys"]["SegmentationImages"],
+        }
+
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        reinitialized_extractor = self._initialize_extractor(self.source_data)
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:

@@ -15,7 +15,24 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".dat", ".oebin", ".npy")
     info = "Interface for converting binary OpenEphys recording data."
 
-    ExtractorName = "OpenEphysBinaryRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
+
+        return OpenEphysBinaryRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop stub_test parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("stub_test", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:

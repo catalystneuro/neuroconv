@@ -63,6 +63,12 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
                 )
         return streams
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import BrukerTiffMultiPlaneImagingExtractor
+
+        return BrukerTiffMultiPlaneImagingExtractor
+
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -249,6 +255,12 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
         return streams
+
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import BrukerTiffSinglePlaneImagingExtractor
+
+        return BrukerTiffSinglePlaneImagingExtractor
 
     def __init__(
         self,
