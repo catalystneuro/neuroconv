@@ -51,7 +51,7 @@ Here is an example of a properly formatted CSV file demonstrating different data
 Basic Usage
 ~~~~~~~~~~~
 
-The following example demonstrates basic conversion of a CSV file containing trial data to NWB format:
+The following example demonstrates basic conversion of a CSV file containing interval data to NWB format:
 
 .. code-block:: python
 
