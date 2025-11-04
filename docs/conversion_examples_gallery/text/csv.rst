@@ -12,6 +12,8 @@ Convert CSV data to NWB using
 This interface is designed to convert tabular time interval data (such as experimental trials, behavioral epochs, or task events)
 from CSV files into NWB format as TimeIntervals objects, which are typically saved as trials in the NWB file.
 
+For more information about TimeIntervals in NWB, see the `PyNWB TimeIntervals tutorial <https://pynwb.readthedocs.io/en/latest/tutorials/general/plot_timeintervals.html>`_.
+
 Understanding CSV Format Requirements
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -35,25 +37,15 @@ Each row represents one time interval (e.g., a trial, epoch, or event), and colu
 
 Here is an example of a properly formatted CSV file demonstrating different data types:
 
-.. code-block:: text
+.. csv-table::
+   :header: "start_time", "stop_time", "trial_id", "condition", "trial_type", "correct", "reward_amount"
+   :widths: 15, 15, 12, 12, 15, 12, 18
 
-    start_time,stop_time,trial_id,condition,trial_type,correct,reward_amount
-    0.5,1.2,1,1,left,True,0.1
-    1.5,2.1,2,2,right,False,0.0
-    2.3,3.0,3,1,left,True,0.15
-    3.2,4.1,4,2,right,,
-    4.5,5.3,5,1,left,True,0.1
-
-This CSV demonstrates different data types that are preserved when converting to NWB:
-
-- ``start_time`` (float): Trial start time in seconds
-- ``stop_time`` (float): Trial end time in seconds
-- ``trial_id`` (integer): Unique trial identifier
-- ``condition`` (integer): Experimental condition code
-- ``trial_type`` (string): Type of trial ("left" or "right")
-- ``correct`` (boolean): Whether the response was correct (True/False)
-- ``reward_amount`` (float): Amount of liquid reward in mL
-
+   0.5, 1.2, 1, 1, left, True, 0.1
+   1.5, 2.1, 2, 2, right, False, 0.0
+   2.3, 3.0, 3, 1, left, True, 0.15
+   3.2, 4.1, 4, 2, right, ,
+   4.5, 5.3, 5, 1, left, True, 0.1
 
 
 Basic Usage
