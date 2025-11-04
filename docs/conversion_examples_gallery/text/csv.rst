@@ -60,7 +60,7 @@ The following example demonstrates basic conversion of a CSV file containing tri
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import CsvTimeIntervalsInterface
     >>>
-    >>> # Path to your CSV file containing trial data
+    >>> # Path to your CSV file containing interval data
     >>> file_path = f"{TEXT_DATA_PATH}/trials.csv"
     >>> # Change the file_path to the location of the file in your system
     >>> interface = CsvTimeIntervalsInterface(file_path=file_path, verbose=False)
