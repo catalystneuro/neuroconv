@@ -375,7 +375,6 @@ def configure_and_write_nwbfile(
     nwbfile_path: FilePath | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
-    export: bool = False,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -395,9 +394,6 @@ def configure_and_write_nwbfile(
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
-    export: bool, default: False
-        Whether to export the NWB file instead of writing.
-
     """
 
     if nwbfile_path is not None and output_filepath is not None:
@@ -427,7 +423,7 @@ def configure_and_write_nwbfile(
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
     with IO(nwbfile_path, mode="w") as io:
-        if export:
+        if nwbfile.read_io is not None:  # i.e. in the case of exporting
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
         else:
@@ -495,5 +491,4 @@ def repack_nwbfile(
             backend_configuration=backend_configuration,
             output_filepath=export_nwbfile_path,
             backend=export_backend,
-            export=True,
         )
