@@ -12,7 +12,7 @@
 * Fixed `DeepLabCutInterface` to support output files without 'DLC' in the filename by extracting scorer from CSV/H5 header instead of parsing filename. This improves compatibility with DeepLabCut outputs that don't follow the typical naming convention while maintaining backward compatibility. [PR #1573](https://github.com/catalystneuro/neuroconv/pull/1573)
 
 ## Features
-Support roiextractors 0.7.2 [PR #1566](https://github.com/catalystneuro/neuroconv/pull/1566)
+* Support roiextractors 0.7.2 [PR #1566](https://github.com/catalystneuro/neuroconv/pull/1566)
 
 ## Improvements
 * SpikeInterface tools: Enhanced `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile` to support backend configuration parameters (`backend`, `backend_configuration`) for controlling HDF5/Zarr compression and chunking settings, matching the pattern used in `BaseDataInterface.run_conversion`. [PR #1565](https://github.com/catalystneuro/neuroconv/pull/1565)
