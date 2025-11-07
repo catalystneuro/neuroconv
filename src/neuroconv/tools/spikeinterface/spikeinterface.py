@@ -1511,9 +1511,9 @@ def add_recording_as_spatial_series_to_nwbfile(
 def _add_spatial_series_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
+    segment_index: int,
     metadata: dict | None = None,
     metadata_key: str = "SpatialSeries",
-    segment_index: int = 0,
     write_as: Literal["acquisition", "processing"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -1531,17 +1531,14 @@ def _add_spatial_series_segment_to_nwbfile(
     # Get spatial series metadata or empty dict
     spatial_series_metadata = metadata.get("SpatialSeries", {}).get(metadata_key, {})
 
-    # Build series_kwargs by starting with defaults and overlaying user metadata
-    series_kwargs = {
-        "name": spatial_series_metadata.get("name", default_spatial_series["name"]),
-        "description": spatial_series_metadata.get("description", default_spatial_series["description"]),
-        "unit": spatial_series_metadata.get("unit", default_spatial_series["unit"]),
-    }
+    # Copy user metadata to avoid mutation
+    series_kwargs = spatial_series_metadata.copy()
 
-    # Add any additional fields from metadata (like reference_frame, comments, etc.)
-    for key, value in spatial_series_metadata.items():
-        if key not in series_kwargs:
-            series_kwargs[key] = value
+    # Fill in missing required fields with defaults
+    required_fields = ["name", "description", "unit"]
+    for field in required_fields:
+        if field not in series_kwargs:
+            series_kwargs[field] = default_spatial_series[field]
 
     # If multiple segments, append index to name
     if recording.get_num_segments() > 1:
@@ -1570,7 +1567,7 @@ def _add_spatial_series_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)

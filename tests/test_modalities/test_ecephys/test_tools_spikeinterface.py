@@ -1435,7 +1435,7 @@ class TestAddSpatialSeries:
 
         nwbfile = mock_NWBFile()
 
-        metadata = {"SpatialSeries": {"reference_frame": "origin at top-left corner"}}
+        metadata = {"SpatialSeries": {"SpatialSeries": {"reference_frame": "origin at top-left corner"}}}
 
         add_recording_as_spatial_series_to_nwbfile(
             recording=recording,
@@ -1470,10 +1470,12 @@ class TestAddSpatialSeries:
 
         metadata = {
             "SpatialSeries": {
-                "name": "position",
-                "description": "Animal position in 2D arena",
-                "reference_frame": "origin at top-left, x right, y down",
-                "unit": "centimeters",
+                "SpatialSeries": {
+                    "name": "position",
+                    "description": "Animal position in 2D arena",
+                    "reference_frame": "origin at top-left, x right, y down",
+                    "unit": "centimeters",
+                }
             }
         }
 
@@ -1501,7 +1503,7 @@ class TestAddSpatialSeries:
 
         nwbfile = mock_NWBFile()
 
-        metadata = {"SpatialSeries": {"reference_frame": "test reference frame"}}
+        metadata = {"SpatialSeries": {"SpatialSeries": {"reference_frame": "test reference frame"}}}
 
         add_recording_as_spatial_series_to_nwbfile(
             recording=recording,
@@ -1532,7 +1534,9 @@ class TestAddSpatialSeries:
 
         metadata = {
             "SpatialSeries": {
-                "reference_frame": "metadata reference frame",
+                "SpatialSeries": {
+                    "reference_frame": "metadata reference frame",
+                }
             }
         }
 
@@ -1545,6 +1549,42 @@ class TestAddSpatialSeries:
 
         spatial_series = nwbfile.acquisition["SpatialSeries"]
         assert spatial_series.reference_frame == "metadata reference frame"
+
+    def test_no_metadata_mutation(self):
+        """Test that add_recording_as_spatial_series_to_nwbfile does not mutate the input metadata."""
+        num_channels = 2
+        sampling_frequency = 30.0
+        durations = [1.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        nwbfile = mock_NWBFile()
+
+        # Create metadata with partial fields
+        metadata = {
+            "SpatialSeries": {
+                "SpatialSeries": {
+                    "reference_frame": "test frame",
+                    "unit": "centimeters",
+                }
+            }
+        }
+
+        # Make a deep copy to compare against later
+        from copy import deepcopy
+
+        metadata_before = deepcopy(metadata)
+
+        add_recording_as_spatial_series_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            iterator_type=None,
+        )
+
+        # Verify metadata was not mutated - compare entire dict structure
+        assert metadata == metadata_before, "Metadata was mutated"
 
 
 class TestAddElectrodeGroups:
