@@ -1522,6 +1522,17 @@ def _add_spatial_series_segment_to_nwbfile(
     """
     See add_recording_as_spatial_series_to_nwbfile for details.
     """
+    # Validate recording dimensions for SpatialSeries
+    num_channels = recording.get_num_channels()
+    if num_channels > 3:
+        channel_names = _get_channel_name(recording)
+        raise ValueError(
+            f"SpatialSeries only supports 1D, 2D, or 3D data (up to 3 channels). "
+            f"This recording has {num_channels} channels: {channel_names}. "
+            f"Use recording.select_channels(channel_ids) to select only the spatial data channels, "
+            f"or verify you loaded the correct stream if working with multi-stream data."
+        )
+
     # Get default metadata from single source of truth
     default_metadata = _get_default_spatial_series_metadata()
     default_spatial_series = default_metadata["SpatialSeries"]

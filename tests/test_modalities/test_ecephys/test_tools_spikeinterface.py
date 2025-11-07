@@ -1586,6 +1586,27 @@ class TestAddSpatialSeries:
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
+    def test_validates_channel_count(self):
+        """Test that SpatialSeries rejects recordings with more than 3 channels."""
+        num_channels = 5  # Too many for SpatialSeries
+        sampling_frequency = 30.0
+        durations = [1.0]
+        recording = generate_recording(
+            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
+        )
+
+        nwbfile = mock_NWBFile()
+
+        metadata = {"SpatialSeries": {"SpatialSeries": {"reference_frame": "test"}}}
+
+        with pytest.raises(ValueError, match="SpatialSeries only supports 1D, 2D, or 3D data"):
+            add_recording_as_spatial_series_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                iterator_type=None,
+            )
+
 
 class TestAddElectrodeGroups:
     def test_group_naming_not_matching_group_number(self):
