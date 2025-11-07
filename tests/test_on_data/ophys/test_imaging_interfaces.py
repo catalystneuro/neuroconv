@@ -28,10 +28,10 @@ from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface impo
     _MiniscopeMultiRecordingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
+    DataInterfaceTestMixin,
     ImagingExtractorInterfaceTestMixin,
     MiniscopeImagingInterfaceMixin,
-    ScanImageMultiPlaneImagingInterfaceMixin,
-    ScanImageSinglePlaneImagingInterfaceMixin,
+    TemporalAlignmentMixin,
 )
 
 try:
@@ -49,7 +49,7 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
-class TestScanImageImagingInterfaceMultiPlaneChannel1(ScanImageMultiPlaneImagingInterfaceMixin):
+class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
@@ -67,8 +67,31 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ScanImageMultiPlaneImaging
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
+    def check_read_nwb(self, nwbfile_path: str):
+        """Test reading the NWB file for multi-plane ScanImage data."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
 
-class TestScanImageImagingInterfaceMultiPlaneChannel4(ScanImageMultiPlaneImagingInterfaceMixin):
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+            assert two_photon_series.unit == "n.a."
+            assert two_photon_series.data.dtype == np.int16
+
+            assert two_photon_series.rate == self.expected_rate
+            assert two_photon_series.starting_time == self.expected_starting_time
+
+            imaging_extractor = self.interface.imaging_extractor
+            data_from_extractor = imaging_extractor.get_series()
+            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
+
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+            assert len(optical_channels) == 1
+
+
+class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
@@ -86,8 +109,31 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ScanImageMultiPlaneImaging
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
+    def check_read_nwb(self, nwbfile_path: str):
+        """Test reading the NWB file for multi-plane ScanImage data."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
 
-class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingInterfaceMixin):
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+            assert two_photon_series.unit == "n.a."
+            assert two_photon_series.data.dtype == np.int16
+
+            assert two_photon_series.rate == self.expected_rate
+            assert two_photon_series.starting_time == self.expected_starting_time
+
+            imaging_extractor = self.interface.imaging_extractor
+            data_from_extractor = imaging_extractor.get_series()
+            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
+
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+            assert len(optical_channels) == 1
+
+
+class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = ScanImageImagingInterface
     save_directory = OUTPUT_PATH
     expected_two_photon_series_data_shape = (6, 256, 528)
@@ -154,6 +200,31 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ScanImageSinglePlaneImagingIn
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Test reading the NWB file for single-plane ScanImage data."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert self.imaging_plane_name in nwbfile.imaging_planes
+            assert self.photon_series_name in nwbfile.acquisition
+
+            two_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+            assert two_photon_series.unit == "n.a."
+            assert two_photon_series.data.dtype == np.int16
+            assert two_photon_series.rate is None
+            assert two_photon_series.starting_time is None
+
+            imaging_extractor = self.interface.imaging_extractor
+            times_from_extractor = imaging_extractor._times
+            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
+
+            data_from_extractor = imaging_extractor.get_series()
+            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
+
+            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+            assert len(optical_channels) == 1
 
 
 class TestScanImageImagingInterfacesAssertions:
