@@ -58,6 +58,24 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
+class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
+    """Test TiffImagingInterface with multi-file TIFF data using file_paths parameter."""
+
+    data_interface_cls = TiffImagingInterface
+    interface_kwargs = dict(
+        file_paths=[
+            str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif"),
+            str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00002.tif"),
+            str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00003.tif"),
+        ],
+        sampling_frequency=30.0,
+        dimension_order="CZT",
+        num_channels=2,
+        channel_name="0",
+    )
+    save_directory = OUTPUT_PATH
+
+
 class TestScanImageImagingInterfaceMultiPlaneChannel1(ScanImageMultiPlaneImagingInterfaceMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(

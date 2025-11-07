@@ -40,11 +40,11 @@ Sbx Imaging
 ScanImage Imaging
 -----------------
 .. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces
-    :exclude-members: ScanImageMultiFileImagingInterface, ScanImageMultiPlaneImagingInterface, ScanImageMultiPlaneMultiFileImagingInterface, ScanImageSinglePlaneImagingInterface, ScanImageSinglePlaneMultiFileImagingInterface
 
 Tiff Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.tiff.tiffdatainterface
+    :exclude-members: get_available_channels
 
 
 Segmentation
