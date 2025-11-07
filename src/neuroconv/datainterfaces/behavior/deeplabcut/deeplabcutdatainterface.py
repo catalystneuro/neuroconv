@@ -189,8 +189,10 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         file_path = Path(file_path)
         suffix_is_valid = ".h5" in file_path.suffixes or ".csv" in file_path.suffixes
-        if not "DLC" in file_path.stem or not suffix_is_valid:
-            raise IOError("The file passed in is not a valid DeepLabCut output data file.")
+        if not suffix_is_valid:
+            raise IOError(
+                "The file passed in is not a valid DeepLabCut output data file. Only .h5 and .csv are supported."
+            )
 
         self.config_dict = dict()
         if config_file_path is not None:
@@ -445,8 +447,16 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         }
 
         # Extract video name and scorer
-        video_name, scorer = Path(file_path).stem.split("DLC")
-        scorer = "DLC" + scorer
+        # If filename contains "DLC", split on it to get video name
+        # Otherwise, use the full stem as video name
+        file_stem = Path(file_path).stem
+        if "DLC" in file_stem:
+            video_name, scorer = Path(file_path).stem.split("DLC")
+            scorer = "DLC" + scorer
+        else:
+            video_name = file_stem
+            # Extract scorer from DataFrame header
+            scorer = df.columns.get_level_values("scorer")[0]
 
         # Get video info from config file if available
         video_file_path = None
