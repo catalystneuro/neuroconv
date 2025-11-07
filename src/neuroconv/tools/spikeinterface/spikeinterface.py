@@ -1486,29 +1486,7 @@ def add_recording_as_spatial_series_to_nwbfile(
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
 
-    Notes
-    -----
-    This function is designed for behavioral tracking data, not electrophysiology.
-    For neural recordings, use `add_recording_to_nwbfile` instead.
 
-    Examples
-    --------
-    >>> # Add position tracking data
-    >>> metadata = {
-    ...     'SpatialSeries': {
-    ...         'SpatialSeries': {
-    ...             'name': 'position',
-    ...             'description': 'Animal position in 2D arena',
-    ...             'reference_frame': 'origin at top-left corner, x right, y down',
-    ...             'unit': 'meters'
-    ...         }
-    ...     }
-    ... }
-    >>> add_recording_as_spatial_series_to_nwbfile(
-    ...     recording=position_recording,
-    ...     nwbfile=nwbfile,
-    ...     metadata=metadata
-    ... )
     """
     # Validate write_as parameter
     if write_as not in ["acquisition", "processing"]:
