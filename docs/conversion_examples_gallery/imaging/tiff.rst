@@ -66,12 +66,5 @@ The interface supports several parameters for handling complex TIFF data:
   - Other combinations are supported
 
 * ``num_channels``: Number of color channels in the TIFF file (default: 1)
-* ``channel_name``: Name of the channel to extract (e.g., "0", "1"). Required when num_channels > 1
+* ``channel_name``: Name of the channel to extract (e.g., "0", "1"). Required when num_channels > 1. Channel names are string representations of indices: "0", "1", "2", etc.
 * ``num_planes``: Number of z-planes per volume for volumetric data (default: 1)
-
-To get available channel names programmatically:
-
-.. code-block:: python
-
-    >>> available_channels = TiffImagingInterface.get_available_channels(num_channels=2)
-    >>> print(available_channels)  # ['0', '1']

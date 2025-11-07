@@ -41,23 +41,6 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
         return MultiTIFFMultiPageExtractor
 
-    @staticmethod
-    def get_available_channels(num_channels: int) -> list[str]:
-        """
-        Get available channel names for TIFF files.
-
-        Parameters
-        ----------
-        num_channels : int
-            Number of channels in the TIFF file.
-
-        Returns
-        -------
-        list of str
-            List of available channel names (as strings: "0", "1", "2", ...).
-        """
-        return [str(i) for i in range(num_channels)]
-
     @validate_call
     def __init__(
         self,
