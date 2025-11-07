@@ -434,7 +434,7 @@ selects which stream's metadata to use for each function call:
    All objects in an NWB file must have unique names. When adding multiple TimeSeries or SpatialSeries objects,
    ensure each has a distinct ``name`` field to avoid conflicts.
 
-Complete Example: Intan Neural and Behavioral Data
+Full Example: Intan Neural and Behavioral Data
 ---------------------------------------------------
 
 Here's a complete workflow that demonstrates adding both neural data (using NeuroConv's ``IntanRecordingInterface``)
@@ -442,67 +442,41 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
 
 .. code-block:: python
 
-    from pynwb import NWBFile
     from datetime import datetime
     from zoneinfo import ZoneInfo
+    from uuid import uuid4
     import spikeinterface.extractors as se
-    from neuroconv.datainterfaces import IntanRecordingInterface
+    from neuroconv.datainterfaces import IntanRecordingInterface, KilosortSortingInterface
     from neuroconv.tools.spikeinterface import (
         add_recording_as_spatial_series_to_nwbfile,
         add_recording_as_time_series_to_nwbfile,
     )
     from neuroconv.tools import configure_and_write_nwbfile
 
-    # Create NWB file
-    nwbfile = NWBFile(
-        session_description="Spatial navigation with neural recording and accelerometer tracking",
-        identifier="rat_2025_03_20_session1",
-        session_start_time=datetime(2025, 3, 20, 14, 30, 0, tzinfo=ZoneInfo("US/Pacific")),
-        lab="Systems Neuroscience Lab",
-        institution="University",
-        subject={
-            "subject_id": "rat_001",
-            "species": "Rattus norvegicus",
-        }
-    )
-
     # Path to Intan RHD file
     file_path = "/path/to/intan/recording_2025_03_20.rhd"
 
-    # STEP 1: Add neural data using IntanRecordingInterface
-    # This automatically handles the amplifier channels (neural data)
+    # STEP 1: Create IntanRecordingInterface and get base metadata
     interface = IntanRecordingInterface(file_path=file_path, verbose=False)
+    base_metadata = interface.get_metadata()
 
-    # Get metadata and customize if needed
-    metadata = interface.get_metadata()
-    metadata["Ecephys"]["Device"][0]["description"] = "Intan RHD2132 headstage, 32 channels"
-    metadata["Ecephys"]["ElectrodeGroup"][0]["description"] = "Silicon probe in hippocampus CA1"
-
-    # Add neural data to NWB file
-    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-    # STEP 2: Discover available non-neural streams
-    stream_names, stream_ids = se.read_intan.get_streams(file_path)
-    print(f"Available streams: {stream_names}")
-    # Output might include: ['RHD2000 amplifier channel', 'RHD2000 auxiliary input channel', 'USB board ADC input channel']
-
-    # STEP 3: Add 3D accelerometer data as SpatialSeries
-    # Intan headstages often have built-in 3-axis accelerometers on auxiliary inputs
-    aux_recording = se.read_intan(file_path, stream_name='RHD2000 auxiliary input channel')
-
-    # Select the 3 accelerometer channels (AUX1, AUX2, AUX3 = X, Y, Z acceleration)
-    accel_recording = aux_recording.select_channels(channel_ids=['AUX1', 'AUX2', 'AUX3'])
-
-    accel_metadata = {
+    # STEP 2: Define complete metadata for session and behavioral data
+    metadata = {
+        "NWBFile": {
+            "session_description": "Visual discrimination task with lick response and wheel running",
+            "identifier": str(uuid4()),
+            "session_start_time": datetime(2025, 3, 20, 14, 30, 0, tzinfo=ZoneInfo("US/Pacific")),  # Note: Intan does not store session start time
+            "lab": "Systems Neuroscience Lab",
+            "institution": "University",
+        },
         "SpatialSeries": {
             "Accelerometer": {
                 "name": "SpatialSeriesAccelerometer",
                 "description": (
-                    "3D acceleration data from Intan headstage-mounted accelerometer. "
+                    "3D acceleration data from Intan headstage-mounted accelerometer recorded via auxiliary inputs. "
                     "AUX1 (X): medial-lateral acceleration. "
                     "AUX2 (Y): anterior-posterior acceleration. "
                     "AUX3 (Z): dorsal-ventral acceleration (gravity axis). "
-                    "Sampled at 20 kHz (same as neural data), but downsampled to 1 kHz for behavioral analysis. "
                     "Used to detect movement, jumps, rearing, and head orientation relative to gravity. "
                     "Accelerometer range: ±2g. Calibration performed at session start."
                 ),
@@ -510,53 +484,105 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
                 "reference_frame": "Headstage coordinate system: X=left-right, Y=forward-back, Z=up-down relative to head",
                 "comments": "Data includes gravity component. Z-axis at rest ~9.8 m/s² when head level",
             }
-        }
-    }
-
-    add_recording_as_spatial_series_to_nwbfile(
-        recording=accel_recording,
-        nwbfile=nwbfile,
-        metadata=accel_metadata,
-        metadata_key="Accelerometer",
-        write_as="acquisition",
-    )
-
-    # STEP 4: Add custom analog input (e.g., running speed from treadmill)
-    # USB board ADC inputs can record custom behavioral sensors
-    adc_recording = se.read_intan(file_path, stream_name='USB board ADC input channel')
-
-    # Select treadmill speed sensor channel
-    speed_recording = adc_recording.select_channels(channel_ids=['ADC-0'])
-
-    speed_metadata = {
+        },
         "TimeSeries": {
-            "TreadmillSpeed": {
-                "name": "TimeSeriesTreadmillSpeed",
+            "Photodiode": {
+                "name": "TimeSeriesPhotodiode",
                 "description": (
-                    "Running speed on linear treadmill. "
-                    "Analog output from treadmill encoder (0-10V = 0-1 m/s). "
-                    "Recorded via Intan USB board ADC input channel 0. "
-                    "Sampled at 1 kHz and low-pass filtered at 50 Hz."
+                    "Photodiode signal detecting visual stimulus onset for precise synchronization. "
+                    "Recorded via Intan USB board ADC input channel 0 (ADC-0). "
+                    "Signal changes from 0V (screen dark) to ~3.3V (screen bright) at stimulus onset. "
+                    "Used to align neural responses with exact visual stimulus timing, "
+                    "compensating for monitor refresh delays and software latencies."
                 ),
-                "unit": "meters_per_second",
+                "unit": "volts",
+                "comments": "Rising edges indicate stimulus onset; falling edges indicate stimulus offset",
+            },
+            "LickSensor": {
+                "name": "TimeSeriesLickSensor",
+                "description": (
+                    "Capacitive lick sensor detecting tongue contact with water port. "
+                    "Recorded via Intan USB board ADC input channel 1 (ADC-1). "
+                    "Baseline ~0.5V, increases to ~4V during lick contact. "
+                    "Sampled at 20 kHz to capture rapid lick events (6-8 Hz typical lick rate)."
+                ),
+                "unit": "volts",
+            },
+            "WheelVelocity": {
+                "name": "TimeSeriesWheelVelocity",
+                "description": (
+                    "Running wheel velocity from rotary encoder. "
+                    "Recorded via Intan USB board ADC input channel 2 (ADC-2). "
+                    "Analog output from encoder: 0-5V maps to -50 to +50 cm/s. "
+                    "Positive values indicate forward rotation, negative indicate backward. "
+                    "Low-pass filtered at 100 Hz to remove encoder noise."
+                ),
+                "unit": "centimeters_per_second",
             }
         }
     }
 
-    add_recording_as_time_series_to_nwbfile(
-        recording=speed_recording,
+    # STEP 3: Create NWBFile using interface with complete metadata
+    # Note: create_nwbfile() automatically adds the neural data from the interface
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+
+    # STEP 4: Add spike sorting data using KilosortSortingInterface
+    sorting_folder_path = "/path/to/kilosort/output/folder"
+    sorting_interface = KilosortSortingInterface(folder_path=sorting_folder_path, verbose=False)
+    sorting_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    # STEP 5: Load and add behavioral data streams
+    # Load 3D accelerometer data from auxiliary inputs (AUX1, AUX2, AUX3)
+    aux_recording = se.read_intan(file_path, stream_name='RHD2000 auxiliary input channel')
+    accel_recording = aux_recording.select_channels(channel_ids=['AUX1', 'AUX2', 'AUX3'])
+
+    add_recording_as_spatial_series_to_nwbfile(
+        recording=accel_recording,
         nwbfile=nwbfile,
-        metadata=speed_metadata,
-        metadata_key="TreadmillSpeed",
+        metadata=metadata,
+        metadata_key="Accelerometer",
         write_as="acquisition",
     )
 
-    # STEP 5: Save NWB file with optimized settings
+    # Load analog signals from USB board ADC inputs
+    adc_recording = se.read_intan(file_path, stream_name='USB board ADC input channel')
+
+    # Add photodiode signal (ADC-0) for stimulus synchronization
+    photodiode_recording = adc_recording.select_channels(channel_ids=['ADC-0'])
+    add_recording_as_time_series_to_nwbfile(
+        recording=photodiode_recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        metadata_key="Photodiode",
+        write_as="acquisition",
+    )
+
+    # Add lick sensor signal (ADC-1)
+    lick_recording = adc_recording.select_channels(channel_ids=['ADC-1'])
+    add_recording_as_time_series_to_nwbfile(
+        recording=lick_recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        metadata_key="LickSensor",
+        write_as="acquisition",
+    )
+
+    # Add wheel velocity signal (ADC-2)
+    wheel_recording = adc_recording.select_channels(channel_ids=['ADC-2'])
+    add_recording_as_time_series_to_nwbfile(
+        recording=wheel_recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        metadata_key="WheelVelocity",
+        write_as="acquisition",
+    )
+
+    # STEP 6: Save NWB file with optimized settings
     nwb_file_path = "intan_neural_behavioral_session.nwb"
     configure_and_write_nwbfile(
         nwbfile=nwbfile,
         nwbfile_path=nwb_file_path,
-        backend="hdf5",  # or "zarr"
+        backend="hdf5",
     )
 
 
