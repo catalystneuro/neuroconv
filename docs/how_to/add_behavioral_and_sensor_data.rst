@@ -53,7 +53,7 @@ NeuroConv provides two methods to write SpikeInterface recordings to NWB:
 When to Use SpatialSeries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``SpatialSeries`` is a specialized NWB data type (subclass of ``TimeSeries``) designed for storing spatial position
+:py:class:`~pynwb.behavior.SpatialSeries` is a specialized NWB data type (subclass of :py:class:`~pynwb.base.TimeSeries`) designed for storing spatial position
 or directional data in 1D, 2D, or 3D coordinates. It includes fields for reference frames and is specifically
 intended for behavioral tracking data that represents location or direction in space.
 
@@ -69,7 +69,7 @@ If your data represents spatial position or direction, use the :py:func:`~neuroc
 When to Use TimeSeries
 ~~~~~~~~~~~~~~~~~~~~~~
 
-``TimeSeries`` is the most general NWB data type for storing any time series data. It provides fields for data values,
+:py:class:`~pynwb.base.TimeSeries` is the most general NWB data type for storing any time series data. It provides fields for data values,
 timestamps, units, and descriptions, making it suitable for any temporal measurements that don't require the specialized
 features of its subclasses.
 
@@ -219,7 +219,6 @@ Example: Adding a Wheel Encoder Signal (Neuralynx)
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="WheelEncoder",
-        write_as="acquisition",  # or "processing" if preprocessed
     )
 
 Adding Data as SpatialSeries
@@ -263,7 +262,6 @@ Example: Adding 2D Position Tracking Data (Blackrock)
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="Position2D",
-        write_as="acquisition",  # or "processing" if preprocessed
     )
 
 Example: Adding 2D Gaze Position Data (Plexon)
@@ -306,7 +304,6 @@ Example: Adding 2D Gaze Position Data (Plexon)
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="GazePosition",
-        write_as="acquisition",
     )
 
 Writing the NWB File to Disk
@@ -314,7 +311,7 @@ Writing the NWB File to Disk
 
 After using :py:func:`~neuroconv.tools.spikeinterface.add_recording_as_spatial_series_to_nwbfile` (or :py:func:`~neuroconv.tools.spikeinterface.add_recording_as_time_series_to_nwbfile`),
 the data has been added to the ``nwbfile`` object, but it still exists only in memory.
-You can continue adding more data or metadata to the file. When ready to save, use ``configure_and_write_nwbfile``
+You can continue adding more data or metadata to the file. When ready to save, use :py:func:`~neuroconv.tools.configure_and_write_nwbfile`
 to write the file to disk with optimized chunking and compression:
 
 .. code-block:: python
@@ -332,7 +329,7 @@ to write the file to disk with optimized chunking and compression:
         backend="hdf5",  # or "zarr"
     )
 
-This method ensures that proper chunking and compression are applied to your data for efficient storage and access.
+This function ensures that proper chunking and compression are applied to your data for efficient storage and access.
 For advanced control over chunking and compression settings, see the :doc:`Backend Configuration <../user_guide/backend_configuration>` guide.
 
 Understanding Metadata Structure
@@ -411,7 +408,6 @@ selects which stream's metadata to use for each function call:
         nwbfile=nwbfile,
         metadata=combined_metadata,
         metadata_key="WheelSpeed",  # Selects TimeSeries -> WheelSpeed metadata
-        write_as="acquisition",
     )
 
     add_recording_as_time_series_to_nwbfile(
@@ -419,7 +415,6 @@ selects which stream's metadata to use for each function call:
         nwbfile=nwbfile,
         metadata=combined_metadata,
         metadata_key="LickSensor",  # Selects TimeSeries -> LickSensor metadata
-        write_as="acquisition",
     )
 
     add_recording_as_spatial_series_to_nwbfile(
@@ -427,7 +422,6 @@ selects which stream's metadata to use for each function call:
         nwbfile=nwbfile,
         metadata=combined_metadata,
         metadata_key="Position",  # Selects SpatialSeries -> Position metadata
-        write_as="acquisition",
     )
 
 .. note::
@@ -541,7 +535,6 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="Accelerometer",
-        write_as="acquisition",
     )
 
     # Load analog signals from USB board ADC inputs
@@ -554,7 +547,6 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="Photodiode",
-        write_as="acquisition",
     )
 
     # Add lick sensor signal (ADC-1)
@@ -564,7 +556,6 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="LickSensor",
-        write_as="acquisition",
     )
 
     # Add wheel velocity signal (ADC-2)
@@ -574,7 +565,6 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key="WheelVelocity",
-        write_as="acquisition",
     )
 
     # STEP 6: Save NWB file with optimized settings
@@ -590,7 +580,7 @@ Best Practices
 --------------
 
 Naming Conventions
-~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^
 
 Follow `NWB best practices for naming <https://nwbinspector.readthedocs.io/en/dev/best_practices/general.html#naming-conventions>`_ TimeSeries and SpatialSeries objects:
 
@@ -605,7 +595,7 @@ Follow `NWB best practices for naming <https://nwbinspector.readthedocs.io/en/de
 * Make names self-documenting but keep them concise
 
 Writing Descriptions
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 Behavioral data can be highly heterogeneous, so **write detailed, self-contained descriptions** that include:
 
@@ -636,7 +626,7 @@ Good example:
     )
 
 Verifying Data
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 After writing data to NWB, **always verify that data was correctly written** by reading back and plotting the data:
 
@@ -679,14 +669,3 @@ After writing data to NWB, **always verify that data was correctly written** by 
 
     plt.tight_layout()
     plt.show()
-
-
-See Also
---------
-
-* :ref:`Conversion Gallery <conversion_gallery>` - See available DataInterfaces for your format
-* :doc:`Backend Configuration <../user_guide/backend_configuration>` - Advanced chunking and compression settings
-* :ref:`annotate_ecephys_data` - How to annotate extracellular electrophysiology data
-* `NWB Best Practices for Behavior <https://nwbinspector.readthedocs.io/en/dev/best_practices/behavior.html>`_
-* `SpikeInterface documentation <https://spikeinterface.readthedocs.io/>`_
-* `PyNWB TimeSeries tutorial <https://pynwb.readthedocs.io/en/stable/tutorials/general/plot_timeseries.html>`_
