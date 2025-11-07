@@ -1519,25 +1519,6 @@ class TestAddSpatialSeries:
         behavior_module = processing_module["behavior"]
         assert "SpatialSeries" in behavior_module.data_interfaces
 
-    def test_reference_frame_required(self):
-        """Test that reference_frame is required for SpatialSeries."""
-        num_channels = 2
-        sampling_frequency = 30.0
-        durations = [1.0]
-        recording = generate_recording(
-            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
-        )
-
-        nwbfile = mock_NWBFile()
-
-        with pytest.raises(ValueError, match="reference_frame is required"):
-            add_recording_as_spatial_series_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                # No reference_frame provided
-                iterator_type=None,
-            )
-
     def test_reference_frame_from_metadata(self):
         """Test that reference_frame can be provided via metadata."""
         num_channels = 2

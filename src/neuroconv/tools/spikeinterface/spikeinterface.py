@@ -1522,40 +1522,26 @@ def _add_spatial_series_segment_to_nwbfile(
     """
     See add_recording_as_spatial_series_to_nwbfile for details.
     """
-    from copy import deepcopy
-
-    from neuroconv.tools.nwb_helpers import DeepDict
-
     # Get default metadata from single source of truth
     default_metadata = _get_default_spatial_series_metadata()
     default_spatial_series = default_metadata["SpatialSeries"]
 
-    metadata = DeepDict() if metadata is None else metadata
-    metadata = deepcopy(metadata)
+    metadata = metadata if metadata is not None else {}
 
-    # Get spatial series name from metadata or use default
-    spatial_series_name = (
-        metadata.get("SpatialSeries", {}).get(metadata_key, {}).get("name", default_spatial_series["name"])
-    )
-    series_kwargs = dict(name=spatial_series_name)
+    # Get spatial series metadata or empty dict
+    spatial_series_metadata = metadata.get("SpatialSeries", {}).get(metadata_key, {})
 
-    # Apply metadata if available
-    if "SpatialSeries" in metadata and metadata_key in metadata["SpatialSeries"]:
-        spatial_series_metadata = metadata["SpatialSeries"][metadata_key]
-        series_kwargs.update(spatial_series_metadata)
+    # Build series_kwargs by starting with defaults and overlaying user metadata
+    series_kwargs = {
+        "name": spatial_series_metadata.get("name", default_spatial_series["name"]),
+        "description": spatial_series_metadata.get("description", default_spatial_series["description"]),
+        "unit": spatial_series_metadata.get("unit", default_spatial_series["unit"]),
+    }
 
-    # Apply defaults if not in metadata
-    if "description" not in series_kwargs:
-        series_kwargs["description"] = default_spatial_series["description"]
-    if "unit" not in series_kwargs:
-        series_kwargs["unit"] = default_spatial_series["unit"]
-
-    # Validate reference_frame (required for SpatialSeries)
-    if "reference_frame" not in series_kwargs:
-        raise ValueError(
-            f"reference_frame is required for SpatialSeries. "
-            f"Please provide it in metadata['SpatialSeries']['{metadata_key}']['reference_frame']."
-        )
+    # Add any additional fields from metadata (like reference_frame, comments, etc.)
+    for key, value in spatial_series_metadata.items():
+        if key not in series_kwargs:
+            series_kwargs[key] = value
 
     # If multiple segments, append index to name
     if recording.get_num_segments() > 1:
