@@ -153,8 +153,36 @@ Use ``recording.select_channels()`` to extract specific channels:
     # Select wheel encoder channel
     wheel_recording = full_recording.select_channels(channel_ids=['nidq#2'])
 
+Adding Data
+-----------
+
+Before adding behavioral and sensor data, you must have an in-memory NWBFile object.
+
+Creating an NWBFile
+~~~~~~~~~~~~~~~~~~~
+
+An NWBFile can be created using NeuroConv interfaces/converters (via :py:meth:`~neuroconv.basedatainterface.BaseDataInterface.create_nwbfile`
+or :py:meth:`~neuroconv.nwbconverter.NWBConverter.create_nwbfile`) or directly with PyNWB:
+
+.. code-block:: python
+
+    from pynwb import NWBFile
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from uuid import uuid4
+
+    nwbfile = NWBFile(
+        session_description="Spatial navigation task in open field",
+        identifier=str(uuid4()),  # Generate globally unique identifier
+        session_start_time=datetime(2025, 1, 15, 10, 30, 0, tzinfo=ZoneInfo("US/Pacific")),
+    )
+
+These three fields are required. The ``identifier`` must be globally unique - using :py:func:`uuid.uuid4` ensures this.
+
+Once you have an ``nwbfile`` object in-memory, you can add behavioral data using the methods below.
+
 Adding Data as TimeSeries
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Example: Adding a Wheel Encoder Signal (Neuralynx)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -195,7 +223,7 @@ Example: Adding a Wheel Encoder Signal (Neuralynx)
     )
 
 Adding Data as SpatialSeries
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Example: Adding 2D Position Tracking Data (Blackrock)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -301,10 +329,110 @@ to write the file to disk with optimized chunking and compression:
     configure_and_write_nwbfile(
         nwbfile=nwbfile,
         nwbfile_path=nwb_file_path,
+        backend="hdf5",  # or "zarr"
     )
 
 This method ensures that proper chunking and compression are applied to your data for efficient storage and access.
 For advanced control over chunking and compression settings, see the :doc:`Backend Configuration <../user_guide/backend_configuration>` guide.
+
+Understanding Metadata Structure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The metadata dictionaries passed to :py:func:`~neuroconv.tools.spikeinterface.add_recording_as_time_series_to_nwbfile`
+and :py:func:`~neuroconv.tools.spikeinterface.add_recording_as_spatial_series_to_nwbfile` follow a specific nested structure.
+
+Metadata Dictionary Structure
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Metadata is organized as nested dictionaries. The ``metadata_key`` parameter selects which nested dictionary to use:
+
+.. code-block:: python
+
+    # TimeSeries metadata structure
+    metadata = {
+        "TimeSeries": {                    # Top-level key: data type
+            "WheelEncoder": {              # metadata_key: identifies this specific data stream
+                "name": "TimeSeriesWheelEncoder",     # Required: unique object name in NWB file
+                "description": "Wheel encoder signal...",  # Required: detailed description
+                "unit": "degrees",         # Required: measurement unit
+                "comments": "Optional additional notes",  # Optional
+            }
+        }
+    }
+
+    # SpatialSeries metadata structure
+    metadata = {
+        "SpatialSeries": {                 # Top-level key: data type
+            "Position": {                  # metadata_key: identifies this specific data stream
+                "name": "SpatialSeriesPosition",  # Required: unique object name in NWB file
+                "description": "2D position tracking...",  # Required: detailed description
+                "unit": "meters",          # Required: measurement unit for spatial coordinates
+                "reference_frame": "Arena center (0,0), X-axis right, Y-axis forward",  # Required: coordinate system
+                "comments": "Optional notes",  # Optional
+            }
+        }
+    }
+
+Combining Metadata From Multiple Series
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When adding multiple data streams, combine them in a single metadata dictionary. The ``metadata_key`` parameter
+selects which stream's metadata to use for each function call:
+
+.. code-block:: python
+
+    # Metadata for multiple data streams
+    combined_metadata = {
+        "TimeSeries": {
+            "WheelSpeed": {
+                "name": "TimeSeriesWheelSpeed",  # Each TimeSeries must have unique name
+                "description": "Wheel rotation speed from optical encoder",
+                "unit": "degrees_per_second",
+            },
+            "LickSensor": {
+                "name": "TimeSeriesLickSensor",  # Different name from WheelSpeed
+                "description": "Lick detection from capacitive sensor",
+                "unit": "volts",
+            }
+        },
+        "SpatialSeries": {
+            "Position": {
+                "name": "SpatialSeriesPosition",  # Can reuse "Position" since it's in SpatialSeries
+                "description": "2D position from overhead camera",
+                "unit": "meters",
+                "reference_frame": "Arena center (0,0), X-axis right, Y-axis forward",
+            }
+        }
+    }
+
+    # Add each stream using metadata_key to select the appropriate metadata
+    add_recording_as_time_series_to_nwbfile(
+        recording=wheel_recording,
+        nwbfile=nwbfile,
+        metadata=combined_metadata,
+        metadata_key="WheelSpeed",  # Selects TimeSeries -> WheelSpeed metadata
+        write_as="acquisition",
+    )
+
+    add_recording_as_time_series_to_nwbfile(
+        recording=lick_recording,
+        nwbfile=nwbfile,
+        metadata=combined_metadata,
+        metadata_key="LickSensor",  # Selects TimeSeries -> LickSensor metadata
+        write_as="acquisition",
+    )
+
+    add_recording_as_spatial_series_to_nwbfile(
+        recording=position_recording,
+        nwbfile=nwbfile,
+        metadata=combined_metadata,
+        metadata_key="Position",  # Selects SpatialSeries -> Position metadata
+        write_as="acquisition",
+    )
+
+.. note::
+   All objects in an NWB file must have unique names. When adding multiple TimeSeries or SpatialSeries objects,
+   ensure each has a distinct ``name`` field to avoid conflicts.
 
 Complete Example: Intan Neural and Behavioral Data
 ---------------------------------------------------
@@ -428,6 +556,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
     configure_and_write_nwbfile(
         nwbfile=nwbfile,
         nwbfile_path=nwb_file_path,
+        backend="hdf5",  # or "zarr"
     )
 
 
