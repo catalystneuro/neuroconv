@@ -1425,7 +1425,7 @@ class TestAddTimeSeries:
 
 class TestAddSpatialSeries:
     def test_default_values_spatial_series(self):
-        """Test that default values are correctly set for generic SpatialSeries."""
+        """Test that default values are correctly set for SpatialSeries."""
         num_channels = 2  # x, y coordinates
         sampling_frequency = 30.0  # 30 Hz tracking
         durations = [1.0]  # 1 second
@@ -1435,10 +1435,12 @@ class TestAddSpatialSeries:
 
         nwbfile = mock_NWBFile()
 
+        metadata = {"SpatialSeries": {"reference_frame": "origin at top-left corner"}}
+
         add_recording_as_spatial_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
-            reference_frame="origin at top-left corner",
+            metadata=metadata,
             iterator_type=None,
         )
 
@@ -1455,8 +1457,8 @@ class TestAddSpatialSeries:
         assert spatial_series.reference_frame == "origin at top-left corner"
         assert spatial_series.unit == "meters"  # Default unit
 
-    def test_position_series_type(self):
-        """Test PositionSeries with custom metadata."""
+    def test_custom_metadata(self):
+        """Test SpatialSeries with custom metadata."""
         num_channels = 2
         sampling_frequency = 30.0
         durations = [1.0]
@@ -1467,7 +1469,7 @@ class TestAddSpatialSeries:
         nwbfile = mock_NWBFile()
 
         metadata = {
-            "PositionSeries": {
+            "SpatialSeries": {
                 "name": "position",
                 "description": "Animal position in 2D arena",
                 "reference_frame": "origin at top-left, x right, y down",
@@ -1479,7 +1481,6 @@ class TestAddSpatialSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            spatial_series_type="PositionSeries",
             iterator_type=None,
         )
 
@@ -1488,60 +1489,6 @@ class TestAddSpatialSeries:
         assert position_series.description == "Animal position in 2D arena"
         assert position_series.unit == "centimeters"
         assert position_series.reference_frame == "origin at top-left, x right, y down"
-
-    def test_compass_direction_series_type(self):
-        """Test CompassDirectionSeries with appropriate defaults."""
-        num_channels = 1  # Single theta value
-        sampling_frequency = 30.0
-        durations = [1.0]
-        recording = generate_recording(
-            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
-        )
-
-        nwbfile = mock_NWBFile()
-
-        add_recording_as_spatial_series_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            reference_frame="0 radians is North, clockwise rotation",
-            spatial_series_type="CompassDirectionSeries",
-            iterator_type=None,
-        )
-
-        assert "CompassDirectionSeries" in nwbfile.acquisition
-        compass_series = nwbfile.acquisition["CompassDirectionSeries"]
-        assert compass_series.unit == "radians"  # Default for compass
-        assert compass_series.reference_frame == "0 radians is North, clockwise rotation"
-
-    def test_eye_tracking_series_type(self):
-        """Test EyeTrackingSeries with degrees unit."""
-        num_channels = 2  # x, y gaze angles
-        sampling_frequency = 60.0  # 60 Hz eye tracking
-        durations = [1.0]
-        recording = generate_recording(
-            sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
-        )
-
-        nwbfile = mock_NWBFile()
-
-        metadata = {
-            "EyeTrackingSeries": {
-                "reference_frame": "origin at center of screen, positive x right, positive y up",
-            }
-        }
-
-        add_recording_as_spatial_series_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            spatial_series_type="EyeTrackingSeries",
-            iterator_type=None,
-        )
-
-        assert "EyeTrackingSeries" in nwbfile.acquisition
-        eye_series = nwbfile.acquisition["EyeTrackingSeries"]
-        assert eye_series.unit == "degrees"  # Default for eye tracking
-        assert "center of screen" in eye_series.reference_frame
 
     def test_write_to_processing_module(self):
         """Test writing spatial series to processing module instead of acquisition."""
@@ -1554,10 +1501,12 @@ class TestAddSpatialSeries:
 
         nwbfile = mock_NWBFile()
 
+        metadata = {"SpatialSeries": {"reference_frame": "test reference frame"}}
+
         add_recording_as_spatial_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
-            reference_frame="test reference frame",
+            metadata=metadata,
             write_as="processing",
             iterator_type=None,
         )

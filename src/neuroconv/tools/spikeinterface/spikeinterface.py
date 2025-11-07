@@ -140,36 +140,13 @@ def _add_spatial_series_segment_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     segment_index: int,
     series_kwargs: dict,
-    spatial_series_type: str | None,
     write_as: Literal["acquisition", "processing"],
     iterator_type: str | None,
     iterator_options: dict | None,
     always_write_timestamps: bool,
 ):
     """
-    Add a single segment of a recording as a spatial series to an NWBFile.
-
-    Parameters
-    ----------
-    recording : BaseRecording
-        A recording extractor from spikeinterface containing behavioral tracking data.
-    nwbfile : NWBFile
-        NWB file to which the spatial series information is to be added.
-    segment_index : int
-        The segment index to add.
-    series_kwargs : dict
-        Dictionary of keyword arguments to pass to the series constructor.
-        Should include: name, description, unit, and optionally reference_frame.
-    spatial_series_type : str or None
-        The specific type of series to create. Determines which pynwb class to use.
-    write_as : {'acquisition', 'processing'}
-        Where to save the spatial series data.
-    iterator_type : str or None
-        The type of DataChunkIterator to use.
-    iterator_options : dict or None
-        Dictionary of options for the iterator.
-    always_write_timestamps : bool
-        Set to True to always write timestamps explicitly.
+    See add_recording_as_spatial_series_to_nwbfile for details.
     """
     # Create a copy of kwargs for this segment
     segment_kwargs = series_kwargs.copy()
@@ -211,17 +188,8 @@ def _add_spatial_series_segment_to_nwbfile(
         else:
             segment_kwargs["timestamps"] = timestamps
 
-    # Determine which pynwb class to use
-    # Note: Until specialized types are added to pynwb, we use base classes with naming conventions
-    if spatial_series_type == "PupilTrackingSeries":
-        series_class = pynwb.TimeSeries
-    else:
-        # All spatial types currently use SpatialSeries
-        # When specialized types are added to pynwb, update this logic
-        series_class = pynwb.behavior.SpatialSeries
-
-    # Create the series instance
-    spatial_series = series_class(**segment_kwargs)
+    # Create the SpatialSeries instance
+    spatial_series = pynwb.behavior.SpatialSeries(**segment_kwargs)
 
     # Add to nwbfile
     if write_as == "acquisition":
@@ -240,18 +208,13 @@ def add_recording_as_spatial_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
-    reference_frame: str | None = None,
-    spatial_series_type: (
-        Literal["SpatialSeries", "PositionSeries", "CompassDirectionSeries", "EyeTrackingSeries", "PupilTrackingSeries"]
-        | None
-    ) = None,
     write_as: Literal["acquisition", "processing"] = "acquisition",
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
 ):
     """
-    Adds traces from recording object as SpatialSeries (or specialized subtype) to an NWBFile object.
+    Adds traces from recording object as SpatialSeries to an NWBFile object.
 
     This function is designed for behavioral tracking data where the recording represents spatial
     or directional information (e.g., position, head direction, gaze tracking).
@@ -273,28 +236,6 @@ def add_recording_as_spatial_series_to_nwbfile(
                 unit='meters'
             )
 
-        Or for specialized types::
-
-            metadata['PositionSeries'] = dict(
-                name='position',
-                description='Animal position in 2D arena',
-                reference_frame='origin at top-left corner...',
-                unit='meters'
-            )
-
-    reference_frame : str, optional
-        Description defining the reference frame for the spatial data.
-        For position: describes the zero-position and axis orientation.
-        For compass direction: describes what direction corresponds to 0 degrees/radians.
-        For eye tracking: describes what 'straight-ahead' means.
-        If not provided, must be specified in metadata.
-    spatial_series_type : {'SpatialSeries', 'PositionSeries', 'CompassDirectionSeries', 'EyeTrackingSeries', 'PupilTrackingSeries'}, optional
-        The specific type of series to create. If None, uses generic SpatialSeries.
-        - 'SpatialSeries': Generic spatial/directional data
-        - 'PositionSeries': Spatial position tracking (1D, 2D, or 3D coordinates)
-        - 'CompassDirectionSeries': Directional heading (theta angles)
-        - 'EyeTrackingSeries': Gaze direction tracking
-        - 'PupilTrackingSeries': Pupil size/diameter (uses TimeSeries, not SpatialSeries)
     write_as : {'acquisition', 'processing'}, default: 'acquisition'
         Where to save the spatial series data:
         - 'acquisition': Save in nwbfile.acquisition
@@ -302,7 +243,7 @@ def add_recording_as_spatial_series_to_nwbfile(
     iterator_type : {"v2", None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator.
-        None: write the TimeSeries with no memory chunking.
+        None: write the SpatialSeries with no memory chunking.
     iterator_options : dict, optional
         Dictionary of options for the iterator.
     always_write_timestamps : bool, default: False
@@ -310,102 +251,36 @@ def add_recording_as_spatial_series_to_nwbfile(
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
 
-    Notes
-    -----
-    This function is designed for behavioral tracking data, not electrophysiology.
-    For neural recordings, use `add_recording_to_nwbfile` instead.
-
-    Examples
-    --------
-    >>> # Add position tracking data
-    >>> metadata = {
-    ...     'PositionSeries': {
-    ...         'name': 'position',
-    ...         'description': 'Animal position in 2D arena',
-    ...         'reference_frame': 'origin at top-left corner, x right, y down',
-    ...         'unit': 'meters'
-    ...     }
-    ... }
-    >>> add_recording_as_spatial_series_to_nwbfile(
-    ...     recording=position_recording,
-    ...     nwbfile=nwbfile,
-    ...     metadata=metadata,
-    ...     spatial_series_type='PositionSeries'
-    ... )
     """
-    # Validate spatial_series_type
-    valid_types = [
-        "SpatialSeries",
-        "PositionSeries",
-        "CompassDirectionSeries",
-        "EyeTrackingSeries",
-        "PupilTrackingSeries",
-    ]
-    if spatial_series_type is not None and spatial_series_type not in valid_types:
-        raise ValueError(
-            f"spatial_series_type '{spatial_series_type}' is not recognized. " f"Valid options are: {valid_types}"
-        )
-
     # Validate write_as parameter
     if write_as not in ["acquisition", "processing"]:
         raise ValueError(f"write_as must be 'acquisition' or 'processing', got '{write_as}'")
 
-    # Determine the metadata key based on spatial_series_type
-    if spatial_series_type is None:
-        metadata_key = "SpatialSeries"
-    else:
-        metadata_key = spatial_series_type
-
     # Set default metadata structure
     if metadata is None:
-        metadata = {metadata_key: {}}
-    elif metadata_key not in metadata:
-        metadata[metadata_key] = {}
-
-    # Set default name and description based on type
-    type_to_defaults = {
-        "SpatialSeries": ("SpatialSeries", "Spatial or directional data"),
-        "PositionSeries": ("PositionSeries", "Position data"),
-        "CompassDirectionSeries": ("CompassDirectionSeries", "Directional heading data"),
-        "EyeTrackingSeries": ("EyeTrackingSeries", "Eye tracking data"),
-        "PupilTrackingSeries": ("PupilTrackingSeries", "Pupil size data"),
-    }
-    default_name, default_description = type_to_defaults.get(
-        metadata_key, ("SpatialSeries", "Spatial or directional data")
-    )
+        metadata = {"SpatialSeries": {}}
+    elif "SpatialSeries" not in metadata:
+        metadata["SpatialSeries"] = {}
 
     # Build series kwargs from metadata with defaults
     series_kwargs = dict(
-        name=metadata[metadata_key].get("name", default_name),
-        description=metadata[metadata_key].get("description", default_description),
+        name=metadata["SpatialSeries"].get("name", "SpatialSeries"),
+        description=metadata["SpatialSeries"].get("description", "Spatial or directional data"),
+        unit=metadata["SpatialSeries"].get("unit", "meters"),
     )
 
-    # Add unit with appropriate default based on series type
-    default_units = {
-        "SpatialSeries": "meters",
-        "PositionSeries": "meters",
-        "CompassDirectionSeries": "radians",
-        "EyeTrackingSeries": "degrees",
-        "PupilTrackingSeries": "millimeters",
-    }
-    series_kwargs["unit"] = metadata[metadata_key].get("unit", default_units.get(metadata_key, "meters"))
-
-    # Handle reference_frame (required for SpatialSeries and subclasses, but not for PupilTrackingSeries)
-    if metadata_key != "PupilTrackingSeries":
-        if reference_frame is not None:
-            series_kwargs["reference_frame"] = reference_frame
-        elif "reference_frame" in metadata[metadata_key]:
-            series_kwargs["reference_frame"] = metadata[metadata_key]["reference_frame"]
-        else:
-            raise ValueError(
-                f"reference_frame is required for {metadata_key}. "
-                "Provide it either as a function parameter or in the metadata dictionary."
-            )
+    # Handle reference_frame (required for SpatialSeries)
+    if "reference_frame" not in metadata["SpatialSeries"]:
+        raise ValueError(
+            "reference_frame is required for SpatialSeries. "
+            "Please provide it in metadata['SpatialSeries']['reference_frame']."
+        )
+    series_kwargs["reference_frame"] = metadata["SpatialSeries"]["reference_frame"]
 
     # Add any additional metadata fields
     for key in ["comments", "control", "control_description"]:
-        if key in metadata[metadata_key]:
-            series_kwargs[key] = metadata[metadata_key][key]
+        if key in metadata["SpatialSeries"]:
+            series_kwargs[key] = metadata["SpatialSeries"][key]
 
     # Handle multiple segments
     number_of_segments = recording.get_num_segments()
@@ -415,7 +290,6 @@ def add_recording_as_spatial_series_to_nwbfile(
             nwbfile=nwbfile,
             segment_index=segment_index,
             series_kwargs=series_kwargs,
-            spatial_series_type=spatial_series_type,
             write_as=write_as,
             iterator_type=iterator_type,
             iterator_options=iterator_options,

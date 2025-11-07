@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Added `add_recording_as_spatial_series_to_nwbfile` function to write SpikeInterface recordings as `SpatialSeries` for behavioral tracking data (e.g., position, head direction, gaze tracking). [PR #1573](https://github.com/catalystneuro/neuroconv/pull/1573)
 
 ## Improvements
 
