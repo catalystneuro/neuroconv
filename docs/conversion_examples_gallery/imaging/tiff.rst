@@ -10,8 +10,8 @@ Install NeuroConv with the additional dependencies necessary for reading TIFF da
 Convert TIFF imaging data to NWB using
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
 
-Basic single-file TIFF conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Single File, Planar and Single-Channel TIFF conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -20,8 +20,9 @@ Basic single-file TIFF conversion
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import TiffImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"
-    >>> interface = TiffImagingInterface(file_path=file_path, sampling_frequency=15.0, verbose=False)
+    >>> # Single TIFF file
+    >>> file_paths = [OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"]
+    >>> interface = TiffImagingInterface(file_paths=file_paths, sampling_frequency=15.0, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -32,39 +33,66 @@ Basic single-file TIFF conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-Multi-file TIFF conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+By default, the :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`
+assumes that the data is single-channel and planar (i.e., non-volumetric). In terms of data layout,
+this means the TIFF pages represent successive frames over time for a single channel.
 
-The interface also supports multi-file TIFF datasets with configurable dimension orders and multi-channel data:
+For multi-channel and/or volumetric data, you can specify the number of channels and number of planes.
+However, this introduces a question about the data layout: how do the TIFF pages correspond to channels,
+planes, and timepoints? To specify this information, the interface relies on the concept of dimension
+order from the `OME-TIFF specification <https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html#dimensionorder>`_.
+
+The dimension order uses three letters:
+
+* **Z**: Depth plane (z-axis position in volumetric imaging)
+* **C**: Channel (e.g., different fluorophores or wavelengths)
+* **T**: Time (or acquisition cycles)
+
+The order indicates which dimension varies **fastest** (leftmost) to **slowest** (rightmost) when
+reading frames sequentially from the TIFF file. The key principle is that the leftmost dimension
+changes most frequently between consecutive frames.
+
+For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, TZC) with example
+sequences and use cases, see the
+:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
+
+Multi-channel multi-file TIFF conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For multi-channel and/or multi-plane data split across multiple files, you specify the dimension order,
+number of channels, which channel to extract, and number of planes:
 
 .. code-block:: python
 
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import TiffImagingInterface
     >>>
+    >>> # Multi-file TIFF dataset with 2 channels and 5 z-planes
     >>> file_paths = [
-    >>>     "path/to/file_001.tif",
-    >>>     "path/to/file_002.tif",
-    >>>     "path/to/file_003.tif",
-    >>> ]
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00002.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00003.tif",
+    ... ]
     >>> interface = TiffImagingInterface(
-    >>>     file_paths=file_paths,
-    >>>     sampling_frequency=30.0,
-    >>>     dimension_order="CZT",  # Channel, Z-plane, Time
-    >>>     num_channels=2,
-    >>>     channel_name="0",  # Extract channel 0
-    >>> )
+    ...     file_paths=file_paths,
+    ...     sampling_frequency=30.0,
+    ...     dimension_order="CZT",  # Channels vary fastest, then Z-planes, then time
+    ...     num_channels=2,
+    ...     channel_name="0",       # Extract channel 0
+    ...     num_planes=5,           # 5 z-planes per volume
+    ...     verbose=False,
+    ... )
+    >>>
+    >>> metadata = interface.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>>
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-Advanced parameters
-^^^^^^^^^^^^^^^^^^^
-
-The interface supports several parameters for handling complex TIFF data:
-
-* ``dimension_order``: Specify how dimensions are organized in the TIFF file (default: "ZCT")
-
-  - "ZCT": Z-planes, Channels, Time
-  - "CZT": Channels, Z-planes, Time
-  - Other combinations are supported
-
-* ``num_channels``: Number of color channels in the TIFF file (default: 1)
-* ``channel_name``: Name of the channel to extract (e.g., "0", "1"). Required when num_channels > 1. Channel names are string representations of indices: "0", "1", "2", etc.
-* ``num_planes``: Number of z-planes per volume for volumetric data (default: 1)
+**Important**: When using multiple files, TIFF pages are assumed to continue **contiguously** across files
+following the same dimension order. For example, if your dimension order is "CZT" and the first file ends
+at page 23, the first page of the second file is treated as page 24 in the same acquisition sequence.
+This is common when microscope software splits large acquisitions across multiple files to avoid file size limits.
