@@ -123,13 +123,13 @@
   font-weight: 700;
   text-align: center;
   font-size: 1.1rem;
-  color: #212529;
-  background: #ffffff;
-  border: 1px solid #dee2e6;
-  padding: 6px 12px;
+  color: #000000;
+  background: #f8f9fa;
+  border: 2px solid #495057;
+  padding: 8px 12px;
   border-radius: 4px;
   min-width: 2.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 .frame-cell {
   position: absolute;
