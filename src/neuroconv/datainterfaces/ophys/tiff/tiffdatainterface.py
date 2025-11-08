@@ -61,7 +61,6 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         Parameters
         ----------
         file_path : FilePath, optional
-            .. deprecated:: 0.6.2
                 Use `file_paths` instead. Will be removed in April 2026 or later.
             Path to a single TIFF file. Either file_path or file_paths must be specified.
         file_paths : list[FilePath], optional
