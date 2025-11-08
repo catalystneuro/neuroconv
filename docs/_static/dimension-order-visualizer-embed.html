@@ -14,7 +14,7 @@
     const cSize = 2;
     const tSize = 4;
 
-    const channelColors = ['#4ecdc4', '#ff6b6b'];
+    const channelColors = ['#0B7FBF', '#FF8C42'];
     const channelNames = ['0', '1'];
 
     React.useEffect(() => {
@@ -55,16 +55,6 @@
     const frameSize = 60;
     const xSpacing = 70;
 
-    const [visibleFrames, setVisibleFrames] = React.useState(8);
-    const [startFrame, setStartFrame] = React.useState(0);
-
-    const handleSliderChange = (e) => {
-      setStartFrame(parseInt(e.target.value, 10));
-    };
-
-    const maxStartFrame = Math.max(0, sequence.length - visibleFrames);
-    const visibleSequence = sequence.slice(startFrame, startFrame + visibleFrames);
-
     const getDescription = (order) => {
       const descriptions = {
         'ZTC': 'This pattern completes all Z-planes for one timepoint, then moves to the next timepoint, and finally switches to the next channel. This minimizes channel switching during a complete time series.',
@@ -96,40 +86,11 @@
           </div>
         </div>
 
-        <div className="info-box">
-          <h3>How to Read This Visualization</h3>
-          <p><strong>Z-axis (depth):</strong> Vertical position (3 planes)</p>
-          <p><strong>Sample order:</strong> Left to right progression</p>
-          <p><strong>Channel:</strong> Color of the squares</p>
-          <div className="channel-legend">
-            {channelNames.map((name, i) => (
-              <div key={i} className="channel-item">
-                <div className="channel-color" style={{backgroundColor: channelColors[i]}}></div>
-                <span>Channel {i}</span>
-              </div>
-            ))}
-          </div>
-          <p><strong>Timepoints:</strong> T0-T3 (shown in bottom right of each square)</p>
-        </div>
-
         <div className="viz-section">
           <h3>Acquisition Sequence: {dimensionOrder}</h3>
 
           <div className="description">
             {getDescription(dimensionOrder)}
-          </div>
-
-          <div className="slider-container">
-            <label>
-              Frame Range (showing {startFrame+1}-{Math.min(startFrame+visibleFrames, sequence.length)} of {sequence.length}):
-            </label>
-            <input
-              type="range"
-              min="0"
-              max={maxStartFrame}
-              value={startFrame}
-              onChange={handleSliderChange}
-            />
           </div>
 
           <div className="frame-display">
@@ -149,13 +110,13 @@
                       transform: 'translateY(-50%)'
                     }}
                   >
-                    {z}
+                    Z{z}
                   </div>
                 ))}
 
-                {visibleSequence.map((frame, i) => (
+                {sequence.map((frame, i) => (
                   <div
-                    key={startFrame + i}
+                    key={i}
                     className="frame-cell"
                     style={{
                       backgroundColor: channelColors[frame.c],
@@ -167,7 +128,7 @@
                       top: `${(zSize - 1 - frame.z) * (frameSize + 30)}px`,
                     }}
                   >
-                    <div>{startFrame + i + 1}</div>
+                    <div>{i + 1}</div>
                     <div className="timepoint-label">
                       T{frame.t}
                     </div>
