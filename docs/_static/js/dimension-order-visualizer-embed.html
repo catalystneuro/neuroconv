@@ -100,18 +100,6 @@
             <div className="frame-grid-container">
               <div className="frame-grid-header">Acquisition Order</div>
               <div className="frame-grid">
-                {Array.from({length: zSize}).map((_, z) =>
-                  React.createElement('div', {
-                    key: z,
-                    className: 'z-label',
-                    style: {
-                      left: '-45px',
-                      top: `${(zSize - 1 - z) * (frameSize + 30) + frameSize/2}px`,
-                      transform: 'translateY(-50%)'
-                    }
-                  }, 'Z' + z)
-                )}
-
                 {sequence.map((frame, i) => (
                   <div
                     key={i}
