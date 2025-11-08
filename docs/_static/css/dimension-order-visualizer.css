@@ -88,9 +88,10 @@
 .depth-label-container {
   width: 100px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   position: relative;
+  padding-top: 6rem;
 }
 .depth-label-text {
   writing-mode: vertical-rl;
@@ -130,6 +131,10 @@
   border-radius: 4px;
   min-width: 2.5rem;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .frame-cell {
   position: absolute;
