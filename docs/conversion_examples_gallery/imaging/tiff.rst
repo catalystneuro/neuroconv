@@ -60,7 +60,7 @@ Interactive Dimension Order Visualizer
 """""""""""""""""""""""""""""""""""""""
 
 .. raw:: html
-   :file: ../../_static/dimension-order-visualizer.html
+   :file: ../../_static/dimension-order-visualizer-embed.html
 
 |
 
