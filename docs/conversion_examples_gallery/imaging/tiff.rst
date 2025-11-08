@@ -56,9 +56,6 @@ For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, 
 sequences and use cases, see the
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
 
-Interactive Dimension Order Visualizer
-"""""""""""""""""""""""""""""""""""""""
-
 .. raw:: html
    :file: ../../_static/dimension-order-visualizer-embed.html
 
