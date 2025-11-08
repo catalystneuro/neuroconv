@@ -125,17 +125,19 @@
   position: relative;
   min-height: 400px;
   padding-top: 3rem;
-  padding-left: 5rem;
+  padding-left: 6rem;
 }
 .z-label {
   position: absolute;
   font-weight: 600;
   text-align: right;
-  padding-right: 1rem;
+  padding-right: 0.75rem;
   font-size: 1rem;
-  background: rgba(255,255,255,0.9);
-  padding: 2px 8px;
+  color: #495057;
+  background: rgba(255,255,255,0.95);
+  padding: 4px 10px;
   border-radius: 3px;
+  min-width: 2rem;
 }
 .frame-cell {
   position: absolute;
