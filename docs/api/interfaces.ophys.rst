@@ -44,7 +44,6 @@ ScanImage Imaging
 Tiff Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.tiff.tiffdatainterface
-    :exclude-members: get_available_channels
 
 
 Segmentation

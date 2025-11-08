@@ -47,6 +47,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         file_path: Optional[FilePath] = None,
         file_paths: Optional[list[FilePath]] = None,
         sampling_frequency: float = None,
+        *,
         dimension_order: str = "ZCT",
         num_channels: int = 1,
         channel_name: Optional[str] = None,
@@ -60,6 +61,8 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         Parameters
         ----------
         file_path : FilePath, optional
+            .. deprecated:: 0.6.2
+                Use `file_paths` instead. Will be removed in April 2026 or later.
             Path to a single TIFF file. Either file_path or file_paths must be specified.
         file_paths : list[FilePath], optional
             List of paths to TIFF files. Either file_path or file_paths must be specified.
@@ -166,11 +169,19 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
             All dimension orders → T: Simple planar time series (all orderings equivalent)
         """
+        import warnings
+
         # Handle both file_path and file_paths
         if file_path is not None and file_paths is not None:
             raise ValueError("Cannot specify both 'file_path' and 'file_paths'. Please use one or the other.")
 
         if file_path is not None:
+            warnings.warn(
+                "The 'file_path' parameter is deprecated and will be removed in April 2026 or later. "
+                "Use 'file_paths' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             file_paths = [file_path]
 
         if file_paths is None:
