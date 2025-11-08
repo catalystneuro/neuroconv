@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dimension Order Visualizer</title>
+  <link rel="stylesheet" href="css/dimension-order-visualizer.css">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const DimensionOrderVisualizer = () => {
+      const [dimensionOrder, setDimensionOrder] = React.useState('ZCT');
+      const [sequence, setSequence] = React.useState([]);
+
+      const zSize = 3;
+      const cSize = 2;
+      const tSize = 4;
+
+      const channelColors = ['#4ecdc4', '#ff6b6b'];
+      const channelNames = ['0', '1'];
+
+      React.useEffect(() => {
+        const generateSequence = () => {
+          let result = [];
+          const order = dimensionOrder.split('');
+          const loopOrder = [...order].reverse();
+          let index = 0;
+
+          const generateFrames = (indices = {}, level = 0) => {
+            if (level === order.length) {
+              result.push({
+                z: indices.Z,
+                c: indices.C,
+                t: indices.T,
+                index: index++
+              });
+              return;
+            }
+
+            const dimension = loopOrder[level];
+            const size = dimension === 'Z' ? zSize : dimension === 'C' ? cSize : tSize;
+
+            for (let i = 0; i < size; i++) {
+              const newIndices = { ...indices };
+              newIndices[dimension] = i;
+              generateFrames(newIndices, level + 1);
+            }
+          };
+
+          generateFrames();
+          return result;
+        };
+
+        setSequence(generateSequence());
+      }, [dimensionOrder]);
+
+      const frameSize = 60;
+      const xSpacing = 70;
+
+      const [visibleFrames, setVisibleFrames] = React.useState(8);
+      const [startFrame, setStartFrame] = React.useState(0);
+
+      const handleSliderChange = (e) => {
+        setStartFrame(parseInt(e.target.value, 10));
+      };
+
+      const maxStartFrame = Math.max(0, sequence.length - visibleFrames);
+      const visibleSequence = sequence.slice(startFrame, startFrame + visibleFrames);
+
+      const getDescription = (order) => {
+        const descriptions = {
+          'ZTC': 'This pattern completes all Z-planes for one timepoint, then moves to the next timepoint, and finally switches to the next channel. This minimizes channel switching during a complete time series.',
+          'ZCT': 'This pattern completes all Z-planes for one channel, then switches to the next channel, and finally moves to the next timepoint. This minimizes timepoint switching for each volume.',
+          'TZC': 'This pattern completes all timepoints for one Z-plane, then moves to the next Z-plane, and finally switches to the next channel. This optimizes for time series at each depth.',
+          'TCZ': 'This pattern completes all timepoints for one channel, then switches to the next channel, and finally changes Z-planes. This prioritizes temporal resolution over volumetric data.',
+          'CZT': 'This pattern completes all channels for one Z-plane, then moves to the next Z-plane, and finally advances to the next timepoint. This minimizes channel switching at each depth.',
+          'CTZ': 'This pattern completes all channels for one timepoint, then moves to the next timepoint, and finally changes Z-planes. This optimizes for multichannel acquisition at each timepoint.'
+        };
+        return descriptions[order] || '';
+      };
+
+      return (
+        <div className="visualizer-container">
+          <h2 style={{textAlign: 'center', marginBottom: '1.5rem'}}>Microscopy Dimension Order Visualizer</h2>
+
+          <div className="dimension-selector">
+            <label>Dimension Order:</label>
+            <div className="button-group">
+              {['ZTC', 'ZCT', 'TZC', 'TCZ', 'CZT', 'CTZ'].map(order => (
+                <button
+                  key={order}
+                  onClick={() => setDimensionOrder(order)}
+                  className={`order-button ${dimensionOrder === order ? 'active' : ''}`}
+                >
+                  {order}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="info-box">
+            <h3>How to Read This Visualization</h3>
+            <p><strong>Z-axis (depth):</strong> Vertical position (3 planes)</p>
+            <p><strong>Sample order:</strong> Left to right progression</p>
+            <p><strong>Channel:</strong> Color of the squares</p>
+            <div className="channel-legend">
+              {channelNames.map((name, i) => (
+                <div key={i} className="channel-item">
+                  <div className="channel-color" style={{backgroundColor: channelColors[i]}}></div>
+                  <span>Channel {i}</span>
+                </div>
+              ))}
+            </div>
+            <p><strong>Timepoints:</strong> T0-T3 (shown in bottom right of each square)</p>
+          </div>
+
+          <div className="viz-section">
+            <h3>Acquisition Sequence: {dimensionOrder}</h3>
+
+            <div className="description">
+              {getDescription(dimensionOrder)}
+            </div>
+
+            <div className="slider-container">
+              <label>
+                Frame Range (showing {startFrame+1}-{Math.min(startFrame+visibleFrames, sequence.length)} of {sequence.length}):
+              </label>
+              <input
+                type="range"
+                min="0"
+                max={maxStartFrame}
+                value={startFrame}
+                onChange={handleSliderChange}
+              />
+            </div>
+
+            <div className="frame-display">
+              <div className="depth-label-container">
+                <span className="depth-label-text">Depth</span>
+              </div>
+              <div className="frame-grid-container">
+                <div className="frame-grid-header">Acquisition Order</div>
+                <div className="frame-grid">
+                  {Array.from({length: zSize}).map((_, z) => (
+                    <div
+                      key={z}
+                      className="z-label"
+                      style={{
+                        left: '-20px',
+                        top: `${(zSize - 1 - z) * (frameSize + 30) + frameSize/2}px`,
+                        transform: 'translateY(-50%)'
+                      }}
+                    >
+                      Z{z}
+                    </div>
+                  ))}
+
+                  {visibleSequence.map((frame, i) => (
+                    <div
+                      key={startFrame + i}
+                      className="frame-cell"
+                      style={{
+                        backgroundColor: channelColors[frame.c],
+                        width: frameSize,
+                        height: frameSize,
+                        color: frame.c === 0 ? 'black' : 'white',
+                        fontSize: frameSize * 0.3,
+                        left: `${(i + 1) * xSpacing}px`,
+                        top: `${(zSize - 1 - frame.z) * (frameSize + 30)}px`,
+                      }}
+                    >
+                      <div>{startFrame + i + 1}</div>
+                      <div className="timepoint-label">
+                        T{frame.t}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3>Acquisition Sequence</h3>
+              <div className="sequence-table-container">
+                <table className="sequence-table">
+                  <thead>
+                    <tr>
+                      <th>IFD #</th>
+                      <th>Frame</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sequence.map((frame, i) => (
+                      <tr key={i}>
+                        <td style={{fontWeight: '600'}}>{i+1}</td>
+                        <td>
+                          <span
+                            className="frame-indicator"
+                            style={{backgroundColor: channelColors[frame.c]}}
+                          ></span>
+                          Z{frame.z}-C{frame.c}-T{frame.t}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DimensionOrderVisualizer />);
+  </script>
+</body>
+</html>
