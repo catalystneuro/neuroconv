@@ -35,10 +35,11 @@ Single File, Planar and Single-Channel TIFF conversion
 
 By default, the :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`
 assumes that the data is single-channel and planar (i.e., non-volumetric). In terms of data layout,
-this means the TIFF pages represent successive frames over time for a single channel.
+this means each acquired image is stored as a separate **frame** (also called a page or IFD in TIFF
+terminology), representing successive timepoints for a single channel.
 
 For multi-channel and/or volumetric data, you can specify the number of channels and number of planes.
-However, this introduces a question about the data layout: how do the TIFF pages correspond to channels,
+However, this introduces a question about the data layout: how do the sequential frames correspond to channels,
 planes, and timepoints? To specify this information, the interface relies on the concept of dimension
 order from the `OME-TIFF specification <https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html#dimensionorder>`_.
 
@@ -97,7 +98,12 @@ number of channels, which channel to extract, and number of planes:
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Important**: When using multiple files, TIFF pages are assumed to continue **contiguously** across files
+**Important**: When using multiple files, frames are assumed to continue **contiguously** across files
 following the same dimension order. For example, if your dimension order is "CZT" and the first file ends
-at page 23, the first page of the second file is treated as page 24 in the same acquisition sequence.
+at frame 23, the first frame of the second file is treated as frame 24 in the same acquisition sequence.
 This is common when microscope software splits large acquisitions across multiple files to avoid file size limits.
+
+.. note::
+   **Terminology**: In this documentation, we use "frame" to refer to each acquired image in the TIFF file.
+   This is equivalent to an **IFD (Image File Directory)** in the TIFF specification, or a **page** in
+   common TIFF libraries like tifffile.

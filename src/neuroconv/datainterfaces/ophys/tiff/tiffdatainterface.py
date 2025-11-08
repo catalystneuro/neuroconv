@@ -88,6 +88,19 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
         Notes
         -----
+        TIFF Frame Terminology
+        ----------------------
+        In this documentation, we use "frame" to refer to each acquired image stored in the TIFF file.
+        This is equivalent to:
+
+        - **IFD (Image File Directory)** in the TIFF specification - the data structure containing
+          metadata and image data for one image
+        - **Page** in common TIFF libraries like tifffile - a single image within a multi-page TIFF
+
+        Each frame represents one 2D image acquisition at a specific combination of depth (Z), channel (C),
+        and timepoint (T). The dimension order determines the sequence in which frames are acquired and
+        stored in the file.
+
         Dimension Order Notes
         ---------------------
         This class follows a subset of the OME-TIFF dimension order specification, focusing on
