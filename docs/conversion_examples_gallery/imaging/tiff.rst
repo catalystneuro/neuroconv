@@ -57,7 +57,7 @@ sequences and use cases, see the
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
 
 .. raw:: html
-   :file: ../../_static/dimension-order-visualizer-embed.html
+   :file: ../../_static/js/dimension-order-visualizer-embed.html
 
 |
 
