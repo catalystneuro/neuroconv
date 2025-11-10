@@ -142,7 +142,7 @@ def get_default_dataset_io_configurations(
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
                     neurodata_object=column, dataset_name=dataset_name, builder=builder
                 )
 
@@ -176,7 +176,7 @@ def get_default_dataset_io_configurations(
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
                     neurodata_object=neurodata_object, dataset_name=known_dataset_field, builder=builder
                 )
 
