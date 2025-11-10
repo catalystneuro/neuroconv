@@ -4,7 +4,6 @@ from typing import Any, Literal
 
 import h5py
 from hdmf import Container
-from hdmf.build.builders import BaseBuilder
 from pydantic import Field, InstanceOf
 from typing_extensions import Self
 
@@ -99,18 +98,26 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
         return dict(chunks=self.chunk_shape, **compression_bundle)
 
     @classmethod
-    def from_neurodata_object(
+    def from_neurodata_object_with_existing(
         cls,
         neurodata_object: Container,
         dataset_name: Literal["data", "timestamps"],
-        builder: BaseBuilder | None = None,
-        use_default_dataset_io_configuration: bool = True,
     ) -> Self:
-        if use_default_dataset_io_configuration:
-            return super().from_neurodata_object(
-                neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
-            )
+        """
+        Construct an HDF5DatasetIOConfiguration from existing dataset settings.
 
+        Parameters
+        ----------
+        neurodata_object : hdmf.Container
+            The neurodata object containing the field that has been read from disk.
+        dataset_name : "data" or "timestamps"
+            The name of the field that corresponds to the dataset on disk.
+
+        Returns
+        -------
+        Self
+            An HDF5DatasetIOConfiguration instance with settings matching the existing dataset.
+        """
         kwargs = cls.get_kwargs_from_neurodata_object(
             neurodata_object=neurodata_object,
             dataset_name=dataset_name,

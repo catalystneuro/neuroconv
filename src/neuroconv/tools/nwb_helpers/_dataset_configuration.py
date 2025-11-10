@@ -232,10 +232,9 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_existing(
                     neurodata_object=column,
                     dataset_name=dataset_name,
-                    use_default_dataset_io_configuration=False,
                 )
 
                 yield dataset_io_configuration
@@ -253,10 +252,9 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_existing(
                     neurodata_object=neurodata_object,
                     dataset_name=known_dataset_field,
-                    use_default_dataset_io_configuration=False,
                 )
 
                 yield dataset_io_configuration

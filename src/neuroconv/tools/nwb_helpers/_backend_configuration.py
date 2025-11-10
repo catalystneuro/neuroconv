@@ -18,7 +18,7 @@ def get_default_backend_configuration(
     """Fill a default backend configuration to serve as a starting point for further customization."""
 
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
-    return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile)
+    return BackendConfigurationClass.from_nwbfile_with_defaults(nwbfile=nwbfile)
 
 
 def get_existing_backend_configuration(nwbfile: NWBFile) -> HDF5BackendConfiguration | ZarrBackendConfiguration:
@@ -40,4 +40,4 @@ def get_existing_backend_configuration(nwbfile: NWBFile) -> HDF5BackendConfigura
         if isinstance(read_io, io):
             break
     BackendConfigurationClass = BACKEND_CONFIGURATIONS[backend]
-    return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile, use_default_dataset_io_configurations=False)
+    return BackendConfigurationClass.from_nwbfile_with_existing(nwbfile=nwbfile)
