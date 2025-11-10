@@ -26,6 +26,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
+        source_schema["properties"]["metadata_key"]["description"] = (
+            "Key used to organize metadata in the metadata dictionary. This is especially useful "
+            "when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used "
+            "to organize TimeSeries and Events metadata."
+        )
         return source_schema
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -35,6 +40,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         verbose: bool = False,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: DirectoryPath | None = None,
+        metadata_key: str = "SpikeGLXNIDQ",
     ):
         """
         Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
@@ -53,6 +59,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeriesNIDQ"
+        metadata_key : str, default: "SpikeGLXNIDQ"
+            Key used to organize metadata in the metadata dictionary. This is especially useful
+            when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
+            to organize TimeSeries and Events metadata.
         """
 
         if file_path is not None:
@@ -97,6 +107,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
             self.event_extractor = SpikeGLXEventExtractor(folder_path=self.folder_path)
 
+        self.metadata_key = metadata_key
+
         super().__init__(
             verbose=verbose,
             es_key=es_key,
@@ -107,6 +119,46 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         signal_info_key = (0, "nidq")  # Key format is (segment_index, stream_id)
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
+
+    def _get_default_events_metadata(self) -> dict:
+        """
+        Returns default metadata for digital channel events.
+
+        Single source of truth for default digital channel event metadata.
+        Each call returns a new instance to prevent accidental mutation of global state.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping channel IDs to their default metadata configurations.
+        """
+        default_metadata = {}
+
+        if self.has_digital_channels:
+            for channel_id in self.event_extractor.channel_ids:
+                channel_name = channel_id.split("#")[-1]
+
+                # Get extractor labels for this channel
+                events_structure = self.event_extractor.get_events(channel_id=channel_id)
+                raw_labels = events_structure["label"]
+
+                # Build default labels and mapping from extractor
+                if raw_labels.size > 0:
+                    unique_labels = np.unique(raw_labels)
+                    labels = unique_labels.tolist()
+                    label_mapping = {label: idx for idx, label in enumerate(unique_labels)}
+                else:
+                    labels = []
+                    label_mapping = {}
+
+                default_metadata[channel_id] = {
+                    "name": f"EventsNIDQDigitalChannel{channel_name}",
+                    "description": f"On and Off Events from channel {channel_name}",
+                    "labels": labels,
+                    "label_mapping": label_mapping,
+                }
+
+        return default_metadata
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -124,6 +176,28 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         metadata["Devices"] = [device]
 
+        # TimeSeries metadata for analog channels
+        if self.has_analog_channels:
+            if "TimeSeries" not in metadata:
+                metadata["TimeSeries"] = {}
+
+            channel_names = [
+                self.recording_extractor.get_property(key="channel_names", ids=[ch_id])[0]
+                for ch_id in self.analog_channel_ids
+            ]
+
+            metadata["TimeSeries"][self.metadata_key] = {
+                "name": "TimeSeriesNIDQ",
+                "description": f"Analog data from the NIDQ board. Channels are {channel_names} in that order.",
+            }
+
+        # Events metadata for digital channels
+        if self.has_digital_channels:
+            if "Events" not in metadata:
+                metadata["Events"] = {}
+
+            metadata["Events"][self.metadata_key] = self._get_default_events_metadata()
+
         return metadata
 
     def get_channel_names(self) -> list[str]:
@@ -136,6 +210,52 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             The names of all channels in the NIDQ recording.
         """
         return list(self.recording_extractor.get_channel_ids())
+
+    def _get_digital_channel_config(self, channel_id: str, metadata: dict | None = None) -> dict:
+        """
+        Get configuration for a digital channel from metadata or use defaults.
+
+        This method can be overridden in subclasses to provide custom channel configurations.
+        For example, IBL-specific interfaces can override this to provide semantic channel names.
+
+        Parameters
+        ----------
+        channel_id : str
+            The channel ID (e.g., "nidq#XD0")
+        metadata : dict | None, default: None
+            The metadata dictionary that may contain custom channel configurations.
+            If None or missing required entries, defaults are used.
+
+        Returns
+        -------
+        dict
+            Configuration dictionary with keys:
+            - name: str, name for the LabeledEvents object
+            - description: str, description of what the channel represents
+            - labels: list of str, semantic labels for events
+            - label_mapping: dict, maps extractor labels to semantic label indices
+        """
+        # Get default configuration
+        default_events_metadata = self._get_default_events_metadata()
+        default_config = default_events_metadata.get(channel_id, {})
+
+        # Check if custom configuration exists in metadata (don't modify it)
+        if metadata is not None:
+            events_metadata = metadata.get("Events", {})
+            interface_events = events_metadata.get(self.metadata_key, {})
+            custom_config = interface_events.get(channel_id, {})
+        else:
+            custom_config = {}
+
+        # Merge custom config with defaults (custom takes precedence)
+        config = {
+            "name": custom_config.get("name", default_config.get("name")),
+            "description": custom_config.get("description", default_config.get("description")),
+            "labels": custom_config.get("labels", default_config.get("labels")),
+            "label_mapping": custom_config.get("label_mapping", default_config.get("label_mapping")),
+        }
+
+        return config
 
     def add_to_nwbfile(
         self,
@@ -191,7 +311,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             )
 
         if self.has_digital_channels:
-            self._add_digital_channels(nwbfile=nwbfile)
+            self._add_digital_channels(nwbfile=nwbfile, metadata=metadata)
 
     def _add_analog_channels(
         self,
@@ -223,16 +343,21 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
         analog_recorder = recording.select_channels(channel_ids=self.analog_channel_ids)
-        channel_names = analog_recorder.get_property(key="channel_names")
 
         # Create default metadata if not provided
         if metadata is None:
             metadata = self.get_metadata()
 
-        # Prepare TimeSeries metadata
-        time_series_name = "TimeSeriesNIDQ"
-        description = f"Analog data from the NIDQ board. Channels are {channel_names} in that order."
-        metadata["TimeSeries"][time_series_name] = dict(description=description)
+        # Ensure TimeSeries metadata exists for this interface
+        if "TimeSeries" not in metadata:
+            metadata["TimeSeries"] = {}
+        if self.metadata_key not in metadata["TimeSeries"]:
+            channel_names = analog_recorder.get_property(key="channel_names")
+            metadata["TimeSeries"][self.metadata_key] = {
+                "name": "TimeSeriesNIDQ",
+                "description": f"Analog data from the NIDQ board. Channels are {channel_names} in that order.",
+            }
+
         # Use add_recording_as_time_series_to_nwbfile to add the time series
         add_recording_as_time_series_to_nwbfile(
             recording=analog_recorder,
@@ -241,10 +366,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=time_series_name,
+            metadata_key=self.metadata_key,
         )
 
-    def _add_digital_channels(self, nwbfile: NWBFile):
+    def _add_digital_channels(self, nwbfile: NWBFile, metadata: dict | None = None):
         """
         Add digital channels from the NIDQ board to the NWB file as events.
 
@@ -252,6 +377,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
             The NWB file to add the digital channels to
+        metadata : dict | None, default: None
+            Metadata dictionary that may contain custom channel configurations.
+            If None or missing required entries, defaults from get_metadata() are used.
         """
         from ndx_events import LabeledEvents
 
@@ -259,7 +387,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         for channel_id in event_channels:
             events_structure = self.event_extractor.get_events(channel_id=channel_id)
             timestamps = events_structure["time"]
-            labels = events_structure["label"]
+            raw_labels = events_structure["label"]
 
             # Some channels have no events
             if timestamps.size > 0:
@@ -267,17 +395,23 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 # Timestamps are not ordered, the ones for off are first and then the ones for on
                 ordered_indices = np.argsort(timestamps)
                 ordered_timestamps = timestamps[ordered_indices]
-                ordered_labels = labels[ordered_indices]
+                ordered_raw_labels = raw_labels[ordered_indices]
 
-                unique_labels = np.unique(ordered_labels)
-                label_to_index = {label: index for index, label in enumerate(unique_labels)}
-                data = [label_to_index[label] for label in ordered_labels]
+                # Get configuration for this channel
+                # _get_digital_channel_config will check metadata first, then fall back to defaults
+                config = self._get_digital_channel_config(channel_id, metadata)
 
-                channel_name = channel_id.split("#")[-1]
-                description = f"On and Off Events from channel {channel_name}"
-                name = f"EventsNIDQDigitalChannel{channel_name}"
+                # Use labels and label_mapping from config (already populated with defaults if needed)
+                labels_to_use = config["labels"]
+                label_mapping = config["label_mapping"]
+                data = [label_mapping[str(label)] for label in ordered_raw_labels]
+
                 labeled_events = LabeledEvents(
-                    name=name, description=description, timestamps=ordered_timestamps, data=data, labels=unique_labels
+                    name=config["name"],
+                    description=config["description"],
+                    timestamps=ordered_timestamps,
+                    data=data,
+                    labels=labels_to_use,
                 )
                 nwbfile.add_acquisition(labeled_events)
 
