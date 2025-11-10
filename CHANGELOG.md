@@ -1,4 +1,17 @@
-# v0.8.3 (Upcoming)
+# v0.8.4 (Upcoming)
+
+## Removals, Deprecations and Changes
+* Removed deprecated ScanImage interfaces that were scheduled for removal in October 2025: `ScanImageMultiFileImagingInterface`, `ScanImageMultiPlaneImagingInterface`, `ScanImageMultiPlaneMultiFileImagingInterface`, `ScanImageSinglePlaneImagingInterface`, and `ScanImageSinglePlaneMultiFileImagingInterface`. Use `ScanImageImagingInterface` instead. [PR #1576](https://github.com/catalystneuro/neuroconv/pull/1576)
+
+## Bug Fixes
+
+## Features
+* Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003)
+
+## Improvements
+
+
+# v0.8.3 (November 6, 2025)
 
 ## Removals, Deprecations and Changes
 * Ophys: Low-level helper functions `add_background_plane_segmentation_to_nwbfile`, `add_fluorescence_traces_to_nwbfile`, `add_background_fluorescence_traces_to_nwbfile`, and `add_summary_images_to_nwbfile` are deprecated and will be removed on or after March 2026. These are low-level functions that should not be called directly. [PR #1559](https://github.com/catalystneuro/neuroconv/pull/1559)
@@ -9,10 +22,10 @@
 
 ## Bug Fixes
 * Excluded `contact_ids` property from being added as a duplicate column in the electrodes table. This property is already represented via the `electrode_name` column which uses probe contact identifiers. [PR #1560](https://github.com/catalystneuro/neuroconv/pull/1560)
+* Fixed `DeepLabCutInterface` to support output files without 'DLC' in the filename by extracting scorer from CSV/H5 header instead of parsing filename. This improves compatibility with DeepLabCut outputs that don't follow the typical naming convention while maintaining backward compatibility. [PR #1573](https://github.com/catalystneuro/neuroconv/pull/1573)
 
 ## Features
 * Support roiextractors 0.7.2 [PR #1566](https://github.com/catalystneuro/neuroconv/pull/1566)
-* Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003)
 
 ## Improvements
 * SpikeInterface tools: Enhanced `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile` to support backend configuration parameters (`backend`, `backend_configuration`) for controlling HDF5/Zarr compression and chunking settings, matching the pattern used in `BaseDataInterface.run_conversion`. [PR #1565](https://github.com/catalystneuro/neuroconv/pull/1565)
