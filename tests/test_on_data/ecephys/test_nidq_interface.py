@@ -26,12 +26,12 @@ def test_nidq_interface_digital_data(tmp_path):
     assert "SpikeGLXNIDQ" in metadata["Events"]
     assert "nidq#XD0" in metadata["Events"]["SpikeGLXNIDQ"]
 
-    # Default configuration - should contain extractor labels
+    # Default configuration - should contain extractor labels in labels_map
     xd0_config = metadata["Events"]["SpikeGLXNIDQ"]["nidq#XD0"]
     assert xd0_config["name"] == "EventsNIDQDigitalChannelXD0"
-    assert xd0_config["labels"] is not None
-    assert len(xd0_config["labels"]) == 2  # OFF and ON
-    assert xd0_config["label_mapping"] is not None
+    assert "labels_map" in xd0_config
+    assert len(xd0_config["labels_map"]) == 2  # Two states: OFF and ON
+    assert isinstance(xd0_config["labels_map"], dict)
 
     # Test 2: Write with default configuration
     nwbfile_path = tmp_path / "nidq_test_digital_default.nwb"
@@ -55,8 +55,7 @@ def test_nidq_interface_digital_data(tmp_path):
     metadata["Events"]["SpikeGLXNIDQ"]["nidq#XD0"] = {
         "name": "EventsCustomCamera",
         "description": "Custom camera with semantic labels",
-        "labels": ["exposure_end", "frame_start"],
-        "label_mapping": {"XD0 OFF": 0, "XD0 ON": 1},
+        "labels_map": {0: "exposure_end", 1: "frame_start"},
     }
 
     nwbfile_path_custom = tmp_path / "nidq_test_digital_custom.nwb"
@@ -72,6 +71,35 @@ def test_nidq_interface_digital_data(tmp_path):
         assert len(unique_data) == 2
         assert np.sum(events.data == unique_data[0]) == 163
         assert np.sum(events.data == unique_data[1]) == 163
+
+
+def test_nidq_interface_partial_labels_map(tmp_path):
+    """Test that partial labels_map is auto-filled with defaults."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
+
+    # Get default metadata to see what the default labels are
+    default_metadata = interface.get_metadata()
+    default_labels_map = default_metadata["Events"]["SpikeGLXNIDQ"]["nidq#XD0"]["labels_map"]
+
+    # Provide partial labels_map - only customize one label
+    metadata = interface.get_metadata()
+    metadata["Events"]["SpikeGLXNIDQ"]["nidq#XD0"] = {
+        "name": "EventsPartialCustom",
+        "description": "Partially customized labels",
+        "labels_map": {0: "custom_label_0"},  # Only provide mapping for data value 0
+    }
+
+    nwbfile_path = tmp_path / "nidq_test_partial.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        events = nwbfile.acquisition["EventsPartialCustom"]
+        # Should have both labels: custom one and default one
+        assert len(events.labels) == 2
+        assert events.labels[0] == "custom_label_0"  # Custom label for data value 0
+        assert events.labels[1] == default_labels_map[1]  # Default label for data value 1
 
 
 def test_nidq_interface_analog_data(tmp_path):

@@ -93,3 +93,44 @@ can be used to convert these streams to NWB.
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_session.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+Customizing digital channel metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Digital channels (XD channels) can be customized with semantic labels and descriptions. This is useful when you
+know what each digital channel represents (e.g., camera frames, TTL pulses, etc.). When using multiple NIDQ
+interfaces in the same conversion, each interface must have a unique ``metadata_key`` to avoid metadata collisions.
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
+    >>>
+    >>> # The metadata_key organizes metadata when using multiple NIDQ interfaces
+    >>> # It must be unique for each interface to avoid metadata collisions
+    >>> metadata_key = "SpikeGLXNIDQ"
+    >>>
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/DigitalChannelTest_g0"
+    >>> interface = SpikeGLXNIDQInterface(folder_path=folder_path, metadata_key=metadata_key)
+    >>>
+    >>> # Get default metadata - digital channels are populated with extractor labels
+    >>> metadata = interface.get_metadata()
+    >>>
+    >>> # Customize multiple digital channels with semantic labels
+    >>> # Channel XD0 represents camera frame events
+    >>> metadata["Events"][metadata_key]["nidq#XD0"] = {
+    ...     "name": "CameraEvents",
+    ...     "description": "Camera frame events with exposure timing",
+    ...     "labels_map": {0: "exposure_end", 1: "frame_start"}
+    ... }
+    >>>
+    >>> # Channel XD1 represents TTL pulses from stimulation device
+    >>> metadata["Events"][metadata_key]["nidq#XD1"] = {
+    ...     "name": "StimulationTTL",
+    ...     "description": "TTL pulses triggering stimulation events",
+    ...     "labels_map": {0: "stim_off", 1: "stim_on"}
+    ... }
+    >>>
+    >>> # Run conversion with custom metadata
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

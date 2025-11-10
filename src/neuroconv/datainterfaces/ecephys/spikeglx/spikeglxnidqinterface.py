@@ -142,20 +142,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 events_structure = self.event_extractor.get_events(channel_id=channel_id)
                 raw_labels = events_structure["label"]
 
-                # Build default labels and mapping from extractor
+                # Build default labels_map from extractor (data value -> label string)
                 if raw_labels.size > 0:
                     unique_labels = np.unique(raw_labels)
-                    labels = unique_labels.tolist()
-                    label_mapping = {label: idx for idx, label in enumerate(unique_labels)}
+                    labels_map = {idx: str(label) for idx, label in enumerate(unique_labels)}
                 else:
-                    labels = []
-                    label_mapping = {}
+                    labels_map = {}
 
                 default_metadata[channel_id] = {
                     "name": f"EventsNIDQDigitalChannel{channel_name}",
                     "description": f"On and Off Events from channel {channel_name}",
-                    "labels": labels,
-                    "label_mapping": label_mapping,
+                    "labels_map": labels_map,
                 }
 
         return default_metadata
@@ -232,8 +229,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Configuration dictionary with keys:
             - name: str, name for the LabeledEvents object
             - description: str, description of what the channel represents
-            - labels: list of str, semantic labels for events
-            - label_mapping: dict, maps extractor labels to semantic label indices
+            - labels_map: dict, maps data values (int) to semantic label strings
         """
         # Get default configuration
         default_events_metadata = self._get_default_events_metadata()
@@ -251,8 +247,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         config = {
             "name": custom_config.get("name", default_config.get("name")),
             "description": custom_config.get("description", default_config.get("description")),
-            "labels": custom_config.get("labels", default_config.get("labels")),
-            "label_mapping": custom_config.get("label_mapping", default_config.get("label_mapping")),
+            "labels_map": custom_config.get("labels_map", default_config.get("labels_map")),
         }
 
         return config
@@ -401,17 +396,40 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 # _get_digital_channel_config will check metadata first, then fall back to defaults
                 config = self._get_digital_channel_config(channel_id, metadata)
 
-                # Use labels and label_mapping from config (already populated with defaults if needed)
-                labels_to_use = config["labels"]
-                label_mapping = config["label_mapping"]
-                data = [label_mapping[str(label)] for label in ordered_raw_labels]
+                # Get labels_map: {data_value: label_string}
+                labels_map = config["labels_map"]
+
+                # Build reverse mapping from extractor labels to data values
+                # First, get unique extractor labels and map them to consecutive integers
+                unique_raw_labels = np.unique(raw_labels)
+                extractor_label_to_value = {str(label): idx for idx, label in enumerate(unique_raw_labels)}
+
+                # Map ordered raw labels to data values
+                data = [extractor_label_to_value[str(label)] for label in ordered_raw_labels]
+
+                # Fill missing mappings with default labels from extractor
+                # This ensures all data values have a corresponding label
+                num_unique_values = len(unique_raw_labels)
+                complete_labels_map = dict(labels_map)  # Copy user-provided mappings
+                default_events_metadata = self._get_default_events_metadata()
+                default_labels_map = default_events_metadata.get(channel_id, {}).get("labels_map", {})
+
+                for data_value in range(num_unique_values):
+                    if data_value not in complete_labels_map:
+                        # Fill with default if available, otherwise use generic label
+                        complete_labels_map[data_value] = default_labels_map.get(data_value, f"unknown_{data_value}")
+
+                # Derive labels list from complete labels_map for LabeledEvents
+                # Sort by data value to ensure correct ordering
+                sorted_items = sorted(complete_labels_map.items())
+                labels_list = [label for _, label in sorted_items]
 
                 labeled_events = LabeledEvents(
                     name=config["name"],
                     description=config["description"],
                     timestamps=ordered_timestamps,
                     data=data,
-                    labels=labels_to_use,
+                    labels=labels_list,
                 )
                 nwbfile.add_acquisition(labeled_events)
 
