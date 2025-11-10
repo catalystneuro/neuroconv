@@ -178,10 +178,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             if "TimeSeries" not in metadata:
                 metadata["TimeSeries"] = {}
 
-            channel_names = [
-                self.recording_extractor.get_property(key="channel_names", ids=[ch_id])[0]
-                for ch_id in self.analog_channel_ids
-            ]
+            # Try to get channel names, fall back to channel IDs if not available
+            channel_names_property = self.recording_extractor.get_property(key="channel_names")
+            if channel_names_property is not None:
+                channel_names = [channel_names_property[i] for i, ch_id in enumerate(self.analog_channel_ids)]
+            else:
+                channel_names = list(self.analog_channel_ids)
 
             metadata["TimeSeries"][self.metadata_key] = {
                 "name": "TimeSeriesNIDQ",
