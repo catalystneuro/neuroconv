@@ -159,8 +159,8 @@ Before adding behavioral and sensor data, you must have an in-memory NWBFile obj
 Creating an NWBFile
 ~~~~~~~~~~~~~~~~~~~
 
-An NWBFile can be created using NeuroConv interfaces/converters (via :py:meth:`~neuroconv.basedatainterface.BaseDataInterface.create_nwbfile`
-or :py:meth:`~neuroconv.nwbconverter.NWBConverter.create_nwbfile`) or directly with PyNWB:
+An NWBFile can be created using NeuroConv interfaces/converters (via the Interface method :py:meth:`~neuroconv.basedatainterface.BaseDataInterface.create_nwbfile`
+or the Converter method :py:meth:`~neuroconv.nwbconverter.NWBConverter.create_nwbfile`) or directly with PyNWB:
 
 .. code-block:: python
 
