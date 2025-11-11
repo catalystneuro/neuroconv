@@ -576,7 +576,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         self.expected_fiber_photometry_virus_injections = expected_fiber_photometry_virus_injections
         self.expected_fiber_photometry_indicators = expected_fiber_photometry_indicators
 
-    def test_all_conversion_checks_stub_test_invalid(self):
+    def test_check_run_conversion_stub_test_invalid(self):
         metadata_file_path = Path(__file__).parent / "fiber_photometry_metadata.yaml"
         editable_metadata = load_dict_from_file(metadata_file_path)
         metadata = self.data_interface_cls(**self.interface_kwargs).get_metadata()
@@ -588,7 +588,9 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "stub_test cannot be used with a specified t2 (1.0). Use t2=0.0 for stub_test or set stub_test=False."
         )
         with pytest.raises(AssertionError, match=error_message):
-            super().test_all_conversion_checks(metadata=metadata)
+            nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_1.nwb")
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+            super().check_run_conversion_with_backend(nwbfile_path=nwbfile_path, metadata=metadata)
         self.conversion_options["stub_test"] = False
         self.conversion_options["t2"] = 1.0
 
