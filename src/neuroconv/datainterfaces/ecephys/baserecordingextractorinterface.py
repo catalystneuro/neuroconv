@@ -311,35 +311,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
 
-    def subset_recording(self, stub_test: bool = False):
-        """
-        Subset a recording extractor according to stub and channel subset options.
-
-        Parameters
-        ----------
-        stub_test : bool, default: False
-            If True, only a subset of frames will be included.
-
-        Returns
-        -------
-        spikeinterface.core.BaseRecording
-            The subsetted recording extractor.
-        """
-        from ...tools.spikeinterface import _stub_recording
-
-        # Deprecating internal methods to simplify the API
-        warnings.warn(
-            "The subset_recording method is deprecated. It will be removed on or after October 2025.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return _stub_recording(recording=self.recording_extractor)
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         stub_test: bool = False,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,

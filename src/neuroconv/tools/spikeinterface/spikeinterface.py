@@ -1651,11 +1651,6 @@ def write_recording_to_nwbfile(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_electrical_series: bool, default: True
-        If True, electrical series are written in acquisition. If False, only device, electrode_groups,
-        and electrodes are written to NWB.
-    write_scaled: bool, default: True
-        If True, writes the scaled traces (return_scaled=True)
     iterator_type: {"v2",  None}
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
