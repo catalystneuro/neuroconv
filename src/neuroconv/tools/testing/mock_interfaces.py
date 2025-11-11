@@ -461,8 +461,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(
         self,
-        num_samples: int | None = None,
-        num_frames: int | None = None,
+        num_samples: int = 30,
         num_rows: int = 10,
         num_columns: int = 10,
         sampling_frequency: float = 30,
@@ -476,9 +475,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         ----------
         num_samples : int, optional
             The number of samples (frames) in the mock imaging data, by default 30.
-        num_frames : int, optional
-            Deprecated. Use num_samples instead. Will be removed after February 2025.
-            The number of frames in the mock imaging data, by default 30.
         num_rows : int, optional
             The number of rows (height) in each frame of the mock imaging data, by default 10.
         num_columns : int, optional
@@ -495,22 +491,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default False
             controls verbosity
         """
-
-        # Handle deprecation of num_frames parameter
-        if num_frames is not None and num_samples is not None:
-            raise ValueError("Cannot specify both num_frames and num_samples. Use num_samples only.")
-        elif num_frames is not None:
-            import warnings
-
-            warnings.warn(
-                "The 'num_frames' parameter is deprecated and will be removed after February 2025. "
-                "Use 'num_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            num_samples = num_frames
-        elif num_samples is None:
-            num_samples = 30  # Default value
 
         self.seed = seed
         super().__init__(
@@ -553,8 +533,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
     def __init__(
         self,
         num_rois: int = 10,
-        num_samples: int | None = None,
-        num_frames: int | None = None,
+        num_samples: int = 30,
         num_rows: int = 25,
         num_columns: int = 25,
         sampling_frequency: float = 30.0,
@@ -573,9 +552,6 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             number of regions of interest, by default 10.
         num_samples : int, optional
             number of samples (frames), by default 30.
-        num_frames : int, optional
-            Deprecated. Use num_samples instead. Will be removed after February 2025.
-            number of frames, by default 30.
         num_rows : int, optional
             number of rows in the hypothetical video from which the data was extracted, by default 25.
         num_columns : int, optional
@@ -597,22 +573,6 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         verbose : bool, optional
             controls verbosity, by default False.
         """
-
-        # Handle deprecation of num_frames parameter
-        if num_frames is not None and num_samples is not None:
-            raise ValueError("Cannot specify both num_frames and num_samples. Use num_samples only.")
-        elif num_frames is not None:
-            import warnings
-
-            warnings.warn(
-                "The 'num_frames' parameter is deprecated and will be removed after February 2025. "
-                "Use 'num_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            num_samples = num_frames
-        elif num_samples is None:
-            num_samples = 30  # Default value
 
         super().__init__(
             num_rois=num_rois,

@@ -406,7 +406,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
-        from ...tools.spikeinterface import _stub_recording, add_recording_to_nwbfile
+        from ...tools.spikeinterface import (
+            _stub_recording,
+            add_recording_metadata_to_nwbfile,
+            add_recording_to_nwbfile,
+        )
 
         # Handle deprecated iterator_opts parameter
         if iterator_opts is not None:
@@ -426,14 +430,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self.get_metadata()
 
-        add_recording_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            write_as=write_as,
-            write_electrical_series=write_electrical_series,
-            es_key=self.es_key,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options,
-            always_write_timestamps=always_write_timestamps,
-        )
+        if write_electrical_series:
+            add_recording_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                write_as=write_as,
+                es_key=self.es_key,
+                iterator_type=iterator_type,
+                iterator_options=iterator_options,
+                always_write_timestamps=always_write_timestamps,
+            )
+        else:
+            add_recording_metadata_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+            )

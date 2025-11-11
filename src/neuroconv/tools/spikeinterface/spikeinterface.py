@@ -40,8 +40,6 @@ def add_recording_to_nwbfile(
     metadata: dict | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str | None = None,
-    write_electrical_series: bool = True,
-    write_scaled: bool = False,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
@@ -109,15 +107,6 @@ def add_recording_to_nwbfile(
         metadata = _get_default_ecephys_metadata()
 
     add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    # Early termination just adds the metadata
-    if not write_electrical_series:
-        warning_message = (
-            "`write_electrical_series` is deprecated and will be removed in or after October 2025."
-            "If only metadata addition is desired, use `add_recording_metadata_to_nwbfile` instead."
-        )
-
-        warnings.warn(warning_message, stacklevel=2)
-        return None
 
     number_of_segments = recording.get_num_segments()
     for segment_index in range(number_of_segments):
@@ -128,7 +117,6 @@ def add_recording_to_nwbfile(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_scaled=write_scaled,
             iterator_type=iterator_type,
             iterator_opts=iterator_options,
             always_write_timestamps=always_write_timestamps,
@@ -210,42 +198,6 @@ def add_sorting_to_nwbfile(
     )
 
 
-def add_electrical_series_to_nwbfile(
-    recording: BaseRecording,
-    nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
-    segment_index: int = 0,
-    write_as: Literal["raw", "processed", "lfp"] = "raw",
-    es_key: str = None,
-    write_scaled: bool = False,
-    iterator_type: str | None = "v2",
-    iterator_opts: dict | None = None,
-    always_write_timestamps: bool = False,
-):
-    """
-    Deprecated. Call `add_recording_to_nwbfile` instead.
-    """
-
-    warnings.warn(
-        "This function is deprecated and will be removed in or October 2025. "
-        "Use the 'add_recording_to_nwbfile' function instead.",
-        DeprecationWarning,
-    )
-
-    _add_recording_segment_to_nwbfile(
-        recording=recording,
-        nwbfile=nwbfile,
-        segment_index=segment_index,
-        metadata=metadata,
-        write_as=write_as,
-        es_key=es_key,
-        write_scaled=write_scaled,
-        iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
-        always_write_timestamps=always_write_timestamps,
-    )
-
-
 def _add_recording_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -253,7 +205,6 @@ def _add_recording_segment_to_nwbfile(
     segment_index: int = 0,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
-    write_scaled: bool = False,
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
@@ -261,15 +212,6 @@ def _add_recording_segment_to_nwbfile(
     """
     See add_recording_to_nwbfile for details.
     """
-
-    if write_scaled:
-        warnings.warn(
-            "The 'write_scaled' parameter is deprecated and will be removed in October 2025. "
-            "The function will automatically handle channel conversion and offsets using "
-            "'gain_to_physical_unit' and 'offset_to_physical_unit' properties.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
     assert write_as in [
         "raw",
@@ -1106,18 +1048,6 @@ def add_electrodes_to_nwbfile(
         nwbfile.add_electrode_column(property, **cols_args)
 
 
-def check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
-    """
-    Deprecated. This function will no longer be exposed in the public API
-    """
-
-    warnings.warn(
-        "This function is deprecated and will be removed in or October 2025. ",
-        DeprecationWarning,
-    )
-    _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
-
-
 def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
     """
     Raises an error if the full traces of a recording extractor are larger than psutil.virtual_memory().available.
@@ -1641,18 +1571,6 @@ def add_recording_metadata_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.N
     add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
-def add_electrodes_info_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
-    """
-    Dreprecated use `add_recording_metadata_to_nwbfile` instead.
-    """
-    warnings.warn(
-        "This function is deprecated and will be removed in or October 2025. "
-        "Use the 'add_recording_metadata_to_nwbfile' function instead.",
-        DeprecationWarning,
-    )
-    add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
-
 def write_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile_path: FilePath | None = None,
@@ -1662,8 +1580,6 @@ def write_recording_to_nwbfile(
     verbose: bool = False,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str | None = None,
-    write_electrical_series: bool = True,
-    write_scaled: bool = False,
     *,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -1806,8 +1722,6 @@ def write_recording_to_nwbfile(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_electrical_series=write_electrical_series,
-            write_scaled=write_scaled,
             iterator_type=iterator_type,
             iterator_options=iterator_options if iterator_options is not None else iterator_opts,
         )
@@ -1868,8 +1782,6 @@ def write_recording_to_nwbfile(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_electrical_series=write_electrical_series,
-            write_scaled=write_scaled,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
@@ -1909,8 +1821,6 @@ def write_recording_to_nwbfile(
                 metadata=metadata,
                 write_as=write_as,
                 es_key=es_key,
-                write_electrical_series=write_electrical_series,
-                write_scaled=write_scaled,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
             )
@@ -1926,45 +1836,6 @@ def write_recording_to_nwbfile(
             print(f"NWB file saved at {nwbfile_path}!")
 
         return nwbfile  # Will return None in March 2026
-
-
-def add_units_table_to_nwbfile(
-    sorting: BaseSorting,
-    nwbfile: pynwb.NWBFile,
-    unit_ids: list[str | int] | None = None,
-    property_descriptions: dict | None = None,
-    skip_properties: list[str] | None = None,
-    units_table_name: str = "units",
-    unit_table_description: str | None = None,
-    write_in_processing_module: bool = False,
-    waveform_means: np.ndarray | None = None,
-    waveform_sds: np.ndarray | None = None,
-    unit_electrode_indices: list[list[int]] | None = None,
-    null_values_for_properties: dict | None = None,
-):
-    """
-    add unist table will become a private method, use `add_sorting_to_nwbfile` instead.
-    """
-
-    warnings.warn(
-        "This function is deprecated and will be removed in or after October 2025. "
-        "Use the 'add_sorting_to_nwbfile' function instead.",
-        DeprecationWarning,
-    )
-    _add_units_table_to_nwbfile(
-        sorting=sorting,
-        nwbfile=nwbfile,
-        unit_ids=unit_ids,
-        property_descriptions=property_descriptions,
-        skip_properties=skip_properties,
-        units_table_name=units_table_name,
-        unit_table_description=unit_table_description,
-        write_in_processing_module=write_in_processing_module,
-        waveform_means=waveform_means,
-        waveform_sds=waveform_sds,
-        unit_electrode_indices=unit_electrode_indices,
-        null_values_for_properties=null_values_for_properties,
-    )
 
 
 def _add_units_table_to_nwbfile(
