@@ -368,7 +368,6 @@ def _resolve_backend(
 
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
-    output_filepath: FilePath | None = None,
     nwbfile_path: FilePath | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
@@ -383,7 +382,6 @@ def configure_and_write_nwbfile(
     Parameters
     ----------
     nwbfile: NWBFile
-    output_filepath: FilePath | None, optional. Deprecated
     nwbfile_path: FilePath | None, optional
     backend: {"hdf5", "zarr"}, optional
         The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
@@ -393,19 +391,6 @@ def configure_and_write_nwbfile(
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
 
     """
-
-    if nwbfile_path is not None and output_filepath is not None:
-        raise ValueError(
-            "Both 'output_filepath' and 'nwbfile_path' were specified! " "Please specify only `nwbfile_path`."
-        )
-
-    if output_filepath is not None:
-        warnings.warn(
-            "The 'output_filepath' parameter is deprecated in or after September 2025. " "Use 'nwbfile_path' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        nwbfile_path = output_filepath
 
     if nwbfile_path is None:
         raise ValueError("The 'nwbfile_path' parameter must be specified.")
