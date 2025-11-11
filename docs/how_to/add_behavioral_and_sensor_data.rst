@@ -28,9 +28,7 @@ Some interfaces already support non-neural data streams:
 * **Intan**: ``IntanRecordingInterface`` for analog channels
 
 However, in many cases it may not be feasible to use these interfaces, or the functionality is not yet implemented in NeuroConv.
-**This guide provides a workaround** using NeuroConv's integration with SpikeInterface.
-
-For those cases we can leverage NeuroConv and SpikeInterface integration to provide a
+**This guide provides a workaround** using NeuroConv's integration with SpikeInterface to provide a
 flexible way to add behavioral and analog data from any acquisition format supported by SpikeInterface.
 
 The general workflow is:
@@ -185,7 +183,7 @@ Adding Data as TimeSeries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Example: Adding a Wheel Encoder Signal (Neuralynx)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -225,7 +223,7 @@ Adding Data as SpatialSeries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Example: Adding 2D Position Tracking Data (Blackrock)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -265,7 +263,7 @@ Example: Adding 2D Position Tracking Data (Blackrock)
     )
 
 Example: Adding 2D Gaze Position Data (Plexon)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -428,8 +426,8 @@ selects which stream's metadata to use for each function call:
    All objects in an NWB file must have unique names. When adding multiple TimeSeries or SpatialSeries objects,
    ensure each has a distinct ``name`` field to avoid conflicts.
 
-Full Example: Intan Neural and Behavioral Data
----------------------------------------------------
+Full Example: Combining Neural and Behavioral Data in Intan
+-----------------------------------------------------------
 
 Here's a complete workflow that demonstrates adding both neural data (using NeuroConv's ``IntanRecordingInterface``)
 and behavioral data (using the SpikeInterface integration) from the same Intan recording file:
