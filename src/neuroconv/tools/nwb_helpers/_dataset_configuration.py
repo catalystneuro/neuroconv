@@ -109,6 +109,8 @@ def get_default_dataset_io_configurations(
     known_dataset_fields = ("data", "timestamps")
     manager = get_manager()
     builder = manager.build(nwbfile, export=True)
+    # export = True ensures that the builder is created fresh (as opposed to a cached version),
+    # which is essential to make sure that all of the datasets are properly represented.
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
