@@ -31,6 +31,8 @@ def configure_backend(
     is_ndx_events_installed = is_package_installed(package_name="ndx_events")
     ndx_events = importlib.import_module("ndx_events") if is_ndx_events_installed else None
 
+    nwbfile_is_on_disk = nwbfile.read_io is not None
+
     # A remapping of the object IDs in the backend configuration might necessary
     locations_to_remap = backend_configuration.find_locations_requiring_remapping(nwbfile=nwbfile)
     if any(locations_to_remap):
@@ -52,10 +54,16 @@ def configure_backend(
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         dtype_is_compound = has_compound_dtype(builder=builder, location_in_file=location_in_file)
-        if isinstance(neurodata_object.fields.get(dataset_name), AbstractDataChunkIterator) or dtype_is_compound:
+        if (
+            isinstance(neurodata_object.fields.get(dataset_name), AbstractDataChunkIterator)
+            or dtype_is_compound
+            or not nwbfile_is_on_disk
+        ):
             data_chunk_iterator_class = None
             data_chunk_iterator_kwargs = dict()
-        else:
+        else:  # If the dataset has been written to disk and it is not compound and it is not already an iterator,
+            # we wrap each neurodata_object in a DataChunkIterator in order to support changes to the I/O settings.
+            # For more detail, see https://github.com/hdmf-dev/hdmf/issues/1170.
             data_chunk_iterator_class = DataChunkIterator
             data_chunk_iterator_kwargs = dict(buffer_size=math.prod(dataset_configuration.buffer_shape))
 
