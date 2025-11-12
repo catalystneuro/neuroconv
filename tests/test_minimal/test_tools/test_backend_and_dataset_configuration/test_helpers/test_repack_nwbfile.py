@@ -117,12 +117,7 @@ def zarr_nwbfile_path(tmpdir_factory):
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-@pytest.mark.parametrize("use_default_backend_configuration", [True, False])
-def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_default_backend_configuration):
-    compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-    filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-    filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-    filters = [filter1, filter2]
+def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
     default_compressor = GZip(level=1)
 
     if backend == "hdf5":
@@ -135,135 +130,29 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_defau
         nwbfile_path=str(nwbfile_path),
         export_nwbfile_path=str(export_path),
         backend=backend,
-        use_default_backend_configuration=use_default_backend_configuration,
     )
     IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
     with IO(str(export_path), mode="r") as io:
         nwbfile = io.read()
 
         if backend == "hdf5":
-            if use_default_backend_configuration:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 4
-                assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
-                assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
-            else:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts is None
-                assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
-                assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 2
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts is None
+            assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 4
+            assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
+            assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
+            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
         elif backend == "zarr":
-            if use_default_backend_configuration:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compressor == default_compressor
-                assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
-                assert nwbfile.intervals["trials"].start_time.data.compressor == default_compressor
-                assert nwbfile.intervals["trials"].start_time.data.filters is None
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters is None
-            else:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compressor == compressor
-                assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
-                assert nwbfile.intervals["trials"].start_time.data.compressor == compressor
-                assert nwbfile.intervals["trials"].start_time.data.filters is None
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == compressor
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == compressor
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == filters
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == compressor
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters == None
-
-
-@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-@pytest.mark.parametrize("use_default_backend_configuration", [True, False])
-def test_repack_nwbfile_with_changes(hdf5_nwbfile_path, zarr_nwbfile_path, backend, use_default_backend_configuration):
-    compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-    filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-    filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-    filters = [filter1, filter2]
-    default_compressor = GZip(level=1)
-
-    if backend == "hdf5":
-        nwbfile_path = hdf5_nwbfile_path
-        export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.h5"
-        backend_configuration_changes = {
-            "acquisition/RawTimeSeries/data": dict(
-                compression_method="gzip", compression_options=dict(compression_opts=1)
-            ),
-            "processing/ophys/PlaneSegmentation/pixel_mask/data": dict(
-                compression_method="gzip", compression_options=dict(compression_opts=1)
-            ),
-        }
-    elif backend == "zarr":
-        nwbfile_path = zarr_nwbfile_path
-        export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.zarr"
-        changed_compressor = Blosc(cname="lz4", clevel=3, shuffle=Blosc.SHUFFLE, blocksize=0)
-        changed_filters = [Blosc(cname="zstd", clevel=3, shuffle=Blosc.SHUFFLE)]
-        backend_configuration_changes = {
-            "acquisition/RawTimeSeries/data": dict(
-                compression_method=changed_compressor, filter_methods=changed_filters
-            ),
-            "processing/ophys/PlaneSegmentation/pixel_mask/data": dict(
-                compression_method=changed_compressor,
-                filter_methods=changed_filters,
-            ),
-        }
-    repack_nwbfile(
-        nwbfile_path=str(nwbfile_path),
-        export_nwbfile_path=str(export_path),
-        backend=backend,
-        use_default_backend_configuration=use_default_backend_configuration,
-        backend_configuration_changes=backend_configuration_changes,
-    )
-
-    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
-    with IO(str(export_path), mode="r") as io:
-        nwbfile = io.read()
-        if backend == "hdf5":
-            if use_default_backend_configuration:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 1
-                assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
-                assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 1
-            else:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 1
-                assert nwbfile.intervals["trials"].start_time.data.compression_opts is None
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts is None
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 2
-                assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 2
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 1
-        elif backend == "zarr":
-            if use_default_backend_configuration:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compressor == changed_compressor
-                assert nwbfile.acquisition["RawTimeSeries"].data.filters == changed_filters
-                assert nwbfile.intervals["trials"].start_time.data.compressor == default_compressor
-                assert nwbfile.intervals["trials"].start_time.data.filters is None
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == changed_compressor
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters == changed_filters
-            else:
-                assert nwbfile.acquisition["RawTimeSeries"].data.compressor == changed_compressor
-                assert nwbfile.acquisition["RawTimeSeries"].data.filters == changed_filters
-                assert nwbfile.intervals["trials"].start_time.data.compressor == compressor
-                assert nwbfile.intervals["trials"].start_time.data.filters is None
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == compressor
-                assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == compressor
-                assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == filters
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == changed_compressor
-                assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters == changed_filters
+            assert nwbfile.acquisition["RawTimeSeries"].data.compressor == default_compressor
+            assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
+            assert nwbfile.intervals["trials"].start_time.data.compressor == default_compressor
+            assert nwbfile.intervals["trials"].start_time.data.filters is None
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
+            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
+            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters is None
 
 
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
@@ -276,7 +165,6 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
         export_nwbfile_path=export_nwbfile_path,
         backend="hdf5",
         export_backend="zarr",
-        use_default_backend_configuration=True,
     )
 
     assert export_nwbfile_path.exists()
@@ -333,7 +221,6 @@ def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
         export_nwbfile_path=export_nwbfile_path,
         backend="zarr",
         export_backend="hdf5",
-        use_default_backend_configuration=True,
     )
 
     assert export_nwbfile_path.exists()
@@ -377,24 +264,3 @@ def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
             assert nwbfile_hdf5.intervals["trials"].compressed_start_time.data.compression_opts == 4
             assert nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
             assert nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
-
-
-def test_repack_nwbfile_invalid_configuration_error(hdf5_nwbfile_path, tmp_path):
-    """Test that an error is raised when trying to change backend without using default config."""
-    # Create a path for the output file with a different backend (HDF5 -> Zarr)
-    export_path = tmp_path / "should_fail.nwb.zarr"
-
-    # Attempt to repack with different export backend but not using default configuration
-    with pytest.raises(
-        ValueError, match="When 'export_backend' is different from 'backend', the default configuration must be used"
-    ):
-        repack_nwbfile(
-            nwbfile_path=Path(hdf5_nwbfile_path),
-            export_nwbfile_path=export_path,
-            backend="hdf5",
-            export_backend="zarr",
-            use_default_backend_configuration=False,
-        )
-
-    # Verify the export file was not created
-    assert not export_path.exists()

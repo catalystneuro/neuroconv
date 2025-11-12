@@ -18,7 +18,6 @@ from . import (
     BackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
-    get_existing_backend_configuration,
 )
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
@@ -436,8 +435,6 @@ def repack_nwbfile(
     export_nwbfile_path: Path,
     backend: Literal["hdf5", "zarr"] = "hdf5",
     export_backend: Literal["hdf5", "zarr", None] = None,
-    use_default_backend_configuration: bool = True,
-    backend_configuration_changes: dict[str, dict] = None,
 ):
     """
     Repack an NWBFile with a new backend configuration.
@@ -452,40 +449,13 @@ def repack_nwbfile(
         The type of backend used to read the file.
     export_backend : {"hdf5", "zarr", None}, default: None
         The type of backend used to write the repacked file. If None, the same backend as the input file is used.
-    use_default_backend_configuration : bool, default: True
-        Whether to use the default backend configuration for the specified backend and nwbfile. If False, the nwbfile
-        must be written to disk and its existing backend configuration is used.
-    backend_configuration_changes : dict, default: None
-        Changes to the backend configuration. The keys are the locations of the datasets in the NWB file, and the values
-        are dictionaries of the changes to be made to the dataset configuration.
-
-    Notes
-    -----
-    The keys for the `backend_configuration_changes` must be as they appear in the BackendConfiguration NOT how they
-    appear in the H5DataIO. For example, if you want to change the chunking of the 'acquisition/RawTimeSeries/data'
-    dataset to (10,), you would pass {'acquisition/RawTimeSeries/data': {'chunk_shape': (10,)}}.
     """
-    backend_configuration_changes = backend_configuration_changes or dict()
     export_backend = export_backend or backend
-    if not use_default_backend_configuration and export_backend is not None and export_backend != backend:
-        raise ValueError(
-            "When 'export_backend' is different from 'backend', the default configuration must be used (use_default_backend_configuration=True)."
-        )
 
     IO = BACKEND_NWB_IO[backend]
     with IO(nwbfile_path, mode="r") as io:
         nwbfile = io.read()
-        if use_default_backend_configuration:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
-        else:
-            backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
-        dataset_configurations = backend_configuration.dataset_configurations
-
-        for neurodata_object_location, dataset_config_changes in backend_configuration_changes.items():
-            dataset_configuration = dataset_configurations[neurodata_object_location]
-            for dataset_config_key, dataset_config_value in dataset_config_changes.items():
-                setattr(dataset_configuration, dataset_config_key, dataset_config_value)
-
+        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             backend_configuration=backend_configuration,
