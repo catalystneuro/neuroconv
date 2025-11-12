@@ -1,7 +1,6 @@
 """Integration tests for `get_existing_backend_configuration`."""
 
 from io import StringIO
-from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -43,60 +42,58 @@ def generate_complex_nwbfile() -> NWBFile:
 
 
 @pytest.fixture(scope="session")
-def hdf5_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_existing_backend_configuration_hdf5_nwbfile.nwb.h5")
-    if not Path(nwbfile_path).exists():
-        nwbfile = generate_complex_nwbfile()
+def hdf5_nwbfile_path(tmp_path_factory):
+    nwbfile_path = tmp_path_factory.mktemp("data") / "test_existing_backend_configuration_hdf5_nwbfile.nwb.h5"
+    nwbfile = generate_complex_nwbfile()
 
-        # Add a H5DataIO-compressed time series
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-        data = H5DataIO(data=raw_array, compression="gzip", compression_opts=2)
-        raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
-        nwbfile.add_acquisition(raw_time_series)
+    # Add a H5DataIO-compressed time series
+    raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
+    data = H5DataIO(data=raw_array, compression="gzip", compression_opts=2)
+    raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
+    nwbfile.add_acquisition(raw_time_series)
 
-        # Add H5DataIO-compressed trials column
-        number_of_trials = 10
-        start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-        nwbfile.add_trial_column(
-            name="compressed_start_time",
-            description="start time of epoch",
-            data=H5DataIO(data=start_time, compression="gzip", compression_opts=2),
-        )
+    # Add H5DataIO-compressed trials column
+    number_of_trials = 10
+    start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
+    nwbfile.add_trial_column(
+        name="compressed_start_time",
+        description="start time of epoch",
+        data=H5DataIO(data=start_time, compression="gzip", compression_opts=2),
+    )
 
-        with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
-            io.write(nwbfile)
+    with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
+        io.write(nwbfile)
     return str(nwbfile_path)
 
 
 @pytest.fixture(scope="session")
-def zarr_nwbfile_path(tmpdir_factory):
+def zarr_nwbfile_path(tmp_path_factory):
     compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
     filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
     filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
     filters = [filter1, filter2]
 
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb.zarr")
-    if not Path(nwbfile_path).exists():
-        nwbfile = generate_complex_nwbfile()
+    nwbfile_path = tmp_path_factory.mktemp("data") / "test_default_backend_configuration_hdf5_nwbfile.nwb.zarr"
+    nwbfile = generate_complex_nwbfile()
 
-        # Add a ZarrDataIO-compressed time series
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-        data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressor=compressor, filters=filters)
-        raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
-        nwbfile.add_acquisition(raw_time_series)
+    # Add a ZarrDataIO-compressed time series
+    raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
+    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressor=compressor, filters=filters)
+    raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
+    nwbfile.add_acquisition(raw_time_series)
 
-        # Add ZarrDataIO-compressed trials column
-        number_of_trials = 10
-        start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-        data = ZarrDataIO(data=start_time, chunks=(5,), compressor=compressor, filters=filters)
-        nwbfile.add_trial_column(
-            name="compressed_start_time",
-            description="start time of epoch",
-            data=data,
-        )
+    # Add ZarrDataIO-compressed trials column
+    number_of_trials = 10
+    start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
+    data = ZarrDataIO(data=start_time, chunks=(5,), compressor=compressor, filters=filters)
+    nwbfile.add_trial_column(
+        name="compressed_start_time",
+        description="start time of epoch",
+        data=data,
+    )
 
-        with NWBZarrIO(path=str(nwbfile_path), mode="w") as io:
-            io.write(nwbfile)
+    with NWBZarrIO(path=str(nwbfile_path), mode="w") as io:
+        io.write(nwbfile)
     return str(nwbfile_path)
 
 
