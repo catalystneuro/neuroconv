@@ -1412,6 +1412,197 @@ def _add_time_series_segment_to_nwbfile(
     nwbfile.add_acquisition(time_series)
 
 
+def _get_default_spatial_series_metadata():
+    """
+    Returns fresh spatial series default metadata dictionary.
+
+    Single source of truth for all spatial series default metadata.
+    Structure matches the output of behavioral interfaces.
+    Each call returns a new instance to prevent accidental mutation of global state.
+    """
+    from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
+
+    metadata = get_default_nwbfile_metadata()
+
+    metadata["SpatialSeries"] = {
+        "name": "SpatialSeries",
+        "description": "Spatial or directional data",
+        "unit": "meters",
+    }
+
+    return metadata
+
+
+def add_recording_as_spatial_series_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None = None,
+    metadata_key: str = "SpatialSeries",
+    write_as: Literal["acquisition", "processing"] = "acquisition",
+    iterator_type: str = "v2",
+    iterator_options: dict | None = None,
+    always_write_timestamps: bool = False,
+):
+    """
+    Adds traces from recording object as SpatialSeries to an NWBFile object.
+
+    This function is designed for behavioral tracking data where the recording represents spatial
+    or directional information (e.g., position, head direction, gaze tracking).
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from spikeinterface containing behavioral tracking data.
+    nwbfile : NWBFile
+        NWB file to which the spatial series information is to be added.
+    metadata : dict, optional
+        Metadata info for constructing the NWB file.
+        Should be of the format::
+
+            metadata['SpatialSeries'] = {
+                'metadata_key': {
+                    'name': 'my_spatial_series',
+                    'description': 'my_description',
+                    'reference_frame': 'origin at top-left corner of arena...',
+                    'unit': 'meters'
+                }
+            }
+
+        Where the metadata_key is used to look up metadata in the metadata dictionary.
+    metadata_key : str, default: 'SpatialSeries'
+        The entry in SpatialSeries metadata to use.
+    write_as : {'acquisition', 'processing'}, default: 'acquisition'
+        Where to save the spatial series data:
+        - 'acquisition': Save in nwbfile.acquisition
+        - 'processing': Save in a processing module under 'behavior'
+    iterator_type : {"v2", None}, default: 'v2'
+        The type of DataChunkIterator to use.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator.
+        None: write the SpatialSeries with no memory chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps explicitly.
+        By default (False), the function checks if timestamps are uniformly sampled,
+        and if so, stores data using a regular sampling rate.
+
+
+    """
+    # Validate write_as parameter
+    if write_as not in ["acquisition", "processing"]:
+        raise ValueError(f"write_as must be 'acquisition' or 'processing', got '{write_as}'")
+
+    # Handle multiple segments
+    number_of_segments = recording.get_num_segments()
+    for segment_index in range(number_of_segments):
+        _add_spatial_series_segment_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=metadata_key,
+            segment_index=segment_index,
+            write_as=write_as,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+            always_write_timestamps=always_write_timestamps,
+        )
+
+
+def _add_spatial_series_segment_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    segment_index: int,
+    metadata: dict | None = None,
+    metadata_key: str = "SpatialSeries",
+    write_as: Literal["acquisition", "processing"] = "acquisition",
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
+    always_write_timestamps: bool = False,
+):
+    """
+    See add_recording_as_spatial_series_to_nwbfile for details.
+    """
+    # Validate recording dimensions for SpatialSeries
+    num_channels = recording.get_num_channels()
+    if num_channels > 3:
+        channel_names = _get_channel_name(recording)
+        raise ValueError(
+            f"SpatialSeries only supports 1D, 2D, or 3D data (up to 3 channels). "
+            f"This recording has {num_channels} channels: {channel_names}. "
+            f"Use recording.select_channels(channel_ids) to select only the spatial data channels, "
+            f"or verify you loaded the correct stream if working with multi-stream data."
+        )
+
+    # Get default metadata from single source of truth
+    default_metadata = _get_default_spatial_series_metadata()
+    default_spatial_series = default_metadata["SpatialSeries"]
+
+    metadata = metadata if metadata is not None else {}
+
+    # Get spatial series metadata or empty dict
+    spatial_series_metadata = metadata.get("SpatialSeries", {}).get(metadata_key, {})
+
+    # Copy user metadata to avoid mutation
+    series_kwargs = spatial_series_metadata.copy()
+
+    # Fill in missing required fields with defaults
+    required_fields = ["name", "description", "unit"]
+    for field in required_fields:
+        if field not in series_kwargs:
+            series_kwargs[field] = default_spatial_series[field]
+
+    # If multiple segments, append index to name
+    if recording.get_num_segments() > 1:
+        width = int(np.ceil(np.log10(recording.get_num_segments())))
+        series_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # Add data iterator
+    data_iterator = _recording_traces_to_hdmf_iterator(
+        recording=recording,
+        segment_index=segment_index,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_options,
+    )
+    series_kwargs["data"] = data_iterator
+
+    # Handle timestamps or rate
+    if always_write_timestamps:
+        timestamps = recording.get_times(segment_index=segment_index)
+        series_kwargs["timestamps"] = timestamps
+    else:
+        # Check if timestamps are regular
+        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
+        if recording_has_timestamps:
+            timestamps = recording.get_times(segment_index=segment_index)
+            rate = calculate_regular_series_rate(series=timestamps)
+            recording_t_start = timestamps[0]
+        else:
+            rate = recording.get_sampling_frequency()
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
+
+        if rate:
+            starting_time = float(recording_t_start)
+            series_kwargs["starting_time"] = starting_time
+            series_kwargs["rate"] = recording.get_sampling_frequency()
+        else:
+            series_kwargs["timestamps"] = timestamps
+
+    # Create the SpatialSeries instance
+    spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
+
+    # Add to nwbfile
+    if write_as == "acquisition":
+        nwbfile.add_acquisition(spatial_series)
+    elif write_as == "processing":
+        # Create or get behavior processing module
+        behavior_module = get_module(
+            nwbfile=nwbfile,
+            name="behavior",
+            description="Processed behavioral data",
+        )
+        behavior_module.add(spatial_series)
+
+
 def add_recording_metadata_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
     Add device, electrode_groups, and electrodes info to the nwbfile.
