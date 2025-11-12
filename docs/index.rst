@@ -13,7 +13,7 @@ of proprietary formats to the Neurodata Without Borders (NWB) standard.
 
 Features:
 
-* Reads data from 42 popular neurophysiology data formats and writes to NWB using best practices.
+* Reads data from 50 popular neurophysiology data formats and writes to NWB using best practices.
 * Extracts relevant metadata from each format.
 * Handles large data volume by reading datasets piece-wise.
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
@@ -68,6 +68,28 @@ Below is an overview of the key sections to help you navigate our documentation 
 
 Do you find that some information is missing or some section lacking or unclear? Reach out with an issue or pull request on our `GitHub repository <https://github.com/catalystneuro/neuroconv>`_.
 We are happy to help and appreciate your feedback.
+
+Citing NeuroConv
+----------------
+
+If you use NeuroConv in your research, please cite our paper:
+
+  Mayorquin, H., Baker, C., Adkisson-Floro, P., Weigl, S., Trapani, A., Tauffer, L., Rübel, O., & Dichter, B. (2025).
+  NeuroConv: Streamlining Neurophysiology Data Conversion to the NWB Standard.
+  *Proceedings of the 24th Python in Science Conference* (SciPy 2025). https://doi.org/10.25080/cehj4257
+
+**BibTeX:**
+
+.. code-block:: bibtex
+
+  @inproceedings{mayorquin2025neuroconv,
+    title={NeuroConv: Streamlining Neurophysiology Data Conversion to the NWB Standard},
+    author={Mayorquin, Heberto and Baker, Cody and Adkisson-Floro, Paul and Weigl, Szonja and Trapani, Alessandra and Tauffer, Luiz and R\"ubel, Oliver and Dichter, Benjamin},
+    booktitle={Proceedings of the 24th Python in Science Conference},
+    year={2025},
+    month={July},
+    doi={10.25080/cehj4257}
+  }
 
 .. toctree::
   :maxdepth: 2

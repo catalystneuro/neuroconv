@@ -7,6 +7,7 @@ from .spikeinterface import (
     add_recording_to_nwbfile,
     add_sorting_to_nwbfile,
     add_recording_as_time_series_to_nwbfile,
+    add_recording_as_spatial_series_to_nwbfile,
     add_units_table_to_nwbfile,
     _add_units_table_to_nwbfile,
     add_sorting_analyzer_to_nwbfile,
