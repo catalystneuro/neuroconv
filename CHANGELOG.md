@@ -8,6 +8,7 @@
 
 ## Features
 * Added `add_recording_as_spatial_series_to_nwbfile` function to write SpikeInterface recordings as `SpatialSeries` for behavioral tracking data (e.g., position, head direction, gaze tracking). [PR #1574](https://github.com/catalystneuro/neuroconv/pull/1574)
+* Miniscope converter now uses the configuration file to read general folder structures [PR #1528](https://github.com/catalystneuro/neuroconv/pull/1528)
 
 ## Improvements
 * Enhanced `SpikeGLXNIDQInterface` to support custom metadata for digital channels, enabling users to specify semantic labels, descriptions, and names for NIDQ digital events. Added `metadata_key` parameter to support multiple NIDQ interfaces in the same conversion. [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
