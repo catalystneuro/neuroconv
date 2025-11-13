@@ -3,7 +3,9 @@
 from typing import Any, Literal
 
 import h5py
+from hdmf import Container
 from pydantic import Field, InstanceOf
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ...importing import is_package_installed
@@ -94,3 +96,38 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
+
+    @classmethod
+    def from_neurodata_object_with_existing(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> Self:
+        """
+        Construct an HDF5DatasetIOConfiguration from existing dataset settings.
+
+        Parameters
+        ----------
+        neurodata_object : hdmf.Container
+            The neurodata object containing the field that has been read from disk.
+        dataset_name : "data" or "timestamps"
+            The name of the field that corresponds to the dataset on disk.
+
+        Returns
+        -------
+        Self
+            An HDF5DatasetIOConfiguration instance with settings matching the existing dataset.
+        """
+        kwargs = cls.get_kwargs_from_neurodata_object(
+            neurodata_object=neurodata_object,
+            dataset_name=dataset_name,
+        )
+        dataset = cls.get_dataset(neurodata_object=neurodata_object, dataset_name=dataset_name)
+        compression_method = dataset.compression
+        compression_opts = dataset.compression_opts
+        compression_options = dict(compression_opts=compression_opts)
+        return cls(
+            **kwargs,
+            compression_method=compression_method,
+            compression_options=compression_options,
+        )
