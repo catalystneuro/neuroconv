@@ -9,8 +9,10 @@ import pytest
 from hdmf.common import DynamicTable, VectorData
 from hdmf.data_utils import DataChunkIterator
 from numpy.testing import assert_array_equal
+from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from pynwb.testing.mock.ophys import mock_ImagingPlane
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
@@ -197,3 +199,53 @@ def test_time_series_timestamps_linkage(
 
         written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
         assert written_timestamps_2 == written_timestamps_1
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_plane_segmentation_pixel_mask(
+    tmpdir: Path,
+    backend: Literal["hdf5", "zarr"],
+):
+    """This test singles out pixel_mask since it has a compound dtype, which is a special case for configure_backend."""
+    backend = "hdf5"
+    n_rois = 10
+    nwbfile = mock_NWBFile()
+    plane_segmentation = PlaneSegmentation(
+        description="no description.",
+        imaging_plane=mock_ImagingPlane(nwbfile=nwbfile),
+        name="TestPlaneSegmentation",
+    )
+
+    expected_pixel_mask = []
+    for _ in range(n_rois):
+        pixel_mask = [(x, x, 1.0) for x in range(10)]
+        plane_segmentation.add_roi(pixel_mask=pixel_mask)
+        expected_pixel_mask.extend(pixel_mask)
+    expected_pixel_mask = np.array(expected_pixel_mask, dtype=[("x", "<u4"), ("y", "<u4"), ("weight", "<f4")])
+
+    if "ophys" not in nwbfile.processing:
+        nwbfile.create_processing_module("ophys", "ophys")
+    nwbfile.processing["ophys"].add(plane_segmentation)
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+    dataset_configuration = backend_configuration.dataset_configurations[
+        "processing/ophys/TestPlaneSegmentation/pixel_mask/data"
+    ]
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    nwbfile_path = str(tmpdir / f"test_plane_segmentation_pixel_mask.nwb")
+    NWB_IO = BACKEND_NWB_IO[backend]
+    with NWB_IO(path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    with NWB_IO(path=nwbfile_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_pixel_mask = written_nwbfile.processing["ophys"].data_interfaces["TestPlaneSegmentation"].pixel_mask
+        written_dataset = written_pixel_mask.data.dataset
+
+        assert written_dataset.chunks == dataset_configuration.chunk_shape
+        if backend == "hdf5":
+            assert written_dataset.compression == "gzip"
+        elif backend == "zarr":
+            assert written_dataset.compressor == numcodecs.GZip(level=1)
+        assert_array_equal(written_dataset[:], expected_pixel_mask)

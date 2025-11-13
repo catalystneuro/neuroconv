@@ -4,7 +4,9 @@ from typing import Any, Literal
 
 import numcodecs
 import zarr
+from hdmf import Container
 from pydantic import Field, InstanceOf, model_validator
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 
@@ -127,3 +129,36 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+
+    @classmethod
+    def from_neurodata_object_with_existing(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> Self:
+        """
+        Construct a ZarrDatasetIOConfiguration from existing dataset settings.
+
+        Parameters
+        ----------
+        neurodata_object : hdmf.Container
+            The neurodata object containing the field that has been read from disk.
+        dataset_name : "data" or "timestamps"
+            The name of the field that corresponds to the dataset on disk.
+
+        Returns
+        -------
+        Self
+            A ZarrDatasetIOConfiguration instance with settings matching the existing dataset.
+        """
+        kwargs = cls.get_kwargs_from_neurodata_object(
+            neurodata_object=neurodata_object,
+            dataset_name=dataset_name,
+        )
+        compression_method = getattr(neurodata_object, dataset_name).compressor
+        filter_methods = getattr(neurodata_object, dataset_name).filters
+        return cls(
+            **kwargs,
+            compression_method=compression_method,
+            filter_methods=filter_methods,
+        )
