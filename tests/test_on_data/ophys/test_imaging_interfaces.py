@@ -67,7 +67,6 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
-
 class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
