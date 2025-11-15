@@ -311,35 +311,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
 
-    def subset_recording(self, stub_test: bool = False):
-        """
-        Subset a recording extractor according to stub and channel subset options.
-
-        Parameters
-        ----------
-        stub_test : bool, default: False
-            If True, only a subset of frames will be included.
-
-        Returns
-        -------
-        spikeinterface.core.BaseRecording
-            The subsetted recording extractor.
-        """
-        from ...tools.spikeinterface import _stub_recording
-
-        # Deprecating internal methods to simplify the API
-        warnings.warn(
-            "The subset_recording method is deprecated. It will be removed on or after October 2025.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return _stub_recording(recording=self.recording_extractor)
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         stub_test: bool = False,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
@@ -406,7 +382,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
-        from ...tools.spikeinterface import _stub_recording, add_recording_to_nwbfile
+        from ...tools.spikeinterface import (
+            _stub_recording,
+            add_recording_metadata_to_nwbfile,
+            add_recording_to_nwbfile,
+        )
 
         # Handle deprecated iterator_opts parameter
         if iterator_opts is not None:
@@ -426,14 +406,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self.get_metadata()
 
-        add_recording_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            write_as=write_as,
-            write_electrical_series=write_electrical_series,
-            es_key=self.es_key,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options,
-            always_write_timestamps=always_write_timestamps,
-        )
+        if write_electrical_series:
+            add_recording_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                write_as=write_as,
+                es_key=self.es_key,
+                iterator_type=iterator_type,
+                iterator_options=iterator_options,
+                always_write_timestamps=always_write_timestamps,
+            )
+        else:
+            add_recording_metadata_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+            )
