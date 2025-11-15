@@ -444,6 +444,6 @@ def repack_nwbfile(
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             backend_configuration=backend_configuration,
-            output_filepath=export_nwbfile_path,
+            nwbfile_path=export_nwbfile_path,
             backend=export_backend,
         )
