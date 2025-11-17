@@ -4,7 +4,8 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import LightningPoseDataInterface, VideoInterface
+from neuroconv.datainterfaces import LightningPoseDataInterface
+from neuroconv.datainterfaces.behavior.video.videodatainterface import _VideoInterface
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
@@ -56,7 +57,7 @@ class LightningPoseConverter(NWBConverter):
         """
         self.verbose = verbose
         self.data_interface_objects = dict(
-            OriginalVideo=VideoInterface(file_paths=[original_video_file_path]),
+            OriginalVideo=_VideoInterface(file_paths=[original_video_file_path]),
             PoseEstimation=LightningPoseDataInterface(
                 file_path=file_path,
                 original_video_file_path=original_video_file_path,
@@ -67,7 +68,7 @@ class LightningPoseConverter(NWBConverter):
         self.labeled_video_name = None
         if labeled_video_file_path:
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
-            self.data_interface_objects.update(dict(LabeledVideo=VideoInterface(file_paths=[labeled_video_file_path])))
+            self.data_interface_objects.update(dict(LabeledVideo=_VideoInterface(file_paths=[labeled_video_file_path])))
 
     def get_conversion_options_schema(self) -> dict:
         conversion_options_schema = get_json_schema_from_method_signature(
