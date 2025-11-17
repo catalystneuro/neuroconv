@@ -194,6 +194,8 @@ class MiniscopeConverter(ConverterPipe):
         self._folder_path = Path(folder_path)
         self.data_interface_objects: dict[str, object] = {}
         self._user_configuration_file_path = user_configuration_file_path
+
+        data_interfaces = {}
         if self._user_configuration_file_path is not None:
             # Load user configuration
             config_path = Path(self._user_configuration_file_path)
@@ -229,7 +231,6 @@ class MiniscopeConverter(ConverterPipe):
             for device_name in self._device_names:
                 device_folders_dict[device_name] = [p for p in all_paths if p.name == device_name]
 
-            data_interfaces = {}
             self._interface_to_device_mapping = {}
             for device_name in self._device_names:
                 # Iterate over all the folders found for this device
@@ -250,47 +251,51 @@ class MiniscopeConverter(ConverterPipe):
             default_interface._device_name_from_metadata = device_name
             default_interface._device_metadata_index = 0
             default_interface._imaging_plane_metadata_index = 0
-            interface_name = f"MiniscopeImaging/{sanitized_device_name}"
+            interface_name = f"Miniscope"
             data_interfaces[interface_name] = default_interface
             self._interface_to_device_mapping = {interface_name: device_name}
             self._device_names = [device_name]
 
         super().__init__(data_interfaces=data_interfaces)
 
-        # # Attempt to initialize the behavior interface; skip gracefully if the expected files are absent.
-        # try:
-        #     self.data_interface_objects["MiniscopeBehavCam"] = MiniscopeBehaviorInterface(folder_path=folder_path)
-        # except AssertionError:
-        #     if self.verbose:
-        #         print(
-        #             "Miniscope behavior videos were not found under the provided folder and will be omitted from conversion."
-        #         )
+        # Attempt to initialize the behavior interface; skip gracefully if the expected files are absent.
+        try:
+            self.data_interface_objects["MiniscopeBehavCam"] = MiniscopeBehaviorInterface(folder_path=folder_path)
+        except AssertionError:
+            if self.verbose:
+                print(
+                    "Miniscope behavior videos were not found under the provided folder and will be omitted from conversion."
+                )
 
     def get_metadata(self):
+        from neuroconv.tools.roiextractors.roiextractors import (
+            _get_default_ophys_metadata,
+        )
 
+        default_ophys_metadata = _get_default_ophys_metadata()
         metadata = super().get_metadata()
 
         ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
 
         imaging_plane_metadata = []
+        # Required by the schema
+        default_optical_channel = default_ophys_metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]
         for device_name in self._device_names:
             metadata_entry = {
                 "name": f"ImagingPlane{device_name}",
                 "description": f"Imaging plane for {device_name} Miniscope device.",
-                # "optical_channel": {
-                #     "name": f"{device_name}OpticalChannel",
-                #     "description": f"Optical channel for {device_name} Miniscope device.",
-                #     "emission_lambda": 500.0,
-                # },
+                "optical_channel": default_optical_channel,
                 "device": device_name,
             }
             imaging_plane_metadata.append(metadata_entry)
 
         series_metadata = []
         for interface_name in ophys_interface_names:
-            imaging_plane_name = f"ImagingPlane{self._interface_to_device_mapping[interface_name]}"
+            device_name = self._interface_to_device_mapping[interface_name]
+            interface_name = interface_name.replace("/", "")
+            imaging_plane_name = f"ImagingPlane{device_name}"
             metadata_entry = {
-                "name": interface_name.replace("/", ""),
+                "name": f"OnePhotonSeries{interface_name}",
                 "imaging_plane": imaging_plane_name,
             }
             series_metadata.append(metadata_entry)
@@ -424,8 +429,8 @@ class MiniscopeConverter(ConverterPipe):
 
         # Apply stub_test and stub_frames to all imaging interfaces
         # Note: Using stub_frames for schema compatibility; the interface converts to stub_samples internally
-        imaging_interface_keys = [key for key in self.data_interface_objects if key.startswith("MiniscopeImaging")]
-        for interface_key in imaging_interface_keys:
+        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        for interface_key in ophys_interface_names:
             if interface_key not in conversion_options:
                 conversion_options[interface_key] = {}
             conversion_options[interface_key].setdefault("stub_test", stub_test)

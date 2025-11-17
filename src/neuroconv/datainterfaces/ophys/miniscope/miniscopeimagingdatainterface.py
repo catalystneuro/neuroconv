@@ -127,6 +127,9 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,
+        *,
+        photon_series_index: int = 0,  # Ignore, here for backwards compatibility
+        stub_samples: int = 100,  # Ignore, here for backwards compatibility
     ):
         """
         Add imaging data to the specified NWBFile, including device and photon series information.
@@ -151,11 +154,11 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
 
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
-
+        stub_samples = stub_frames
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_samples()])
-            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_frames)
-            miniscope_timestamps = miniscope_timestamps[:stub_frames]
+            stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
+            miniscope_timestamps = miniscope_timestamps[:stub_samples]
 
         imaging_extractor.set_times(times=miniscope_timestamps)
 
