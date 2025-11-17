@@ -430,17 +430,19 @@ class MiniscopeConverter(ConverterPipe):
         # Apply stub_test and stub_frames to all imaging interfaces
         # Note: Using stub_frames for schema compatibility; the interface converts to stub_samples internally
         ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
-        for interface_key in ophys_interface_names:
-            if interface_key not in conversion_options:
-                conversion_options[interface_key] = {}
-            conversion_options[interface_key].setdefault("stub_test", stub_test)
-            conversion_options[interface_key].setdefault("stub_frames", stub_samples)
+        conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
+        for series_index, interface_name in enumerate(ophys_interface_names):
+            conversion_options_base[interface_name]["photon_series_index"] = series_index
+            conversion_options_base[interface_name]["stub_test"] = stub_test
+            conversion_options_base[interface_name]["stub_samples"] = stub_samples
+
+        conversion_options_base.update(conversion_options)
 
         super().run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-            conversion_options=conversion_options,
+            conversion_options=conversion_options_base,
             **kwargs,
         )
