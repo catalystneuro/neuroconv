@@ -108,7 +108,9 @@ def get_default_dataset_io_configurations(
 
     known_dataset_fields = ("data", "timestamps")
     manager = get_manager()
-    builder = manager.build(nwbfile)
+    builder = manager.build(nwbfile, export=True)
+    # export = True ensures that the builder is created fresh (as opposed to a cached version),
+    # which is essential to make sure that all of the datasets are properly represented.
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
@@ -142,7 +144,7 @@ def get_default_dataset_io_configurations(
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
                     neurodata_object=column, dataset_name=dataset_name, builder=builder
                 )
 
@@ -176,8 +178,85 @@ def get_default_dataset_io_configurations(
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
                     neurodata_object=neurodata_object, dataset_name=known_dataset_field, builder=builder
+                )
+
+                yield dataset_io_configuration
+
+
+def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[DatasetIOConfiguration, None, None]:
+    """
+    Generate DatasetIOConfiguration objects for each neurodata object in an nwbfile.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        An NWBFile object that has been read from an existing file with an existing backend configuration.
+    backend : "hdf5" or "zarr"
+        Which backend format type you would like to use in configuring each dataset's compression methods and options.
+
+    Yields
+    ------
+    DatasetIOConfiguration
+        A configuration object for each dataset in the NWB file.
+    """
+    if nwbfile.read_io is None:
+        raise ValueError("nwbfile must be read from an existing file!")
+    backend = None
+    if isinstance(nwbfile.read_io, NWBHDF5IO):
+        backend = "hdf5"
+    elif isinstance(nwbfile.read_io, NWBZarrIO):
+        backend = "zarr"
+
+    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
+
+    known_dataset_fields = ("data", "timestamps")
+    for neurodata_object in nwbfile.objects.values():
+        if isinstance(neurodata_object, DynamicTable):
+            dynamic_table = neurodata_object  # For readability
+
+            for column in dynamic_table.columns:
+                candidate_dataset = column.data  # VectorData object
+
+                # Skip over columns whose values are links, such as the 'group' of an ElectrodesTable
+                if any(isinstance(value, Container) for value in candidate_dataset):
+                    continue  # Skip
+
+                # Skip when columns whose values are a reference type
+                if isinstance(column, TimeSeriesReferenceVectorData):
+                    continue
+
+                # Skip datasets with any zero-length axes
+                dataset_name = "data"
+                candidate_dataset = getattr(column, dataset_name)
+                full_shape = get_data_shape(data=candidate_dataset)
+                if any(axis_length == 0 for axis_length in full_shape):
+                    continue
+
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_existing(
+                    neurodata_object=column,
+                    dataset_name=dataset_name,
+                )
+
+                yield dataset_io_configuration
+        elif isinstance(neurodata_object, NWBContainer):
+            for known_dataset_field in known_dataset_fields:
+                # Skip optional fields that aren't present
+                if known_dataset_field not in neurodata_object.fields:
+                    continue
+
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
+
+                # Skip datasets with any zero-length axes
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
+                full_shape = get_data_shape(data=candidate_dataset)
+                if any(axis_length == 0 for axis_length in full_shape):
+                    continue
+
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_existing(
+                    neurodata_object=neurodata_object,
+                    dataset_name=known_dataset_field,
                 )
 
                 yield dataset_io_configuration

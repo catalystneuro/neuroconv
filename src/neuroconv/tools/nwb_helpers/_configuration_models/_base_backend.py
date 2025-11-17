@@ -9,7 +9,10 @@ from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from .._dataset_configuration import get_default_dataset_io_configurations
+from .._dataset_configuration import (
+    get_default_dataset_io_configurations,
+    get_existing_dataset_io_configurations,
+)
 
 
 class BackendConfiguration(BaseModel):
@@ -57,10 +60,73 @@ class BackendConfiguration(BaseModel):
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile with default chunking and compression settings.
+
+        .. deprecated:: 0.8.4
+            The `from_nwbfile` method is deprecated and will be removed on or after June 2026.
+            Use `from_nwbfile_with_defaults` or `from_nwbfile_with_existing` instead.
+        """
+        import warnings
+
+        warnings.warn(
+            "The 'from_nwbfile' method is deprecated and will be removed on or after June 2026. "
+            "Use 'from_nwbfile_with_defaults' or 'from_nwbfile_with_existing' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
             default_dataset_configuration.location_in_file: default_dataset_configuration
             for default_dataset_configuration in default_dataset_configurations
+        }
+
+        return cls(dataset_configurations=dataset_configurations)
+
+    @classmethod
+    def from_nwbfile_with_defaults(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile with default chunking and compression settings.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to extract the backend configuration from.
+
+        Returns
+        -------
+        Self
+            The backend configuration with default chunking and compression settings for each neurodata object in the NWBFile.
+        """
+        dataset_io_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
+        dataset_configurations = {
+            default_dataset_configuration.location_in_file: default_dataset_configuration
+            for default_dataset_configuration in dataset_io_configurations
+        }
+
+        return cls(dataset_configurations=dataset_configurations)
+
+    @classmethod
+    def from_nwbfile_with_existing(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile using existing dataset settings.
+
+        This method extracts existing chunking and compression settings from an NWBFile that has already been written to disk.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to extract the backend configuration from.
+
+        Returns
+        -------
+        Self
+            The backend configuration with existing chunking and compression settings for each neurodata object in the NWBFile.
+        """
+        dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile)
+        dataset_configurations = {
+            default_dataset_configuration.location_in_file: default_dataset_configuration
+            for default_dataset_configuration in dataset_io_configurations
         }
 
         return cls(dataset_configurations=dataset_configurations)
