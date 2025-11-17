@@ -27,6 +27,9 @@ def test_get_data_io_kwargs_not_implemented():
         def get_data_io_kwargs(self):
             super().get_data_io_kwargs()
 
+        def from_neurodata_object_with_existing():  # define abstract method to avoid error
+            pass
+
     dataset_io_configuration = TestDatasetIOConfiguration(
         object_id="481a0860-3a0c-40ec-b931-df4a3e9b101f",
         location_in_file="acquisition/TestElectricalSeries/data",
@@ -70,7 +73,7 @@ def test_model_json_schema_generator_assertion():
 #     nwbfile.add_trial_column(name="test", description="test column with object dtype", data=data)
 #     neurodata_object = nwbfile.trials.columns[2]
 
-#     dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(neurodata_object, dataset_name="data")
+#     dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object_with_defaults(neurodata_object, dataset_name="data")
 
 #     assert dataset_io_configuration.chunk_shape == (3,)
 #     assert dataset_io_configuration.buffer_shape == (3,)
@@ -82,6 +85,9 @@ def test_from_neurodata_object_dtype_object_all_strings():
         def get_data_io_kwargs(self):
             super().get_data_io_kwargs()
 
+        def from_neurodata_object_with_existing():  # define abstract method to avoid error
+            pass
+
     nwbfile = mock_NWBFile()
     nwbfile.add_trial(start_time=0.0, stop_time=1.0)
     nwbfile.add_trial(start_time=1.0, stop_time=2.0)
@@ -90,7 +96,9 @@ def test_from_neurodata_object_dtype_object_all_strings():
     nwbfile.add_trial_column(name="test", description="test column with object dtype but all strings", data=data)
     neurodata_object = nwbfile.trials.columns[2]
 
-    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(neurodata_object, dataset_name="data")
+    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object_with_defaults(
+        neurodata_object, dataset_name="data"
+    )
 
     assert dataset_io_configuration.chunk_shape == (3,)
     assert dataset_io_configuration.buffer_shape == (3,)
