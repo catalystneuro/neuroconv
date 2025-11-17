@@ -103,12 +103,21 @@ def run_conversion_from_yaml(
     )
 
     upload_to_dandiset = "upload_to_dandiset" in specification
-    if upload_to_dandiset and "DANDI_API_KEY" not in os.environ:
-        message = (
-            "The 'upload_to_dandiset' prompt was found in the YAML specification, "
-            "but the environment variable 'DANDI_API_KEY' was not set."
-        )
-        raise ValueError(message)
+    if upload_to_dandiset:
+        dandiset_id = specification["upload_to_dandiset"]
+        sandbox = int(dandiset_id) >= 200_000
+        # Check for the appropriate API key based on whether this is a sandbox upload
+        expected_env_var = "DANDI_SANDBOX_API_KEY" if sandbox else "DANDI_API_KEY"
+        # For backward compatibility, also check DANDI_API_KEY if DANDI_SANDBOX_API_KEY is not set
+        has_api_key = os.getenv(expected_env_var) or (sandbox and os.getenv("DANDI_API_KEY"))
+        if not has_api_key:
+            message = (
+                "The 'upload_to_dandiset' prompt was found in the YAML specification, "
+                f"but the environment variable '{expected_env_var}' was not set."
+            )
+            if sandbox and expected_env_var == "DANDI_SANDBOX_API_KEY":
+                message += " (You can also use 'DANDI_API_KEY' for backward compatibility.)"
+            raise ValueError(message)
 
     global_metadata = specification.get("metadata", dict())
     global_conversion_options = specification.get("conversion_options", dict())
