@@ -24,13 +24,14 @@ on:
       EMBER_API_KEY:
         required: true
 
+env:
+  DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
+  EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
+
 jobs:
   run:
     name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
-    env:
-      DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
-      EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
     strategy:
       # This avoids two tests within the matrix running at the same time
       max-parallel: 1
