@@ -145,13 +145,40 @@ These tests verify the functionality of tools that interact with external cloud 
 
 Sub-folders: `tests/remote_transfer_services <https://github.com/catalystneuro/neuroconv/tree/main/tests/remote_transfer_services>`_
 
+External Contributors
+"""""""""""""""""""""
+
+**If you are an external contributor**, live service tests will fail in your fork with clear error messages. This is expected behavior.
+
+**This only matters if your PR modifies live service testing code.** If your changes are unrelated to remote transfer services (DANDI, EMBER, AWS, Globus), you can safely ignore these test failures.
+
+These tests require repository secrets (API keys and AWS credentials) that are only available to maintainers.
+External contributors cannot run these tests in their own forks due to GitHub's security model, which does not expose secrets to forks.
+
+**Workflow for external contributors:**
+
+1. Develop your changes and ensure all other tests pass (minimal, modality, and example data tests)
+2. Submit your pull request
+3. When your PR is ready for final review and all non-live-service tests are passing, notify a maintainer
+4. A maintainer will fork your PR into the main repository to run the live service tests
+5. If the live service tests pass, the maintainer will merge your changes
+
+This workflow ensures that:
+
+* Your development process is not blocked by lack of credentials
+* The integrity of live service tests is maintained
+* Security credentials remain protected
+
+If you see live service test failures in your PR, this is normal and expected. Focus on ensuring that all other test categories pass.
+
 Required credentials
 """"""""""""""""""""
 To run these tests, you need to set up the following environment variables:
 
 * For DANDI tests: ``DANDI_API_KEY``
-* For AWS tests: ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY``
-* For Globus tests: Appropriate credentials as documented in the test files
+* For EMBER tests: ``EMBER_API_KEY``
+* For AWS tests: ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, and ``S3_GIN_BUCKET``
+* For Globus tests: Globus CLI must be installed and you must be logged in (``globus login``)
 
 Running remote transfer tests
 """""""""""""""""""""""""""""
@@ -160,14 +187,14 @@ Since these tests are not automatically collected, you need to run them explicit
 .. code:: bash
 
     # Install required dependencies
-    pip install --editable ".[aws]"
+    pip install --editable ".[dandi,spikeglx,phy]"
     pip install --group test
 
-    # Run specific service tests
+    # Run specific service tests (requires appropriate credentials)
     pytest tests/remote_transfer_services/dandi_transfer_tools.py
-    pytest tests/remote_transfer_services/aws_tools_tests.py
-    pytest tests/remote_transfer_services/globus_transfer_tools.py
+    pytest tests/remote_transfer_services/ember_transfer_tools.py
     pytest tests/remote_transfer_services/yaml_dandi_transfer_tools.py
+    pytest tests/remote_transfer_services/globus_transfer_tools.py
 
 Import Structure Tests
 ----------------------

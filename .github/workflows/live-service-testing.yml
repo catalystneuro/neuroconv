@@ -62,6 +62,54 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
 
+      - name: Validate required credentials for live service tests
+        run: |
+          echo "::group::Checking required environment variables"
+          missing_vars=()
+
+          if [ -z "$DANDI_API_KEY" ] || [ "$DANDI_API_KEY" = "" ]; then
+            missing_vars+=("DANDI_API_KEY")
+          fi
+
+          if [ -z "$EMBER_API_KEY" ] || [ "$EMBER_API_KEY" = "" ]; then
+            missing_vars+=("EMBER_API_KEY")
+          fi
+
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ "$AWS_ACCESS_KEY_ID" = "" ]; then
+            missing_vars+=("AWS_ACCESS_KEY_ID")
+          fi
+
+          if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" = "" ]; then
+            missing_vars+=("AWS_SECRET_ACCESS_KEY")
+          fi
+
+          if [ -z "$S3_GIN_BUCKET" ] || [ "$S3_GIN_BUCKET" = "" ]; then
+            missing_vars+=("S3_GIN_BUCKET")
+          fi
+
+          if [ ${#missing_vars[@]} -gt 0 ]; then
+            echo "::endgroup::"
+            echo "::error::Live service testing requires repository secrets that are not available"
+            echo "::error::Missing environment variables: ${missing_vars[*]}"
+            echo "::error::"
+            echo "::error::FOR EXTERNAL CONTRIBUTORS:"
+            echo "::error::This is expected behavior! Live service tests require credentials that are only available to maintainers."
+            echo "::error::Please ensure all other tests pass in your PR."
+            echo "::error::A maintainer will fork your PR to run these tests before merging."
+            echo "::error::"
+            echo "::error::See documentation: https://neuroconv.readthedocs.io/en/main/developer_guide/testing_suite.html#remote-transfer-services"
+            exit 1
+          fi
+
+          echo "All required environment variables are present"
+          echo "::endgroup::"
+        env:
+          DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+          EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+
       - name: Run subset of tests that use DANDI live services
         run: pytest -rsx -n auto tests/remote_transfer_services/dandi_transfer_tools.py
       - name: Run subset of tests that use EMBER live services

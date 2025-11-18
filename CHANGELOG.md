@@ -19,6 +19,7 @@
 ## Improvements
 * Enhanced CSV interface documentation with comprehensive tutorial-style examples showing CSV format requirements, basic usage with column descriptions, customization options for storage location (trials/epochs/custom intervals), and advanced reading options. Fixed in-memory access to `nwbfile.trials` and `nwbfile.epochs`. Improved docstrings across `TimeIntervalsInterface` and `convert_df_to_time_intervals`. [PR #1572](https://github.com/catalystneuro/neuroconv/pull/1572)
 * Enhanced `SpikeGLXNIDQInterface` to support custom metadata for digital channels, enabling users to specify semantic labels, descriptions, and names for NIDQ digital events. Added `metadata_key` parameter to support multiple NIDQ interfaces in the same conversion. [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
+* Enhanced live service testing CI to fail explicitly with clear error messages when repository secrets are unavailable for external contributors. Added validation step in workflow to check required credentials and updated documentation to explain the workflow for external contributors (maintainers fork PRs to run live tests). [PR #1590](https://github.com/catalystneuro/neuroconv/pull/1590)
 
 # v0.8.3 (November 6, 2025)
 
